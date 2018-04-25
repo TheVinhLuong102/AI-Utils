@@ -5,7 +5,7 @@ import psutil
 import random
 
 import arimo.backend
-from arimo.blueprints import _docstr_blueprint
+from arimo.blueprints.base import _docstr_blueprint
 from arimo.df.spark_on_files import FileADF
 from arimo.util import fs, Namespace
 from arimo.util.decor import _docstr_verbose

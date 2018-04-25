@@ -15,8 +15,7 @@ from pyspark import SparkFiles
 from pyspark.sql.types import ArrayType, DoubleType, StructField, StructType
 
 import arimo.backend
-from arimo import blueprints
-from arimo.blueprints import _docstr_blueprint, _SupervisedBlueprintABC, _DLSupervisedBlueprintABC
+from arimo.blueprints.base import _docstr_blueprint, _SupervisedBlueprintABC, _DLSupervisedBlueprintABC, KerasModel
 from arimo.df.spark import ADF
 import arimo.eval.metrics
 from arimo.util import fs
@@ -223,7 +222,7 @@ class _CrossSectSupervisedBlueprintABC(LabeledDataPrepMixIn, _SupervisedBlueprin
 class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSupervisedBlueprintABC):
     __metaclass__ = abc.ABCMeta
 
-    __ModelClass__ = blueprints.KerasModel
+    __ModelClass__ = KerasModel
 
     _DEFAULT_PARAMS = \
         copy.deepcopy(

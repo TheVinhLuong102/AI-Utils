@@ -697,7 +697,7 @@ def _blueprint_from_params(
 
 # utility to validate Blueprint params
 def validate_blueprint_params(blueprint_or_blueprint_params):
-    from arimo.blueprints import _BlueprintABC, _blueprint_from_params
+    from arimo.blueprints.base import _BlueprintABC, _blueprint_from_params
 
     if isinstance(blueprint_or_blueprint_params, _BlueprintABC):
         blueprint = blueprint_or_blueprint_params

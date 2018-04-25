@@ -399,7 +399,7 @@ class PPPAnalysesMixIn(object):
                         itertools.product(cls._RAW_METRICS, cls._INDIV_OR_GLOBAL_PREFIXES, cls._SGN_PREFIXES)]
 
         if isinstance(df_w_err_mults, ADF):
-            from arimo.blueprints import _SupervisedBlueprintABC
+            from arimo.blueprints.base import _SupervisedBlueprintABC
 
             col_strs = []
 

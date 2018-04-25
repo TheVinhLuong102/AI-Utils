@@ -10,8 +10,7 @@ from pyspark import SparkFiles
 from pyspark.sql.types import DoubleType, StructField, StructType
 
 import arimo.backend
-from arimo.blueprints import _docstr_blueprint, _blueprint_from_params
-from arimo.blueprints import _PPPBlueprintABC
+from arimo.blueprints.base import _docstr_blueprint, _blueprint_from_params, _PPPBlueprintABC
 from arimo.df.spark import ADF
 from arimo.util import fs
 import arimo.debug

@@ -10,8 +10,7 @@ from pyspark import SparkFiles
 from pyspark.sql.types import DoubleType, IntegerType, StructField, StructType
 
 import arimo.backend
-from arimo.blueprints import _blueprint_from_params
-from arimo.blueprints import _docstr_blueprint, _PPPBlueprintABC
+from arimo.blueprints.base import _blueprint_from_params, _docstr_blueprint, _PPPBlueprintABC
 from arimo.df.spark import ADF
 from arimo.util import fs
 from arimo.util.dl import MASK_VAL
