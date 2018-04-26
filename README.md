@@ -1,3 +1,3 @@
-# Blueprints-dev
+# Arimo Behavioral AI: Modules Under Development
 
-Arimo Blueprints
+Arimo Blueprints generation 1
