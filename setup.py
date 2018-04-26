@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 
 setup(
-    name='Arimo-SDK-dev',
+    name='Arimo-BAI-dev',
     author='Arimo LLC (a Panasonic company)',
     author_email='info@arimo.com',
     url='https://github.com/adatao/SDK-dev',
