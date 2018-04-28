@@ -582,7 +582,7 @@ class FileADF(_FileDFABC, ADF):
                         sparkConf['spark.sql.files.openCostInBytes'] = \
                         arimo.backend._MAX_JAVA_INTEGER
 
-                arimo.backend.init(sparkConf=sparkConf)
+                arimo.backend.initSpark(sparkConf=sparkConf)
 
             if verbose:
                 msg = 'Loading SparkDF from "{}"...'.format(self.path)

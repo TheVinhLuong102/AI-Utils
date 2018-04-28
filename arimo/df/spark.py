@@ -1474,7 +1474,7 @@ class ADF(_DF_ABC):
             samplingRatio: ratio of rows sampled for type inference
         """
         if not arimo.backend.chkSpark():
-            arimo.backend.init(
+            arimo.backend.initSpark(
                 sparkConf=sparkConf)
 
         pandasTSCols = []
@@ -1644,7 +1644,7 @@ class ADF(_DF_ABC):
                 (*ref:* http://spark.apache.org/docs/latest/api/python/pyspark.sql.html#pyspark.sql.DataFrameReader)
         """
         if not arimo.backend.chkSpark():
-            arimo.backend.init(
+            arimo.backend.initSpark(
                 sparkConf=sparkConf)
         
         if verbose:
