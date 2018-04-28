@@ -4178,7 +4178,7 @@ class ADF(_DF_ABC):
             if loadPath in self._PREP_CACHE:
                 prepCache = self._PREP_CACHE[loadPath]
 
-                pipelineModel = prepCache.pipelineModel
+                pipelineModelWithoutVectorAssembler = prepCache.pipelineModelWithoutVectorAssembler
                 catOrigToPrepColMap = prepCache.catOrigToPrepColMap
                 numOrigToPrepColMap = prepCache.numOrigToPrepColMap
 
@@ -4215,7 +4215,7 @@ class ADF(_DF_ABC):
                     json.load(open(os.path.join(loadPath, self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME), 'r'))
 
                 try:
-                    pipelineModel = sqlTransformer = SQLTransformer.load(path=loadPath)
+                    pipelineModelWithoutVectorAssembler = sqlTransformer = SQLTransformer.load(path=loadPath)
 
                     catOHETransformer = vectorAssembler = None
 
@@ -4233,10 +4233,12 @@ class ADF(_DF_ABC):
                         if isinstance(secondTransformer, OneHotEncoderModel):
                             catOHETransformer = secondTransformer
                             vectorAssembler = None
+                            pipelineModelWithoutVectorAssembler = pipelineModel
 
                         elif isinstance(secondTransformer, VectorAssembler):
                             catOHETransformer = None
                             vectorAssembler = secondTransformer
+                            pipelineModelWithoutVectorAssembler = sqlTransformer
 
                         else:
                             raise ValueError('*** {} ***'.format(secondTransformer))
@@ -4252,6 +4254,9 @@ class ADF(_DF_ABC):
 
                         assert isinstance(vectorAssembler, VectorAssembler), \
                             '*** {} ***'.format(vectorAssembler)
+
+                        pipelineModelWithoutVectorAssembler = \
+                            PipelineModel(stages=[sqlTransformer, catOHETransformer])
 
                     else:
                         raise ValueError('*** {} ***'.format(pipelineModel.stages))
@@ -4286,7 +4291,7 @@ class ADF(_DF_ABC):
 
                 self._PREP_CACHE[loadPath] = \
                     Namespace(
-                        pipelineModel=pipelineModel,
+                        pipelineModelWithoutVectorAssembler=pipelineModelWithoutVectorAssembler,
                         catOrigToPrepColMap=catOrigToPrepColMap,
                         numOrigToPrepColMap=numOrigToPrepColMap)
                 
