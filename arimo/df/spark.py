@@ -4178,9 +4178,13 @@ class ADF(_DF_ABC):
             if loadPath in self._PREP_CACHE:
                 prepCache = self._PREP_CACHE[loadPath]
 
+                sqlTransformer = prepCache.sqlTransformer
+                catOHETransformer = prepCache.catOHETransformer
                 pipelineModelWithoutVectors = prepCache.pipelineModelWithoutVectors
+
                 catOrigToPrepColMap = prepCache.catOrigToPrepColMap
                 numOrigToPrepColMap = prepCache.numOrigToPrepColMap
+
                 defaultVecCols = prepCache.defaultVecCols
 
             else:
@@ -4226,7 +4230,7 @@ class ADF(_DF_ABC):
                 try:
                     pipelineModelWithoutVectors = sqlTransformer = SQLTransformer.load(path=loadPath)
 
-                    catOHETransformer = vectorAssembler = None
+                    catOHETransformer = None
 
                 except:
                     pipelineModel = PipelineModel.load(path=loadPath)
@@ -4279,9 +4283,13 @@ class ADF(_DF_ABC):
 
                 self._PREP_CACHE[loadPath] = \
                     Namespace(
+                        sqlTransformer=sqlTransformer,
+                        catOHETransformer=catOHETransformer,
                         pipelineModelWithoutVectors=pipelineModelWithoutVectors,
+
                         catOrigToPrepColMap=catOrigToPrepColMap,
                         numOrigToPrepColMap=numOrigToPrepColMap,
+
                         defaultVecCols=defaultVecCols)
                 
         else:
@@ -4440,9 +4448,15 @@ class ADF(_DF_ABC):
                                     .selectExpr(*('{} AS {}'.format(catSqlItem, strIdxCol)
                                                   for strIdxCol, catSqlItem in prepSqlItems.items())))
 
+                else:
+                    catOHETransformer = None
+
                 if verbose:
                     _toc = time.time()
                     self.stdout_logger.info(msg + ' done!   <{:,.1f} s>'.format(_toc - tic))
+
+            else:
+                catOHETransformer = None
 
             numOrigToPrepColMap = \
                 dict(__SCALER__=scaler)
@@ -4636,38 +4650,57 @@ class ADF(_DF_ABC):
 
             self._PREP_CACHE[savePath] = \
                 Namespace(
+                    sqlTransformer=sqlTransformer,
+                    catOHETransformer=catOHETransformer,
                     pipelineModelWithoutVectors=pipelineModelWithoutVectors,
+
                     catOrigToPrepColMap=catOrigToPrepColMap,
                     numOrigToPrepColMap=numOrigToPrepColMap,
-                    defaultVecCols=defaultVecCols)
 
+                    defaultVecCols=defaultVecCols)
 
         if self._detPrePartitioned and self.hasTS:
             _partitionBy_str = 'PARTITION BY {}, {}'.format(self._iCol, self._T_CHUNK_COL)
 
-            if isinstance(pipelineModel, SQLTransformer):
-                statement = pipelineModel.getStatement()
-                if _partitionBy_str in statement:
-                    pipelineModel = \
-                        SQLTransformer(
-                            statement=
-                                statement.replace(
-                                    _partitionBy_str,
-                                    'PARTITION BY {}'.format(self._iCol)))
+            statement = sqlTransformer.getStatement()
+
+            if _partitionBy_str in statement:
+                sqlTransformer = \
+                    SQLTransformer(
+                        statement=
+                            statement.replace(
+                                _partitionBy_str,
+                                'PARTITION BY {}'.format(self._iCol)))
+
+        pipelineModelStages = \
+            [sqlTransformer] + \
+            ([catOHETransformer]
+             if catOHETransformer
+             else [])
+
+        if vecColsToAssemble:
+            if isinstance(vecColsToAssemble, _STR_CLASSES):
+                pipelineModelStages.append(
+                    VectorAssembler(
+                        inputCols=defaultVecCols,
+                        outputCol=vecColsToAssemble))
 
             else:
-                for i, stage in enumerate(pipelineModel.stages):
-                    if isinstance(stage, SQLTransformer):
-                        statement = stage.getStatement()
-                        if _partitionBy_str in statement:
-                            pipelineModel.stages[i] = \
-                                SQLTransformer(
-                                    statement=
-                                        statement.replace(
-                                            _partitionBy_str,
-                                            'PARTITION BY {}'.format(self._iCol)))
-                            break
+                assert isinstance(vecColsToAssemble, (dict, Namespace))
 
+                for vecOutputCol, vecInputCols in vecColsToAssemble.items():
+                    pipelineModelStages.append(
+                        VectorAssembler(
+                            inputCols=vecInputCols
+                                if vecInputCols
+                                else defaultVecCols,
+                            outputCol=vecOutputCol))
+
+        pipelineModel = \
+            PipelineModel(stages=pipelineModelStages) \
+            if len(pipelineModelStages) > 1 \
+            else sqlTransformer
+        
         try:   # in case SELF is FilesBasedADF
             sparkDF = self._initSparkDF
         except:
@@ -4703,8 +4736,8 @@ class ADF(_DF_ABC):
 
         colsToKeep = \
             sparkDF.columns + \
-            ([vecColToAssemble]
-             if vecColToAssemble
+            (to_iterable(vecColsToAssemble, iterable_type=list)
+             if vecColsToAssemble
              else (([catPrepColDetails[0]
                      for catCol, catPrepColDetails in catOrigToPrepColMap.items()
                      if (catCol not in ('__OHE__', '__SCALE__')) and
