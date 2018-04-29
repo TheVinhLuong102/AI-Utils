@@ -1095,7 +1095,7 @@ class _ModelABC(object):
                       is_dir=True,
                       hdfs=False)
 
-                self.blueprint.save()
+            self.blueprint.save()
 
     def __getattr__(self, item):   # if cannot resolve item in the MRO, then access item via _obj
         if not self._obj:   # if model object is not existing, initiate with Blueprint's Model Factory
