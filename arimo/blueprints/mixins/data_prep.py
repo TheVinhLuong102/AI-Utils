@@ -57,15 +57,14 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
         # check if training, re-training, scoring or evaluating
         if __mode__ == self._TRAIN_MODE:
             __train__ = True
-            __incr_train__ = (self.params.model.ver is not None)
             __score__ = __eval__ = False
 
         elif __mode__ == self._SCORE_MODE:
-            __train__ = __incr_train__ = __eval__ = False
+            __train__ = __eval__ = False
             __score__ = True
 
         elif __mode__ == self._EVAL_MODE:
-            __train__ = __incr_train__ = __score__ = False
+            __train__ = __score__ = False
             __eval__ = True
 
         else:
@@ -75,7 +74,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
 
         assert __train__ + __score__ + __eval__ == 1
 
-        __train_new__ = __train__ and (not __incr_train__)
+        __first_train__ = __train__ and (not os.path.isdir(self.data_transforms_dir))
 
         if isinstance(df, ADF):
             adf = df
@@ -138,7 +137,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                 label_col_type = _STR_TYPE
 
             if label_col_type == _BOOL_TYPE:
-                if __train_new__:
+                if __first_train__:
                     self.params.data.label._int_var = self._INT_LABEL_COL
 
                     if _spark_model:
@@ -153,7 +152,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                     inplace=True)
 
             elif label_col_type == _STR_TYPE:
-                if __train_new__:
+                if __first_train__:
                     self.params.data.label._int_var = self._INT_LABEL_COL
 
                     if _spark_model:
@@ -181,13 +180,13 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                     inheritNRows=True,
                     inplace=True)
 
-            elif (label_col_type in _INT_TYPES) and __train_new__:
+            elif (label_col_type in _INT_TYPES) and __first_train__:
                 self.params.data.label._int_var = self.params.data.label.var
 
                 if _spark_model:
                     self.params.model.factory.labelCol = self.params.data.label.var
 
-            elif _spark_model and __train_new__:
+            elif _spark_model and __first_train__:
                 self.params.model.factory.labelCol = self.params.data.label.var
 
             if _spark_model:
@@ -214,7 +213,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                    and self.params.data.label.outlier_tail_proportion \
                    and (self.params.data.label.outlier_tail_proportion < .5)
 
-                if __train_new__:
+                if __first_train__:
                     self.params.data.label.outlier_tails = \
                         self.params.data.label.outlier_tails.lower()
 
@@ -285,33 +284,14 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
 
             adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
 
-        # create or get Model
-        model = \
-            self.model(
-                ver=self.params.model.ver
-                if self.params.model.ver or __train__
-                else 'latest')
-
-        # make a copy of the model if retraining
-        if __incr_train__:
-            existing_model = model
-            model = existing_model.copy()
-
         if __from_ensemble__ or __from_ppp__:
             if __vectorize__:
                 assert self.params.data._prep_vec_col in adf.columns
 
         else:
             # Prepare data into model-able vectors
-            data_transforms_dir_path = \
-                os.path.join(
-                    model.dir,
-                    self.params.data._transform_pipeline_dir)
-
-            data_transforms_load_path = None
-            data_transforms_save_path = None
             if __train__:
-                if __train_new__:
+                if __first_train__:
                     adf._reprSampleSize = self.params.data.repr_sample_size
 
                     self.params.data.pred_vars = \
@@ -328,20 +308,18 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                              else []) +
                             [self.params.data.label.var])
 
-                else:
-                    data_transforms_load_path = \
-                        os.path.join(
-                            existing_model.dir,
-                            self.params.data._transform_pipeline_dir)
+                    data_transforms_load_path = None
+                    data_transforms_save_path = self.data_transforms_dir
 
-                data_transforms_save_path = \
-                    data_transforms_dir_path
+                else:
+                    data_transforms_load_path = self.data_transforms_dir
+                    data_transforms_save_path = None
 
                 adf.maxNCats = self.params.data.max_n_cats
 
             else:
-                data_transforms_load_path = \
-                    data_transforms_dir_path
+                data_transforms_load_path = self.data_transforms_dir
+                data_transforms_save_path = None
 
             adf, cat_orig_to_prep_col_map, num_orig_to_prep_col_map = \
                 adf.prep(
@@ -388,7 +366,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                         self._PREP_ADF_ALIAS_SUFFIX))
 
             if __train__ or __eval__:
-                if __train_new__:
+                if __first_train__:
                     self.params.data.pred_vars = \
                         tuple(self.params.data.pred_vars
                               .intersection(set(cat_orig_to_prep_col_map)
@@ -435,7 +413,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                     inheritNRows=True,
                     inplace=True)
 
-        return adf, model
+        return adf
 
 
 class PPPDataPrepMixIn(_DataPrepMixInABC):
@@ -445,15 +423,14 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
         # check if training, re-training, scoring or evaluating
         if __mode__ == self._TRAIN_MODE:
             __train__ = True
-            __incr_train__ = (self.params.model.ver is not None)
             __score__ = __eval__ = False
 
         elif __mode__ == self._SCORE_MODE:
-            __train__ = __incr_train__ = __eval__ = False
+            __train__ = __eval__ = False
             __score__ = True
 
         elif __mode__ == self._EVAL_MODE:
-            __train__ = __incr_train__ = __score__ = False
+            __train__ = __score__ = False
             __eval__ = True
 
         else:
@@ -463,7 +440,7 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
 
         assert __train__ + __score__ + __eval__ == 1
 
-        __train_new__ = __train__ and (not __incr_train__)
+        __first_train__ = __train__ and (not os.path.isdir(self.data_transforms_dir))
 
         if isinstance(df, ADF):
             adf = df
@@ -505,29 +482,8 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                 __mode__,
                 adf_uuid)
 
-        # create or get Model
-        model = \
-            self.model(
-                ver=self.params.model.ver
-                if self.params.model.ver or __train__
-                else 'latest')
-
-        # make copy of the model if retraining
-        if __incr_train__:
-            existing_model = model
-            model = existing_model.copy()
-
-        # Prepare data into model-able vectors
-        data_transforms_dir_path = \
-            os.path.join(
-                model.dir,
-                self.params.data._transform_pipeline_dir)
-
-        data_transforms_load_path = None
-        data_transforms_save_path = None
-
         if __train__:
-            if __train_new__:
+            if __first_train__:
                 adf._reprSampleSize = self.params.data.repr_sample_size
                 
                 cols_to_prep = set()
@@ -555,22 +511,20 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                     component_blueprint_params.data.pred_vars_incl = \
                         component_blueprint_params.data.pred_vars_excl = None
 
+                data_transforms_load_path = None
+                data_transforms_save_path = self.data_transforms_dir
+
             else:
-                data_transforms_load_path = \
-                    os.path.join(
-                        existing_model.dir,
-                        self.params.data._transform_pipeline_dir)
+                data_transforms_load_path = self.data_transforms_dir
+                data_transforms_save_path = None
 
                 cols_to_prep = ()
-
-            data_transforms_save_path = \
-                data_transforms_dir_path
 
             adf.maxNCats = self.params.data.max_n_cats
 
         else:
-            data_transforms_load_path = \
-                data_transforms_dir_path
+            data_transforms_load_path = self.data_transforms_dir
+            data_transforms_save_path = None
 
             cols_to_prep = ()
 
@@ -627,7 +581,7 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                     component_blueprint_params = \
                         self.params.model.component_blueprints[label_var_name]
 
-                    if __train_new__:
+                    if __first_train__:
                         component_blueprint_params.data.pred_vars = \
                             tuple(component_blueprint_params.data.pred_vars
                                   .intersection(set(cat_orig_to_prep_col_map)
@@ -684,7 +638,7 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                                  inheritNRows=True)
 
             # save Blueprint & data transforms
-            model.save()
+            self.save()
 
             return component_labeled_adfs
 
