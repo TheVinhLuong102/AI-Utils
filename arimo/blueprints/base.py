@@ -661,7 +661,7 @@ class _BlueprintABC(object):
                 to_dir_path=self.params.persist.s3._data_transforms_dir_path,
                 access_key_id=self.auth.aws.access_key_id,
                 secret_access_key=self.auth.aws.secret_access_key,
-                delete=True, quiet=not verbose,
+                delete=True, quiet=False,
                 verbose=verbose)
 
             if verbose:
