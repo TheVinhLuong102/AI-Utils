@@ -305,7 +305,7 @@ class _BlueprintABC(object):
 
                 _file='Blueprint' + PKL_EXT,
 
-                _models_dir='models'),
+                _models_dir='Models'),
 
             __metadata__={
                 '__BlueprintClass__': Namespace(),
