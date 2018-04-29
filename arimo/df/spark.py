@@ -4175,14 +4175,13 @@ class ADF(_DF_ABC):
                 self.stdout_logger.info(message)
                 tic = time.time()
 
-            vecColMapFilePath = os.path.join(loadPath, self._VEC_COL_MAP_FILE_NAME)
-
             if loadPath in self._PREP_CACHE:
                 prepCache = self._PREP_CACHE[loadPath]
 
                 pipelineModelWithoutVectors = prepCache.pipelineModelWithoutVectors
                 catOrigToPrepColMap = prepCache.catOrigToPrepColMap
                 numOrigToPrepColMap = prepCache.numOrigToPrepColMap
+                defaultVecCols = prepCache.defaultVecCols
 
             else:
                 if fs._ON_LINUX_CLUSTER_WITH_HDFS:
@@ -4215,6 +4214,12 @@ class ADF(_DF_ABC):
 
                 numOrigToPrepColMap = \
                     json.load(open(os.path.join(loadPath, self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME), 'r'))
+
+                defaultVecCols = \
+                    [catOrigToPrepColMap[catCol][0]
+                     for catCol in sorted(catOrigToPrepColMap)] + \
+                    [numOrigToPrepColMap[numCol][0]
+                     for numCol in sorted(numOrigToPrepColMap)]
 
                 try:
                     pipelineModelWithoutVectors = sqlTransformer = SQLTransformer.load(path=loadPath)
@@ -4266,34 +4271,16 @@ class ADF(_DF_ABC):
                     if vectorAssembler:
                         vecInputCols = vectorAssembler.getInputCols()
 
-                        missingPrepCols = \
-                            set(vecInputCols).difference(
-                                [catPrepColDetails[0]
-                                 for catPrepColDetails in catOrigToPrepColMap.values()] +
-                                [numPrepColDetails[0]
-                                 for numPrepColDetails in numOrigToPrepColMap.values()])
+                        assert set(defaultVecCols) == set(vecInputCols)
 
-                        assert not missingPrepCols, \
-                            '*** MISSING PREP COLS FOR VECTORIZATION: {} ***'.format(missingPrepCols)
-
-                        if not os.path.isfile(vecColMapFilePath):
-                            json.dump(
-                                {vectorAssembler.getOutputCol(): vecInputCols},
-                                open(vecColMapFilePath, 'w'),
-                                indent=4)
-
-                            if fs._ON_LINUX_CLUSTER_WITH_HDFS:
-                                fs.put(
-                                    from_local=vecColMapFilePath,
-                                    to_hdfs=vecColMapFilePath,
-                                    is_dir=False,
-                                    _mv=False)
+                        defaultVecCols = vecInputCols
 
                 self._PREP_CACHE[loadPath] = \
                     Namespace(
                         pipelineModelWithoutVectors=pipelineModelWithoutVectors,
                         catOrigToPrepColMap=catOrigToPrepColMap,
-                        numOrigToPrepColMap=numOrigToPrepColMap)
+                        numOrigToPrepColMap=numOrigToPrepColMap,
+                        defaultVecCols=defaultVecCols)
                 
         else:
             if cols:
@@ -4349,9 +4336,6 @@ class ADF(_DF_ABC):
                 tic = time.time()
 
             prepSqlItems = {}
-
-            if vecColsToAssemble:
-                colsToAssembleVec = set()
 
             catOrigToPrepColMap = \
                 dict(__OHE__=oheCat,
@@ -4436,9 +4420,6 @@ class ADF(_DF_ABC):
 
                          dict(Cats=cats,
                               NCats=nCats)]
-
-                    if vecColsToAssemble:
-                        colsToAssembleVec.add(catPrepCol)
 
                 if oheCat:
                     catOHETransformer = \
@@ -4589,9 +4570,6 @@ class ADF(_DF_ABC):
                                       NullFillValue=nulColNullFillValue)]
 
                         numScaledCols.append(scaledCol)
-
-                        if vecColsToAssemble:
-                            colsToAssembleVec.add(scaledCol)
 
                 if verbose:
                     _toc = time.time()

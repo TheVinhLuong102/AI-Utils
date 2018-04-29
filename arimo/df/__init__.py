@@ -86,7 +86,6 @@ class _DF_ABC(object):
 
     _CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME = 'catOrigToPrepColMap.json'
     _NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME = 'numOrigToPrepColMap.json'
-    _VEC_COL_MAP_FILE_NAME = 'vecColMap.json'
 
     # temp dir
     _TMP_DIR_PATH = '/tmp/.arimo/df'
