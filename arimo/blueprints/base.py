@@ -539,6 +539,9 @@ class _BlueprintABC(object):
                 self.params.data._transform_pipeline_dir)
 
         # set local dir storing all models for Blueprint
+        if self.params.persist._models_dir != self.DEFAULT_PARAMS.data._transform_pipeline_dir:
+            self.params.persist._models_dir = self.DEFAULT_PARAMS.data._transform_pipeline_dir
+
         self.models_dir = \
             os.path.join(
                 self.dir,
