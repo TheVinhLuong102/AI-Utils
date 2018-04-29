@@ -1027,6 +1027,22 @@ class _ModelABC(object):
         if ver is not None:
             self.load()
 
+            data_transform_pipeline_dir_path_inside_model_dir = \
+                os.path.join(self.dir, self.blueprint.params.data._transform_pipeline_dir)
+
+            if os.path.isdir(data_transform_pipeline_dir_path_inside_model_dir):
+                data_transform_pipeline_dir_path = \
+                    os.path.join(self.blueprint.dir, self.blueprint.params.data._transform_pipeline_dir)
+
+                assert not os.path.isdir(data_transform_pipeline_dir_path)
+
+                fs.mv(from_path=data_transform_pipeline_dir_path_inside_model_dir,
+                      to_path=data_transform_pipeline_dir_path,
+                      is_dir=True,
+                      hdfs=False)
+
+                self.blueprint.save()
+
     def __getattr__(self, item):   # if cannot resolve item in the MRO, then access item via _obj
         if not self._obj:   # if model object is not existing, initiate with Blueprint's Model Factory
             model_factory_params = copy.deepcopy(self.blueprint.params.model.factory)
