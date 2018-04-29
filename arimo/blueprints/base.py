@@ -538,7 +538,13 @@ class _BlueprintABC(object):
                 self.dir,
                 self.params.persist._file)
 
-        # set local dir storing all models for the Project
+        # set local dir storing data transforms for Blueprint
+        self.data_transforms_dir = \
+            os.path.join(
+                self.dir,
+                self.params.data._transform_pipeline_dir)
+
+        # set local dir storing all models for Blueprint
         self.models_dir = \
             os.path.join(
                 self.dir,
@@ -578,6 +584,19 @@ class _BlueprintABC(object):
                     self.params.persist.s3.dir_prefix,
                     self.params.uuid,
                     self.params.persist._file)
+
+            # full path of S3 dir containing data transforms
+            self.params.persist.s3._data_transforms_dir_path = \
+                os.path.join(
+                    self.params.persist.s3._dir_path,
+                    self.params.data._transform_pipeline_dir)
+
+            # path of data transforms within S3 Bucket
+            self.params.persist.s3._data_transforms_dir_prefix = \
+                os.path.join(
+                    self.params.persist.s3.dir_prefix,
+                    self.params.uuid,
+                    self.params.data._transform_pipeline_dir)
 
             # full path of S3 dir containing models
             self.params.persist.s3._models_dir_path = \
@@ -638,8 +657,8 @@ class _BlueprintABC(object):
                 Key=self.params.persist.s3._file_key)
 
             s3.sync(
-                from_dir_path=os.path.join(self.dir, self.blueprint.params.data._transform_pipeline_dir),
-                to_dir_path=os.path.join(self.path, self.blueprint.params.data._transform_pipeline_dir),
+                from_dir_path=self.data_transforms_dir,
+                to_dir_path=self.params.persist.s3._data_transforms_dir_path,
                 access_key_id=self.auth.aws.access_key_id,
                 secret_access_key=self.auth.aws.secret_access_key,
                 delete=True, quiet=not verbose,
@@ -820,6 +839,33 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
               to_path=blueprint.file,
               is_dir=False,
               hdfs=False)
+
+        s3_data_transforms_dir_prefix = \
+            os.path.join(
+                s3_dir_prefix,
+                blueprint.params.data._transforms_pipeline_dir)
+
+        s3_data_transforms_dir_path = \
+            's3://{}/{}'.format(
+                s3_bucket, s3_data_transforms_dir_prefix)
+
+        if 'Contents' in \
+                s3_client.list_objects(
+                    Bucket=s3_bucket,
+                    Prefix=s3_data_transforms_dir_prefix):
+            if verbose:
+                msg = 'Downloading Data Transforms for {} from S3 Path "{}"...'.format(blueprint, s3_data_transforms_dir_path)
+                logger.info(msg)
+
+            s3.sync(
+                from_dir_path=s3_data_transforms_dir_path,
+                to_dir_path=blueprint.data_transforms_dir,
+                access_key_id=aws_access_key_id,
+                secret_access_key=aws_secret_access_key,
+                delete=True, quiet=False)
+
+            if verbose:
+                logger.info(msg + ' done!')
 
         s3_models_dir_prefix = \
             os.path.join(
