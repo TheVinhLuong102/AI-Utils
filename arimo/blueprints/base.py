@@ -978,7 +978,7 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
     return blueprint
 
 
-class _ModelABC(object):
+class _BlueprintedModelABC(object):
     """
     Blueprinted Model abstract base class
     """
@@ -1125,32 +1125,7 @@ class _ModelABC(object):
         return model
 
 
-class _OnlyDataPrepModel(_ModelABC):
-    def load(self, verbose=False):
-        pass
-
-    def save(self, verbose=True):
-        # save Blueprint
-        self.blueprint.save(verbose=verbose)
-
-        # upload models to S3 if applicable
-        if self.blueprint._persist_on_s3:
-            if verbose:
-                msg = 'Uploading All Trained Models to S3 Path "{}"...'.format(self.blueprint.params.persist.s3._models_dir_path)
-                self.blueprint.stdout_logger.info(msg)
-
-            s3.sync(
-                from_dir_path=self.blueprint.models_dir,
-                to_dir_path=self.blueprint.params.persist.s3._models_dir_path,
-                access_key_id=self.blueprint.auth.aws.access_key_id,
-                secret_access_key=self.blueprint.auth.aws.secret_access_key,
-                delete=True, quiet=False)
-
-            if verbose:
-                self.blueprint.stdout_logger.info(msg + ' done!')
-
-
-class KerasModel(_ModelABC):
+class BlueprintedKerasModel(_BlueprintedModelABC):
     _LOADED_MODELS = {}
 
     def load(self, verbose=True):
