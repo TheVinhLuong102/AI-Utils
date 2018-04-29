@@ -8,7 +8,7 @@ import pandas
 from pyspark.sql import functions
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
-from arimo.df.on_files import FileDF
+from arimo.df.from_files import FileDF
 from arimo.df.spark import ADF
 from arimo.util.date_time import DATE_COL, MONTH_COL
 from arimo.util.iterables import to_iterable

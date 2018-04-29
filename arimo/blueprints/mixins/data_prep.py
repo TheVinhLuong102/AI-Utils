@@ -17,7 +17,7 @@ import pyspark.sql
 
 import arimo.backend
 from arimo.df.spark import ADF
-from arimo.df.spark_on_files import FileADF
+from arimo.df.spark_from_files import FileADF
 import arimo.eval.metrics
 from arimo.util import clean_uuid, Namespace
 from arimo.util.iterables import to_iterable
