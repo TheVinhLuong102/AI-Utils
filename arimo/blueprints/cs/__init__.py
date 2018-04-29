@@ -75,11 +75,15 @@ class _CrossSectSupervisedBlueprintABC(LabeledDataPrepMixIn, _SupervisedBlueprin
         verbose = kwargs.pop('verbose', True)
 
         # prep data
-        adf, model = \
-            self.prep_data(
+        adf = self.prep_data(
                 __mode__=self._EVAL_MODE,
                 verbose=verbose,
                 *args, **kwargs)
+
+        model = self.model(
+            ver=self.params.model.ver
+                if self.params.model.ver
+                else 'latest')
 
         label_var = \
             self.params.data.label.var \
@@ -246,11 +250,15 @@ class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSu
             assert adf and model
 
         else:
-            adf, model = \
-                self.prep_data(
+            adf = self.prep_data(
                     __mode__=self._SCORE_MODE,
                     verbose=verbose,
                     *args, **kwargs)
+
+            model = self.model(
+                ver=self.params.model.ver
+                    if self.params.model.ver
+                    else 'latest')
 
         prep_vec_col = self.params.data._prep_vec_col
 

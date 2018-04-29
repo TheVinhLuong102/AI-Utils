@@ -119,11 +119,15 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
                             .format(label_var, _outlier_robust_condition))
 
         else:
-            adf, model = \
-                self.prep_data(
+            adf = self.prep_data(
                     __mode__=self._SCORE_MODE,
                     verbose=verbose,
                     *args, **kwargs)
+
+            model = self.model(
+                ver=self.params.model.ver
+                    if self.params.model.ver
+                    else 'latest')
 
             label_var = \
                 self.params.data.label.var \
@@ -362,11 +366,15 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
             logger.setLevel(logging.DEBUG)
             logger.addHandler(STDOUT_HANDLER)
 
-        adf, model = \
-            self.prep_data(
+        adf = self.prep_data(
                 __mode__=self._EVAL_MODE,
                 verbose=verbose,
                 *args, **kwargs)
+
+        model = self.model(
+            ver=self.params.model.ver
+                if self.params.model.ver
+                else 'latest')
 
         if arimo.debug.ON:
             model.stdout_logger.debug(
