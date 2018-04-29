@@ -1640,7 +1640,11 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
         for label_var_name, component_labeled_adf in component_labeled_adfs.items():
             blueprint_params = self.params.model.component_blueprints[label_var_name]
 
-            blueprint_params.uuid = '{}---{}'.format(self.params.uuid, label_var_name)
+            blueprint_params.uuid = \
+                '{}---{}---{}'.format(
+                    self.params.uuid,
+                    label_var_name,
+                    uuid.uuid4())
 
             if __retrain_components__:
                 blueprint_params.model.ver = None
