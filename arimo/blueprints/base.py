@@ -701,7 +701,7 @@ class _BlueprintABC(object):
         return blueprint
 
     def model(self, ver='latest'):
-        return self.__ModelClass__(
+        return self.__BlueprintedModelClass__(
             blueprint=self,
             ver=ver)
 
