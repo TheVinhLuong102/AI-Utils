@@ -547,6 +547,15 @@ class _BlueprintABC(object):
                 self.dir,
                 self.params.persist._models_dir)
 
+        # set BlueprintedModelClass
+        self.__BlueprintedModelClass__ = \
+            import_obj(
+                self.params.get('__BlueprintedModelClass__',
+                                'arimo.blueprints.base.BlueprintedKerasModel'))
+
+        self.params.__BlueprintedModelClass__ = \
+            self.__BlueprintedModelClass__.__qual_name__()
+
         # print Blueprint params if in verbose mode
         if verbose:
             self.stdout_logger.info('\n{}'.format(self.params))
@@ -994,6 +1003,10 @@ class _BlueprintedModelABC(object):
         Required method to save model object
         """
         raise NotImplementedError
+
+    @classmethod
+    def __qual_name__(cls):
+        return '{}.{}'.format(cls.__module__, cls.__name__)
 
     def __repr__(self):
         return '{} Model v{}'.format(self.blueprint, self.ver)
