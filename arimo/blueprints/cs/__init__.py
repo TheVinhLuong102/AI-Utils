@@ -11,7 +11,6 @@ import shutil
 import tqdm
 import uuid
 
-from pyspark import SparkFiles
 from pyspark.sql.types import ArrayType, DoubleType, StructField, StructType
 
 import arimo.backend
