@@ -59,12 +59,12 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
         # verbosity
         verbose = kwargs.pop('verbose', True)
 
-        # get ADF & model
-        adf, model = \
-            self.prep_data(
+        adf = self.prep_data(
                 __mode__=self._TRAIN_MODE,
                 verbose=verbose,
                 *args, **kwargs)
+
+        model = self.model(ver=self.params.model.ver)
 
         if arimo.debug.ON:
             model.stdout_logger.debug(

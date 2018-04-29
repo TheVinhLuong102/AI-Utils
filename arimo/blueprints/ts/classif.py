@@ -95,11 +95,12 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
 
         verbose = kwargs.pop('verbose', True)
 
-        adf, model = \
-            self.prep_data(
+        adf = self.prep_data(
                 __mode__=self._TRAIN_MODE,
                 verbose=verbose,
                 *args, **kwargs)
+
+        model = self.model(ver=self.params.model.ver)
 
         self.params.data.label._n_classes = \
             int(adf('MAX({})'.format(self.params.data.label._int_var)).first()[0]) + 1

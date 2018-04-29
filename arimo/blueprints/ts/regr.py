@@ -90,12 +90,13 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
         # verbosity
         verbose = kwargs.pop('verbose', True)
 
-        adf, model = \
-            self.prep_data(
+        adf = self.prep_data(
                 df=df,
                 __mode__=self._TRAIN_MODE,
                 verbose=verbose,
                 **kwargs)
+
+        model = self.model(ver=self.params.model.ver)
 
         _lower_outlier_threshold_applicable = \
             pandas.notnull(self.params.data.label.lower_outlier_threshold)
