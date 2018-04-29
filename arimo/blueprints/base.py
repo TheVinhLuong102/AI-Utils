@@ -856,7 +856,7 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
                 s3_bucket, s3_data_transforms_dir_prefix)
 
         if 'Contents' in \
-                s3_client.list_objects(
+                s3_client.list_objects_v2(
                     Bucket=s3_bucket,
                     Prefix=s3_data_transforms_dir_prefix):
             if verbose:
@@ -883,7 +883,7 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
                 s3_bucket, s3_models_dir_prefix)
 
         if 'Contents' in \
-                s3_client.list_objects(
+                s3_client.list_objects_v2(
                     Bucket=s3_bucket,
                     Prefix=s3_models_dir_prefix):
             if verbose:
@@ -1048,7 +1048,7 @@ class _BlueprintedModelABC(object):
         if (blueprint.path not in _LOADED_BLUEPRINTS) and \
                 (blueprint._persist_on_s3) and \
                 ('Contents' in \
-                    blueprint._s3_client.list_objects(
+                    blueprint._s3_client.list_objects_v2(
                         Bucket=blueprint.params.persist.s3.bucket,
                         Prefix=blueprint.params.persist.s3._models_dir_prefix)):
             if verbose:
