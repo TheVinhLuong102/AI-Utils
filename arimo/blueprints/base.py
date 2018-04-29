@@ -637,6 +637,14 @@ class _BlueprintABC(object):
                 Bucket=self.params.persist.s3.bucket,
                 Key=self.params.persist.s3._file_key)
 
+            s3.sync(
+                from_dir_path=os.path.join(self.dir, self.blueprint.params.data._transform_pipeline_dir),
+                to_dir_path=os.path.join(self.path, self.blueprint.params.data._transform_pipeline_dir),
+                access_key_id=self.auth.aws.access_key_id,
+                secret_access_key=self.auth.aws.secret_access_key,
+                delete=True, quiet=not verbose,
+                verbose=verbose)
+
             if verbose:
                 toc = time.time()
                 self.stdout_logger.info(msg + ' done!   <{:,.1f} s>'.format(toc - tic))
