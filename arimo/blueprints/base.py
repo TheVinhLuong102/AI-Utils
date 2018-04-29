@@ -1088,7 +1088,7 @@ class _ModelABC(object):
                 data_transform_pipeline_dir_path = \
                     os.path.join(self.blueprint.dir, self.blueprint.params.data._transform_pipeline_dir)
 
-                assert not os.path.isdir(data_transform_pipeline_dir_path)
+                # assert not os.path.isdir(data_transform_pipeline_dir_path)
 
                 fs.mv(from_path=data_transform_pipeline_dir_path_inside_model_dir,
                       to_path=data_transform_pipeline_dir_path,
