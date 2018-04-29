@@ -843,7 +843,7 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
         s3_data_transforms_dir_prefix = \
             os.path.join(
                 s3_dir_prefix,
-                blueprint.params.data._transforms_pipeline_dir)
+                blueprint.params.data._transform_pipeline_dir)
 
         s3_data_transforms_dir_path = \
             's3://{}/{}'.format(
