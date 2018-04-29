@@ -4217,9 +4217,11 @@ class ADF(_DF_ABC):
 
                 defaultVecCols = \
                     [catOrigToPrepColMap[catCol][0]
-                     for catCol in sorted(catOrigToPrepColMap)] + \
+                     for catCol in sorted(set(catOrigToPrepColMap)
+                                          .difference(('__OHE__', '__SCALE__')))] + \
                     [numOrigToPrepColMap[numCol][0]
-                     for numCol in sorted(numOrigToPrepColMap)]
+                     for numCol in sorted(set(numOrigToPrepColMap)
+                                          .difference(('__TS_WINDOW_CLAUSE__', '__SCALER__')))]
 
                 try:
                     pipelineModelWithoutVectors = sqlTransformer = SQLTransformer.load(path=loadPath)
@@ -4575,6 +4577,14 @@ class ADF(_DF_ABC):
                     _toc = time.time()
                     self.stdout_logger.info(msg + ' done!   <{:,.1f} s>'.format(_toc - _tic))
 
+            defaultVecCols = \
+                [catOrigToPrepColMap[catCol][0]
+                 for catCol in sorted(set(catOrigToPrepColMap)
+                                      .difference(('__OHE__', '__SCALE__')))] + \
+                [numOrigToPrepColMap[numCol][0]
+                 for numCol in sorted(set(numOrigToPrepColMap)
+                                      .difference(('__TS_WINDOW_CLAUSE__', '__SCALER__')))]
+
             sqlTransformer = \
                 SQLTransformer(
                     statement=
@@ -4583,18 +4593,10 @@ class ADF(_DF_ABC):
                                       for prepCol, sqlItem in prepSqlItems.items()),
                             numNullFillDetails.get('__TS_WINDOW_CLAUSE__', '')))
 
-            pipelineModel = \
-                PipelineModel(
-                    stages=
-                        [sqlTransformer] +
-                        ([catOHETransformer]
-                         if oheCat
-                         else []) +
-                        [VectorAssembler(
-                            inputCols=colsToAssembleVec,
-                            outputCol=vecColToAssemble)]) \
-            if cols and vecColToAssemble \
-            else sqlTransformer
+            pipelineModelWithoutVectors = \
+                PipelineModel(stages=[sqlTransformer, catOHETransformer]) \
+                if catCols and oheCat \
+                else sqlTransformer
 
         if savePath and (savePath != loadPath):
             if verbose:
@@ -4636,7 +4638,9 @@ class ADF(_DF_ABC):
                 Namespace(
                     pipelineModelWithoutVectors=pipelineModelWithoutVectors,
                     catOrigToPrepColMap=catOrigToPrepColMap,
-                    numOrigToPrepColMap=numOrigToPrepColMap)
+                    numOrigToPrepColMap=numOrigToPrepColMap,
+                    defaultVecCols=defaultVecCols)
+
 
         if self._detPrePartitioned and self.hasTS:
             _partitionBy_str = 'PARTITION BY {}, {}'.format(self._iCol, self._T_CHUNK_COL)
