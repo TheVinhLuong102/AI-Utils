@@ -254,12 +254,6 @@ class _BlueprintABC(object):
         """
         raise NotImplementedError
 
-    # TODO: Make Model Class More Flexible & Decouple It From Blueprints
-    @classmethod
-    @abc.abstractproperty
-    def __ModelClass__(cls):
-        raise NotImplementedError
-
     _DEFAULT_PARAMS = \
         Namespace(
             __BlueprintClass__=None,
@@ -1547,8 +1541,6 @@ class _DLSupervisedBlueprintABC(_SupervisedBlueprintABC):
 @_docstr_blueprint
 class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
     __metaclass__ = abc.ABCMeta
-
-    __ModelClass__ = _OnlyDataPrepModel
 
     _DEFAULT_PARAMS = \
         copy.deepcopy(
