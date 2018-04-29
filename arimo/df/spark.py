@@ -4151,9 +4151,9 @@ class ADF(_DF_ABC):
         if scaler:
             scaler = scaler.lower()
 
-        vecColToAssemble = kwargs.pop('assembleVec', None)
+        vecColsToAssemble = kwargs.pop('assembleVec', None)
         
-        if not vecColToAssemble:
+        if not vecColsToAssemble:
             oheCat = False
 
         if oheCat:
@@ -4175,10 +4175,12 @@ class ADF(_DF_ABC):
                 self.stdout_logger.info(message)
                 tic = time.time()
 
+            vecColMapFilePath = os.path.join(loadPath, self._VEC_COL_MAP_FILE_NAME)
+
             if loadPath in self._PREP_CACHE:
                 prepCache = self._PREP_CACHE[loadPath]
 
-                pipelineModelWithoutVectorAssembler = prepCache.pipelineModelWithoutVectorAssembler
+                pipelineModelWithoutVectors = prepCache.pipelineModelWithoutVectors
                 catOrigToPrepColMap = prepCache.catOrigToPrepColMap
                 numOrigToPrepColMap = prepCache.numOrigToPrepColMap
 
@@ -4215,7 +4217,7 @@ class ADF(_DF_ABC):
                     json.load(open(os.path.join(loadPath, self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME), 'r'))
 
                 try:
-                    pipelineModelWithoutVectorAssembler = sqlTransformer = SQLTransformer.load(path=loadPath)
+                    pipelineModelWithoutVectors = sqlTransformer = SQLTransformer.load(path=loadPath)
 
                     catOHETransformer = vectorAssembler = None
 
@@ -4233,12 +4235,12 @@ class ADF(_DF_ABC):
                         if isinstance(secondTransformer, OneHotEncoderModel):
                             catOHETransformer = secondTransformer
                             vectorAssembler = None
-                            pipelineModelWithoutVectorAssembler = pipelineModel
+                            pipelineModelWithoutVectors = pipelineModel
 
                         elif isinstance(secondTransformer, VectorAssembler):
                             catOHETransformer = None
                             vectorAssembler = secondTransformer
-                            pipelineModelWithoutVectorAssembler = sqlTransformer
+                            pipelineModelWithoutVectors = sqlTransformer
 
                         else:
                             raise ValueError('*** {} ***'.format(secondTransformer))
@@ -4255,7 +4257,7 @@ class ADF(_DF_ABC):
                         assert isinstance(vectorAssembler, VectorAssembler), \
                             '*** {} ***'.format(vectorAssembler)
 
-                        pipelineModelWithoutVectorAssembler = \
+                        pipelineModelWithoutVectors = \
                             PipelineModel(stages=[sqlTransformer, catOHETransformer])
 
                     else:
@@ -4274,8 +4276,6 @@ class ADF(_DF_ABC):
                         assert not missingPrepCols, \
                             '*** MISSING PREP COLS FOR VECTORIZATION: {} ***'.format(missingPrepCols)
 
-                        vecColMapFilePath = os.path.join(loadPath, self._VEC_COL_MAP_FILE_NAME)
-
                         if not os.path.isfile(vecColMapFilePath):
                             json.dump(
                                 {vectorAssembler.getOutputCol(): vecInputCols},
@@ -4291,7 +4291,7 @@ class ADF(_DF_ABC):
 
                 self._PREP_CACHE[loadPath] = \
                     Namespace(
-                        pipelineModelWithoutVectorAssembler=pipelineModelWithoutVectorAssembler,
+                        pipelineModelWithoutVectors=pipelineModelWithoutVectors,
                         catOrigToPrepColMap=catOrigToPrepColMap,
                         numOrigToPrepColMap=numOrigToPrepColMap)
                 
@@ -4350,8 +4350,8 @@ class ADF(_DF_ABC):
 
             prepSqlItems = {}
 
-            if vecColToAssemble:
-                colsToAssembleVec = []
+            if vecColsToAssemble:
+                colsToAssembleVec = set()
 
             catOrigToPrepColMap = \
                 dict(__OHE__=oheCat,
@@ -4437,8 +4437,8 @@ class ADF(_DF_ABC):
                          dict(Cats=cats,
                               NCats=nCats)]
 
-                    if vecColToAssemble:
-                        colsToAssembleVec.append(catPrepCol)
+                    if vecColsToAssemble:
+                        colsToAssembleVec.add(catPrepCol)
 
                 if oheCat:
                     catOHETransformer = \
@@ -4590,8 +4590,8 @@ class ADF(_DF_ABC):
 
                         numScaledCols.append(scaledCol)
 
-                        if vecColToAssemble:
-                            colsToAssembleVec.append(scaledCol)
+                        if vecColsToAssemble:
+                            colsToAssembleVec.add(scaledCol)
 
                 if verbose:
                     _toc = time.time()
@@ -4631,7 +4631,7 @@ class ADF(_DF_ABC):
                 is_dir=True,
                 hadoop_home=arimo.backend._HADOOP_HOME)
 
-            pipelineModel.save(path=savePath)
+            pipelineModelWithoutVectors.save(path=savePath)
 
             if arimo.backend._ON_LINUX_CLUSTER_WITH_HDFS:
                 fs.get(
@@ -4656,7 +4656,7 @@ class ADF(_DF_ABC):
 
             self._PREP_CACHE[savePath] = \
                 Namespace(
-                    pipelineModel=pipelineModel,
+                    pipelineModelWithoutVectors=pipelineModelWithoutVectors,
                     catOrigToPrepColMap=catOrigToPrepColMap,
                     numOrigToPrepColMap=numOrigToPrepColMap)
 
