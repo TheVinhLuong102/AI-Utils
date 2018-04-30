@@ -289,7 +289,7 @@ class FileDF(_FileDFABC):
             self.s3Client.download_file(
                 Bucket=parsed_url.netloc,
                 Key=parsed_url.path[1:],
-                File=localCachePath)
+                Filename=localCachePath)
 
             self._PIECE_CACHES[piecePath].localPath = localCachePath
 
