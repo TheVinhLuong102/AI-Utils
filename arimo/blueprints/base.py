@@ -1754,7 +1754,8 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
             _per_label_adf = \
                 adf[id_col, score_col_name, label_var_name] \
                     .filter(
-                        condition='{} IS NOT NULL'.format(score_col_name),
+                        condition='({} IS NOT NULL) AND ({} IS NOT NULL)'
+                            .format(label_var_name, score_col_name),
                         alias=adf.alias + '__toEval__' + label_var_name)
 
             blueprint = \
