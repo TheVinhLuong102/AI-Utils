@@ -151,7 +151,7 @@ class FileDF(_FileDFABC):
     def __repr__(self):
         return '{:,}-piece {} [{}]'.format(
             self.n_pieces,
-            self.__class__,
+            type(self).__name__,
             self._paths_repr)
 
     def __str__(self):
@@ -161,7 +161,7 @@ class FileDF(_FileDFABC):
     def __short_repr__(self):
         return '{:,}-piece {} [{}]'.format(
             self.n_pieces,
-            self.__class__,
+            type(self).__name__,
             self._paths_repr)
 
     @property
