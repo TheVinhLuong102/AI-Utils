@@ -1591,8 +1591,7 @@ class ADF(_DF_ABC):
             _TEST_PARQUET_LOCAL_PATH = \
                 os.path.join(
                     os.path.dirname(
-                        os.path.dirname(
-                            os.path.dirname(__file__))),
+                        os.path.dirname(arimo.debug.__file__)),
                     'resources',
                     _TEST_PARQUET_NAME)
 
