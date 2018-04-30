@@ -65,6 +65,7 @@ class FileDF(_FileDFABC):
     _inplace_able = ()
 
     _CACHE = {}
+    _PIECE_CACHES = {}
 
     def __init__(
             self, path=None, reCache=False,
@@ -144,14 +145,6 @@ class FileDF(_FileDFABC):
                     columns=set(),
                     types=Namespace(),
                     nRows=None)
-
-            _cache._pieceCaches = \
-                {piecePath:
-                    Namespace(
-                        columns=None,
-                        types=None,
-                        nRows=None)
-                 for piecePath in _cache.piecePaths}
 
             if path.startswith('s3'):
                 _cache.s3Client = \
