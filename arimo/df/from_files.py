@@ -380,8 +380,8 @@ class FileDF(_FileDFABC):
                           else ((self._tCol,)
                                 if self._tCol
                                 else None)),
-                    organize_ts=False,
-                    apply_defaultMapper=False,
+                    organizeTS=False,
+                    applyDefaultMapper=False,
                     mapper=len, reducer=sum)
 
         return self._cache.nRows
