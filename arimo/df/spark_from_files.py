@@ -21,9 +21,7 @@ else:
     from urllib.parse import urlparse
     _STR_CLASSES = str
 
-from pyarrow.hdfs import HadoopFileSystem
 from pyarrow.parquet import ParquetDataset, read_table
-from s3fs import S3FileSystem
 
 from pyspark.ml import Transformer
 from pyspark.ml.feature import SQLTransformer
