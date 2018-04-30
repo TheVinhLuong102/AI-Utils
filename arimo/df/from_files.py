@@ -349,10 +349,10 @@ class FileDF(_FileDFABC):
                 self._cache.columns.update(_columns)
 
             if pieceCache.types is None:
-                _piece_types = df.dtypes
-                pieceCache.types = _piece_types
+                _types = df.dtypes
+                pieceCache.types = _types
                 for col in df.columns:
-                    _type = _piece_types[col]
+                    _type = _types[col]
                     if col in self._cache.types:
                         self._cache.types[col].add(_type)
                     else:
