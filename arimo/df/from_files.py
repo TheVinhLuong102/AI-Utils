@@ -191,6 +191,7 @@ class FileDF(_FileDFABC):
         self._defaultMapper = defaultMapper
 
         self._reprSampleNPieces = min(reprSampleNPieces, self.nPieces)
+        self._reprSamplePiecePaths = None
         self._reprSampleSize = reprSampleSize
 
     @property
@@ -415,7 +416,7 @@ class FileDF(_FileDFABC):
 
     @property
     def reprSamplePiecePaths(self):
-        if not self._reprSamplePiecePaths:
+        if self._reprSamplePiecePaths is None:
             self._reprSamplePiecePaths = \
                 random.sample(
                     population=self.piecePaths,
