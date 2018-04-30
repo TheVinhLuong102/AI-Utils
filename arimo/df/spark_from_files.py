@@ -405,7 +405,6 @@ class FileADF(_FileDFABC, ADF):
         else None
 
     _S3_FSs = {}
-    _S3_CLIENTS = {}
 
     @classmethod
     def _s3FS(cls, key=None, secret=None):
@@ -416,16 +415,6 @@ class FileADF(_FileDFABC, ADF):
                     key=key,
                     secret=secret)
         return cls._S3_FSs[keyPair]
-
-    @classmethod
-    def _s3Client(cls, key=None, secret=None):
-        keyPair = key, secret
-        if keyPair not in cls._S3_CLIENTS:
-            cls._S3_CLIENTS[keyPair] = \
-                s3.client(
-                    access_key_id=key,
-                    secret_access_key=secret)
-        return cls._S3_CLIENTS[keyPair]
 
     _CACHE = {}
 
@@ -512,9 +501,9 @@ class FileADF(_FileDFABC, ADF):
 
             if path.startswith('s3'):
                 _cache.s3Client = \
-                    self._s3Client(
-                        key=aws_access_key_id,
-                        secret=aws_secret_access_key)
+                    s3.client(
+                        access_key_id=aws_access_key_id,
+                        secret_access_key=aws_secret_access_key)
 
                 _parsedURL = urlparse(url=path, scheme='', allow_fragments=True)
                 _cache.s3Bucket = _parsedURL.netloc
