@@ -23,7 +23,7 @@ else:
 
 from pyarrow.filesystem import LocalFileSystem
 from pyarrow.hdfs import HadoopFileSystem
-from pyarrow.parquet import ParquetDataset
+from pyarrow.parquet import ParquetDataset, read_metadata, read_pandas, read_schema, read_table
 from s3fs import S3FileSystem
 
 from arimo.df import _DF_ABC
@@ -373,16 +373,29 @@ class FileDF(_FileDFABC):
     @property
     def nRows(self):
         if self._cache.nRows is None:
-            self._cache.nRows = \
-                self._mr(
-                    cols=((self._iCol,)
-                          if self._iCol
-                          else ((self._tCol,)
-                                if self._tCol
-                                else None)),
-                    organizeTS=False,
-                    applyDefaultMapper=False,
-                    mapper=len, reducer=sum)
+            nRows = 0
+
+            for piecePath in tqdm.tqdm(self.piecePaths):
+                if self.s3Client:
+                    parsed_url = \
+                        urlparse(
+                            url=piecePath,
+                            scheme='',
+                            allow_fragments=True)
+
+                    buffer = io.BytesIO()
+
+                    self.s3Client.download_fileobj(
+                        Bucket=parsed_url.netloc,
+                        Key=parsed_url.path[1:],
+                        Fileobj=buffer)
+
+                else:
+                    buffer = open(piecePath, 'rb')
+
+                nRows += read_metadata(where=buffer).num_rows
+
+            self._cache.nRows = nRows
 
         return self._cache.nRows
 
