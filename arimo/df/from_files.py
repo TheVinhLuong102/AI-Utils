@@ -144,7 +144,7 @@ class FileDF(_FileDFABC):
 
     @property
     def _paths_repr(self):
-        return self.paths \
+        return '"{}"'.format(self.paths) \
             if isinstance(self.paths, _STR_CLASSES) \
           else '{} Paths e.g. {}'.format(len(self.paths), self.paths[:3])
 
@@ -364,7 +364,7 @@ class FileDF(_FileDFABC):
 
                 _next_i = i + 1
 
-                msg = 'Sampling from File #{:,}/{:,}: {}...'.format(
+                msg = 'Sampling from File #{:,}/{:,}: "{}"...'.format(
                     _next_i, self.repr_sample_n_files, _repr_sample_file_path)
 
                 print(msg)
