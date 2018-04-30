@@ -398,24 +398,6 @@ class FileADF(_FileDFABC, ADF):
         'transform', \
         'withColumn'
 
-    # file systems
-    _HDFS_ARROW_FS = \
-        HadoopFileSystem() \
-        if fs._ON_LINUX_CLUSTER_WITH_HDFS \
-        else None
-
-    _S3_FSs = {}
-
-    @classmethod
-    def _s3FS(cls, key=None, secret=None):
-        keyPair = key, secret
-        if keyPair not in cls._S3_FSs:
-            cls._S3_FSs[keyPair] = \
-                S3FileSystem(
-                    key=key,
-                    secret=secret)
-        return cls._S3_FSs[keyPair]
-
     _CACHE = {}
 
     # *****************

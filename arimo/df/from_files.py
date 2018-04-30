@@ -27,7 +27,7 @@ from pyarrow.parquet import ParquetDataset
 from s3fs import S3FileSystem
 
 from arimo.df import _DF_ABC
-from arimo.util import Namespace
+from arimo.util import fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
 from arimo.util.decor import enable_inplace
@@ -38,6 +38,24 @@ class _FileDFABC(_DF_ABC):
     __metaclass__ = abc.ABCMeta
 
     _DEFAULT_REPR_SAMPLE_N_PIECES = 100
+
+    # file systems
+    _HDFS_ARROW_FS = \
+        HadoopFileSystem() \
+            if fs._ON_LINUX_CLUSTER_WITH_HDFS \
+            else None
+
+    _S3_FSs = {}
+
+    @classmethod
+    def _s3FS(cls, key=None, secret=None):
+        keyPair = key, secret
+        if keyPair not in cls._S3_FSs:
+            cls._S3_FSs[keyPair] = \
+                S3FileSystem(
+                    key=key,
+                    secret=secret)
+        return cls._S3_FSs[keyPair]
 
 
 @enable_inplace
