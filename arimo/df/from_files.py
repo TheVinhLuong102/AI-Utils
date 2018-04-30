@@ -42,8 +42,8 @@ class _FileDFABC(_DF_ABC):
     # file systems
     _HDFS_ARROW_FS = \
         HadoopFileSystem() \
-            if fs._ON_LINUX_CLUSTER_WITH_HDFS \
-            else None
+        if fs._ON_LINUX_CLUSTER_WITH_HDFS \
+        else None
 
     _S3_FSs = {}
 
