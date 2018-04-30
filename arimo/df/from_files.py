@@ -62,39 +62,47 @@ class _FileDFABC(_DF_ABC):
 class FileDF(_FileDFABC):
     _inplace_able = ()
 
-    def __init__(
-            self, paths=None, _arrow_ds=None, local_cache_dir_path=_FileDFABC._TMP_DIR_PATH, _cache=None, _piece_caches=None,
-            aws_access_key_id=None, aws_secret_access_key=None,
-            i_col=None, t_col=None, default_map_func=None,
-            repr_sample_n_pieces=_FileDFABC._DEFAULT_REPR_SAMPLE_N_PIECES,
-            repr_sample_size=_FileDFABC._DEFAULT_REPR_SAMPLE_SIZE,
-            verbose=True):
-        if paths is None:
-            assert isinstance(_arrow_ds, ParquetDataset)
+    _CACHE = {}
 
-            self.paths = _arrow_ds.paths
+    def __init__(
+            self, path=None, reCache=False,
+            aws_access_key_id=None, aws_secret_access_key=None,
+            iCol=None, tCol=None, defaultMapper=None,
+            reprSampleNPieces=_FileDFABC._DEFAULT_REPR_SAMPLE_N_PIECES,
+            reprSampleSize=_FileDFABC._DEFAULT_REPR_SAMPLE_SIZE,
+            verbose=True):
+        if verbose or arimo.debug.ON:
+            logger = self.class_stdout_logger()
+
+        self.path = path
+
+        if (not reCache) and (path in self._CACHE):
+            _cache = self._CACHE[path]
 
         else:
-            if verbose or arimo.debug.ON:
-                logger = self.class_stdout_logger()
+            self._CACHE[path] = _cache = Namespace()
 
-            assert _arrow_ds is None
+        if _cache:
+            if arimo.debug.ON:
+                logger.debug('*** RETRIEVING CACHE FOR "{}" ***'.format(path))
 
-            self.paths = paths
-
+        else:
             if verbose:
-                msg = 'Loading Arrow Dataset from {}...'.format(
-                    '"{}"'.format(self.paths)
-                    if isinstance(self.paths, _STR_CLASSES)
-                    else '{} Paths e.g. {}'.format(len(self.paths), paths[:3]))
-                
+                msg = 'Loading Arrow Dataset from "{}"...'.format(path)
                 logger.info(msg)
                 tic = time.time()
 
-            _arrow_ds = \
+            _cache._arrowDS = \
                 ParquetDataset(
-                    path_or_paths=paths,
-                    filesystem=S3FileSystem(key=aws_access_key_id, secret=aws_secret_access_key),
+                    path_or_paths=path,
+                    filesystem=
+                        self._s3FS(
+                            key=aws_access_key_id,
+                            secret=aws_secret_access_key)
+                        if path.startswith('s3')
+                        else (self._HDFS_ARROW_FS
+                              if fs._ON_LINUX_CLUSTER_WITH_HDFS
+                              else None),
                     schema=None, validate_schema=False, metadata=None,
                     split_row_groups=False)
 
@@ -102,75 +110,95 @@ class FileDF(_FileDFABC):
                 toc = time.time()
                 logger.info(msg + ' done!   <{:,.1f} s>'.format(toc - tic))
 
-        self._arrow_ds = _arrow_ds
+            _cache.nPieces = len(_cache._arrowDS.pieces)
 
-        self.local_cache_dir_path = local_cache_dir_path
+            if _cache.nPieces:
+                _cache.piecePaths = set()
 
-        piece_paths = {piece.path for piece in _arrow_ds.pieces}
+                _pathPlusSepLen = len(path) + 1
 
-        if not piece_paths:
-            piece_paths = {self.paths}
+                _cache.pieceSubPaths = set()
 
-        self.piece_paths = piece_paths
+                for i, piece in enumerate(_cache._arrowDS.pieces):
+                    piecePath = piece.path
+                    _cache.piecePaths.add(piecePath)
 
-        self.n_pieces = n_pieces = len(piece_paths)
+                    pieceSubPath = piecePath[_pathPlusSepLen:]
+                    _cache.pieceSubPaths.add(pieceSubPath)
 
-        self._cache = \
-            Namespace(
-                columns=set(),
-                types=Namespace(),
-                n_rows=None,
-                repr_sample_piece_paths=[],
-                repr_sample=None)
+                    if not i:
+                        _cache._partitionedByDateOnly = \
+                            pieceSubPath.startswith('{}='.format(DATE_COL)) and \
+                            (pieceSubPath.count('/') == 1)
 
-        if _cache:
-            self._cache.update(_cache)
+            else:
+                _cache.nPieces = 1
+                _cache.piecePaths = {path}
+                _cache.pieceSubPaths = {}
+                _cache._partitionedByDateOnly = False
 
-        if _piece_caches:
-            self._piece_caches = _piece_caches
+            _cache.columns = set()
+            _cache.types = Namespace()
+            _cache.nRows = None
 
-            for piece_path in piece_paths.difference(_piece_caches):
-                self._piece_caches[piece_path] = \
+            _cache._pieceCaches = \
+                {piecePath:
                     Namespace(
                         columns=None,
                         types=None,
-                        n_rows=None)
+                        nRows=None)
+                 for piecePath in _cache.piecePaths}
 
-        else:
-            self._piece_caches = \
-                {piece_path:
+            for piecePath in _cache.piecePaths.difference(_pieceCaches):
+                _cache._pieceCaches[piecePath] = \
                     Namespace(
                         columns=None,
                         types=None,
-                        n_rows=None)
-                 for piece_path in piece_paths}
+                        nRows=None)
 
-        self._i_col = i_col
-        self._t_col = t_col
+            if path.startswith('s3'):
+                _cache.s3Client = \
+                    s3.client(
+                        access_key_id=aws_access_key_id,
+                        secret_access_key=aws_secret_access_key)
 
-        self.has_ts = i_col and t_col
+                _parsedURL = urlparse(url=path, scheme='', allow_fragments=True)
+                _cache.s3Bucket = _parsedURL.netloc
+                _cache.pathS3Key = _parsedURL.path[1:]
 
-        self._default_map_func = default_map_func
+                _cache.tmpDirS3Key = self._TMP_DIR_PATH.strip('/')
 
-        self._repr_sample_n_pieces = min(repr_sample_n_pieces, n_pieces)
-        self._repr_sample_size = repr_sample_size
+                _cache.tmpDirPath = \
+                    os.path.join(
+                        's3://{}'.format(_cache.s3Bucket),
+                        _cache.tmpDirS3Key)
 
-        self.s3_client = \
-            s3.client(
-                access_key_id=aws_access_key_id,
-                secret_access_key=aws_secret_access_key)
+            else:
+                _cache.s3Client = _cache.s3Bucket = _cache.tmpDirS3Key = None
+                _cache.tmpDirPath = self._TMP_DIR_PATH
+
+        self.__dict__.update(_cache)
+
+        self._iCol = iCol
+        self._tCol = tCol
+        self.hasTS = iCol and tCol
+
+        self._defaultMapper = defaultMapper
+
+        self._reprSampleNPieces = min(reprSampleNPieces, self.nPieces)
+        self._reprSampleSize = reprSampleSize
 
     @property
-    def _paths_repr(self):
-        return '"{}"'.format(self.paths) \
-            if isinstance(self.paths, _STR_CLASSES) \
-          else '{} Paths e.g. {}'.format(len(self.paths), self.paths[:3])
+    def _pathsRepr(self):
+        return '"{}"'.format(self.path) \
+            if isinstance(self.path, _STR_CLASSES) \
+          else '{} Paths e.g. {}'.format(len(self.path), self.path[:3])
 
     def __repr__(self):
         return '{:,}-piece {} [{}]'.format(
-            self.n_pieces,
+            self.nPieces,
             type(self).__name__,
-            self._paths_repr)
+            self._pathsRepr)
 
     def __str__(self):
         return repr(self)
@@ -178,76 +206,76 @@ class FileDF(_FileDFABC):
     @property
     def __short_repr__(self):
         return '{:,}-piece {} [{}]'.format(
-            self.n_pieces,
+            self.nPieces,
             type(self).__name__,
-            self._paths_repr)
+            self._pathsRepr)
 
     @property
-    def i_col(self):
-        return self._i_col
+    def iCol(self):
+        return self._iCol
 
-    @i_col.setter
-    def i_col(self, i_col):
-        if i_col != self._i_col:
-            self._i_col = i_col
+    @iCol.setter
+    def iCol(self, iCol):
+        if iCol != self._iCol:
+            self._iCol = iCol
 
-            if i_col is None:
-                self.has_ts = False
+            if iCol is None:
+                self.hasTS = False
             else:
-                assert i_col
-                self.has_ts = bool(self._t_col)
+                assert iCol
+                self.hasTS = bool(self._tCol)
 
-    @i_col.deleter
-    def i_col(self):
-        self._i_col = None
-        self.has_ts = False
+    @iCol.deleter
+    def iCol(self):
+        self._iCol = None
+        self.hasTS = False
 
     @property
-    def t_col(self):
-        return self._t_col
+    def tCol(self):
+        return self._tCol
 
-    @t_col.setter
-    def t_col(self, t_col):
-        if t_col != self._t_col:
-            self._t_col = t_col
+    @tCol.setter
+    def tCol(self, tCol):
+        if tCol != self._tCol:
+            self._tCol = tCol
 
-            if t_col is None:
-                self.has_ts = False
+            if tCol is None:
+                self.hasTS = False
             else:
-                assert t_col
-                self.has_ts = bool(self._i_col)
+                assert tCol
+                self.hasTS = bool(self._iCol)
 
-    @t_col.deleter
-    def t_col(self):
-        self._t_col = None
-        self.has_ts = False
+    @tCol.deleter
+    def tCol(self):
+        self._tCol = None
+        self.hasTS = False
 
     @property
-    def default_map_func(self):
-        return self._default_map_func
+    def defaultMapper(self):
+        return self._defaultMapper
 
-    @default_map_func.setter
-    def default_map_func(self, default_map_func):
-        self._default_map_func = default_map_func
+    @defaultMapper.setter
+    def defaultMapper(self, defaultMapper):
+        self._defaultMapper = defaultMapper
 
-    @default_map_func.deleter
-    def default_map_func(self):
-        self._default_map_func = None
+    @defaultMapper.deleter
+    def defaultMapper(self):
+        self._defaultMapper = None
 
-    def _map_reduce(self, *piece_paths, **kwargs):
+    def _mr(self, *piecePaths, **kwargs):
         cols = kwargs.get('cols')
         if not cols:
             cols = None
 
-        organize_ts = kwargs.get('organize_ts', True)
+        organizeTS = kwargs.get('organizeTS', True)
 
-        apply_default_map_func = kwargs.get('apply_default_map_func', True)
+        applyDefaultMapper = kwargs.get('applyDefaultMapper', True)
 
-        map_func = kwargs.get('map_func')
+        mapper = kwargs.get('mapper')
 
-        reduce_func = \
+        reducer = \
             kwargs.get(
-                'reduce_func',
+                'reducer',
                 lambda results:
                     pandas.concat(
                         objs=results,
@@ -261,21 +289,21 @@ class FileDF(_FileDFABC):
                         verify_integrity=False,
                         copy=False))
         
-        if not piece_paths:
-            piece_paths = self.piece_paths
+        if not piecePaths:
+            piecePaths = self.piecePaths
 
         results = []
 
-        for piece_path in tqdm.tqdm(piece_paths):
+        for piecePath in tqdm.tqdm(piecePaths):
             parsed_url = \
                 urlparse(
-                    url=piece_path,
+                    url=piecePath,
                     scheme='',
                     allow_fragments=True)
 
             buffer = io.BytesIO()
 
-            self.s3_client.download_fileobj(
+            self.s3Client.download_fileobj(
                 Bucket=parsed_url.netloc,
                 Key=parsed_url.path[1:],
                 Fileobj=buffer)
@@ -286,23 +314,23 @@ class FileDF(_FileDFABC):
                 columns=cols,
                 nthreads=psutil.cpu_count(logical=True))
 
-            for partition_key_and_value in re.findall('[^/]+=[^/]+/', piece_path):
+            for partition_key_and_value in re.findall('[^/]+=[^/]+/', piecePath):
                 k, v = partition_key_and_value.split('=')
 
                 df[str(k)] = datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
                     if k == DATE_COL \
                     else v[:-1]
 
-            piece_cache = self._piece_caches[piece_path]
+            pieceCache = self._pieceCaches[piecePath]
 
-            if piece_cache.columns is None:
+            if pieceCache.columns is None:
                 _columns = df.columns
-                piece_cache.columns = _columns
+                pieceCache.columns = _columns
                 self._cache.columns.update(_columns)
 
-            if piece_cache.types is None:
+            if pieceCache.types is None:
                 _piece_types = df.dtypes
-                piece_cache.types = _piece_types
+                pieceCache.types = _piece_types
                 for col in df.columns:
                     _type = _piece_types[col]
                     if col in self._cache.types:
@@ -310,75 +338,75 @@ class FileDF(_FileDFABC):
                     else:
                         self._cache.types[col] = {_type}
 
-            if piece_cache.n_rows is None:
-                piece_cache.n_rows = len(df)
+            if pieceCache.nRows is None:
+                pieceCache.nRows = len(df)
     
-            if organize_ts and self._t_col:
-                assert self._t_col in df.columns, \
-                    '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piece_path, self.t_col, df.columns)
+            if organizeTS and self._tCol:
+                assert self._tCol in df.columns, \
+                    '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self.tCol, df.columns)
     
-                if self._i_col:
-                    assert self._i_col in df.columns, \
-                        '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piece_path, self.i_col, df.columns)
+                if self._iCol:
+                    assert self._iCol in df.columns, \
+                        '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self.iCol, df.columns)
     
                     df = gen_aux_cols(
-                        df=df.loc[pandas.notnull(df[self._i_col]) &
-                                  pandas.notnull(df[self._t_col])],
-                        i_col=self._i_col, t_col=self._t_col)
+                        df=df.loc[pandas.notnull(df[self._iCol]) &
+                                  pandas.notnull(df[self._tCol])],
+                        iCol=self._iCol, tCol=self._tCol)
     
                 else:
                     df = gen_aux_cols(
-                        df=df.loc[pandas.notnull(df[self._t_col])],
-                        i_col=None, t_col=self._t_col)
+                        df=df.loc[pandas.notnull(df[self._tCol])],
+                        iCol=None, tCol=self._tCol)
 
-            if apply_default_map_func and self._default_map_func:
-                df = self._default_map_func(df)
+            if applyDefaultMapper and self._defaultMapper:
+                df = self._defaultMapper(df)
 
             results.append(
-                map_func(df)
-                if map_func
+                mapper(df)
+                if mapper
                 else df)
 
-        return reduce_func(results)
+        return reducer(results)
 
     @property
-    def n_rows(self):
-        if self._cache.n_rows is None:
-            self._cache.n_rows = \
-                self._map_reduce(
-                    cols=((self._i_col,)
-                          if self._i_col
-                          else ((self._t_col,)
-                                if self._t_col
+    def nRows(self):
+        if self._cache.nRows is None:
+            self._cache.nRows = \
+                self._mr(
+                    cols=((self._iCol,)
+                          if self._iCol
+                          else ((self._tCol,)
+                                if self._tCol
                                 else None)),
                     organize_ts=False,
-                    apply_default_map_func=False,
-                    map_func=len, reduce_func=sum)
+                    apply_defaultMapper=False,
+                    mapper=len, reducer=sum)
 
-        return self._cache.n_rows
+        return self._cache.nRows
 
     def collect(self, *cols, **kwargs):
-        return self._map_reduce(cols=cols if cols else None, **kwargs)
+        return self._mr(cols=cols if cols else None, **kwargs)
 
     @property
-    def repr_sample_file_paths(self):
-        if not self._repr_sample_file_paths:
-            self._repr_sample_file_paths = \
+    def reprSamplePiecePaths(self):
+        if not self._reprSamplePiecePaths:
+            self._reprSamplePiecePaths = \
                 random.sample(
                     population=self.file_paths,
                     k=self.repr_sample_n_files)
 
-        return self._repr_sample_file_paths
+        return self._reprSamplePiecePaths
 
     @property
-    def repr_sample_df(self):
-        if self._repr_sample_df is None:
+    def reprSample(self):
+        if self._cache.reprSample is None:
             i = 0
             _dfs = []
             n_samples = 0
 
-            while n_samples < self.repr_sample_size:
-                _repr_sample_file_path = self.repr_sample_file_paths[i]
+            while n_samples < self.reprSampleSize:
+                _repr_sample_file_path = self.reprSamplePiecePaths[i]
 
                 _next_i = i + 1
 
@@ -389,7 +417,7 @@ class FileDF(_FileDFABC):
 
 
 
-                _n_samples = min(self.repr_sample_size // self.repr_sample_n_files, len(_df))
+                _n_samples = min(self.reprSampleSize // self.repr_sample_n_files, len(_df))
 
                 _df = _df.sample(
                     n=_n_samples,
@@ -406,7 +434,7 @@ class FileDF(_FileDFABC):
 
                 i = _next_i
 
-            self._repr_sample_df = \
+            self._cache.reprSample = \
                 pandas.concat(
                     objs=_dfs,
                     axis='index',
@@ -419,7 +447,7 @@ class FileDF(_FileDFABC):
                     verify_integrity=False,
                     copy=False)
 
-        return self._repr_sample_df
+        return self._cache.reprSample
 
     def gen(self, *cols, **kwargs):
         pass
