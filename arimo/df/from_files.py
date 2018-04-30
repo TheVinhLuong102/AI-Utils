@@ -139,9 +139,11 @@ class FileDF(_FileDFABC):
                 _cache.pieceSubPaths = {}
                 _cache._partitionedByDateOnly = False
 
-            _cache.columns = set()
-            _cache.types = Namespace()
-            _cache.nRows = None
+            _cache._cache = \
+                Namespace(
+                    columns=set(),
+                    types=Namespace(),
+                    nRows=None)
 
             _cache._pieceCaches = \
                 {piecePath:
