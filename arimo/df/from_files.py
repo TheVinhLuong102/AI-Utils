@@ -40,6 +40,8 @@ class _FileDFABC(_DF_ABC):
     _DEFAULT_REPR_SAMPLE_N_PIECES = 100
 
     # file systems
+    _LOCAL_ARROW_FS = LocalFileSystem()
+
     _HDFS_ARROW_FS = \
         HadoopFileSystem() \
         if fs._ON_LINUX_CLUSTER_WITH_HDFS \
@@ -101,8 +103,8 @@ class FileDF(_FileDFABC):
                             secret=aws_secret_access_key)
                         if path.startswith('s3')
                         else (self._HDFS_ARROW_FS
-                              if fs._ON_LINUX_CLUSTER_WITH_HDFS
-                              else None),
+                              if path.startswith('hdfs:')
+                              else self._LOCAL_ARROW_FS),
                     schema=None, validate_schema=False, metadata=None,
                     split_row_groups=False)
 

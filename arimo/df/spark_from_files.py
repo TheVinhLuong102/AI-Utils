@@ -444,7 +444,7 @@ class FileADF(_FileDFABC, ADF):
                         if path.startswith('s3')
                         else (self._HDFS_ARROW_FS
                               if fs._ON_LINUX_CLUSTER_WITH_HDFS
-                              else None),
+                              else self._LOCAL_ARROW_FS),
                     schema=None, validate_schema=False, metadata=None,
                     split_row_groups=False)
 
