@@ -1663,12 +1663,6 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                     aws_secret_access_key=self.auth.aws.secret_access_key,
                     verbose=False)
 
-            if not os.path.isdir(blueprint.data_transforms_dir):
-                fs.cp(from_path=self.data_transforms_dir,
-                      to_path=blueprint.data_transforms_dir,
-                      hdfs=False,
-                      is_dir=True)
-
             if blueprint_params.model.ver is None:
                 if blueprint_params.model.train.objective is None:
                     blueprint_params.model.train.objective = \
@@ -1704,6 +1698,13 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                 models[label_var_name] = \
                     blueprint.model(
                         ver=blueprint_params.model.ver)
+
+            # *** COPY DataTransforms AFTER model training so that __first_train__ is correctly detected ***
+            if not os.path.isdir(blueprint.data_transforms_dir):
+                fs.cp(from_path=self.data_transforms_dir,
+                      to_path=blueprint.data_transforms_dir,
+                      hdfs=False,
+                      is_dir=True)
 
         # save Blueprint, with updated component blueprint params
         self.save()
