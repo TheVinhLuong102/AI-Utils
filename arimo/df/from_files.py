@@ -285,18 +285,22 @@ class FileDF(_FileDFABC):
         results = []
 
         for piecePath in tqdm.tqdm(piecePaths):
-            parsed_url = \
-                urlparse(
-                    url=piecePath,
-                    scheme='',
-                    allow_fragments=True)
+            if self.s3Client:
+                parsed_url = \
+                    urlparse(
+                        url=piecePath,
+                        scheme='',
+                        allow_fragments=True)
 
-            buffer = io.BytesIO()
+                buffer = io.BytesIO()
 
-            self.s3Client.download_fileobj(
-                Bucket=parsed_url.netloc,
-                Key=parsed_url.path[1:],
-                Fileobj=buffer)
+                self.s3Client.download_fileobj(
+                    Bucket=parsed_url.netloc,
+                    Key=parsed_url.path[1:],
+                    Fileobj=buffer)
+
+            else:
+                buffer = open(piecePath, 'rb')
 
             df = pandas.read_parquet(
                 path=buffer,
@@ -304,14 +308,21 @@ class FileDF(_FileDFABC):
                 columns=cols,
                 nthreads=psutil.cpu_count(logical=True))
 
-            for partition_key_and_value in re.findall('[^/]+=[^/]+/', piecePath):
-                k, v = partition_key_and_value.split('=')
+            for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
+                k, v = partitionKV.split('=')
 
                 df[str(k)] = datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
                     if k == DATE_COL \
                     else v[:-1]
 
-            pieceCache = self._pieceCaches[piecePath]
+            if piecePath not in self._PIECE_CACHES:
+                self._PIECE_CACHES[piecePath] = \
+                    Namespace(
+                        columns=None,
+                        types=None,
+                        nRows=None)
+
+            pieceCache = self._PIECE_CACHES[piecePath]
 
             if pieceCache.columns is None:
                 _columns = df.columns
