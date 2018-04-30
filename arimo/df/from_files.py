@@ -136,7 +136,7 @@ class FileDF(_FileDFABC):
 
                     self._PIECE_CACHES[piecePath] = \
                         Namespace(
-                            localPath=None
+                            localOrHDFSPath=None
                                 if path.startswith('s3')
                                 else piecePath,
                             columns=None, types=None,
@@ -150,7 +150,7 @@ class FileDF(_FileDFABC):
 
                 self._PIECE_CACHES[path] = \
                     Namespace(
-                        localPath=None
+                        localOrHDFSPath=None
                             if path.startswith('s3')
                             else path,
                         columns=None, types=None,
@@ -268,8 +268,8 @@ class FileDF(_FileDFABC):
     def defaultMapper(self):
         self._defaultMapper = None
 
-    def pieceLocalCachePath(self, piecePath):
-        if self._PIECE_CACHES[piecePath].localPath is None:
+    def pieceLocalOrHDFSPath(self, piecePath):
+        if self._PIECE_CACHES[piecePath].localOrHDFSPath is None:
             parsed_url = \
                 urlparse(
                     url=piecePath,
@@ -291,9 +291,9 @@ class FileDF(_FileDFABC):
                 Key=parsed_url.path[1:],
                 Filename=localCachePath)
 
-            self._PIECE_CACHES[piecePath].localPath = localCachePath
+            self._PIECE_CACHES[piecePath].localOrHDFSPath = localCachePath
 
-        return self._PIECE_CACHES[piecePath].localPath
+        return self._PIECE_CACHES[piecePath].localOrHDFSPath
 
     def _mr(self, *piecePaths, **kwargs):
         cols = kwargs.get('cols')
@@ -329,7 +329,7 @@ class FileDF(_FileDFABC):
 
         for piecePath in tqdm.tqdm(piecePaths):
             df = pandas.read_parquet(
-                    path=self.pieceLocalCachePath(piecePath=piecePath),
+                    path=self.pieceLocalOrHDFSPath(piecePath=piecePath),
                     engine='pyarrow',
                     columns=cols,
                     nthreads=psutil.cpu_count(logical=True))
@@ -393,7 +393,7 @@ class FileDF(_FileDFABC):
     def nRows(self):
         if self._cache.nRows is None:
             self._cache.nRows = \
-                sum(read_metadata(where=self.pieceLocalCachePath(piecePath=piecePath)).num_rows
+                sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
                     for piecePath in tqdm.tqdm(self.piecePaths))
 
         return self._cache.nRows
@@ -429,7 +429,7 @@ class FileDF(_FileDFABC):
         if self._cache.approxNRows is None:
             self._cache.approxNRows = \
                 self.nPieces \
-                * sum(read_metadata(where=self.pieceLocalCachePath(piecePath=piecePath)).num_rows
+                * sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
                     for piecePath in tqdm.tqdm(self.reprSamplePiecePaths)) \
                 / self._reprSampleNPieces
 
