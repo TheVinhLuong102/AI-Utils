@@ -134,17 +134,32 @@ class FileDF(_FileDFABC):
                             pieceSubPath.startswith('{}='.format(DATE_COL)) and \
                             (pieceSubPath.count('/') == 1)
 
+                    self._PIECE_CACHES[piecePath] = \
+                        Namespace(
+                            localPath=None
+                                if path.startswith('s3')
+                                else piecePath,
+                            columns=None, types=None,
+                            nRows=None)
+
             else:
                 _cache.nPieces = 1
                 _cache.piecePaths = {path}
                 _cache.pieceSubPaths = {}
                 _cache._partitionedByDateOnly = False
 
+                self._PIECE_CACHES[path] = \
+                    Namespace(
+                        localPath=None
+                            if path.startswith('s3')
+                            else path,
+                        columns=None, types=None,
+                        nRows=None)
+
             _cache._cache = \
                 Namespace(
-                    columns=set(),
-                    types=Namespace(),
-                    nRows=None)
+                    columns=set(), types=Namespace(),
+                    nRows=None, approxNRows=None)
 
             if path.startswith('s3'):
                 _cache.s3Client = \
@@ -252,6 +267,33 @@ class FileDF(_FileDFABC):
     def defaultMapper(self):
         self._defaultMapper = None
 
+    def pieceLocalCachePath(self, piecePath):
+        if self._PIECE_CACHES[piecePath].localPath is None:
+            parsed_url = \
+                urlparse(
+                    url=piecePath,
+                    scheme='',
+                    allow_fragments=True)
+
+            localCachePath = \
+                os.path.join(
+                    self._TMP_DIR_PATH,
+                    parsed_url.netloc,
+                    parsed_url.path[1:])
+
+            fs.mkdir(
+                dir=os.path.dirname(localCachePath),
+                hdfs=False)
+
+            self.s3Client.download_file(
+                Bucket=parsed_url.netloc,
+                Key=parsed_url.path[1:],
+                File=localCachePath)
+
+            self._PIECE_CACHES[piecePath].localPath = localCachePath
+
+        return self._PIECE_CACHES[piecePath].localPath
+
     def _mr(self, *piecePaths, **kwargs):
         cols = kwargs.get('cols')
         if not cols:
@@ -285,28 +327,11 @@ class FileDF(_FileDFABC):
         results = []
 
         for piecePath in tqdm.tqdm(piecePaths):
-            if self.s3Client:
-                parsed_url = \
-                    urlparse(
-                        url=piecePath,
-                        scheme='',
-                        allow_fragments=True)
-
-                buffer = io.BytesIO()
-
-                self.s3Client.download_fileobj(
-                    Bucket=parsed_url.netloc,
-                    Key=parsed_url.path[1:],
-                    Fileobj=buffer)
-
-            else:
-                buffer = open(piecePath, 'rb')
-
             df = pandas.read_parquet(
-                path=buffer,
-                engine='pyarrow',
-                columns=cols,
-                nthreads=psutil.cpu_count(logical=True))
+                    path=self.pieceLocalCachePath(piecePath=piecePath),
+                    engine='pyarrow',
+                    columns=cols,
+                    nthreads=psutil.cpu_count(logical=True))
 
             for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
                 k, v = partitionKV.split('=')
@@ -314,13 +339,6 @@ class FileDF(_FileDFABC):
                 df[str(k)] = datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
                     if k == DATE_COL \
                     else v[:-1]
-
-            if piecePath not in self._PIECE_CACHES:
-                self._PIECE_CACHES[piecePath] = \
-                    Namespace(
-                        columns=None,
-                        types=None,
-                        nRows=None)
 
             pieceCache = self._PIECE_CACHES[piecePath]
 
@@ -373,29 +391,9 @@ class FileDF(_FileDFABC):
     @property
     def nRows(self):
         if self._cache.nRows is None:
-            nRows = 0
-
-            for piecePath in tqdm.tqdm(self.piecePaths):
-                if self.s3Client:
-                    parsed_url = \
-                        urlparse(
-                            url=piecePath,
-                            scheme='',
-                            allow_fragments=True)
-
-                    buffer = io.BytesIO()
-
-                    self.s3Client.download_fileobj(
-                        Bucket=parsed_url.netloc,
-                        Key=parsed_url.path[1:],
-                        Fileobj=buffer)
-
-                else:
-                    buffer = open(piecePath, 'rb')
-
-                nRows += read_metadata(where=buffer).num_rows
-
-            self._cache.nRows = nRows
+            self._cache.nRows = \
+                sum(read_metadata(where=self.pieceLocalCachePath(piecePath=piecePath)).num_rows
+                    for piecePath in tqdm.tqdm(self.piecePaths))
 
         return self._cache.nRows
 
@@ -403,14 +401,36 @@ class FileDF(_FileDFABC):
         return self._mr(cols=cols if cols else None, **kwargs)
 
     @property
+    def reprSampleNPieces(self):
+        return self._reprSampleNPieces
+
+    @reprSampleNPieces.setter
+    def reprSampleNPieces(self, reprSampleNPieces):
+        if (reprSampleNPieces <= self.nPieces) and (reprSampleNPieces != self._reprSampleNPieces):
+            self._reprSampleNPieces = reprSampleNPieces
+
+    @reprSampleNPieces.deleter
+    def reprSampleNPieces(self):
+        self._reprSampleNPieces = min(self._DEFAULT_REPR_SAMPLE_N_PIECES, self.nPieces)
+
+    @property
     def reprSamplePiecePaths(self):
         if not self._reprSamplePiecePaths:
             self._reprSamplePiecePaths = \
                 random.sample(
-                    population=self.file_paths,
-                    k=self.repr_sample_n_files)
+                    population=self.piecePaths,
+                    k=self._reprSampleNPieces)
 
         return self._reprSamplePiecePaths
+
+    @property
+    def approxNRows(self):
+        if self._cache.approxNRows is None:
+            self._cache.approxNRows = \
+                sum(read_metadata(where=self.pieceLocalCachePath(piecePath=piecePath)).num_rows
+                    for piecePath in tqdm.tqdm(self.reprSamplePiecePaths))
+
+        return self._cache.approxNRows
 
     @property
     def reprSample(self):
