@@ -3,7 +3,6 @@ from __future__ import division, unicode_literals
 
 import abc
 import argparse
-import boto3
 import copy
 import joblib
 import logging
