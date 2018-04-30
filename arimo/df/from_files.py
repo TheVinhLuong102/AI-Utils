@@ -428,8 +428,10 @@ class FileDF(_FileDFABC):
     def approxNRows(self):
         if self._cache.approxNRows is None:
             self._cache.approxNRows = \
-                sum(read_metadata(where=self.pieceLocalCachePath(piecePath=piecePath)).num_rows
-                    for piecePath in tqdm.tqdm(self.reprSamplePiecePaths))
+                self.nPieces \
+                * sum(read_metadata(where=self.pieceLocalCachePath(piecePath=piecePath)).num_rows
+                    for piecePath in tqdm.tqdm(self.reprSamplePiecePaths)) \
+                / self._reprSampleNPieces
 
         return self._cache.approxNRows
 
