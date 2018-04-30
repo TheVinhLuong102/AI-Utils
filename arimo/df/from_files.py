@@ -353,12 +353,12 @@ class FileDF(_FileDFABC):
                     df = gen_aux_cols(
                         df=df.loc[pandas.notnull(df[self._iCol]) &
                                   pandas.notnull(df[self._tCol])],
-                        iCol=self._iCol, tCol=self._tCol)
+                        i_col=self._iCol, t_col=self._tCol)
     
                 else:
                     df = gen_aux_cols(
                         df=df.loc[pandas.notnull(df[self._tCol])],
-                        iCol=None, tCol=self._tCol)
+                        i_col=None, t_col=self._tCol)
 
             if applyDefaultMapper and self._defaultMapper:
                 df = self._defaultMapper(df)
