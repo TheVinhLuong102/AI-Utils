@@ -151,13 +151,6 @@ class FileDF(_FileDFABC):
                         nRows=None)
                  for piecePath in _cache.piecePaths}
 
-            for piecePath in _cache.piecePaths.difference(_pieceCaches):
-                _cache._pieceCaches[piecePath] = \
-                    Namespace(
-                        columns=None,
-                        types=None,
-                        nRows=None)
-
             if path.startswith('s3'):
                 _cache.s3Client = \
                     s3.client(
