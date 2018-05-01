@@ -586,6 +586,7 @@ class FileDF(_FileDFABC):
 
         return self._mr(
             *samplePiecePaths,
+            cols=cols,
             sampleN=int(math.ceil(n / sampleNPieces)),
             organizeTS=True,
             applyDefaultMapper=True,
