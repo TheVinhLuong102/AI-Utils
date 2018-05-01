@@ -22,7 +22,7 @@ else:
 
 from pyarrow.filesystem import LocalFileSystem
 from pyarrow.hdfs import HadoopFileSystem
-from pyarrow.parquet import ParquetDataset, read_metadata, read_pandas, read_schema, read_table
+from pyarrow.parquet import ParquetDataset, read_metadata, read_schema, read_table
 from s3fs import S3FileSystem
 
 from arimo.df import _DF_ABC
@@ -138,7 +138,7 @@ class FileDF(_FileDFABC):
                             localOrHDFSPath=None
                                 if path.startswith('s3')
                                 else piecePath,
-                            columns=None, types=None,
+                            columns=None, arrowTypes=None, pandasTypes=None,
                             nRows=None)
 
             else:
@@ -152,11 +152,14 @@ class FileDF(_FileDFABC):
                         localOrHDFSPath=None
                             if path.startswith('s3')
                             else path,
-                        columns=None, types=None,
+                        columns=(),
+                        arrowTypes=Namespace(),
+                        pandasTypes=Namespace(),
                         nRows=None)
 
             _cache.columns = set()
-            _cache.types = Namespace()
+            _cache.arrowTypes = Namespace()
+            _cache.pandasTypes = Namespace()
 
             _cache._nRows = _cache._approxNRows = None
 
@@ -336,11 +339,38 @@ class FileDF(_FileDFABC):
                 (tqdm.tqdm(piecePaths)
                  if verbose
                  else piecePaths):
-            df = pandas.read_parquet(
-                    path=self.pieceLocalOrHDFSPath(piecePath=piecePath),
-                    engine='pyarrow',
+            pieceArrowTable = \
+                read_table(
+                    source=self.pieceLocalOrHDFSPath(piecePath=piecePath),
                     columns=cols,
-                    nthreads=psutil.cpu_count(logical=True))
+                    nthreads=psutil.cpu_count(logical=True),
+                    metadata=None,
+                    use_pandas_metadata=False)
+
+            pieceCache = self._PIECE_CACHES[piecePath]
+
+            if pieceCache.columns is None:
+                pieceCache.columns = pieceArrowTable.schema.names
+                self.columns.update(pieceCache.columns)
+
+                for col in pieceCache.columns:
+                    pieceCache.arrowTypes[col] = _arrowType = \
+                        pieceArrowTable.schema.field_by_name(col).type
+
+                    if col in self.arrowTypes:
+                        self.arrowTypes[col].add(_arrowType)
+                    else:
+                        self.arrowTypes[col] = {_arrowType}
+
+                    pieceCache.pandasTypes[col] = _pandasType = \
+                        _arrowType.to_pandas_dtype()
+
+                    if col in self.pandasTypes:
+                        self.pandasTypes[col].add(_pandasType)
+                    else:
+                        self.pandasTypes[col] = {_pandasType}
+
+                pieceCache.nRows = pieceArrowTable.num_rows
 
             for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
                 k, v = partitionKV.split('=')
@@ -349,33 +379,15 @@ class FileDF(_FileDFABC):
                     if k == DATE_COL \
                     else v[:-1]
 
-            pieceCache = self._PIECE_CACHES[piecePath]
 
-            if pieceCache.columns is None:
-                _columns = df.columns
-                pieceCache.columns = _columns
-                self.columns.update(_columns)
-
-            if pieceCache.types is None:
-                _types = df.dtypes
-                pieceCache.types = _types
-                for col in df.columns:
-                    _type = _types[col]
-                    if col in self.types:
-                        self.types[col].add(_type)
-                    else:
-                        self.types[col] = {_type}
-
-            if pieceCache.nRows is None:
-                pieceCache.nRows = len(df)
     
             if organizeTS and self._tCol:
                 assert self._tCol in df.columns, \
-                    '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self.tCol, df.columns)
+                    '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._tCol, df.columns)
     
                 if self._iCol:
                     assert self._iCol in df.columns, \
-                        '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self.iCol, df.columns)
+                        '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._iCol, df.columns)
     
                     df = gen_aux_cols(
                         df=df.loc[pandas.notnull(df[self._iCol]) &
