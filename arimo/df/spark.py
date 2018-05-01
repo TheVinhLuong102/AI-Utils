@@ -1952,7 +1952,6 @@ class ADF(_DF_ABC):
     # SPARK PERSISTENCE METHODS
     # cache
     # checkpoint
-    # unpersist
 
     def cache(self, eager=True, verbose=True):
         if arimo.debug.ON:
