@@ -42,7 +42,12 @@ class _FileDFABC(_DF_ABC):
     _LOCAL_ARROW_FS = LocalFileSystem()
 
     _HDFS_ARROW_FS = \
-        HadoopFileSystem() \
+        HadoopFileSystem(
+            host='default',
+            port=0,
+            user=None,
+            kerb_ticket=None,
+            driver='libhdfs') \
         if fs._ON_LINUX_CLUSTER_WITH_HDFS \
         else None
 
