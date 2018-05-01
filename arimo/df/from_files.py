@@ -369,17 +369,16 @@ class FileDF(_FileDFABC):
                         pieceArrowTable.schema.field_by_name(col).type
 
                     if col in self.types.arrow:
-                        self.types.arrow[col].add(_arrowType)
-                    else:
-                        self.types.arrow[col] = {_arrowType}
+                        assert _arrowType == self.types.arrow[col], \
+                            '*** {} COLUMN {}: DETECTED TYPE {} != {} ***'.format(
+                                piecePath, col, _arrowType, self.types.arrow[col])
 
-                    pieceCache.types.pandas[col] = _pandasType = \
-                        _arrowType.to_pandas_dtype()
-
-                    if col in self.types.pandas:
-                        self.types.pandas[col].add(_pandasType)
                     else:
-                        self.types.pandas[col] = {_pandasType}
+                        self.types.arrow[col] = _arrowType
+
+                        self.types.pandas[col] = \
+                            pieceCache.types.pandas[col] = \
+                            _arrowType.to_pandas_dtype()
 
                 pieceCache.nRows = pieceArrowTable.num_rows
 
