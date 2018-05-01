@@ -1290,7 +1290,9 @@ class FileADF(_FileDFABC, ADF):
             sampleNPieces = min(sampleNPieces, maxNPieces)
 
         samplePieceSubPaths = \
-            random.sample(self.pieceSubPaths, sampleNPieces) \
+            random.sample(
+                population=self.pieceSubPaths,
+                k=sampleNPieces) \
             if sampleNPieces < self.nPieces \
             else self.pieceSubPaths
 

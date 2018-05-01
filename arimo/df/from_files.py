@@ -2,13 +2,13 @@ from __future__ import division, print_function
 
 import abc
 import datetime
+import math
 import multiprocessing
 import os
 import pandas
 import psutil
 import random
 import re
-import threading
 import time
 import tqdm
 
@@ -155,10 +155,10 @@ class FileDF(_FileDFABC):
                         columns=None, types=None,
                         nRows=None)
 
-            _cache._cache = \
-                Namespace(
-                    columns=set(), types=Namespace(),
-                    nRows=None, approxNRows=None)
+            _cache.columns = set()
+            _cache.types = Namespace()
+
+            _cache._nRows = _cache._approxNRows = None
 
             if path.startswith('s3'):
                 _cache.s3Client = \
@@ -190,8 +190,12 @@ class FileDF(_FileDFABC):
         self._defaultMapper = defaultMapper
 
         self._reprSampleNPieces = min(reprSampleNPieces, self.nPieces)
-        self._reprSamplePiecePaths = None
         self._reprSampleSize = reprSampleSize
+
+        self._cache = \
+            Namespace(
+                reprSamplePiecePaths=None,
+                reprSample=None)
 
     @property
     def _pathsRepr(self):
@@ -320,13 +324,18 @@ class FileDF(_FileDFABC):
                         names=None,
                         verify_integrity=False,
                         copy=False))
+
+        verbose = kwargs.pop('verbose', True)
         
         if not piecePaths:
             piecePaths = self.piecePaths
 
         results = []
 
-        for piecePath in tqdm.tqdm(piecePaths):
+        for piecePath in \
+                (tqdm.tqdm(piecePaths)
+                 if verbose
+                 else piecePaths):
             df = pandas.read_parquet(
                     path=self.pieceLocalOrHDFSPath(piecePath=piecePath),
                     engine='pyarrow',
@@ -345,17 +354,17 @@ class FileDF(_FileDFABC):
             if pieceCache.columns is None:
                 _columns = df.columns
                 pieceCache.columns = _columns
-                self._cache.columns.update(_columns)
+                self.columns.update(_columns)
 
             if pieceCache.types is None:
                 _types = df.dtypes
                 pieceCache.types = _types
                 for col in df.columns:
                     _type = _types[col]
-                    if col in self._cache.types:
-                        self._cache.types[col].add(_type)
+                    if col in self.types:
+                        self.types[col].add(_type)
                     else:
-                        self._cache.types[col] = {_type}
+                        self.types[col] = {_type}
 
             if pieceCache.nRows is None:
                 pieceCache.nRows = len(df)
@@ -390,12 +399,12 @@ class FileDF(_FileDFABC):
 
     @property
     def nRows(self):
-        if self._cache.nRows is None:
-            self._cache.nRows = \
+        if self._nRows is None:
+            self._nRows = \
                 sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
                     for piecePath in tqdm.tqdm(self.piecePaths))
 
-        return self._cache.nRows
+        return self._nRows
 
     def collect(self, *cols, **kwargs):
         return self._mr(cols=cols if cols else None, **kwargs)
@@ -415,92 +424,91 @@ class FileDF(_FileDFABC):
 
     @property
     def reprSamplePiecePaths(self):
-        if self._reprSamplePiecePaths is None:
-            self._reprSamplePiecePaths = \
+        if self._cache.reprSamplePiecePaths is None:
+            self._cache.reprSamplePiecePaths = \
                 random.sample(
                     population=self.piecePaths,
                     k=self._reprSampleNPieces)
 
-        return self._reprSamplePiecePaths
+        return self._cache.reprSamplePiecePaths
 
     @property
     def approxNRows(self):
-        if self._cache.approxNRows is None:
-            self._cache.approxNRows = \
+        if self._approxNRows is None:
+            self._approxNRows = \
                 self.nPieces \
                 * sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
                     for piecePath in tqdm.tqdm(self.reprSamplePiecePaths)) \
                 / self._reprSampleNPieces
 
-        return self._cache.approxNRows
+        return self._approxNRows
+
+    def sample(self, *cols, **kwargs):
+        n = kwargs.pop('n', 1)
+
+        minNPieces = kwargs.pop('minNPieces', self._reprSampleNPieces)
+        maxNPieces = kwargs.pop('maxNPieces', None)
+
+        verbose = kwargs.pop('verbose', True)
+
+        sampleNPieces = \
+            max(int(math.ceil(((min(n, self.nRows) / self.nRows) ** .5)
+                              * self.nPieces)),
+                minNPieces)
+
+        if maxNPieces:
+            sampleNPieces = min(sampleNPieces, maxNPieces)
+
+        samplePiecePaths = \
+            random.sample(
+                population=self.piecePaths,
+                k=sampleNPieces) \
+            if sampleNPieces < self.nPieces \
+            else self.piecePaths
+
+        return self._mr(
+            *samplePiecePaths,
+            organizeTS=True,
+            applyDefaultMapper=True,
+            mapper=lambda pandasDF:
+                (pandasDF[list(cols)]
+                 if cols
+                 else pandasDF)
+                    .sample(
+                        n=max(n / sampleNPieces, 1),
+                            # Number of items from axis to return.
+                            # Cannot be used with frac.
+                            # Default = 1 if frac = None.
+                        # frac=None,
+                            # Fraction of axis items to return.
+                            # Cannot be used with n.
+                        replace=False,
+                            # Sample with or without replacement.
+                            # Default = False.
+                        weights=None,
+                            # Default None results in equal probability weighting.
+                            # If passed a Series, will align with target object on index.
+                            # Index values in weights not found in sampled object will be ignored
+                            # and index values in sampled object not in weights will be assigned weights of zero.
+                            # If called on a DataFrame, will accept the name of a column when axis = 0.
+                            # Unless weights are a Series, weights must be same length as axis being sampled.
+                            # If weights do not sum to 1, they will be normalized to sum to 1.
+                            # Missing values in the weights column will be treated as zero.
+                            # inf and -inf values not allowed.
+                        random_state=None,
+                            # Seed for the random number generator (if int), or numpy RandomState object.
+                        axis='index'),
+            verbose=verbose)
 
     @property
     def reprSample(self):
         if self._cache.reprSample is None:
-            i = 0
-            _dfs = []
-            n_samples = 0
-
-            while n_samples < self.reprSampleSize:
-                _repr_sample_file_path = self.reprSamplePiecePaths[i]
-
-                _next_i = i + 1
-
-                msg = 'Sampling from File #{:,}/{:,}: "{}"...'.format(
-                    _next_i, self.repr_sample_n_files, _repr_sample_file_path)
-
-                print(msg)
-
-
-
-                _n_samples = min(self.reprSampleSize // self.repr_sample_n_files, len(_df))
-
-                _df = _df.sample(
-                    n=_n_samples,
-                    replace=False,
-                    weights=None,
-                    random_state=None,
-                    axis='index')
-
-                _dfs.append(_df)
-
-                n_samples += _n_samples
-
-                print(msg + ' {:,} samples'.format(_n_samples))
-
-                i = _next_i
-
             self._cache.reprSample = \
-                pandas.concat(
-                    objs=_dfs,
-                    axis='index',
-                    join='outer',
-                    join_axes=None,
-                    ignore_index=True,
-                    keys=None,
-                    levels=None,
-                    names=None,
-                    verify_integrity=False,
-                    copy=False)
+                self.sample(
+                    n=self._reprSampleSize,
+                    verbose=True)
 
         return self._cache.reprSample
 
     def gen(self, *cols, **kwargs):
         pass
-
-    def sample(self, *cols, **kwargs):
-        n = kwargs.pop('n', 1)
-
-        file_paths
-
-        return pandas.concat(
-            objs=_dfs,
-            axis='index',
-            join='outer',
-            join_axes=None,
-            ignore_index=True,
-            keys=None,
-            levels=None,
-            names=None,
-            verify_integrity=False,
-            copy=False)
