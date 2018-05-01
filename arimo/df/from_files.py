@@ -215,6 +215,33 @@ class FileDF(_FileDFABC):
             type(self).__name__,
             self._pathsRepr)
 
+    def pieceLocalOrHDFSPath(self, piecePath):
+        if self._PIECE_CACHES[piecePath].localOrHDFSPath is None:
+            parsed_url = \
+                urlparse(
+                    url=piecePath,
+                    scheme='',
+                    allow_fragments=True)
+
+            localCachePath = \
+                os.path.join(
+                    self._TMP_DIR_PATH,
+                    parsed_url.netloc,
+                    parsed_url.path[1:])
+
+            fs.mkdir(
+                dir=os.path.dirname(localCachePath),
+                hdfs=False)
+
+            self.s3Client.download_file(
+                Bucket=parsed_url.netloc,
+                Key=parsed_url.path[1:],
+                Filename=localCachePath)
+
+            self._PIECE_CACHES[piecePath].localOrHDFSPath = localCachePath
+
+        return self._PIECE_CACHES[piecePath].localOrHDFSPath
+
     @property
     def iCol(self):
         return self._iCol
@@ -266,33 +293,6 @@ class FileDF(_FileDFABC):
     @defaultMapper.deleter
     def defaultMapper(self):
         self._defaultMapper = None
-
-    def pieceLocalOrHDFSPath(self, piecePath):
-        if self._PIECE_CACHES[piecePath].localOrHDFSPath is None:
-            parsed_url = \
-                urlparse(
-                    url=piecePath,
-                    scheme='',
-                    allow_fragments=True)
-
-            localCachePath = \
-                os.path.join(
-                    self._TMP_DIR_PATH,
-                    parsed_url.netloc,
-                    parsed_url.path[1:])
-
-            fs.mkdir(
-                dir=os.path.dirname(localCachePath),
-                hdfs=False)
-
-            self.s3Client.download_file(
-                Bucket=parsed_url.netloc,
-                Key=parsed_url.path[1:],
-                Filename=localCachePath)
-
-            self._PIECE_CACHES[piecePath].localOrHDFSPath = localCachePath
-
-        return self._PIECE_CACHES[piecePath].localOrHDFSPath
 
     def _mr(self, *piecePaths, **kwargs):
         cols = kwargs.get('cols')
