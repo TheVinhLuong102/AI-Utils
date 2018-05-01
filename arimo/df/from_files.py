@@ -498,8 +498,9 @@ class FileDF(_FileDFABC):
                     try:
                         piecePandasDF = \
                             gen_aux_cols(
-                                df=piecePandasDF.loc[pandas.notnull(piecePandasDF[self._iCol]) &
-                                          pandas.notnull(piecePandasDF[self._tCol])],
+                                df=piecePandasDF.loc[
+                                    pandas.notnull(piecePandasDF[self._iCol]) &
+                                    pandas.notnull(piecePandasDF[self._tCol])],
                                 i_col=self._iCol, t_col=self._tCol)
 
                     except Exception as err:
