@@ -385,6 +385,7 @@ class FileDF(_FileDFABC):
                 nChunksForIntermediateN = int(math.ceil(intermediateN / _CHUNK_SIZE))
 
                 if nChunksForIntermediateN < nChunks:
+                    print('*** SAMPLING FROM CHUNKS ***')
                     piecePandasDF = \
                         pandas.concat(
                             objs=[recordBatch
@@ -429,6 +430,7 @@ class FileDF(_FileDFABC):
                             copy=False)
 
                 else:
+                    print('*** SAMPLING FROM WHOLE TABLE ***')
                     piecePandasDF = \
                         pieceArrowTable.to_pandas(
                             nthreads=max(1, psutil.cpu_count(logical=True) // 2),
@@ -466,6 +468,7 @@ class FileDF(_FileDFABC):
                             axis='index')
 
             else:
+                print('*** NOT SAMPLING ***')
                 piecePandasDF = \
                     pieceArrowTable.to_pandas(
                         nthreads=max(1, psutil.cpu_count(logical=True) // 2),
