@@ -334,7 +334,8 @@ class _BlueprintABC(object):
                     label='Max No. of Categorical Levels',
                     description='Max No. of Levels Considered for Valid Categorical Variables',
                     type='int',
-                    default=9),
+                    default=12   # Month of Year is probably most numerous-category cat var
+                ),
 
                 'data.num_outlier_tails': Namespace(
                     label='Numerical Data Outlier Tails',
