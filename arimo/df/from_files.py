@@ -494,18 +494,29 @@ class FileDF(_FileDFABC):
                 if self._iCol:
                     assert self._iCol in piecePandasDF.columns, \
                         '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._iCol, piecePandasDF.columns)
-    
-                    piecePandasDF = \
-                        gen_aux_cols(
-                            df=piecePandasDF.loc[pandas.notnull(piecePandasDF[self._iCol]) &
-                                      pandas.notnull(piecePandasDF[self._tCol])],
-                            i_col=self._iCol, t_col=self._tCol)
-    
+
+                    try:
+                        piecePandasDF = \
+                            gen_aux_cols(
+                                df=piecePandasDF.loc[pandas.notnull(piecePandasDF[self._iCol]) &
+                                          pandas.notnull(piecePandasDF[self._tCol])],
+                                i_col=self._iCol, t_col=self._tCol)
+
+                    except Exception as err:
+                        print('*** {} ***'.format(piecePath))
+                        raise err
+
+
                 else:
-                    piecePandasDF = \
-                        gen_aux_cols(
-                            df=piecePandasDF.loc[pandas.notnull(piecePandasDF[self._tCol])],
-                            i_col=None, t_col=self._tCol)
+                    try:
+                        piecePandasDF = \
+                            gen_aux_cols(
+                                df=piecePandasDF.loc[pandas.notnull(piecePandasDF[self._tCol])],
+                                i_col=None, t_col=self._tCol)
+
+                    except Exception as err:
+                        print('*** {} ***'.format(piecePath))
+                        raise err
 
             if applyDefaultMapper and self._defaultMapper:
                 piecePandasDF = self._defaultMapper(piecePandasDF)
