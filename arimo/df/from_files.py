@@ -198,6 +198,14 @@ class FileDF(_FileDFABC):
                 reprSamplePiecePaths=None,
                 reprSample=None)
 
+    @classmethod
+    def load(cls, path, **kwargs):
+        return cls(path=path, **kwargs)
+
+    @classmethod
+    def read(cls, path, **kwargs):
+        return cls(path=path, **kwargs)
+
     @property
     def _pathsRepr(self):
         return '"{}"'.format(self.path) \
