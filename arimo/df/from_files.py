@@ -302,9 +302,13 @@ class FileDF(_FileDFABC):
         self._defaultMapper = None
 
     def _mr(self, *piecePaths, **kwargs):
+        _CHUNK_SIZE = 10 ** 5
+
         cols = kwargs.get('cols')
         if not cols:
             cols = None
+
+        sampleN = kwargs.get('sampleN')
 
         organizeTS = kwargs.get('organizeTS', True)
 
@@ -372,40 +376,140 @@ class FileDF(_FileDFABC):
 
                 pieceCache.nRows = pieceArrowTable.num_rows
 
+            if sampleN and (sampleN < pieceCache.nRows):
+                intermediateN = (sampleN * pieceCache.nRows) ** .5
+                
+                nChunks = int(math.ceil(pieceCache.nRows / _CHUNK_SIZE))
+                nChunksForIntermediateN = int(math.ceil(intermediateN / _CHUNK_SIZE))
+
+                if nChunksForIntermediateN < nChunks:
+                    piecePandasDF = \
+                        pandas.concat(
+                            objs=[recordBatch
+                                    .to_pandas(
+                                        nthreads=max(1, multiprocessing.cpu_count() // 2))
+                                    .sample(
+                                        n=int(math.ceil(sampleN / nChunksForIntermediateN)),
+                                            # Number of items from axis to return.
+                                            # Cannot be used with frac.
+                                            # Default = 1 if frac = None.
+                                        # frac=None,
+                                            # Fraction of axis items to return.
+                                            # Cannot be used with n.
+                                        replace=False,
+                                            # Sample with or without replacement.
+                                            # Default = False.
+                                        weights=None,
+                                            # Default None results in equal probability weighting.
+                                            # If passed a Series, will align with target object on index.
+                                            # Index values in weights not found in sampled object will be ignored
+                                            # and index values in sampled object not in weights will be assigned weights of zero.
+                                            # If called on a DataFrame, will accept the name of a column when axis = 0.
+                                            # Unless weights are a Series, weights must be same length as axis being sampled.
+                                            # If weights do not sum to 1, they will be normalized to sum to 1.
+                                            # Missing values in the weights column will be treated as zero.
+                                            # inf and -inf values not allowed.
+                                        random_state=None,
+                                            # Seed for the random number generator (if int), or numpy RandomState object.
+                                        axis='index')
+                                  for recordBatch in
+                                        random.sample(
+                                            population=pieceArrowTable.to_batches(chunksize=_CHUNK_SIZE),
+                                            k=nChunksForIntermediateN)],
+                            axis='index',
+                            join='outer',
+                            join_axes=None,
+                            ignore_index=True,
+                            keys=None,
+                            levels=None,
+                            names=None,
+                            verify_integrity=False,
+                            copy=False)
+
+                else:
+                    piecePandasDF = \
+                        pieceArrowTable.to_pandas(
+                            nthreads=max(1, psutil.cpu_count(logical=True) // 2),
+                                # For the default, we divide the CPU count by 2
+                                # because most modern computers have hyperthreading turned on,
+                                # so doubling the CPU count beyond the number of physical cores does not help
+                            strings_to_categorical=False,
+                            memory_pool=None,
+                            zero_copy_only=None,
+                            categories=[],
+                            integer_object_nulls=False) \
+                        .sample(
+                            n=sampleN,
+                                # Number of items from axis to return.
+                                # Cannot be used with frac.
+                                # Default = 1 if frac = None.
+                            # frac=None,
+                                # Fraction of axis items to return.
+                                # Cannot be used with n.
+                            replace=False,
+                                # Sample with or without replacement.
+                                # Default = False.
+                            weights=None,
+                                # Default None results in equal probability weighting.
+                                # If passed a Series, will align with target object on index.
+                                # Index values in weights not found in sampled object will be ignored
+                                # and index values in sampled object not in weights will be assigned weights of zero.
+                                # If called on a DataFrame, will accept the name of a column when axis = 0.
+                                # Unless weights are a Series, weights must be same length as axis being sampled.
+                                # If weights do not sum to 1, they will be normalized to sum to 1.
+                                # Missing values in the weights column will be treated as zero.
+                                # inf and -inf values not allowed.
+                            random_state=None,
+                                # Seed for the random number generator (if int), or numpy RandomState object.
+                            axis='index')
+
+            else:
+                piecePandasDF = \
+                    pieceArrowTable.to_pandas(
+                        nthreads=max(1, psutil.cpu_count(logical=True) // 2),
+                            # For the default, we divide the CPU count by 2
+                            # because most modern computers have hyperthreading turned on,
+                            # so doubling the CPU count beyond the number of physical cores does not help
+                        strings_to_categorical=False,
+                        memory_pool=None,
+                        zero_copy_only=None,
+                        categories=[],
+                        integer_object_nulls=False)
+
             for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
                 k, v = partitionKV.split('=')
 
-                df[str(k)] = datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
+                piecePandasDF[str(k)] = datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
                     if k == DATE_COL \
                     else v[:-1]
 
-
-    
             if organizeTS and self._tCol:
-                assert self._tCol in df.columns, \
-                    '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._tCol, df.columns)
+                assert self._tCol in piecePandasDF.columns, \
+                    '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._tCol, piecePandasDF.columns)
     
                 if self._iCol:
-                    assert self._iCol in df.columns, \
-                        '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._iCol, df.columns)
+                    assert self._iCol in piecePandasDF.columns, \
+                        '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._iCol, piecePandasDF.columns)
     
-                    df = gen_aux_cols(
-                        df=df.loc[pandas.notnull(df[self._iCol]) &
-                                  pandas.notnull(df[self._tCol])],
-                        i_col=self._iCol, t_col=self._tCol)
+                    piecePandasDF = \
+                        gen_aux_cols(
+                            df=piecePandasDF.loc[pandas.notnull(piecePandasDF[self._iCol]) &
+                                      pandas.notnull(piecePandasDF[self._tCol])],
+                            i_col=self._iCol, t_col=self._tCol)
     
                 else:
-                    df = gen_aux_cols(
-                        df=df.loc[pandas.notnull(df[self._tCol])],
-                        i_col=None, t_col=self._tCol)
+                    piecePandasDF = \
+                        gen_aux_cols(
+                            df=piecePandasDF.loc[pandas.notnull(piecePandasDF[self._tCol])],
+                            i_col=None, t_col=self._tCol)
 
             if applyDefaultMapper and self._defaultMapper:
-                df = self._defaultMapper(df)
+                piecePandasDF = self._defaultMapper(piecePandasDF)
 
             results.append(
-                mapper(df)
+                mapper(piecePandasDF)
                 if mapper
-                else df)
+                else piecePandasDF)
 
         return reducer(results)
 
@@ -480,36 +584,9 @@ class FileDF(_FileDFABC):
 
         return self._mr(
             *samplePiecePaths,
+            sampleN=int(math.ceil(n / sampleNPieces)),
             organizeTS=True,
             applyDefaultMapper=True,
-            mapper=lambda pandasDF:
-                (pandasDF[list(cols)]
-                 if cols
-                 else pandasDF)
-                    .sample(
-                        n=int(math.ceil(n / sampleNPieces)),
-                            # Number of items from axis to return.
-                            # Cannot be used with frac.
-                            # Default = 1 if frac = None.
-                        # frac=None,
-                            # Fraction of axis items to return.
-                            # Cannot be used with n.
-                        replace=False,
-                            # Sample with or without replacement.
-                            # Default = False.
-                        weights=None,
-                            # Default None results in equal probability weighting.
-                            # If passed a Series, will align with target object on index.
-                            # Index values in weights not found in sampled object will be ignored
-                            # and index values in sampled object not in weights will be assigned weights of zero.
-                            # If called on a DataFrame, will accept the name of a column when axis = 0.
-                            # Unless weights are a Series, weights must be same length as axis being sampled.
-                            # If weights do not sum to 1, they will be normalized to sum to 1.
-                            # Missing values in the weights column will be treated as zero.
-                            # inf and -inf values not allowed.
-                        random_state=None,
-                            # Seed for the random number generator (if int), or numpy RandomState object.
-                        axis='index'),
             verbose=verbose)
 
     @property
