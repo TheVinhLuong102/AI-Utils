@@ -310,7 +310,7 @@ class FileDF(_FileDFABC):
         if not cols:
             cols = None
 
-        sampleN = kwargs.get('sampleN')
+        nSamplesPerPiece = kwargs.get('nSamplesPerPiece')
 
         organizeTS = kwargs.get('organizeTS', True)
 
@@ -380,11 +380,13 @@ class FileDF(_FileDFABC):
 
             assert pieceCache.nRows
 
-            if sampleN and (sampleN < pieceCache.nRows):
-                intermediateN = (sampleN * pieceCache.nRows) ** .5
+            if nSamplesPerPiece and (nSamplesPerPiece < pieceCache.nRows):
+                intermediateN = (nSamplesPerPiece * pieceCache.nRows) ** .5
                 
                 nChunks = int(math.ceil(pieceCache.nRows / _CHUNK_SIZE))
                 nChunksForIntermediateN = int(math.ceil(intermediateN / _CHUNK_SIZE))
+
+                nSamplesPerChunk = int(math.ceil(nSamplesPerPiece / nChunksForIntermediateN))
 
                 if nChunksForIntermediateN < nChunks:
                     recordBatches = pieceArrowTable.to_batches(chunksize=_CHUNK_SIZE)
@@ -444,12 +446,10 @@ class FileDF(_FileDFABC):
                                 print('*** {} ***'.format(piecePath))
                                 raise err
 
-                        nRowsToSampleFromChunk = int(math.ceil(sampleN / nChunksForIntermediateN))
-
-                        if nRowsToSampleFromChunk < len(chunkPandasDF):
+                        if nSamplesPerChunk < len(chunkPandasDF):
                             chunkPandasDF = \
                                 chunkPandasDF.sample(
-                                    n=nRowsToSampleFromChunk,
+                                    n=nSamplesPerChunk,
                                         # Number of items from axis to return.
                                         # Cannot be used with frac.
                                         # Default = 1 if frac = None.
@@ -542,7 +542,7 @@ class FileDF(_FileDFABC):
 
                     piecePandasDF = \
                         piecePandasDF.sample(
-                            n=sampleN,
+                            n=nSamplesPerPiece,
                                 # Number of items from axis to return.
                                 # Cannot be used with frac.
                                 # Default = 1 if frac = None.
@@ -682,28 +682,28 @@ class FileDF(_FileDFABC):
 
         verbose = kwargs.pop('verbose', True)
 
-        sampleNPieces = \
+        nSamplePieces = \
             max(int(math.ceil(((min(n, self.nRows) / self.nRows) ** .5)
                               * self.nPieces)),
                 minNPieces)
 
         if maxNPieces:
-            sampleNPieces = min(sampleNPieces, maxNPieces)
+            nSamplePieces = min(nSamplePieces, maxNPieces)
 
-        if sampleNPieces < self.nPieces:
+        if nSamplePieces < self.nPieces:
             samplePiecePaths = \
                 random.sample(
                     population=self.piecePaths,
-                    k=sampleNPieces)
+                    k=nSamplePieces)
 
         else:
-            sampleNPieces = self.nPieces
+            nSamplePieces = self.nPieces
             samplePiecePaths = self.piecePaths
 
         return self._mr(
             *samplePiecePaths,
             cols=cols,
-            sampleN=int(math.ceil(n / sampleNPieces)),
+            nSamplesPerPiece=int(math.ceil(n / nSamplePieces)),
             organizeTS=True,
             applyDefaultMapper=True,
             verbose=verbose)
