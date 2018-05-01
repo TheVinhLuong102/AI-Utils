@@ -387,39 +387,97 @@ class FileDF(_FileDFABC):
                 nChunksForIntermediateN = int(math.ceil(intermediateN / _CHUNK_SIZE))
 
                 if nChunksForIntermediateN < nChunks:
+                    recordBatches = pieceArrowTable.to_batches(chunksize=_CHUNK_SIZE)
+
+                    nRecordBatches = len(recordBatches)
+
+                    assert nRecordBatches in (nChunks - 1, nChunks), \
+                        '*** {}: {} vs. {} Record Batches ***'.format(piecePath, nRecordBatches, nChunks)
+
+                    assert nChunksForIntermediateN <= nRecordBatches, \
+                        '*** {}: {} vs. {} Record Batches ***'.format(piecePath, nChunksForIntermediateN, nRecordBatches)
+
+                    chunkPandasDFs = []
+
+                    for recordBatch in \
+                            random.sample(
+                                population=recordBatches,
+                                k=nChunksForIntermediateN):
+                        chunkPandasDF = recordBatch.to_pandas(nthreads=max(1, psutil.cpu_count() // 2))
+
+                        for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
+                            k, v = partitionKV.split('=')
+
+                            chunkPandasDF[str(k)] = \
+                                datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
+                                if k == DATE_COL \
+                                else v[:-1]
+
+                        if organizeTS and self._tCol:
+                            assert self._tCol in chunkPandasDF.columns, \
+                                '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._tCol, chunkPandasDF.columns)
+
+                        if self._iCol:
+                            assert self._iCol in chunkPandasDF.columns, \
+                                '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._iCol, chunkPandasDF.columns)
+
+                            try:
+                                chunkPandasDF = \
+                                    gen_aux_cols(
+                                        df=chunkPandasDF.loc[
+                                            pandas.notnull(chunkPandasDF[self._iCol]) &
+                                            pandas.notnull(chunkPandasDF[self._tCol])],
+                                        i_col=self._iCol, t_col=self._tCol)
+
+                            except Exception as err:
+                                print('*** {} ***'.format(piecePath))
+                                raise err
+
+                        else:
+                            try:
+                                chunkPandasDF = \
+                                    gen_aux_cols(
+                                        df=chunkPandasDF.loc[pandas.notnull(chunkPandasDF[self._tCol])],
+                                        i_col=None, t_col=self._tCol)
+
+                            except Exception as err:
+                                print('*** {} ***'.format(piecePath))
+                                raise err
+
+                        nRowsToSampleFromChunk = int(math.ceil(sampleN / nChunksForIntermediateN))
+
+                        if nRowsToSampleFromChunk < len(chunkPandasDF):
+                            chunkPandasDF = \
+                                chunkPandasDF.sample(
+                                    n=nRowsToSampleFromChunk,
+                                        # Number of items from axis to return.
+                                        # Cannot be used with frac.
+                                        # Default = 1 if frac = None.
+                                        # frac=None,
+                                        # Fraction of axis items to return.
+                                        # Cannot be used with n.
+                                    replace=False,
+                                        # Sample with or without replacement.
+                                        # Default = False.
+                                    weights=None,
+                                        # Default None results in equal probability weighting.
+                                        # If passed a Series, will align with target object on index.
+                                        # Index values in weights not found in sampled object will be ignored
+                                        # and index values in sampled object not in weights will be assigned weights of zero.
+                                        # If called on a DataFrame, will accept the name of a column when axis = 0.
+                                        # Unless weights are a Series, weights must be same length as axis being sampled.
+                                        # If weights do not sum to 1, they will be normalized to sum to 1.
+                                        # Missing values in the weights column will be treated as zero.
+                                        # inf and -inf values not allowed.
+                                    random_state=None,
+                                        # Seed for the random number generator (if int), or numpy RandomState object.
+                                    axis='index')
+
+                        chunkPandasDFs.append(chunkPandasDF)
+
                     piecePandasDF = \
                         pandas.concat(
-                            objs=[recordBatch
-                                    .to_pandas(
-                                        nthreads=max(1, psutil.cpu_count() // 2))
-                                    .sample(
-                                        n=int(math.ceil(sampleN / nChunksForIntermediateN)),
-                                            # Number of items from axis to return.
-                                            # Cannot be used with frac.
-                                            # Default = 1 if frac = None.
-                                        # frac=None,
-                                            # Fraction of axis items to return.
-                                            # Cannot be used with n.
-                                        replace=False,
-                                            # Sample with or without replacement.
-                                            # Default = False.
-                                        weights=None,
-                                            # Default None results in equal probability weighting.
-                                            # If passed a Series, will align with target object on index.
-                                            # Index values in weights not found in sampled object will be ignored
-                                            # and index values in sampled object not in weights will be assigned weights of zero.
-                                            # If called on a DataFrame, will accept the name of a column when axis = 0.
-                                            # Unless weights are a Series, weights must be same length as axis being sampled.
-                                            # If weights do not sum to 1, they will be normalized to sum to 1.
-                                            # Missing values in the weights column will be treated as zero.
-                                            # inf and -inf values not allowed.
-                                        random_state=None,
-                                            # Seed for the random number generator (if int), or numpy RandomState object.
-                                        axis='index')
-                                  for recordBatch in
-                                        random.sample(
-                                            population=pieceArrowTable.to_batches(chunksize=_CHUNK_SIZE),
-                                            k=nChunksForIntermediateN)],
+                            objs=chunkPandasDFs,
                             axis='index',
                             join='outer',
                             join_axes=None,
@@ -441,8 +499,49 @@ class FileDF(_FileDFABC):
                             memory_pool=None,
                             zero_copy_only=None,
                             categories=[],
-                            integer_object_nulls=False) \
-                        .sample(
+                            integer_object_nulls=False)
+
+                    for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
+                        k, v = partitionKV.split('=')
+
+                        piecePandasDF[str(k)] = \
+                            datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
+                            if k == DATE_COL \
+                            else v[:-1]
+
+                    if organizeTS and self._tCol:
+                        assert self._tCol in piecePandasDF.columns, \
+                            '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._tCol, piecePandasDF.columns)
+
+                        if self._iCol:
+                            assert self._iCol in piecePandasDF.columns, \
+                                '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._iCol, piecePandasDF.columns)
+
+                            try:
+                                piecePandasDF = \
+                                    gen_aux_cols(
+                                        df=piecePandasDF.loc[
+                                            pandas.notnull(piecePandasDF[self._iCol]) &
+                                            pandas.notnull(piecePandasDF[self._tCol])],
+                                        i_col=self._iCol, t_col=self._tCol)
+
+                            except Exception as err:
+                                print('*** {} ***'.format(piecePath))
+                                raise err
+
+                        else:
+                            try:
+                                piecePandasDF = \
+                                    gen_aux_cols(
+                                        df=piecePandasDF.loc[pandas.notnull(piecePandasDF[self._tCol])],
+                                        i_col=None, t_col=self._tCol)
+
+                            except Exception as err:
+                                print('*** {} ***'.format(piecePath))
+                                raise err
+
+                    piecePandasDF = \
+                        piecePandasDF.sample(
                             n=sampleN,
                                 # Number of items from axis to return.
                                 # Cannot be used with frac.
@@ -480,44 +579,44 @@ class FileDF(_FileDFABC):
                         categories=[],
                         integer_object_nulls=False)
 
-            for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
-                k, v = partitionKV.split('=')
+                for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
+                    k, v = partitionKV.split('=')
 
-                piecePandasDF[str(k)] = datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
-                    if k == DATE_COL \
-                    else v[:-1]
+                    piecePandasDF[str(k)] = \
+                        datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
+                        if k == DATE_COL \
+                        else v[:-1]
 
-            if organizeTS and self._tCol:
-                assert self._tCol in piecePandasDF.columns, \
-                    '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._tCol, piecePandasDF.columns)
-    
-                if self._iCol:
-                    assert self._iCol in piecePandasDF.columns, \
-                        '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._iCol, piecePandasDF.columns)
+                if organizeTS and self._tCol:
+                    assert self._tCol in piecePandasDF.columns, \
+                        '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._tCol, piecePandasDF.columns)
 
-                    try:
-                        piecePandasDF = \
-                            gen_aux_cols(
-                                df=piecePandasDF.loc[
-                                    pandas.notnull(piecePandasDF[self._iCol]) &
-                                    pandas.notnull(piecePandasDF[self._tCol])],
-                                i_col=self._iCol, t_col=self._tCol)
+                    if self._iCol:
+                        assert self._iCol in piecePandasDF.columns, \
+                            '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._iCol, piecePandasDF.columns)
 
-                    except Exception as err:
-                        print('*** {} ***'.format(piecePath))
-                        raise err
+                        try:
+                            piecePandasDF = \
+                                gen_aux_cols(
+                                    df=piecePandasDF.loc[
+                                        pandas.notnull(piecePandasDF[self._iCol]) &
+                                        pandas.notnull(piecePandasDF[self._tCol])],
+                                    i_col=self._iCol, t_col=self._tCol)
 
+                        except Exception as err:
+                            print('*** {} ***'.format(piecePath))
+                            raise err
 
-                else:
-                    try:
-                        piecePandasDF = \
-                            gen_aux_cols(
-                                df=piecePandasDF.loc[pandas.notnull(piecePandasDF[self._tCol])],
-                                i_col=None, t_col=self._tCol)
+                    else:
+                        try:
+                            piecePandasDF = \
+                                gen_aux_cols(
+                                    df=piecePandasDF.loc[pandas.notnull(piecePandasDF[self._tCol])],
+                                    i_col=None, t_col=self._tCol)
 
-                    except Exception as err:
-                        print('*** {} ***'.format(piecePath))
-                        raise err
+                        except Exception as err:
+                            print('*** {} ***'.format(piecePath))
+                            raise err
 
             if applyDefaultMapper and self._defaultMapper:
                 piecePandasDF = self._defaultMapper(piecePandasDF)
