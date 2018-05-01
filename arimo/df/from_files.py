@@ -139,8 +139,9 @@ class FileDF(_FileDFABC):
                                 if path.startswith('s3')
                                 else piecePath,
                             columns=(),
-                            arrowTypes=Namespace(),
-                            pandasTypes=Namespace(),
+                            types=Namespace(
+                                arrow=Namespace(),
+                                pandas=Namespace()),
                             nRows=None)
 
             else:
@@ -155,13 +156,17 @@ class FileDF(_FileDFABC):
                             if path.startswith('s3')
                             else path,
                         columns=(),
-                        arrowTypes=Namespace(),
-                        pandasTypes=Namespace(),
+                        types=Namespace(
+                            arrow=Namespace(),
+                            pandas=Namespace()),
                         nRows=None)
 
             _cache.columns = set()
-            _cache.arrowTypes = Namespace()
-            _cache.pandasTypes = Namespace()
+            
+            _cache.types = \
+                Namespace(
+                    arrow=Namespace(),
+                    pandas=Namespace())
 
             _cache._nRows = _cache._approxNRows = None
 
@@ -360,21 +365,21 @@ class FileDF(_FileDFABC):
                 self.columns.update(pieceCache.columns)
 
                 for col in pieceCache.columns:
-                    pieceCache.arrowTypes[col] = _arrowType = \
+                    pieceCache.types.arrow[col] = _arrowType = \
                         pieceArrowTable.schema.field_by_name(col).type
 
-                    if col in self.arrowTypes:
-                        self.arrowTypes[col].add(_arrowType)
+                    if col in self.types.arrow:
+                        self.types.arrow[col].add(_arrowType)
                     else:
-                        self.arrowTypes[col] = {_arrowType}
+                        self.types.arrow[col] = {_arrowType}
 
-                    pieceCache.pandasTypes[col] = _pandasType = \
+                    pieceCache.types.pandas[col] = _pandasType = \
                         _arrowType.to_pandas_dtype()
 
-                    if col in self.pandasTypes:
-                        self.pandasTypes[col].add(_pandasType)
+                    if col in self.types.pandas:
+                        self.types.pandas[col].add(_pandasType)
                     else:
-                        self.pandasTypes[col] = {_pandasType}
+                        self.types.pandas[col] = {_pandasType}
 
                 pieceCache.nRows = pieceArrowTable.num_rows
 
