@@ -378,6 +378,8 @@ class FileDF(_FileDFABC):
 
                 pieceCache.nRows = pieceArrowTable.num_rows
 
+            assert pieceCache.nRows
+
             if sampleN and (sampleN < pieceCache.nRows):
                 intermediateN = (sampleN * pieceCache.nRows) ** .5
                 
