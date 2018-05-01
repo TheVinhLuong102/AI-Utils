@@ -221,7 +221,7 @@ class FileDF(_FileDFABC):
 
     def pieceLocalOrHDFSPath(self, piecePath):
         if self._PIECE_CACHES[piecePath].localOrHDFSPath is None:
-            parsed_url = \
+            parsedURL = \
                 urlparse(
                     url=piecePath,
                     scheme='',
@@ -230,16 +230,16 @@ class FileDF(_FileDFABC):
             localCachePath = \
                 os.path.join(
                     self._TMP_DIR_PATH,
-                    parsed_url.netloc,
-                    parsed_url.path[1:])
+                    parsedURL.netloc,
+                    parsedURL.path[1:])
 
             fs.mkdir(
                 dir=os.path.dirname(localCachePath),
                 hdfs=False)
 
             self.s3Client.download_file(
-                Bucket=parsed_url.netloc,
-                Key=parsed_url.path[1:],
+                Bucket=parsedURL.netloc,
+                Key=parsedURL.path[1:],
                 Filename=localCachePath)
 
             self._PIECE_CACHES[piecePath].localOrHDFSPath = localCachePath
