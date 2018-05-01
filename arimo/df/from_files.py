@@ -673,7 +673,7 @@ class FileDF(_FileDFABC):
             self._approxNRows = \
                 self.nPieces \
                 * sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
-                    for piecePath in tqdm.tqdm(self.reprSamplePiecePaths)) \
+                      for piecePath in tqdm.tqdm(self.reprSamplePiecePaths)) \
                 / self._reprSampleNPieces
 
         return self._approxNRows
@@ -681,31 +681,37 @@ class FileDF(_FileDFABC):
     def sample(self, *cols, **kwargs):
         n = kwargs.pop('n', 1)
 
-        minNPieces = kwargs.pop('minNPieces', self._reprSampleNPieces)
-        maxNPieces = kwargs.pop('maxNPieces', None)
+        piecePaths = kwargs.pop('piecePaths')
 
         verbose = kwargs.pop('verbose', True)
 
-        nSamplePieces = \
-            max(int(math.ceil(((min(n, self.nRows) / self.nRows) ** .5)
-                              * self.nPieces)),
-                minNPieces)
-
-        if maxNPieces:
-            nSamplePieces = min(nSamplePieces, maxNPieces)
-
-        if nSamplePieces < self.nPieces:
-            samplePiecePaths = \
-                random.sample(
-                    population=self.piecePaths,
-                    k=nSamplePieces)
+        if piecePaths:
+            nSamplePieces = len(piecePaths)
 
         else:
-            nSamplePieces = self.nPieces
-            samplePiecePaths = self.piecePaths
+            minNPieces = kwargs.pop('minNPieces', self._reprSampleNPieces)
+            maxNPieces = kwargs.pop('maxNPieces', None)
+
+            nSamplePieces = \
+                max(int(math.ceil(((min(n, self.nRows) / self.nRows) ** .5)
+                                  * self.nPieces)),
+                    minNPieces)
+
+            if maxNPieces:
+                nSamplePieces = min(nSamplePieces, maxNPieces)
+
+            if nSamplePieces < self.nPieces:
+                piecePaths = \
+                    random.sample(
+                        population=self.piecePaths,
+                        k=nSamplePieces)
+
+            else:
+                nSamplePieces = self.nPieces
+                piecePaths = self.piecePaths
 
         return self._mr(
-            *samplePiecePaths,
+            *piecePaths,
             cols=cols,
             nSamplesPerPiece=int(math.ceil(n / nSamplePieces)),
             organizeTS=True,
@@ -718,6 +724,7 @@ class FileDF(_FileDFABC):
             self._cache.reprSample = \
                 self.sample(
                     n=self._reprSampleSize,
+                    piecePaths=self.reprSamplePiecePaths,
                     verbose=True)
 
         return self._cache.reprSample
