@@ -138,7 +138,9 @@ class FileDF(_FileDFABC):
                             localOrHDFSPath=None
                                 if path.startswith('s3')
                                 else piecePath,
-                            columns=None, arrowTypes=None, pandasTypes=None,
+                            columns=(),
+                            arrowTypes=Namespace(),
+                            pandasTypes=Namespace(),
                             nRows=None)
 
             else:
