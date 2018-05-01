@@ -468,7 +468,7 @@ class FileDF(_FileDFABC):
                             axis='index')
 
             else:
-                print('*** NOT SAMPLING ***')
+                print('*** NOT SAMPLING ***:', sampleN)
                 piecePandasDF = \
                     pieceArrowTable.to_pandas(
                         nthreads=max(1, psutil.cpu_count(logical=True) // 2),
