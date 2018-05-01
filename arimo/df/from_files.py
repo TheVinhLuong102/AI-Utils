@@ -475,7 +475,7 @@ class FileDF(_FileDFABC):
                  if cols
                  else pandasDF)
                     .sample(
-                        n=max(n / sampleNPieces, 1),
+                        n=int(math.ceil(n / sampleNPieces)),
                             # Number of items from axis to return.
                             # Cannot be used with frac.
                             # Default = 1 if frac = None.
