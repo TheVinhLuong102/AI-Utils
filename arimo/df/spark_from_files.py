@@ -1,6 +1,5 @@
 from __future__ import division, print_function
 
-import io
 import math
 import numpy
 import os
@@ -173,6 +172,9 @@ class _FileADF__drop__pandasDFTransform:
                 errors='ignore')
 
 
+_PIECE_LOCAL_OR_HDFS_PATHS = {}
+
+
 class _FileADF__pieceArrowTableFunc:
     def __init__(self, path, aws_access_key_id=None, aws_secret_access_key=None, n_threads=1):
         self.path = path
@@ -183,24 +185,41 @@ class _FileADF__pieceArrowTableFunc:
         self.n_threads = n_threads
 
     def __call__(self, pieceSubPath):
-        parsedURL = \
-            urlparse(
-                url=os.path.join(self.path, pieceSubPath),
-                scheme='',
-                allow_fragments=True)
+        path = os.path.join(self.path, pieceSubPath)
 
-        buffer = io.BytesIO()
+        if self.path.startswith('s3'):
+            global _PIECE_LOCAL_OR_HDFS_PATHS
 
-        s3.client(
-                access_key_id=self.aws_access_key_id,
-                secret_access_key=self.aws_secret_access_key) \
-            .download_fileobj(
-                Bucket=parsedURL.netloc,
-                Key=parsedURL.path[1:],
-                Fileobj=buffer)
+            if path in _PIECE_LOCAL_OR_HDFS_PATHS:
+                path = _PIECE_LOCAL_OR_HDFS_PATHS[path]
+
+            else:
+                parsedURL = \
+                    urlparse(
+                        url=path,
+                        scheme='',
+                        allow_fragments=True)
+
+                _PIECE_LOCAL_OR_HDFS_PATHS[path] = path = \
+                    os.path.join(
+                        _DF_ABC._TMP_DIR_PATH,
+                        parsedURL.netloc,
+                        parsedURL.path[1:])
+
+                fs.mkdir(
+                    dir=os.path.dirname(path),
+                    hdfs=False)
+
+                s3.client(
+                        access_key_id=self.aws_access_key_id,
+                        secret_access_key=self.aws_secret_access_key) \
+                    .download_file(
+                        Bucket=parsedURL.netloc,
+                        Key=parsedURL.path[1:],
+                        Filename=path)
 
         return read_table(
-                source=buffer,
+                source=path,
                 columns=None,
                 nthreads=self.n_threads,
                 metadata=None,
