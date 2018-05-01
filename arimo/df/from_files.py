@@ -355,7 +355,7 @@ class FileDF(_FileDFABC):
 
             pieceCache = self._PIECE_CACHES[piecePath]
 
-            if pieceCache.columns is None:
+            if not pieceCache.columns:
                 pieceCache.columns = pieceArrowTable.schema.names
                 self.columns.update(pieceCache.columns)
 
