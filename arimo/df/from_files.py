@@ -391,7 +391,7 @@ class FileDF(_FileDFABC):
                         pandas.concat(
                             objs=[recordBatch
                                     .to_pandas(
-                                        nthreads=max(1, multiprocessing.cpu_count() // 2))
+                                        nthreads=max(1, psutil.cpu_count() // 2))
                                     .sample(
                                         n=int(math.ceil(sampleN / nChunksForIntermediateN)),
                                             # Number of items from axis to return.
