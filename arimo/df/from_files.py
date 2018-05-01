@@ -577,12 +577,15 @@ class FileDF(_FileDFABC):
         if maxNPieces:
             sampleNPieces = min(sampleNPieces, maxNPieces)
 
-        samplePiecePaths = \
-            random.sample(
-                population=self.piecePaths,
-                k=sampleNPieces) \
-            if sampleNPieces < self.nPieces \
-            else self.piecePaths
+        if sampleNPieces < self.nPieces:
+            samplePiecePaths = \
+                random.sample(
+                    population=self.piecePaths,
+                    k=sampleNPieces)
+
+        else:
+            sampleNPieces = self.nPieces
+            samplePiecePaths = self.piecePaths
 
         return self._mr(
             *samplePiecePaths,
