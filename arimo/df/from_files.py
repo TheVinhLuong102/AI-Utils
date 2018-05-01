@@ -117,21 +117,9 @@ class FileDF(_FileDFABC):
             if _cache.nPieces:
                 _cache.piecePaths = set()
 
-                _pathPlusSepLen = len(path) + 1
-
-                _cache.pieceSubPaths = set()
-
                 for i, piece in enumerate(_cache._arrowDS.pieces):
                     piecePath = piece.path
                     _cache.piecePaths.add(piecePath)
-
-                    pieceSubPath = piecePath[_pathPlusSepLen:]
-                    _cache.pieceSubPaths.add(pieceSubPath)
-
-                    if not i:
-                        _cache._partitionedByDateOnly = \
-                            pieceSubPath.startswith('{}='.format(DATE_COL)) and \
-                            (pieceSubPath.count('/') == 1)
 
                     self._PIECE_CACHES[piecePath] = \
                         Namespace(
@@ -147,8 +135,6 @@ class FileDF(_FileDFABC):
             else:
                 _cache.nPieces = 1
                 _cache.piecePaths = {path}
-                _cache.pieceSubPaths = {}
-                _cache._partitionedByDateOnly = False
 
                 self._PIECE_CACHES[path] = \
                     Namespace(
