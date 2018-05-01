@@ -172,7 +172,7 @@ class _FileADF__drop__pandasDFTransform:
                 errors='ignore')
 
 
-_PIECE_LOCAL_OR_HDFS_PATHS = {}
+_PIECE_LOCAL_CACHE_PATHS = {}
 
 
 class _FileADF__pieceArrowTableFunc:
@@ -188,10 +188,10 @@ class _FileADF__pieceArrowTableFunc:
         path = os.path.join(self.path, pieceSubPath)
 
         if self.path.startswith('s3'):
-            global _PIECE_LOCAL_OR_HDFS_PATHS
+            global _PIECE_LOCAL_CACHE_PATHS
 
-            if path in _PIECE_LOCAL_OR_HDFS_PATHS:
-                path = _PIECE_LOCAL_OR_HDFS_PATHS[path]
+            if path in _PIECE_LOCAL_CACHE_PATHS:
+                path = _PIECE_LOCAL_CACHE_PATHS[path]
 
             else:
                 parsedURL = \
@@ -200,7 +200,7 @@ class _FileADF__pieceArrowTableFunc:
                         scheme='',
                         allow_fragments=True)
 
-                _PIECE_LOCAL_OR_HDFS_PATHS[path] = path = \
+                _PIECE_LOCAL_CACHE_PATHS[path] = path = \
                     os.path.join(
                         _DF_ABC._TMP_DIR_PATH,
                         parsedURL.netloc,
