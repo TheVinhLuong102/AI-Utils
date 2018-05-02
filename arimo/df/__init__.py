@@ -184,6 +184,7 @@ class _DFABC(object):
     # **********
     # IO METHODS
     # load / read
+    # save / write
 
     @classmethod
     @abc.abstractproperty
@@ -193,6 +194,13 @@ class _DFABC(object):
     @classmethod
     def read(cls, *args, **kwargs):
         return cls.load(*args, **kwargs)
+
+    @abc.abstractmethod
+    def save(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def write(self, *args, **kwargs):
+        return self.save(*args, **kwargs)
 
     # ***************
     # CACHING METHODS

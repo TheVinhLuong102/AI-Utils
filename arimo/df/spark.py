@@ -1439,7 +1439,7 @@ class ADF(_DFABC):
     # create
     # unionAllCols
     # load
-    # save / write
+    # save
 
     @property
     def sparkSession(self):
@@ -1927,12 +1927,6 @@ class ADF(_DFABC):
         if verbose:
             toc = time.time()
             self.stdout_logger.info(msg + ' done!   <{:,.1f} m>'.format((toc - tic) / 60))
-
-    def write(self, path, format='parquet', mode='overwrite', partitionBy=None, verbose=True, switch=False, **options):
-        """
-        Alias for ``.save(...)``
-        """
-        self.save(path=path, format=format, mode=mode, partitionBy=partitionBy, verbose=verbose, switch=switch, **options)
 
     # *************************
     # SPARK PERSISTENCE METHODS

@@ -264,6 +264,7 @@ class ArrowDF(_ArrowDFABC):
     # **********
     # IO METHODS
     # load / read
+    # save
 
     @classmethod
     def load(cls, path, **kwargs):
@@ -272,6 +273,9 @@ class ArrowDF(_ArrowDFABC):
     @classmethod
     def read(cls, path, **kwargs):
         return cls(path=path, **kwargs)
+
+    def save(self, *args, **kwargs):
+        return NotImplemented
 
     # ***************
     # PYTHON STR/REPR
