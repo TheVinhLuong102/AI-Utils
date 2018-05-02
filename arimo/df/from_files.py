@@ -777,12 +777,12 @@ class FileDF(_FileDFABC):
 
     @property
     def nRows(self):
-        if self._nRows is None:
-            self._nRows = \
+        if self._cache.nRows is None:
+            self._cache.nRows = \
                 sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
                     for piecePath in tqdm.tqdm(self.piecePaths))
 
-        return self._nRows
+        return self._cache.nRows
 
     def collect(self, *cols, **kwargs):
         return self._mr(cols=cols if cols else None, **kwargs)
@@ -799,14 +799,14 @@ class FileDF(_FileDFABC):
 
     @property
     def approxNRows(self):
-        if self._approxNRows is None:
-            self._approxNRows = \
+        if self._cache.approxNRows is None:
+            self._cache.approxNRows = \
                 self.nPieces \
                 * sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
                       for piecePath in tqdm.tqdm(self.reprSamplePiecePaths)) \
                 / self._reprSampleNPieces
 
-        return self._approxNRows
+        return self._cache.approxNRows
 
     def sample(self, *cols, **kwargs):
         n = kwargs.pop('n', 1)
