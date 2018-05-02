@@ -41,7 +41,7 @@ from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
 from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
-from arimo.util.srcTypes.arrow import \
+from arimo.util.types.arrow import \
     _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE, \
     is_boolean, is_complex, is_num, is_possible_cat, is_string
 import arimo.debug
