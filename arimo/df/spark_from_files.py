@@ -714,6 +714,9 @@ class ArrowADF(_ArrowDFABC, ADF):
         if self._iCol in cols:
             cols_and_types_str += ['(iCol) {}: {}'.format(self._iCol, self._cache.type[self._iCol])]
 
+        if self._dCol in cols:
+            cols_and_types_str += ['(dCol) {}: {}'.format(self._dCol, self._cache.type[self._dCol])]
+
         if self._tCol in cols:
             cols_and_types_str += ['(tCol) {}: {}'.format(self._tCol, self._cache.type[self._tCol])]
 
@@ -745,6 +748,9 @@ class ArrowADF(_ArrowDFABC, ADF):
 
         if self._iCol in cols:
             cols_desc_str += ['iCol: {}'.format(self._iCol)]
+
+        if self._dCol in cols:
+            cols_desc_str += ['dCol: {}'.format(self._dCol)]
 
         if self._tCol in cols:
             cols_desc_str += ['tCol: {}'.format(self._tCol)]

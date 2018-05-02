@@ -297,7 +297,12 @@ class ArrowDF(_ArrowDFABC):
 
         self._iCol = iCol
         self._tCol = tCol
+
         self.hasTS = iCol and tCol
+
+        self._dCol = DATE_COL \
+            if DATE_COL in self.srcCols \
+            else None
 
         self._defaultMapper = defaultMapper
 
@@ -344,6 +349,9 @@ class ArrowDF(_ArrowDFABC):
         if self._iCol:
             cols_and_types_str += ['(iCol) {}: {}'.format(self._iCol, self.type(self._iCol))]
 
+        if self._dCol:
+            cols_and_types_str += ['(dCol) {}: {}'.format(self._dCol, self.type(self._dCol))]
+
         if self._tCol:
             cols_and_types_str += ['(tCol) {}: {}'.format(self._tCol, self.type(self._tCol))]
 
@@ -368,6 +376,9 @@ class ArrowDF(_ArrowDFABC):
 
         if self._iCol:
             cols_desc_str += ['iCol: {}'.format(self._iCol)]
+
+        if self._dCol:
+            cols_desc_str += ['dCol: {}'.format(self._dCol)]
 
         if self._tCol:
             cols_desc_str += ['tCol: {}'.format(self._tCol)]
@@ -963,6 +974,7 @@ class ArrowDF(_ArrowDFABC):
     @property
     def indexCols(self):
         return ((self._iCol,) if self._iCol else ()) \
+             + ((self._dCol,) if self._dCol else ()) \
              + ((self._tCol,) if self._tCol else ())
 
     @property

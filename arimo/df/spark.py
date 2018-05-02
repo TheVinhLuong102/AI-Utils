@@ -1370,6 +1370,9 @@ class ADF(_DFABC):
         if self._iCol:
             cols_and_types_str += ['(iCol) {}: {}'.format(self._iCol, self._cache.type[self._iCol])]
 
+        if self._dCol:
+            cols_and_types_str += ['(dCol) {}: {}'.format(self._dCol, self._cache.type[self._dCol])]
+
         if self._tCol:
             cols_and_types_str += ['(tCol) {}: {}'.format(self._tCol, self._cache.type[self._tCol])]
 
@@ -1405,6 +1408,9 @@ class ADF(_DFABC):
 
         if self._iCol:
             cols_desc_str += ['iCol: {}'.format(self._iCol)]
+
+        if self._dCol:
+            cols_desc_str += ['dCol: {}'.format(self._dCol)]
 
         if self._tCol:
             cols_desc_str += ['tCol: {}'.format(self._tCol)]
