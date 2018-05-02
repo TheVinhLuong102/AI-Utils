@@ -81,20 +81,20 @@ from arimo.util.types.spark_sql import \
 import arimo.debug
 
 
-# decorator to add standard ADF keyword-arguments docstring
+# decorator to add standard SparkADF keyword-arguments docstring
 def _docstr_adf_kwargs(method):
     def f():
         """
         Keyword Args:
-            alias (str, default = None): name of the ``ADF`` to register as a table in its ``SparkSession``
+            alias (str, default = None): name of the ``SparkADF`` to register as a table in its ``SparkSession``
 
-            iCol (str, default = 'id'): name of the ``ADF``'s *identity*/*entity* column, if applicable
+            iCol (str, default = 'id'): name of the ``SparkADF``'s *identity*/*entity* column, if applicable
 
-            tCol (str, default = None): name of the ``ADF``'s *timestamp* column, if applicable
+            tCol (str, default = None): name of the ``SparkADF``'s *timestamp* column, if applicable
 
             tChunkLen (int, default = None): length of time-series chunks
 
-            reprSampleSize (int, default = 1,000,000): *approximate* number of rows to sample from the ``ADF``
+            reprSampleSize (int, default = 1,000,000): *approximate* number of rows to sample from the ``SparkADF``
                 for profiling purposes
 
             minNonNullProportion (float between 0 and 1, default = .32): minimum proportion of non-``NULL`` values
@@ -114,16 +114,16 @@ def _docstr_adf_kwargs(method):
 
 
 @enable_inplace
-class ADF(_DFABC):
+class SparkADF(_DFABC):
     """
-    NOTE: Using `ADF` requires a cluster with Apache Spark set up.
+    NOTE: Using `SparkADF` requires a cluster with Apache Spark set up.
 
-    ``ADF`` extends the ``Spark SQL DataFrame``
+    ``SparkADF`` extends the ``Spark SQL DataFrame``
     while still offering full access to ``Spark DataFrame`` functionalities.
 
-    **IMPORTANT**: Any ``Spark DataFrame`` method not explicitly re-implemented in ``ADF``
-    is a valid ``ADF`` method and works the same way as it does under ``Spark DataFrame``.
-    If the method's result is a ``Spark DataFrame``, it is up-converted to an ``ADF``.
+    **IMPORTANT**: Any ``Spark DataFrame`` method not explicitly re-implemented in ``SparkADF``
+    is a valid ``SparkADF`` method and works the same way as it does under ``Spark DataFrame``.
+    If the method's result is a ``Spark DataFrame``, it is up-converted to an ``SparkADF``.
     """
     # Partition ID col
     _PARTITION_ID_COL = '__PARTITION_ID__'
@@ -181,7 +181,7 @@ class ADF(_DFABC):
     def __init__(self, sparkDF, nRows=None, **kwargs):
         """
         Return:
-            ``ADF`` instance
+            ``SparkADF`` instance
 
         Args:
             sparkDF: a ``Spark DataFrame``
@@ -1169,7 +1169,7 @@ class ADF(_DFABC):
 
     # decorator to up-convert any Spark SQL DataFrame result to ADF
     def _decorate(self, obj, nRows=None, **objKwArgs):
-        def methodReturningADF(method):
+        def methodReturningSparkADF(method):
             def decoratedMethod(*methodArgs, **methodKwArgs):
                 if 'tCol' in methodKwArgs:
                     tCol_inKwArgs = True
@@ -1199,9 +1199,10 @@ class ADF(_DFABC):
                     if stdKwArgs.alias and (stdKwArgs.alias == self.alias):
                         stdKwArgs.alias = None
                     
-                    return ADF(sparkDF=result,
-                               nRows=None,   # not sure what the new nRows may be
-                               **stdKwArgs.__dict__)
+                    return SparkADF(
+                        sparkDF=result,
+                        nRows=None,   # not sure what the new nRows may be
+                        **stdKwArgs.__dict__)
 
                 else:
                     return result
@@ -1209,11 +1210,11 @@ class ADF(_DFABC):
             decoratedMethod.__module__ = method.__module__
             decoratedMethod.__name__ = method.__name__
             decoratedMethod.__doc__ = method.__doc__
-            decoratedMethod.__self__ = self   # real ADF __self__ instance, which maybe different to method.__self__
+            decoratedMethod.__self__ = self   # real SparkADF __self__ instance, which maybe different to method.__self__
             return decoratedMethod
 
-        if callable(obj) and (not isinstance(obj, ADF)) and (not isinstance(obj, types.ClassType)):
-            return methodReturningADF(method=obj)
+        if callable(obj) and (not isinstance(obj, SparkADF)) and (not isinstance(obj, types.ClassType)):
+            return methodReturningSparkADF(method=obj)
 
         elif isinstance(obj, DataFrame):
             alias = objKwArgs.get('alias')
@@ -1242,10 +1243,10 @@ class ADF(_DFABC):
 
             stdKwArgs.alias = alias
 
-            return ADF(sparkDF=obj, nRows=nRows, **stdKwArgs.__dict__)
+            return SparkADF(sparkDF=obj, nRows=nRows, **stdKwArgs.__dict__)
 
         else:
-            if isinstance(obj, ADF) and (nRows is not None):
+            if isinstance(obj, SparkADF) and (nRows is not None):
                 if obj._cache.nRows is None:
                     obj._cache.nRows = nRows
 
@@ -1262,7 +1263,7 @@ class ADF(_DFABC):
 
         cols = df.columns
 
-        if isinstance(df, ADF):
+        if isinstance(df, SparkADF):
             isADF = True
 
             self._sparkDF = df._sparkDF
@@ -1289,7 +1290,7 @@ class ADF(_DFABC):
             self._cache.nRows = None
 
         else:
-            raise ValueError("*** ADF._inplace(...)'s 1st argument must be either ADF or Spark SQL DataFrame ***")
+            raise ValueError("*** SparkADF._inplace(...)'s 1st argument must be either SparkADF or Spark SQL DataFrame ***")
 
         existingICol = self._iCol
         existingTCol = self._tCol
@@ -1330,7 +1331,7 @@ class ADF(_DFABC):
             else (self._alias if self._alias or (not isADF)
                               else df._alias)
 
-        if isinstance(df, ADF):
+        if isinstance(df, SparkADF):
             self._cache = df._cache
         else:
             self._emptyCache()
@@ -1458,12 +1459,12 @@ class ADF(_DFABC):
     @_docstr_adf_kwargs
     def create(cls, data, schema=None, samplingRatio=None, verifySchema=False, sparkConf={}, **kwargs):
         """
-        Create ``ADF`` from an ``RDD``, a *list* or a ``pandas.DataFrame``
+        Create ``SparkADF`` from an ``RDD``, a *list* or a ``pandas.DataFrame``
 
         (*ref:* http://spark.apache.org/docs/latest/api/python/pyspark.sql.html#pyspark.sql.SparkSession.createDataFrame)
 
         Return:
-            ``ADF`` instance
+            ``SparkADF`` instance
 
         Args:
             data: ``RDD`` of any kind of *SQL* data representation (e.g. *row*, *tuple*, *int*, *boolean*, ...),
@@ -1508,7 +1509,7 @@ class ADF(_DFABC):
             for col in pandasTSCols:
                 data[col] = pandas.to_datetime(data[col])
 
-        return ADF(sparkDF=sparkDF, nRows=nRows, **kwargs)
+        return SparkADF(sparkDF=sparkDF, nRows=nRows, **kwargs)
 
     @classmethod
     def unionAllCols(cls, *adfs_and_or_sparkDFs, **kwargs):
@@ -1530,8 +1531,8 @@ class ADF(_DFABC):
                         colTypes[structField.name] = structField.dataType
 
             adfs = [(adf_or_sparkDF
-                     if isinstance(adf_or_sparkDF, ADF)
-                     else ADF(sparkDF=adf_or_sparkDF))
+                     if isinstance(adf_or_sparkDF, SparkADF)
+                     else SparkADF(sparkDF=adf_or_sparkDF))
                     (*((col
                         if col in adf_or_sparkDF.columns
                         else 'NULL AS {}'.format(col))
@@ -1556,7 +1557,7 @@ class ADF(_DFABC):
                     **kwargs)
 
             else:
-                return ADF.create(
+                return SparkADF.create(
                     data=arimo.backend.spark.sparkContext.union(
                             [adf.rdd for adf in adfs]),
                     schema=StructType(
@@ -1573,11 +1574,11 @@ class ADF(_DFABC):
         else:
             df = adfs_and_or_sparkDFs[0]
 
-            if isinstance(df, ADF):
+            if isinstance(df, SparkADF):
                 return df.copy(**kwargs)
 
             elif isinstance(df, DataFrame):
-                return ADF(sparkDF=df, nRows=None, **kwargs)
+                return SparkADF(sparkDF=df, nRows=None, **kwargs)
 
             else:
                 raise ValueError('*** All input data frames must be ADFs or Spark SQL DataFrames ***')
@@ -1619,10 +1620,10 @@ class ADF(_DFABC):
     def load(cls, path, format='parquet', schema=None,
              aws_access_key_id=None, aws_secret_access_key=None, verbose=True, sparkConf={}, **options):
         """
-        Load/read tabular data into ``ADF``
+        Load/read tabular data into ``SparkADF``
 
         Return:
-            ``ADF`` instance
+            ``SparkADF`` instance
 
         Args:
             path (str): path to data source
@@ -1695,7 +1696,7 @@ class ADF(_DFABC):
                     access_key_id=aws_access_key_id,
                     secret_access_key=aws_secret_access_key)
 
-            adf = ADF(
+            adf = SparkADF(
                 sparkDF=arimo.backend.spark.read.load(
                     path=path,
                     format=format,
@@ -1708,7 +1709,7 @@ class ADF(_DFABC):
             _adfs = []
 
             for _path in path:
-                _adf = ADF.load(
+                _adf = SparkADF.load(
                         path=_path,
                         aws_access_key_id=aws_access_key_id,
                         aws_secret_access_key=aws_secret_access_key,
@@ -1719,7 +1720,7 @@ class ADF(_DFABC):
 
                 _adfs.append(_adf)
 
-            adf = ADF.unionAllCols(
+            adf = SparkADF.unionAllCols(
                 *_adfs,
                 **stdKwArgs)
 
@@ -1734,7 +1735,7 @@ class ADF(_DFABC):
              mode='overwrite', partitionBy=None,
              verbose=True, switch=False, **options):
         """
-        Save/write ``ADF``'s content to permanent storage
+        Save/write ``SparkADF``'s content to permanent storage
 
         Args:
             path (str): path to which to save data
@@ -1750,7 +1751,7 @@ class ADF(_DFABC):
 
             mode (str): behavior when data already exists at specified path:
 
-                - ``append``: append ``ADF``'s content to existing data
+                - ``append``: append ``SparkADF``'s content to existing data
 
                 - ``overwrite``: overwrite existing data
 
@@ -1922,7 +1923,7 @@ class ADF(_DFABC):
             assert mode == 'overwrite'
 
             self._inplace(
-                ADF.load(
+                SparkADF.load(
                     path=path,
                     format=format,
                     aws_access_key_id=aws_access_key_id,
@@ -2029,7 +2030,7 @@ class ADF(_DFABC):
     @_docstr_settable_property
     def alias(self):
         """
-        Name of ``ADF`` in the ``SparkSession`` *(str, default = None)*
+        Name of ``SparkADF`` in the ``SparkSession`` *(str, default = None)*
         """
         return self._alias
 
@@ -2094,7 +2095,7 @@ class ADF(_DFABC):
     @_docstr_settable_property
     def iCol(self):
         """
-        Name of ``ADF``'s *identity*/*entity* column *(str, default = 'id')*
+        Name of ``SparkADF``'s *identity*/*entity* column *(str, default = 'id')*
         """
         return self._iCol
 
@@ -2118,7 +2119,7 @@ class ADF(_DFABC):
     @_docstr_settable_property
     def tCol(self):
         """
-        Name of ``ADF``'s *timestamp* column *(str)*
+        Name of ``SparkADF``'s *timestamp* column *(str)*
         """
         return self._tCol
 
@@ -2144,14 +2145,14 @@ class ADF(_DFABC):
         Max size of time-series chunks per `id`
         """
         assert not self._detPrePartitioned, \
-            '*** {}.tChunkLen NOT APPLICABLE WITH PRE-PARTITIONED ADF ***'.format(type(self))
+            '*** {}.tChunkLen NOT APPLICABLE WITH PRE-PARTITIONED SparkADF ***'.format(type(self))
         
         return self._tChunkLen
 
     @tChunkLen.setter
     def tChunkLen(self, tChunkLen):
         assert not self._detPrePartitioned, \
-            '*** {}.tChunkLen NOT APPLICABLE WITH PRE-PARTITIONED ADF ***'.format(type(self))
+            '*** {}.tChunkLen NOT APPLICABLE WITH PRE-PARTITIONED SparkADF ***'.format(type(self))
 
         if tChunkLen != self._tChunkLen:
             self._tChunkLen = tChunkLen
@@ -2332,7 +2333,7 @@ class ADF(_DFABC):
     def copy(self, **kwargs):
         """
         Return:
-            A copy of the ``ADF``
+            A copy of the ``SparkADF``
         """
         adf = self._decorate(
             obj=self._sparkDF,
@@ -2347,7 +2348,7 @@ class ADF(_DFABC):
     def select(self, *exprs, **kwargs):
         """
         Return:
-            ``ADF`` that is ``SELECT``'ed according to the given expressions
+            ``SparkADF`` that is ``SELECT``'ed according to the given expressions
 
         Args:
             *exprs: series of strings or ``Spark SQL`` expressions
@@ -2379,13 +2380,13 @@ class ADF(_DFABC):
     def sql(self, query='SELECT * FROM this', tempAlias='this', **kwargs):
         """
         Return:
-            ``ADF`` that is ``SELECT``'ed according to the given query
+            ``SparkADF`` that is ``SELECT``'ed according to the given query
 
         Args:
             query (str, default = 'SELECT * FROM this'): *SQL* query beginning with "``SELECT``"
 
         Keyword Args:
-            tempAlias (str, default = 'this'): name of temporary *SQL* view to refer to original ``ADF``
+            tempAlias (str, default = 'this'): name of temporary *SQL* view to refer to original ``SparkADF``
         """
         origAlias = self._alias
         self.alias = tempAlias
@@ -2427,12 +2428,12 @@ class ADF(_DFABC):
         (**SYNTACTIC SUGAR**)
 
         Return:
-            ``ADF`` instance
+            ``SparkADF`` instance
 
         There are 2 uses of this convenience method:
 
             - ``adf(func, *args, **kwargs)``: equivalent to ``func(adf, *args, **kwargs)``,
-                    with the final result being converted to ``ADF`` if it is a ``Spark DataFrame``
+                    with the final result being converted to ``SparkADF`` if it is a ``Spark DataFrame``
 
             - ``adf(*exprs, **kwargs)``: invokes *SQL* ``SELECT`` query with ``*exprs`` being either:
 
@@ -2443,7 +2444,7 @@ class ADF(_DFABC):
         if args:
             arg = args[0]
 
-            if callable(arg) and (not isinstance(arg, ADF)) and (not isinstance(arg, types.ClassType)):
+            if callable(arg) and (not isinstance(arg, SparkADF)) and (not isinstance(arg, types.ClassType)):
                 args = args[1:] \
                     if (len(args) > 1) \
                     else ()
@@ -2788,7 +2789,7 @@ class ADF(_DFABC):
     def distinct(self, col=None, count=True, collect=True, **kwargs):
         """
         Return:
-            *Approximate* list of distinct values of ``ADF``'s column ``col``,
+            *Approximate* list of distinct values of ``SparkADF``'s column ``col``,
                 with optional descending-sorted counts for those values
 
         Args:
@@ -3283,7 +3284,7 @@ class ADF(_DFABC):
     def profile(self, *cols, **kwargs):
         """
         Return:
-            *dict* of profile of salient statistics on specified columns of ``ADF``
+            *dict* of profile of salient statistics on specified columns of ``SparkADF``
 
         Args:
             *cols (str): names of column(s) to profile
@@ -3474,7 +3475,7 @@ class ADF(_DFABC):
         Fill/interpolate ``NULL``/``NaN`` values
 
         Return:
-            ``ADF`` with ``NULL``/``NaN`` values filled/interpolated
+            ``SparkADF`` with ``NULL``/``NaN`` values filled/interpolated
 
         Args:
             *args (str): names of column(s) to fill/interpolate
@@ -3498,7 +3499,7 @@ class ADF(_DFABC):
                     - ``after`` (**TO-DO**)
                     - ``None`` (do nothing)
 
-                    (*NOTE:* for an ``ADF`` with a ``.tCol`` set, ``NumPy/Pandas NaN`` values cannot be filled;
+                    (*NOTE:* for an ``SparkADF`` with a ``.tCol`` set, ``NumPy/Pandas NaN`` values cannot be filled;
                         it is best that such *Python* values be cleaned up before they get into Spark)
 
                 - **value**: single value, or *dict* of values by column name,
@@ -3830,12 +3831,12 @@ class ADF(_DFABC):
     @_docstr_verbose
     def prep(self, *cols, **kwargs):
         """
-        Pre-process ``ADF``'s selected column(s) in standard ways:
+        Pre-process ``SparkADF``'s selected column(s) in standard ways:
             - One-hot-encode categorical columns
             - Scale numerical columns
 
         Return:
-            Standard-pre-processed ``ADF``
+            Standard-pre-processed ``SparkADF``
 
         Args:
             *args: column(s) to pre-process
@@ -4979,7 +4980,7 @@ class ADF(_DFABC):
     def sample(self, *args, **kwargs):
         """
         Return:
-            - if ``collect = False / None``: return 1 or a *list* of ``ADF`` s
+            - if ``collect = False / None``: return 1 or a *list* of ``SparkADF`` s
             - if ``collect = 'pandas'``: return 1 or a *list* of ``Pandas DataFrame`` s
             - if ``collect = 'numpy'``: return 1 or a *list* of ``NumPy Array`` s
 
@@ -5006,7 +5007,7 @@ class ADF(_DFABC):
 
                 - **padValue**: *(only applicable to time-series data)* value to pad short extracted series to desired max series length
 
-                - **alias** *(str, default = None)*: name of the resulting sampled ``ADF``; only applicable when ``*args`` is empty and ``collect = False``
+                - **alias** *(str, default = None)*: name of the resulting sampled ``SparkADF``; only applicable when ``*args`` is empty and ``collect = False``
         """
         preparedArgs = self._prepareArgsForSampleOrGenOrPred(*args, **kwargs)
 
@@ -5084,7 +5085,7 @@ class ADF(_DFABC):
         Same as ``.sample(...)``, but produces a **generator**
 
         Keyword Args:
-            - **cache** *(bool, default = True)*: whether to cache the ADF before generating samples
+            - **cache** *(bool, default = True)*: whether to cache the SparkADF before generating samples
         """
         preparedArgs = self._prepareArgsForSampleOrGenOrPred(*args, **kwargs)
 
@@ -5178,7 +5179,7 @@ class ADF(_DFABC):
     def rename(self, **kwargs):
         """
         Return:
-            ``ADF`` with new column names
+            ``SparkADF`` with new column names
 
         Args:
             **kwargs: arguments of the form ``newColName`` = ``existingColName``
@@ -5206,16 +5207,16 @@ class ADF(_DFABC):
 
     def split(self, *weights, **kwargs):
         """
-        Split ``ADF`` into sub-``ADF``'s according to specified weights (which are normalized to sum to 1)
+        Split ``SparkADF`` into sub-``SparkADF``'s according to specified weights (which are normalized to sum to 1)
 
         Return:
-            - If ``ADF``'s ``.tCol`` property is set, implying the data contains time series, return deterministic
+            - If ``SparkADF``'s ``.tCol`` property is set, implying the data contains time series, return deterministic
                 partitions per ``id`` through time
 
-            - If ``ADF`` does not contain time series, randomly shuffle the data and return shuffled sub-``ADF``'s
+            - If ``SparkADF`` does not contain time series, randomly shuffle the data and return shuffled sub-``SparkADF``'s
 
         Args:
-            *weights: weights of sub-``ADF``'s to split out
+            *weights: weights of sub-``SparkADF``'s to split out
 
             **kwargs:
 
