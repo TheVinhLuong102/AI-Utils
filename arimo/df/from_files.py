@@ -40,6 +40,7 @@ from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
 from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
+from arimo.util.types.arrow import is_temporal
 import arimo.debug
 
 
@@ -174,10 +175,7 @@ class FileDF(_FileDFABC):
 
             _cache.columns = set()
             
-            _cache.types = \
-                Namespace(
-                    arrow=Namespace(),
-                    pandas=Namespace())
+            _cache.types = Namespace()
 
             for piecePath in _cache.piecePaths:
                 if piecePath in self._PIECE_CACHES:
@@ -187,16 +185,14 @@ class FileDF(_FileDFABC):
 
                     _cache.columns.update(pieceCache.columns)
 
-                    for col, arrowType in pieceCache.types.arrow.items():
-                        if col in _cache.types.arrow:
-                            assert arrowType == self.types.arrow[col], \
+                    for col, arrowType in pieceCache.types.items():
+                        if col in _cache.types:
+                            assert arrowType == self.types[col], \
                                 '*** {} COLUMN {}: DETECTED TYPE {} != {} ***'.format(
-                                    piecePath, col, arrowType, self.types.arrow[col])
+                                    piecePath, col, arrowType, self.types[col])
 
                         else:
-                            _cache.types.arrow[col] = arrowType
-
-                    _cache.types.pandas.update(pieceCache.types.pandas)
+                            _cache.types[col] = arrowType
 
                 else:
                     self._PIECE_CACHES[piecePath] = \
@@ -206,9 +202,7 @@ class FileDF(_FileDFABC):
                                 if path.startswith('s3')
                                 else piecePath,
                             columns=(),
-                            types=Namespace(
-                                arrow=Namespace(),
-                                pandas=Namespace()),
+                            types=Namespace(),
                             nRows=None)
 
             if path.startswith('s3'):
@@ -437,20 +431,16 @@ class FileDF(_FileDFABC):
                 self.columns.update(pieceCache.columns)
 
                 for col in pieceCache.columns:
-                    pieceCache.types.arrow[col] = _arrowType = \
+                    pieceCache.types[col] = _arrowType = \
                         pieceArrowTable.schema.field_by_name(col).type
 
                     if col in self.types.arrow:
-                        assert _arrowType == self.types.arrow[col], \
+                        assert _arrowType == self.types[col], \
                             '*** {} COLUMN {}: DETECTED TYPE {} != {} ***'.format(
-                                piecePath, col, _arrowType, self.types.arrow[col])
+                                piecePath, col, _arrowType, self.types[col])
 
                     else:
-                        self.types.arrow[col] = _arrowType
-
-                        self.types.pandas[col] = \
-                            pieceCache.types.pandas[col] = \
-                            _arrowType.to_pandas_dtype()
+                        self.types[col] = _arrowType
 
                 pieceCache.nRows = pieceArrowTable.num_rows
 
