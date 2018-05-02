@@ -140,7 +140,8 @@ class ArrowDF(_ArrowDFABC):
 
         else:
             if path.startswith('s3'):
-                _cache.s3Client = \
+                self.s3Client = \
+                    _cache.s3Client = \
                     s3.client(
                         access_key_id=aws_access_key_id,
                         secret_access_key=aws_secret_access_key)
