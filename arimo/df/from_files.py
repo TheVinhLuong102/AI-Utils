@@ -177,7 +177,7 @@ class FileDF(_FileDFABC):
             
             _cache.types = Namespace()
 
-            for i, piecePath in _cache.piecePaths:
+            for i, piecePath in enumerate(_cache.piecePaths):
                 if i and (piecePath in self._PIECE_CACHES):
                     pieceCache = self._PIECE_CACHES[piecePath]
 
