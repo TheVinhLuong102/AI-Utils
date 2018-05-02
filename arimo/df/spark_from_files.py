@@ -35,7 +35,7 @@ from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols
 from arimo.util.decor import enable_inplace
 from arimo.util.iterables import to_iterable
-from arimo.util.spark_sql_types import _STR_TYPE
+from arimo.util.types.spark_sql import _STR_TYPE
 import arimo.debug
 
 

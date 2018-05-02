@@ -19,9 +19,7 @@ from arimo.df.spark import ADF
 import arimo.eval.metrics
 from arimo.util import fs
 from arimo.util.log import STDOUT_HANDLER
-from arimo.util.spark_sql_types import _STR_TYPE
-
-from arimo.util.spark_sql_types import _NUM_TYPES, _VECTOR_TYPE
+from arimo.util.types.spark_sql import _NUM_TYPES, _STR_TYPE, _VECTOR_TYPE
 import arimo.debug
 
 from ..mixins.data_prep import LabeledDataPrepMixIn

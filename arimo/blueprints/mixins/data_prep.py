@@ -21,7 +21,7 @@ from arimo.df.spark_from_files import FileADF
 import arimo.eval.metrics
 from arimo.util import clean_uuid, Namespace
 from arimo.util.iterables import to_iterable
-from arimo.util.spark_sql_types import _BOOL_TYPE, _FLOAT_TYPES, _INT_TYPES, _NUM_TYPES, _STR_TYPE
+from arimo.util.types.spark_sql import _BOOL_TYPE, _FLOAT_TYPES, _INT_TYPES, _NUM_TYPES, _STR_TYPE
 import arimo.debug
 
 from .eval import ClassifEvalMixIn, RegrEvalMixIn

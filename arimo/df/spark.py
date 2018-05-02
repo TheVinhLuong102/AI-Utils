@@ -73,7 +73,7 @@ from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import rds, s3
 from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
 from arimo.util.iterables import flatten, to_iterable
-from arimo.util.spark_sql_types import \
+from arimo.util.types.spark_sql import \
     _INT_TYPE, _BIGINT_TYPE, _INT_TYPES, _DOUBLE_TYPE, _FLOAT_TYPES, _NUM_TYPES, \
     _BOOL_TYPE, _STR_TYPE, _POSSIBLE_CAT_TYPES, _DATE_TYPE, _TIMESTAMP_TYPE, \
     _VECTOR_TYPE, _DECIMAL_TYPE_PREFIX, _ARRAY_TYPE_PREFIX, _MAP_TYPE_PREFIX, _STRUCT_TYPE_PREFIX, \

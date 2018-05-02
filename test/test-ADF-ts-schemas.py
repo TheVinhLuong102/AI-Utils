@@ -1,7 +1,7 @@
 import pandas
 
 from arimo.df.spark import ADF
-from arimo.util.spark_sql_types import _BIGINT_TYPE, _INT_TYPE
+from arimo.util.types.spark_sql import _BIGINT_TYPE, _INT_TYPE
 
 
 ts_adf = ADF.create(

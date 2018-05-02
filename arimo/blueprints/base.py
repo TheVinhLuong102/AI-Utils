@@ -21,7 +21,7 @@ from arimo.util.aws import s3
 from arimo.util.date_time import _PRED_VARS_INCL_T_AUX_COLS, _PRED_VARS_INCL_T_CAT_AUX_COLS, _PRED_VARS_INCL_T_NUM_AUX_COLS
 from arimo.util.log import STDOUT_HANDLER
 from arimo.util.pkl import COMPAT_PROTOCOL, COMPAT_COMPRESS, MAX_COMPRESS_LVL, PKL_EXT
-from arimo.util.spark_sql_types import _NUM_TYPES, _STR_TYPE
+from arimo.util.types.spark_sql import _NUM_TYPES, _STR_TYPE
 import arimo.debug
 
 from .mixins.anom import PPPAnalysesMixIn

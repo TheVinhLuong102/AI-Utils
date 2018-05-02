@@ -21,7 +21,7 @@ from arimo.util import fs, Namespace
 from arimo.util.decor import _docstr_verbose
 from arimo.util.dl import MASK_VAL
 from arimo.util.log import STDOUT_HANDLER
-from arimo.util.spark_sql_types import _NUM_TYPES, _STR_TYPE
+from arimo.util.types.spark_sql import _NUM_TYPES, _STR_TYPE
 import arimo.debug
 
 from ..mixins.data_prep import LabeledDataPrepMixIn
