@@ -653,10 +653,6 @@ class ArrowADF(_ArrowDFABC, ADF):
     def load(cls, path, **kwargs):
         return cls(path=path, **kwargs)
 
-    @classmethod
-    def read(cls, path, **kwargs):
-        return cls(path=path, **kwargs)
-
     # ********************************
     # "INTERNAL / DON'T TOUCH" METHODS
     # _inplace
