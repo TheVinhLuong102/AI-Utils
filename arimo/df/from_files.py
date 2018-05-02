@@ -371,12 +371,12 @@ class ArrowDF(_ArrowDFABC):
         if arrowDF._cache.approxNRows and (self._cache.approxNRows is None):
             self._cache.approxNRows = arrowDF._cache.approxNRows
 
-        commonCols = set(self.columns).intersection(ArrowDF.columns)
+        commonCols = set(self.columns).intersection(arrowDF.columns)
 
         if sameCols or newColToOldColMappings:
             for newCol, oldCol in newColToOldColMappings.items():
                 assert newCol in self.columns
-                assert oldCol in ArrowDF.columns
+                assert oldCol in arrowDF.columns
 
             for sameCol in commonCols.difference(newColToOldColMappings).intersection(sameCols):
                 newColToOldColMappings[sameCol] = sameCol
