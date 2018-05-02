@@ -541,9 +541,10 @@ class ArrowDF(_ArrowDFABC):
 
             if pieceCache.nRows is None:
                 pieceCache.srcCols += pieceArrowTable.schema.names
-                self.srcCols.update(pieceCache.srcCols)
+                
+                self.srcCols.update(pieceArrowTable.schema.names)
 
-                for col in pieceCache.srcCols:
+                for col in pieceArrowTable.schema.names:
                     pieceCache.srcTypes[col] = _arrowType = \
                         pieceArrowTable.schema.field_by_name(col).type
 
