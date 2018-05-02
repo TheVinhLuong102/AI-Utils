@@ -68,7 +68,7 @@ from pyspark.ml.linalg import Vector
 from pyspark.sql import DataFrame, functions as sparkSQLFuncs
 from pyspark.sql.window import Window
 
-from arimo.df import _DF_ABC
+from arimo.df import _DFABC
 from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import rds, s3
 from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
@@ -114,7 +114,7 @@ def _docstr_adf_kwargs(method):
 
 
 @enable_inplace
-class ADF(_DF_ABC):
+class ADF(_DFABC):
     """
     NOTE: Using `ADF` requires a cluster with Apache Spark set up.
 
@@ -132,7 +132,7 @@ class ADF(_DF_ABC):
     _T_CHUNK_COL = '__tChunk__'
     _T_ORD_IN_CHUNK_COL = '__tOrd_inChunk__'
 
-    _T_REL_AUX_COLS = _DF_ABC._T_ORD_COL, _T_CHUNK_COL, _T_ORD_IN_CHUNK_COL, _DF_ABC._T_DELTA_COL
+    _T_REL_AUX_COLS = _DFABC._T_ORD_COL, _T_CHUNK_COL, _T_ORD_IN_CHUNK_COL, _DFABC._T_DELTA_COL
 
     # default ordered chunk size for time-series ADFs
     _DEFAULT_T_CHUNK_LEN = 1000
@@ -142,13 +142,13 @@ class ADF(_DF_ABC):
         dict(
             alias=None,
             detPrePartitioned=False, nDetPrePartitions=None,
-            iCol=_DF_ABC._DEFAULT_I_COL, tCol=None,
+            iCol=_DFABC._DEFAULT_I_COL, tCol=None,
             tChunkLen=_DEFAULT_T_CHUNK_LEN,
-            reprSampleSize=_DF_ABC._DEFAULT_REPR_SAMPLE_SIZE,
-            minNonNullProportion=DefaultDict(_DF_ABC._DEFAULT_MIN_NON_NULL_PROPORTION),
-            outlierTailProportion=DefaultDict(_DF_ABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
-            maxNCats=DefaultDict(_DF_ABC._DEFAULT_MAX_N_CATS),
-            minProportionByMaxNCats=DefaultDict(_DF_ABC._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
+            reprSampleSize=_DFABC._DEFAULT_REPR_SAMPLE_SIZE,
+            minNonNullProportion=DefaultDict(_DFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
+            outlierTailProportion=DefaultDict(_DFABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
+            maxNCats=DefaultDict(_DFABC._DEFAULT_MAX_N_CATS),
+            minProportionByMaxNCats=DefaultDict(_DFABC._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
 
     # repr sample
     _REPR_SAMPLE_ALIAS_SUFFIX = '__ReprSample'

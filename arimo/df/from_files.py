@@ -35,7 +35,7 @@ from pyarrow.hdfs import HadoopFileSystem
 from pyarrow.parquet import ParquetDataset, read_metadata, read_schema, read_table
 from s3fs import S3FileSystem
 
-from arimo.df import _DF_ABC
+from arimo.df import _DFABC
 from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
@@ -44,7 +44,7 @@ from arimo.util.types.arrow import is_boolean, is_complex, is_num, is_possible_c
 import arimo.debug
 
 
-class _FileDFABC(_DF_ABC):
+class _ArrowDFABC(_DFABC):
     __metaclass__ = abc.ABCMeta
 
     _DEFAULT_REPR_SAMPLE_N_PIECES = 100
@@ -89,7 +89,7 @@ class _FileDFABC(_DF_ABC):
 
 
 @enable_inplace
-class FileDF(_FileDFABC):
+class ArrowDF(_ArrowDFABC):
     # "inplace-able" methods
     _INPLACE_ABLE = \
         'rename', \
@@ -114,13 +114,13 @@ class FileDF(_FileDFABC):
 
             iCol=None, tCol=None,
 
-            reprSampleNPieces=_FileDFABC._DEFAULT_REPR_SAMPLE_N_PIECES,
-            reprSampleSize=_FileDFABC._DEFAULT_REPR_SAMPLE_SIZE,
+            reprSampleNPieces=_ArrowDFABC._DEFAULT_REPR_SAMPLE_N_PIECES,
+            reprSampleSize=_ArrowDFABC._DEFAULT_REPR_SAMPLE_SIZE,
 
-            minNonNullProportion=DefaultDict(_FileDFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
-            outlierTailProportion=DefaultDict(_FileDFABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
-            maxNCats=DefaultDict(_FileDFABC._DEFAULT_MAX_N_CATS),
-            minProportionByMaxNCats=DefaultDict(_FileDFABC._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS),
+            minNonNullProportion=DefaultDict(_ArrowDFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
+            outlierTailProportion=DefaultDict(_ArrowDFABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
+            maxNCats=DefaultDict(_ArrowDFABC._DEFAULT_MAX_N_CATS),
+            minProportionByMaxNCats=DefaultDict(_ArrowDFABC._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS),
 
             verbose=True):
         if verbose or arimo.debug.ON:
@@ -177,7 +177,7 @@ class FileDF(_FileDFABC):
                 if i and (piecePath in self._PIECE_CACHES):
                     pieceCache = self._PIECE_CACHES[piecePath]
 
-                    pieceCache.fileDFs.add(self)
+                    pieceCache.arrowDFs.add(self)
 
                     _cache.columns.update(pieceCache.columns)
 
@@ -193,7 +193,7 @@ class FileDF(_FileDFABC):
                 elif i:
                     self._PIECE_CACHES[piecePath] = \
                         Namespace(
-                            fileDFs={self},
+                            arrowDFs={self},
                             localOrHDFSPath=None
                                 if path.startswith('s3')
                                 else piecePath,
@@ -215,7 +215,7 @@ class FileDF(_FileDFABC):
 
                     self._PIECE_CACHES[piecePath] = \
                         Namespace(
-                            fileDFs={self},
+                            arrowDFs={self},
                             localOrHDFSPath=pieceLocalOrHDFSPath,
                             columns=schema.names,
                             types=_cache.types,
@@ -356,22 +356,22 @@ class FileDF(_FileDFABC):
 
                 colWidth={})
 
-    def _inheritCache(self, fileDF, *sameCols, **newColToOldColMappings):
-        if fileDF._cache.nRows:
+    def _inheritCache(self, arrowDF, *sameCols, **newColToOldColMappings):
+        if arrowDF._cache.nRows:
             if self._cache.nRows is None:
-                self._cache.nRows = fileDF._cache.nRows
+                self._cache.nRows = arrowDF._cache.nRows
             else:
-                assert self._cache.nRows == fileDF._cache.nRows
+                assert self._cache.nRows == arrowDF._cache.nRows
 
-        if fileDF._cache.approxNRows and (self._cache.approxNRows is None):
-            self._cache.approxNRows = fileDF._cache.approxNRows
+        if arrowDF._cache.approxNRows and (self._cache.approxNRows is None):
+            self._cache.approxNRows = arrowDF._cache.approxNRows
 
-        commonCols = set(self.columns).intersection(fileDF.columns)
+        commonCols = set(self.columns).intersection(ArrowDF.columns)
 
         if sameCols or newColToOldColMappings:
             for newCol, oldCol in newColToOldColMappings.items():
                 assert newCol in self.columns
-                assert oldCol in fileDF.columns
+                assert oldCol in ArrowDF.columns
 
             for sameCol in commonCols.difference(newColToOldColMappings).intersection(sameCols):
                 newColToOldColMappings[sameCol] = sameCol
@@ -388,9 +388,9 @@ class FileDF(_FileDFABC):
                  'outlierRstMin', 'outlierRstMax', 'outlierRstMean', 'outlierRstMedian',
                  'colWidth'):
             for newCol, oldCol in newColToOldColMappings.items():
-                if oldCol in fileDF._cache.__dict__[cacheCategory]:
+                if oldCol in arrowDF._cache.__dict__[cacheCategory]:
                     self._cache.__dict__[cacheCategory][newCol] = \
-                        fileDF._cache.__dict__[cacheCategory][oldCol]
+                        arrowDF._cache.__dict__[cacheCategory][oldCol]
 
     def pieceLocalOrHDFSPath(self, piecePath):
         if (piecePath in self._PIECE_CACHES) and self._PIECE_CACHES[piecePath].localOrHDFSPath:

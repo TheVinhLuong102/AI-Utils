@@ -27,8 +27,8 @@ from pyspark.ml.feature import SQLTransformer
 from pyspark.sql import DataFrame
 
 import arimo.backend
-from arimo.df import _DF_ABC
-from arimo.df.from_files import _FileDFABC
+from arimo.df import _DFABC
+from arimo.df.from_files import _ArrowDFABC
 from arimo.df.spark import ADF
 from arimo.util import fs, Namespace
 from arimo.util.aws import s3
@@ -40,7 +40,7 @@ import arimo.debug
 
 
 # https://stackoverflow.com/questions/12019961/python-pickling-nested-functions
-class _FileADF__getitem__pandasDFTransform:
+class _ArrowADF__getitem__pandasDFTransform:
     def __init__(self, item):
         self.item = item
 
@@ -48,7 +48,7 @@ class _FileADF__getitem__pandasDFTransform:
         return pandasDF[to_iterable(self.item, iterable_type=list)]
 
 
-class _FileADF__fillna__pandasDFTransform:
+class _ArrowADF__fillna__pandasDFTransform:
     def __init__(self, nullFillDetails):
         self.nullFillDetails = nullFillDetails
 
@@ -70,7 +70,7 @@ class _FileADF__fillna__pandasDFTransform:
                 if upperNull is not None:
                     chks &= (series < upperNull)
 
-                pandasDF[_DF_ABC._NULL_FILL_PREFIX + col + _DF_ABC._PREP_SUFFIX] = \
+                pandasDF[_DFABC._NULL_FILL_PREFIX + col + _DFABC._PREP_SUFFIX] = \
                     pandasDF[col].where(
                         cond=chks,
                         other=nullFill['NullFillValue'],
@@ -83,7 +83,7 @@ class _FileADF__fillna__pandasDFTransform:
         return pandasDF
 
 
-class _FileADF__prep__pandasDFTransform:
+class _ArrowADF__prep__pandasDFTransform:
     def __init__(self, sparkTypes, catOrigToPrepColMap, numOrigToPrepColMap):
         self.sparkTypes = sparkTypes
 
@@ -127,7 +127,7 @@ class _FileADF__prep__pandasDFTransform:
                     assert minMaxScaledIdxSeries.between(left=-1, right=1, inclusive=True).all(), \
                         '*** "{}" CERTAIN MIN-MAX SCALED INT INDICES NOT BETWEEN -1 AND 1 ***'
 
-        pandasDF = _FileADF__fillna__pandasDFTransform(nullFillDetails=self.numOrigToPrepColMap)(pandasDF=pandasDF)
+        pandasDF = _ArrowADF__fillna__pandasDFTransform(nullFillDetails=self.numOrigToPrepColMap)(pandasDF=pandasDF)
 
         for numCol, prepNumColNameNDetails in self.numOrigToPrepColMap.items():
             if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and \
@@ -135,7 +135,7 @@ class _FileADF__prep__pandasDFTransform:
                 prepNumCol, numColDetails = prepNumColNameNDetails
 
                 nullFillColSeries = \
-                    pandasDF[_DF_ABC._NULL_FILL_PREFIX + numCol + _DF_ABC._PREP_SUFFIX]
+                    pandasDF[_DFABC._NULL_FILL_PREFIX + numCol + _DFABC._PREP_SUFFIX]
 
                 if self.numScaler == 'standard':
                     pandasDF[prepNumCol] = \
@@ -160,7 +160,7 @@ class _FileADF__prep__pandasDFTransform:
         return pandasDF
 
 
-class _FileADF__drop__pandasDFTransform:
+class _ArrowADF__drop__pandasDFTransform:
     def __init__(self, cols):
         self.cols = list(cols)
 
@@ -175,7 +175,7 @@ class _FileADF__drop__pandasDFTransform:
 _PIECE_LOCAL_CACHE_PATHS = {}
 
 
-class _FileADF__pieceArrowTableFunc:
+class _ArrowADF__pieceArrowTableFunc:
     def __init__(self, path, aws_access_key_id=None, aws_secret_access_key=None, n_threads=1):
         self.path = path
 
@@ -202,7 +202,7 @@ class _FileADF__pieceArrowTableFunc:
 
                 _PIECE_LOCAL_CACHE_PATHS[path] = path = \
                     os.path.join(
-                        _DF_ABC._TMP_DIR_PATH,
+                        _DFABC._TMP_DIR_PATH,
                         parsedURL.netloc,
                         parsedURL.path[1:])
 
@@ -226,7 +226,7 @@ class _FileADF__pieceArrowTableFunc:
                 use_pandas_metadata=False)
 
 
-class _FileADF__gen:
+class _ArrowADF__gen:
     def __init__(
             self, args,
             path,
@@ -259,7 +259,7 @@ class _FileADF__gen:
         self.n_threads = n_threads
 
         self.pieceArrowTableFunc = \
-            _FileADF__pieceArrowTableFunc(
+            _ArrowADF__pieceArrowTableFunc(
                 path=path,
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
@@ -324,7 +324,7 @@ class _FileADF__gen:
             self.rowFrom_n_rowTo_tups = [None]
 
         if _hasTS:
-            self.filterConditions[_DF_ABC._T_ORD_COL] = minTOrd, numpy.inf
+            self.filterConditions[_DFABC._T_ORD_COL] = minTOrd, numpy.inf
 
         if (not self.anon) and (self.iCol or self.tCol):
             self.colsLists.insert(0, ([self.iCol] if self.iCol else []) + ([self.tCol] if self.tCol else []))
@@ -400,7 +400,7 @@ class _FileADF__gen:
 
 
 @enable_inplace
-class FileADF(_FileDFABC, ADF):
+class ArrowADF(_ArrowDFABC, ADF):
     # "inplace-able" methods
     _INPLACE_ABLE = \
         '__call__', \
@@ -427,7 +427,7 @@ class FileADF(_FileDFABC, ADF):
             self, path, aws_access_key_id=None, aws_secret_access_key=None, reCache=False,
             _srcSparkDFSchema=None, _initSparkDF=None, _sparkDFTransforms=[], _sparkDF=None,
             _pandasDFTransforms=[],
-            reprSampleNPieces=_FileDFABC._DEFAULT_REPR_SAMPLE_N_PIECES,
+            reprSampleNPieces=_ArrowDFABC._DEFAULT_REPR_SAMPLE_N_PIECES,
             verbose=True, **kwargs):
         if verbose or arimo.debug.ON:
             logger = self.class_stdout_logger()
@@ -595,12 +595,12 @@ class FileADF(_FileDFABC, ADF):
         alias = kwargs.pop('alias', None)
             
         if _initSparkDF:
-            super(FileADF, self).__init__(
+            super(ArrowADF, self).__init__(
                 sparkDF=_initSparkDF,
                 **kwargs)
 
         else:
-            super(FileADF, self).__init__(
+            super(ArrowADF, self).__init__(
                 sparkDF=self._srcSparkDF,
                 nRows=self._srcNRows,
                 **kwargs)
@@ -665,7 +665,7 @@ class FileADF(_FileDFABC, ADF):
         if isinstance(fadf, (tuple, list)):   # just in case we're taking in multiple inputs
             fadf = fadf[0]
 
-        assert isinstance(fadf, FileADF)
+        assert isinstance(fadf, ArrowADF)
 
         self.path = fadf.path
 
@@ -704,11 +704,11 @@ class FileADF(_FileDFABC, ADF):
                 sparkDFTransform=
                     lambda sparkDF:
                         sparkDF[item],
-                pandasDFTransform=_FileADF__getitem__pandasDFTransform(item=item),
+                pandasDFTransform=_ArrowADF__getitem__pandasDFTransform(item=item),
                 inheritCache=True,
                 inheritNRows=True) \
             if isinstance(item, (list, tuple)) \
-          else super(FileADF, self).__getitem__(item)
+          else super(ArrowADF, self).__getitem__(item)
 
     def __repr__(self):
         cols = self.columns
@@ -829,7 +829,7 @@ class FileADF(_FileDFABC, ADF):
                             .format(self.path, i, additionalSparkDFTransform))
                     raise err
 
-        fadf = FileADF(
+        fadf = ArrowADF(
             path=self.path,
             _initSparkDF=self._initSparkDF,
             _sparkDFTransforms=self._sparkDFTransforms + additionalSparkDFTransforms,
@@ -937,11 +937,11 @@ class FileADF(_FileDFABC, ADF):
             kwargs['returnSQLTransformer'] = True
 
         adf, nullFillDetails, sqlTransformer = \
-            super(FileADF, self).fillna(*cols, **kwargs)
+            super(ArrowADF, self).fillna(*cols, **kwargs)
 
         fadf = self.transform(
             sparkDFTransform=sqlTransformer,
-            pandasDFTransform=_FileADF__fillna__pandasDFTransform(nullFillDetails=nullFillDetails),
+            pandasDFTransform=_ArrowADF__fillna__pandasDFTransform(nullFillDetails=nullFillDetails),
             _sparkDF=adf._sparkDF,
             inheritCache=True,
             inheritNRows=True,
@@ -967,7 +967,7 @@ class FileADF(_FileDFABC, ADF):
             kwargs['returnPipeline'] = True
 
         adf, catOrigToPrepColMap, numOrigToPrepColMap, pipelineModel = \
-            super(FileADF, self).prep(*cols, **kwargs)
+            super(ArrowADF, self).prep(*cols, **kwargs)
 
         if arimo.debug.ON:
             self.stdout_logger.debug(
@@ -977,7 +977,7 @@ class FileADF(_FileDFABC, ADF):
         fadf = self.transform(
             sparkDFTransform=pipelineModel,
             pandasDFTransform=
-                _FileADF__prep__pandasDFTransform(
+                _ArrowADF__prep__pandasDFTransform(
                     sparkTypes={catCol: self._initSparkDF._schema[str(catCol)].dataType.simpleString()
                                 for catCol in set(catOrigToPrepColMap).difference(('__OHE__', '__SCALE__'))},
                     catOrigToPrepColMap=catOrigToPrepColMap,
@@ -999,7 +999,7 @@ class FileADF(_FileDFABC, ADF):
                 sparkDFTransform=
                     lambda sparkDF:
                         sparkDF.drop(*cols),
-                pandasDFTransform=_FileADF__drop__pandasDFTransform(cols=cols),
+                pandasDFTransform=_ArrowADF__drop__pandasDFTransform(cols=cols),
                 inheritCache=True,
                 inheritNRows=True,
                 **kwargs)
@@ -1092,7 +1092,7 @@ class FileADF(_FileDFABC, ADF):
                 if stdKwArgs.detPrePartitioned:
                     stdKwArgs.nDetPrePartitions = nPieceSubPaths
 
-                fadf = FileADF(
+                fadf = ArrowADF(
                     path=subsetDirPath,
                     aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
                     _srcSparkDFSchema=self._srcSparkDFSchema,
@@ -1132,7 +1132,7 @@ class FileADF(_FileDFABC, ADF):
                 piecePath = os.path.join(self.path, pieceSubPath)
 
                 pieceADF = \
-                    FileADF(
+                    ArrowADF(
                         path=piecePath,
                         aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
                         _srcSparkDFSchema=self._srcSparkDFSchema,
@@ -1170,7 +1170,7 @@ class FileADF(_FileDFABC, ADF):
         return pieceADF
 
     def _pieceArrowTable(self, pieceSubPath):
-        return _FileADF__pieceArrowTableFunc(
+        return _ArrowADF__pieceArrowTableFunc(
                 path=self.path,
                 aws_access_key_id=self._srcArrowDS.fs.fs.key,
                 aws_secret_access_key=self._srcArrowDS.fs.fs.secret)(pieceSubPath)
@@ -1296,7 +1296,7 @@ class FileADF(_FileDFABC, ADF):
             if sampleNPieces < self.nPieces \
             else self.pieceSubPaths
 
-        adfs = [super(FileADF, self._pieceADF(samplePieceSubPath))
+        adfs = [super(ArrowADF, self._pieceADF(samplePieceSubPath))
                     .sample(n=max(n / sampleNPieces, 1), *args, **kwargs)
                 for samplePieceSubPath in
                     (tqdm.tqdm(samplePieceSubPaths)
@@ -1310,7 +1310,7 @@ class FileADF(_FileDFABC, ADF):
         return adf
 
     def gen(self, *args, **kwargs):
-        return _FileADF__gen(
+        return _ArrowADF__gen(
                 args=args,
                 path=self.path,
                 pieceSubPaths=kwargs.get('pieceSubPaths', self.pieceSubPaths),
