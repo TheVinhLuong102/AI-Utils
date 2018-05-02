@@ -31,7 +31,7 @@ from arimo.df import _DF_ABC
 from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
-from arimo.util.decor import enable_inplace
+from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
 import arimo.debug
 
 
@@ -1015,7 +1015,6 @@ class FileDF(_FileDFABC):
     # **********
     # copy
 
-    @_docstr_adf_kwargs
     def copy(self, **kwargs):
         """
         Return:
@@ -1070,7 +1069,6 @@ class FileDF(_FileDFABC):
     # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
     # profile
 
-    @lru_cache()
     def _nonNullCol(self, col, lower=None, upper=None, strict=False):
         colType = self.type(col)
 
