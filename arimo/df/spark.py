@@ -137,12 +137,6 @@ class ADF(_DF_ABC):
     # default ordered chunk size for time-series ADFs
     _DEFAULT_T_CHUNK_LEN = 1000
 
-    # default profiling settings
-    _DEFAULT_MIN_NON_NULL_PROPORTION = .32
-    _DEFAULT_OUTLIER_TAIL_PROPORTION = 5e-3
-    _DEFAULT_MAX_N_CATS = 12   # Month of Year is probably most numerous-category cat var
-    _DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS = .9
-
     # default arguments dict
     _DEFAULT_KWARGS = \
         dict(
@@ -151,10 +145,10 @@ class ADF(_DF_ABC):
             iCol=_DF_ABC._DEFAULT_I_COL, tCol=None,
             tChunkLen=_DEFAULT_T_CHUNK_LEN,
             reprSampleSize=_DF_ABC._DEFAULT_REPR_SAMPLE_SIZE,
-            minNonNullProportion=DefaultDict(_DEFAULT_MIN_NON_NULL_PROPORTION),
-            outlierTailProportion=DefaultDict(_DEFAULT_OUTLIER_TAIL_PROPORTION),
-            maxNCats=DefaultDict(_DEFAULT_MAX_N_CATS),
-            minProportionByMaxNCats=DefaultDict(_DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
+            minNonNullProportion=DefaultDict(_DF_ABC._DEFAULT_MIN_NON_NULL_PROPORTION),
+            outlierTailProportion=DefaultDict(_DF_ABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
+            maxNCats=DefaultDict(_DF_ABC._DEFAULT_MAX_N_CATS),
+            minProportionByMaxNCats=DefaultDict(_DF_ABC._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
 
     # repr sample
     _REPR_SAMPLE_ALIAS_SUFFIX = '__ReprSample'

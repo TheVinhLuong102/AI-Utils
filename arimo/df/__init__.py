@@ -71,6 +71,12 @@ class _DF_ABC(object):
     # repr sample size
     _DEFAULT_REPR_SAMPLE_SIZE = 10 ** 6
 
+    # default profiling settings
+    _DEFAULT_MIN_NON_NULL_PROPORTION = .32
+    _DEFAULT_OUTLIER_TAIL_PROPORTION = 5e-3
+    _DEFAULT_MAX_N_CATS = 12   # Month of Year is probably most numerous-category cat var
+    _DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS = .9
+
     # prep col prefixes / suffix
     _NULL_FILL_PREFIX = '__NullFill__'
 

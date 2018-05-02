@@ -28,7 +28,7 @@ from pyarrow.parquet import ParquetDataset, read_metadata, read_schema, read_tab
 from s3fs import S3FileSystem
 
 from arimo.df import _DF_ABC
-from arimo.util import fs, Namespace
+from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
 from arimo.util.decor import enable_inplace
@@ -79,6 +79,10 @@ class FileDF(_FileDFABC):
             iCol=None, tCol=None, defaultMapper=None,
             reprSampleNPieces=_FileDFABC._DEFAULT_REPR_SAMPLE_N_PIECES,
             reprSampleSize=_FileDFABC._DEFAULT_REPR_SAMPLE_SIZE,
+            minNonNullProportion=DefaultDict(_FileDFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
+            outlierTailProportion=DefaultDict(_FileDFABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
+            maxNCats=DefaultDict(_FileDFABC._DEFAULT_MAX_N_CATS),
+            minProportionByMaxNCats=DefaultDict(_FileDFABC._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS),
             verbose=True):
         if verbose or arimo.debug.ON:
             logger = self.class_stdout_logger()
