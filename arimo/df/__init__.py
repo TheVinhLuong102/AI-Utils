@@ -297,3 +297,92 @@ class _DF_ABC(object):
     @minProportionByMaxNCats.setter
     def minProportionByMaxNCats(self, minProportionByMaxNCats):
         self._minProportionByMaxNCats.default = minProportionByMaxNCats
+
+    # *********************
+    # ROWS, COLUMNS & TYPES
+    # __len__ / nRows / nrow
+    # nCols / ncol
+    # shape / dim
+    # colNames / colnames / names
+    # types / type / typeIsNum
+    # metadata
+
+    def __len__(self):
+        """
+        Number of rows
+        """
+        return self.nRows
+
+    @abc.abstractproperty
+    def nRows(self):
+        raise NotImplementedError
+
+    @nRows.deleter
+    def nRows(self):
+        self._cache.nRows = None
+
+    @property
+    def nrow(self):   # R style
+        """
+        Alias for ``.__len__()``: number of rows
+        """
+        return self.nRows
+
+    @nrow.deleter
+    def nrow(self):
+        self._cache.nRows = None
+
+    @property
+    def nCols(self):
+        # Number of columns
+        return len(self.columns)
+
+    @property
+    def ncol(self):   # R style
+        """
+        Number of columns
+        """
+        return self.nCols
+
+    @property
+    def shape(self):
+        """
+        Tuple (number of rows, number of columns)
+        """
+        return self.nRows, self.nCols
+
+    @property
+    def dim(self):   # R style
+        """
+        Alias for ``.shape``: tuple (number of rows, number of columns)
+        """
+        return self.shape
+
+    @property
+    def colNames (self):   # R style
+        # Alias for ``.columns``: `list` of column names
+        return self.columns
+
+    @property
+    def colnames(self):   # R style
+        """
+        Alias for ``.columns``: `list` of column names
+        """
+        return self.columns
+
+    @property
+    def names(self):   # R style
+        # Alias for ``.columns``: `list` of column names
+        return self.columns
+
+    @abc.abstractmethod
+    def type(self, col):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def typeIsNum(self, col):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def metadata(self, *cols):
+        raise NotImplementedError

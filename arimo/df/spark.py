@@ -2226,76 +2226,12 @@ class ADF(_DF_ABC):
     # types / type / typeIsNum / typeIsComplex
     # metadata
 
-    def __len__(self):
-        """
-        Number of rows
-        """
-        return self.nRows
-
     @property
     def nRows(self):
         # Number of rows
         if self._cache.nRows is None:
             self._cache.nRows = self._sparkDF.count()
         return self._cache.nRows
-
-    @nRows.deleter
-    def nRows(self):
-        self._cache.nRows = None
-
-    @property
-    def nrow(self):   # R style
-        """
-        Alias for ``.__len__()``: number of rows
-        """
-        return self.nRows
-
-    @nrow.deleter
-    def nrow(self):
-        self._cache.nRows = None
-
-    @property
-    def nCols(self):
-        # Number of columns
-        return len(self.columns)
-
-    @property
-    def ncol(self):   # R style
-        """
-        Number of columns
-        """
-        return self.nCols
-
-    @property
-    def shape(self):
-        """
-        Tuple (number of rows, number of columns)
-        """
-        return self.nRows, self.nCols
-
-    @property
-    def dim(self):   # R style
-        """
-        Alias for ``.shape``: tuple (number of rows, number of columns)
-        """
-        return self.shape
-
-    @property
-    def colNames (self):   # R style
-        # Alias for ``.columns``: `list` of column names
-        return self.columns
-
-    @property
-    def colnames(self):   # R style
-        """
-        Alias for ``.columns``: `list` of column names
-        """
-        return self.columns
-
-    @property
-    def names(self):   # R style
-        # Alias for ``.columns``: `list` of column names
-        return self.columns
 
     @property
     def types(self):
