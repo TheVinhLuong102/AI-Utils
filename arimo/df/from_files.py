@@ -231,7 +231,7 @@ class ArrowDF(_ArrowDFABC):
             _cache.srcTypes = Namespace()
 
             for i, piecePath in enumerate(_cache.piecePaths):
-                if i and (piecePath in self._PIECE_CACHES):
+                if piecePath in self._PIECE_CACHES:
                     pieceCache = self._PIECE_CACHES[piecePath]
 
                     pieceCache.arrowDFs.add(self)
@@ -247,43 +247,49 @@ class ArrowDF(_ArrowDFABC):
                         else:
                             _cache.srcTypes[col] = arrowType
 
-                elif i:
-                    self._PIECE_CACHES[piecePath] = \
-                        Namespace(
-                            arrowDFs={self},
-                            localOrHDFSPath=None
-                                if path.startswith('s3')
-                                else piecePath,
-                            srcCols=(),
-                            srcTypes=Namespace(),
-                            nRows=None)
-
                 else:
-                    pieceLocalOrHDFSPath = self.pieceLocalOrHDFSPath(piecePath=piecePath)
+                    srcCols = []
+                    srcTypes = Namespace()
 
-                    schema = read_schema(where=pieceLocalOrHDFSPath)
+                    partitionKVs = {}
 
-                    srcCols = schema.names
-
-                    srcTypes = Namespace(
-                        **{col: schema.field_by_name(col).type
-                           for col in schema.names})
-
-                    for partitionKV in reversed(re.findall('[^/]+=[^/]+/', piecePath)):
+                    for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
                         k, v = partitionKV.split('=')
+                        k = str(k)   # ensure not Unicode
 
-                        srcCols.insert(0, k)
+                        srcCols.append(k)
 
-                        srcTypes[k] = \
-                            _ARROW_DATE_TYPE \
-                            if k == DATE_COL \
-                            else _ARROW_STR_TYPE
+                        if k == DATE_COL:
+                            srcTypes[k] = _ARROW_DATE_TYPE
+                            partitionKVs[k] = datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date()
+
+                        else:
+                            srcTypes[k] = _ARROW_STR_TYPE
+                            partitionKVs[k] = v[:-1]
+
+                    if i:
+                        localOrHDFSPath = \
+                            None \
+                            if path.startswith('s3') \
+                            else piecePath
+
+                    else:
+                        localOrHDFSPath = self.pieceLocalOrHDFSPath(piecePath=piecePath)
+
+                        schema = read_schema(where=localOrHDFSPath)
+
+                        srcCols += schema.names
+
+                        srcTypes.update(
+                            {col: schema.field_by_name(col).type
+                             for col in schema.names})
 
                     self._PIECE_CACHES[piecePath] = \
                         Namespace(
                             arrowDFs={self},
-                            localOrHDFSPath=pieceLocalOrHDFSPath,
-                            srcCols=tuple(srcCols),
+                            localOrHDFSPath=localOrHDFSPath,
+                            partitionKVs=partitionKVs,
+                            srcCols=srcCols,
                             srcTypes=srcTypes,
                             nRows=None)
 
@@ -534,33 +540,24 @@ class ArrowDF(_ArrowDFABC):
                     metadata=None,
                     use_pandas_metadata=False)
 
-            partitionKVs = {}
-            for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
-                k, v = partitionKV.split('=')
-                partitionKVs[str(k)] = \
-                    datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
-                    if k == DATE_COL \
-                    else v[:-1]
-
             pieceCache = self._PIECE_CACHES[piecePath]
 
-            if not pieceCache.columns:
-                pieceCache.columns = pieceArrowTable.schema.names
-                self.columns.update(pieceCache.columns)
+            if pieceCache.nRows is None:
+                pieceCache.srcCols += pieceArrowTable.schema.names
+                self.srcCols.update(pieceCache.srcCols)
 
-                for col in pieceCache.columns:
-                    pieceCache.types[col] = _arrowType = \
+                for col in pieceCache.srcCols:
+                    pieceCache.srcTypes[col] = _arrowType = \
                         pieceArrowTable.schema.field_by_name(col).type
 
-                    if col in self.types:
-                        assert _arrowType == self.types[col], \
+                    if col in self.srcTypes:
+                        assert _arrowType == self.srcTypes[col], \
                             '*** {} COLUMN {}: DETECTED TYPE {} != {} ***'.format(
-                                piecePath, col, _arrowType, self.types[col])
+                                piecePath, col, _arrowType, self.srcTypes[col])
 
                     else:
-                        self.types[col] = _arrowType
+                        self.srcTypes[col] = _arrowType
 
-            if pieceCache.nRows is None:
                 pieceCache.nRows = pieceArrowTable.num_rows
 
             if nSamplesPerPiece and (nSamplesPerPiece < pieceCache.nRows):
