@@ -223,6 +223,10 @@ class FileDF(_FileDFABC):
                 reprSamplePiecePaths=None,
                 reprSample=None)
 
+    # **********
+    # IO METHODS
+    # load / read
+
     @classmethod
     def load(cls, path, **kwargs):
         return cls(path=path, **kwargs)
@@ -230,6 +234,11 @@ class FileDF(_FileDFABC):
     @classmethod
     def read(cls, path, **kwargs):
         return cls(path=path, **kwargs)
+
+    # ***************
+    # PYTHON STR/REPR
+    # __repr__
+    # __short_repr__
 
     @property
     def _pathsRepr(self):
@@ -243,15 +252,18 @@ class FileDF(_FileDFABC):
             type(self).__name__,
             self._pathsRepr)
 
-    def __str__(self):
-        return repr(self)
-
     @property
     def __short_repr__(self):
         return '{:,}-piece {} [{}]'.format(
             self.nPieces,
             type(self).__name__,
             self._pathsRepr)
+
+    # ***************
+    # CACHING METHODS
+    # _emptyCache
+    # _inheritCache
+    # pieceLocalOrHDFSPath
 
     def pieceLocalOrHDFSPath(self, piecePath):
         if self._PIECE_CACHES[piecePath].localOrHDFSPath is None:
@@ -280,57 +292,8 @@ class FileDF(_FileDFABC):
 
         return self._PIECE_CACHES[piecePath].localOrHDFSPath
 
-    @property
-    def iCol(self):
-        return self._iCol
-
-    @iCol.setter
-    def iCol(self, iCol):
-        if iCol != self._iCol:
-            self._iCol = iCol
-
-            if iCol is None:
-                self.hasTS = False
-            else:
-                assert iCol
-                self.hasTS = bool(self._tCol)
-
-    @iCol.deleter
-    def iCol(self):
-        self._iCol = None
-        self.hasTS = False
-
-    @property
-    def tCol(self):
-        return self._tCol
-
-    @tCol.setter
-    def tCol(self, tCol):
-        if tCol != self._tCol:
-            self._tCol = tCol
-
-            if tCol is None:
-                self.hasTS = False
-            else:
-                assert tCol
-                self.hasTS = bool(self._iCol)
-
-    @tCol.deleter
-    def tCol(self):
-        self._tCol = None
-        self.hasTS = False
-
-    @property
-    def defaultMapper(self):
-        return self._defaultMapper
-
-    @defaultMapper.setter
-    def defaultMapper(self, defaultMapper):
-        self._defaultMapper = defaultMapper
-
-    @defaultMapper.deleter
-    def defaultMapper(self):
-        self._defaultMapper = None
+    # ***********************
+    # MAP-REDUCE (PARTITIONS)
 
     def _mr(self, *piecePaths, **kwargs):
         _CHUNK_SIZE = 10 ** 5
@@ -656,6 +619,77 @@ class FileDF(_FileDFABC):
 
         return reducer(results)
 
+    # *************************
+    # KEY (SETTABLE) PROPERTIES
+    # iCol
+    # tCol
+    # defaultMapper
+    # _assignReprSample
+
+    @property
+    def iCol(self):
+        return self._iCol
+
+    @iCol.setter
+    def iCol(self, iCol):
+        if iCol != self._iCol:
+            self._iCol = iCol
+
+            if iCol is None:
+                self.hasTS = False
+            else:
+                assert iCol
+                self.hasTS = bool(self._tCol)
+
+    @iCol.deleter
+    def iCol(self):
+        self._iCol = None
+        self.hasTS = False
+
+    @property
+    def tCol(self):
+        return self._tCol
+
+    @tCol.setter
+    def tCol(self, tCol):
+        if tCol != self._tCol:
+            self._tCol = tCol
+
+            if tCol is None:
+                self.hasTS = False
+            else:
+                assert tCol
+                self.hasTS = bool(self._iCol)
+
+    @tCol.deleter
+    def tCol(self):
+        self._tCol = None
+        self.hasTS = False
+
+    @property
+    def defaultMapper(self):
+        return self._defaultMapper
+
+    @defaultMapper.setter
+    def defaultMapper(self, defaultMapper):
+        self._defaultMapper = defaultMapper
+
+    @defaultMapper.deleter
+    def defaultMapper(self):
+        self._defaultMapper = None
+
+    def _assignReprSample(self):
+        self._cache.reprSample = \
+            self.sample(
+                n=self._reprSampleSize,
+                piecePaths=self.reprSamplePiecePaths,
+                verbose=True)
+
+        self._reprSampleSize = len(self._cache.reprSample)
+
+        self._cache.nonNullProportion = {}
+        self._cache.suffNonNull = {}
+
     @property
     def nRows(self):
         if self._nRows is None:
@@ -741,18 +775,6 @@ class FileDF(_FileDFABC):
             organizeTS=True,
             applyDefaultMapper=True,
             verbose=verbose)
-
-    def _assignReprSample(self):
-        self._cache.reprSample = \
-            self.sample(
-                n=self._reprSampleSize,
-                piecePaths=self.reprSamplePiecePaths,
-                verbose=True)
-
-        self._reprSampleSize = len(self._cache.reprSample)
-
-        self._cache.nonNullProportion = {}
-        self._cache.suffNonNull = {}
 
     # "inplace-able" methods
     _INPLACE_ABLE = \
@@ -920,16 +942,6 @@ class FileDF(_FileDFABC):
             type(self).__name__,
 
             ', '.join(cols_desc_str))
-
-    # *************************
-    # KEY (SETTABLE) PROPERTIES
-    # sparkDF
-    # alias
-    # nPartitions
-    # detPrePartitioned
-    # nDetPrePartitions
-    # _maxPartitionId
-
 
 
     # *********************
