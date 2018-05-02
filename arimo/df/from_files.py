@@ -236,17 +236,6 @@ class ArrowDF(_ArrowDFABC):
 
                     pieceCache.arrowDFs.add(self)
 
-                    _cache.srcCols.update(pieceCache.srcCols)
-
-                    for col, arrowType in pieceCache.srcTypes.items():
-                        if col in _cache.srcTypes:
-                            assert arrowType == _cache.srcTypes[col], \
-                                '*** {} COLUMN {}: DETECTED TYPE {} != {} ***'.format(
-                                    piecePath, col, arrowType, _cache.srcTypes[col])
-
-                        else:
-                            _cache.srcTypes[col] = arrowType
-
                 else:
                     srcCols = []
                     srcTypes = Namespace()
@@ -280,11 +269,11 @@ class ArrowDF(_ArrowDFABC):
 
                         srcCols += schema.names
 
-                        srcTypes.update(
-                            {col: schema.field_by_name(col).type
-                             for col in schema.names})
+                        for col in schema.names:
+                            srcTypes[col] = schema.field_by_name(col).type
 
                     self._PIECE_CACHES[piecePath] = \
+                        pieceCache = \
                         Namespace(
                             arrowDFs={self},
                             localOrHDFSPath=localOrHDFSPath,
@@ -293,8 +282,16 @@ class ArrowDF(_ArrowDFABC):
                             srcTypes=srcTypes,
                             nRows=None)
 
-                    _cache.srcCols.update(srcCols)
-                    _cache.srcTypes.update(srcTypes)
+                _cache.srcCols.update(pieceCache.srcCols)
+
+                for col, arrowType in pieceCache.srcTypes.items():
+                    if col in _cache.srcTypes:
+                        assert arrowType == _cache.srcTypes[col], \
+                            '*** {} COLUMN {}: DETECTED TYPE {} != {} ***'.format(
+                                piecePath, col, arrowType, _cache.srcTypes[col])
+
+                    else:
+                        _cache.srcTypes[col] = arrowType
 
         self.__dict__.update(_cache)
 
@@ -938,7 +935,8 @@ class ArrowDF(_ArrowDFABC):
                                if self._iCol
                                else self._T_COMPONENT_AUX_COLS)})
 
-            _types.update(self.srcTypes)
+            for col, arrowType in self.srcTypes.items()
+                _types[col] = arrowType
 
             return _types
 
