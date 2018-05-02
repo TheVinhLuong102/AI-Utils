@@ -94,7 +94,7 @@ def _docstr_adf_kwargs(method):
 
             tChunkLen (int, default = None): length of time-series chunks
 
-            reprSampleSize (int, default = 10,000): *approximate* number of rows to sample from the ``ADF``
+            reprSampleSize (int, default = 1,000,000): *approximate* number of rows to sample from the ``ADF``
                 for profiling purposes
 
             minNonNullProportion (float between 0 and 1, default = .32): minimum proportion of non-``NULL`` values
@@ -103,7 +103,7 @@ def _docstr_adf_kwargs(method):
             outlierTailProportion (float between 0 and .1, default = .005): proportion in each tail end
                 of each numerical column's distribution to exclude when computing outlier-resistant statistics
 
-            maxNCats (int, default = 30): maximum number of categorical levels to consider
+            maxNCats (int, default = 12): maximum number of categorical levels to consider
                 for each possible categorical column
 
             minProportionByMaxNCats (float between 0 and 1, default = .9): minimum total proportion accounted for by the
