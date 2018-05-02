@@ -731,45 +731,17 @@ class FileDF(_FileDFABC):
             applyDefaultMapper=True,
             verbose=verbose)
 
-    @property
-    def reprSample(self):
-        if self._cache.reprSample is None:
-            self._cache.reprSample = \
-                self.sample(
-                    n=self._reprSampleSize,
-                    piecePaths=self.reprSamplePiecePaths,
-                    verbose=True)
+    def _assignReprSample(self):
+        self._cache.reprSample = \
+            self.sample(
+                n=self._reprSampleSize,
+                piecePaths=self.reprSamplePiecePaths,
+                verbose=True)
 
-        return self._cache.reprSample
+        self._reprSampleSize = len(self._cache.reprSample)
 
-
-    # extra aux cols
-    _T_CHUNK_COL = '__tChunk__'
-    _T_ORD_IN_CHUNK_COL = '__tOrd_inChunk__'
-
-    _T_REL_AUX_COLS = _DF_ABC._T_ORD_COL, _T_CHUNK_COL, _T_ORD_IN_CHUNK_COL, _DF_ABC._T_DELTA_COL
-
-    # default ordered chunk size for time-series ADFs
-    _DEFAULT_T_CHUNK_LEN = 1000
-
-    # default profiling settings
-    _DEFAULT_MIN_NON_NULL_PROPORTION = .32
-    _DEFAULT_OUTLIER_TAIL_PROPORTION = 5e-3
-    _DEFAULT_MAX_N_CATS = 12   # Month of Year is probably most numerous-category cat var
-    _DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS = .9
-
-    # default arguments dict
-    _DEFAULT_KWARGS = \
-        dict(
-            alias=None,
-            detPrePartitioned=False, nDetPrePartitions=None,
-            iCol=_DF_ABC._DEFAULT_I_COL, tCol=None,
-            tChunkLen=_DEFAULT_T_CHUNK_LEN,
-            reprSampleSize=_DF_ABC._DEFAULT_REPR_SAMPLE_SIZE,
-            minNonNullProportion=DefaultDict(_DEFAULT_MIN_NON_NULL_PROPORTION),
-            outlierTailProportion=DefaultDict(_DEFAULT_OUTLIER_TAIL_PROPORTION),
-            maxNCats=DefaultDict(_DEFAULT_MAX_N_CATS),
-            minProportionByMaxNCats=DefaultDict(_DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
+        self._cache.nonNullProportion = {}
+        self._cache.suffNonNull = {}
 
     # "inplace-able" methods
     _INPLACE_ABLE = \
@@ -946,28 +918,8 @@ class FileDF(_FileDFABC):
     # detPrePartitioned
     # nDetPrePartitions
     # _maxPartitionId
-    # _assignReprSample
 
-    def _assignReprSample(self):
-        adf = self.sample(
-            n=self._reprSampleSize,
-            anon=True) \
-            .repartition(
-            1,
-            alias=(self.alias + self._REPR_SAMPLE_ALIAS_SUFFIX)
-            if self.alias
-            else None)
 
-        adf.cache(
-            eager=True,
-            verbose=True)
-
-        self._reprSampleSize = adf.nRows
-
-        self._cache.reprSample = adf
-
-        self._cache.nonNullProportion = {}
-        self._cache.suffNonNull = {}
 
     # *********************
     # ROWS, COLUMNS & TYPES
