@@ -3,6 +3,7 @@ from __future__ import division, print_function
 import abc
 from argparse import Namespace as _Namespace
 from collections import Counter
+import copy
 import datetime
 import json
 import math
@@ -40,7 +41,9 @@ from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
 from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
-from arimo.util.types.arrow import is_boolean, is_complex, is_num, is_possible_cat, is_string
+from arimo.util.srcTypes.arrow import \
+    _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE, \
+    is_boolean, is_complex, is_num, is_possible_cat, is_string
 import arimo.debug
 
 
@@ -105,6 +108,35 @@ class ArrowDF(_ArrowDFABC):
     _CACHE = {}
     
     _PIECE_CACHES = {}
+
+    _T_AUX_COL_ARROW_TYPES = {
+        _ArrowDFABC._T_ORD_COL: _ARROW_INT_TYPE,
+        _ArrowDFABC._T_DELTA_COL: _ARROW_DOUBLE_TYPE,
+
+        _ArrowDFABC._T_HoY_COL: _ARROW_INT_TYPE,   # Half of Year
+        _ArrowDFABC._T_QoY_COL: _ARROW_INT_TYPE,   # Quarter of Year
+        _ArrowDFABC._T_MoY_COL: _ARROW_INT_TYPE,   # Month of Year
+        # _ArrowDFABC._T_WoY_COL: _ARROW_INT_TYPE,   # Week of Year
+        # _ArrowDFABC._T_DoY_COL: _ARROW_INT_TYPE,   # Day of Year
+        _ArrowDFABC._T_PoY_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Year
+
+        _ArrowDFABC._T_QoH_COL: _ARROW_INT_TYPE,   # Quarter of Half-Year
+        _ArrowDFABC._T_MoH_COL: _ARROW_INT_TYPE,   # Month of Half-Year
+        _ArrowDFABC._T_PoH_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Half-Year
+
+        _ArrowDFABC._T_MoQ_COL: _ARROW_INT_TYPE,   # Month of Quarter
+        _ArrowDFABC._T_PoQ_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Quarter
+
+        _ArrowDFABC._T_WoM_COL: _ARROW_INT_TYPE,   # Week of Month
+        _ArrowDFABC._T_DoM_COL: _ARROW_INT_TYPE,   # Day of Month
+        _ArrowDFABC._T_PoM_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Month
+
+        _ArrowDFABC._T_DoW_COL: _ARROW_INT_TYPE,   # Day of Week
+        _ArrowDFABC._T_PoW_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Week
+
+        _ArrowDFABC._T_HoD_COL: _ARROW_INT_TYPE,   # Hour of Day
+        _ArrowDFABC._T_PoD_COL: _ARROW_DOUBLE_TYPE   # Part/Proportion/Fraction of Day
+    }
 
     def __init__(
             self, path=None, reCache=False,
@@ -195,22 +227,25 @@ class ArrowDF(_ArrowDFABC):
                 _cache.nPieces = 1
                 _cache.piecePaths = {path}
 
+            _cache.srcCols = set()
+            _cache.srcTypes = Namespace()
+
             for i, piecePath in enumerate(_cache.piecePaths):
                 if i and (piecePath in self._PIECE_CACHES):
                     pieceCache = self._PIECE_CACHES[piecePath]
 
                     pieceCache.arrowDFs.add(self)
 
-                    _cache.columns.update(pieceCache.columns)
+                    _cache.srcCols.update(pieceCache.srcCols)
 
-                    for col, arrowType in pieceCache.types.items():
-                        if col in _cache.types:
-                            assert arrowType == self.types[col], \
+                    for col, arrowType in pieceCache.srcTypes.items():
+                        if col in _cache.srcTypes:
+                            assert arrowType == _cache.srcTypes[col], \
                                 '*** {} COLUMN {}: DETECTED TYPE {} != {} ***'.format(
-                                    piecePath, col, arrowType, self.types[col])
+                                    piecePath, col, arrowType, _cache.srcTypes[col])
 
                         else:
-                            _cache.types[col] = arrowType
+                            _cache.srcTypes[col] = arrowType
 
                 elif i:
                     self._PIECE_CACHES[piecePath] = \
@@ -219,8 +254,8 @@ class ArrowDF(_ArrowDFABC):
                             localOrHDFSPath=None
                                 if path.startswith('s3')
                                 else piecePath,
-                            columns=(),
-                            types=Namespace(),
+                            srcCols=(),
+                            srcTypes=Namespace(),
                             nRows=None)
 
                 else:
@@ -228,20 +263,32 @@ class ArrowDF(_ArrowDFABC):
 
                     schema = read_schema(where=pieceLocalOrHDFSPath)
 
-                    _cache.columns = set(schema.names)
+                    srcCols = schema.names
 
-                    _cache.types = \
-                        Namespace(
-                            **{col: schema.field_by_name(col).type
-                               for col in schema.names})
+                    srcTypes = Namespace(
+                        **{col: schema.field_by_name(col).type
+                           for col in schema.names})
+
+                    for partitionKV in reversed(re.findall('[^/]+=[^/]+/', piecePath)):
+                        k, v = partitionKV.split('=')
+
+                        srcCols.insert(0, k)
+
+                        srcTypes[k] = \
+                            _ARROW_DATE_TYPE \
+                            if k == DATE_COL \
+                            else _ARROW_STR_TYPE
 
                     self._PIECE_CACHES[piecePath] = \
                         Namespace(
                             arrowDFs={self},
                             localOrHDFSPath=pieceLocalOrHDFSPath,
-                            columns=schema.names,
-                            types=_cache.types,
+                            srcCols=tuple(srcCols),
+                            srcTypes=srcTypes,
                             nRows=None)
+
+                    _cache.srcCols.update(srcCols)
+                    _cache.srcTypes.update(srcTypes)
 
         self.__dict__.update(_cache)
 
@@ -859,6 +906,8 @@ class ArrowDF(_ArrowDFABC):
     # ROWS, COLUMNS & TYPES
     # nRows
     # approxNRows
+    # columns
+    # types
     # type / typeIsNum / typeIsComplex
 
     @property
@@ -880,6 +929,31 @@ class ArrowDF(_ArrowDFABC):
                 / self._reprSampleNPieces
 
         return self._cache.approxNRows
+
+    @property
+    def columns(self):
+        return list(self.srcCols) + \
+            (list(self._T_AUX_COLS
+                  if self._iCol
+                  else self._T_COMPONENT_AUX_COLS)
+             if self._tCol
+             else [])
+
+    @property
+    def types(self):
+        if self._tCol:
+            _types = Namespace(
+                **{col: self._T_AUX_COL_ARROW_TYPES[col]
+                   for col in (self._T_AUX_COLS
+                               if self._iCol
+                               else self._T_COMPONENT_AUX_COLS)})
+
+            _types.update(self.srcTypes)
+
+            return _types
+
+        else:
+            return self.srcTypes
 
     def type(self, col):
         return self.types[col]
