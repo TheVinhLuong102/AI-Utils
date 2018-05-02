@@ -501,9 +501,8 @@ class ArrowDF(_ArrowDFABC):
                     else:
                         self.types[col] = _arrowType
 
+            if pieceCache.nRows is None:
                 pieceCache.nRows = pieceArrowTable.num_rows
-
-            assert pieceCache.nRows
 
             if nSamplesPerPiece and (nSamplesPerPiece < pieceCache.nRows):
                 intermediateN = (nSamplesPerPiece * pieceCache.nRows) ** .5
