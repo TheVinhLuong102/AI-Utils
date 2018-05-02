@@ -122,37 +122,13 @@ class FileDF(_FileDFABC):
             _cache.nPieces = len(_cache._arrowDS.pieces)
 
             if _cache.nPieces:
-                _cache.piecePaths = set()
-
-                for i, piece in enumerate(_cache._arrowDS.pieces):
-                    piecePath = piece.path
-                    _cache.piecePaths.add(piecePath)
-
-                    self._PIECE_CACHES[piecePath] = \
-                        Namespace(
-                            localOrHDFSPath=None
-                                if path.startswith('s3')
-                                else piecePath,
-                            columns=(),
-                            types=Namespace(
-                                arrow=Namespace(),
-                                pandas=Namespace()),
-                            nRows=None)
+                _cache.piecePaths = \
+                    {piece.path
+                     for piece in _cache._arrowDS.pieces}
 
             else:
                 _cache.nPieces = 1
                 _cache.piecePaths = {path}
-
-                self._PIECE_CACHES[path] = \
-                    Namespace(
-                        localOrHDFSPath=None
-                            if path.startswith('s3')
-                            else path,
-                        columns=(),
-                        types=Namespace(
-                            arrow=Namespace(),
-                            pandas=Namespace()),
-                        nRows=None)
 
             _cache.columns = set()
             
@@ -162,6 +138,38 @@ class FileDF(_FileDFABC):
                     pandas=Namespace())
 
             _cache._nRows = _cache._approxNRows = None
+
+            for piecePath in _cache.piecePaths:
+                if piecePath in self._PIECE_CACHES:
+                    pieceCache = self._PIECE_CACHES[piecePath]
+
+                    pieceCache.fileDFs.add(self)
+
+                    _cache.columns.update(pieceCache.columns)
+
+                    for col, arrowType in pieceCache.types.arrow.items():
+                        if col in _cache.types.arrow:
+                            assert arrowType == self.types.arrow[col], \
+                                '*** {} COLUMN {}: DETECTED TYPE {} != {} ***'.format(
+                                    piecePath, col, arrowType, self.types.arrow[col])
+
+                        else:
+                            _cache.types.arrow[col] = arrowType
+
+                    _cache.types.pandas.update(pieceCache.types.pandas)
+
+                else:
+                    self._PIECE_CACHES[piecePath] = \
+                        Namespace(
+                            fileDFs={self},
+                            localOrHDFSPath=None
+                                if path.startswith('s3')
+                                else piecePath,
+                            columns=(),
+                            types=Namespace(
+                                arrow=Namespace(),
+                                pandas=Namespace()),
+                            nRows=None)
 
             if path.startswith('s3'):
                 _cache.s3Client = \
