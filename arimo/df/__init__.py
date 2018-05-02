@@ -100,19 +100,6 @@ class _DF_ABC(object):
     # data prep cache
     _PREP_CACHE = {}
 
-    # **********
-    # IO METHODS
-    # load / read
-
-    @classmethod
-    @abc.abstractproperty
-    def load(cls, *args, **kwargs):
-        raise NotImplementedError
-
-    @classmethod
-    def read(cls, *args, **kwargs):
-        return cls.load(*args, **kwargs)
-
     # **********************
     # PYTHON DEFAULT METHODS
     # __repr__
@@ -193,6 +180,42 @@ class _DF_ABC(object):
         return self.logger(
             level=logging.DEBUG,
             verbose=True)
+
+    # **********
+    # IO METHODS
+    # load / read
+
+    @classmethod
+    @abc.abstractproperty
+    def load(cls, *args, **kwargs):
+        raise NotImplementedError
+
+    @classmethod
+    def read(cls, *args, **kwargs):
+        return cls.load(*args, **kwargs)
+
+    # ***************
+    # CACHING METHODS
+    # _emptyCache
+    # _inheritCache
+
+    @abc.abstractmethod
+    def _emptyCache(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _inheritCache(self):
+        raise NotImplementedError
+
+    # *************************
+    # KEY (SETTABLE) PROPERTIES
+    # _assignReprSample
+    # reprSampleSize
+    # reprSample
+    # minNonNullProportion
+    # outlierTailProportion
+    # maxNCats
+    # minProportionByMaxNCats
 
     @abc.abstractmethod
     def _assignReprSample(self):

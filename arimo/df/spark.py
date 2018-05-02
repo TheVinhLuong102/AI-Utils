@@ -1505,7 +1505,6 @@ class ADF(_DF_ABC):
         return ADF(sparkDF=sparkDF, nRows=nRows, **kwargs)
 
     @classmethod
-    @_docstr_experimental
     def unionAllCols(cls, *adfs_and_or_sparkDFs, **kwargs):
         _TMP_TABLE_PREFIX = '_tmp_tbl_'
 
