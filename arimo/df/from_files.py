@@ -173,10 +173,6 @@ class FileDF(_FileDFABC):
                 _cache.nPieces = 1
                 _cache.piecePaths = {path}
 
-            _cache.columns = set()
-            
-            _cache.types = Namespace()
-
             for i, piecePath in enumerate(_cache.piecePaths):
                 if i and (piecePath in self._PIECE_CACHES):
                     pieceCache = self._PIECE_CACHES[piecePath]
@@ -209,6 +205,8 @@ class FileDF(_FileDFABC):
                     pieceLocalOrHDFSPath = self.pieceLocalOrHDFSPath(piecePath=piecePath)
 
                     schema = read_schema(where=pieceLocalOrHDFSPath)
+
+                    _cache.columns = set(schema.names)
 
                     _cache.types = \
                         Namespace(
