@@ -382,6 +382,10 @@ class _DFABC(object):
         # Alias for ``.columns``: `list` of column names
         return self.columns
 
+    @abc.abstractproperty
+    def types(self):
+        raise NotImplementedError
+
     @abc.abstractmethod
     def type(self, col):
         raise NotImplementedError
