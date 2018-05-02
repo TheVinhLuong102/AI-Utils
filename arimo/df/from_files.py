@@ -3,6 +3,7 @@ from __future__ import division, print_function
 import abc
 from collections import Counter
 import datetime
+import json
 import math
 import multiprocessing
 import numpy
@@ -15,12 +16,16 @@ import time
 import tqdm
 
 import six
+
 if six.PY2:
     from functools32 import lru_cache
+    from urlparse import urlparse
     _NUM_CLASSES = int, long, float
     _STR_CLASSES = str, unicode
+
 else:
     from functools import lru_cache
+    from urllib.parse import urlparse
     _NUM_CLASSES = int, float
     _STR_CLASSES = str
 
@@ -3017,193 +3022,12 @@ class FileDF(_FileDFABC):
 
     # *******************************
     # ITERATIVE GENERATION / SAMPLING
-    # _collectCols
-    # collect
-    # _prepareArgsForSampleOrGenOrPred
     # sample
     # gen
-
-    def _collectCols(self, pandasDF_or_rddRows, cols, asPandas=True,
-                     overTime=False, padUpToNTimeSteps=0, padValue=numpy.nan, padBefore=True):
-        def pad(array, nRows, padValue=numpy.nan):
-            shape = array.shape
-            existingNRows = shape[0]
-
-            if (padValue is None) or (nRows <= existingNRows):
-                return array
-
-            else:
-                assert padBefore is not None, '*** "padBefore" argument must not be None ***'
-
-                padArray = numpy.full(
-                    shape=(nRows - existingNRows,) + shape[1:],
-                    fill_value=padValue)
-
-                return numpy.vstack(
-                    (padArray, array)
-                    if padBefore
-                    else (array, padArray))
-
-        nRows = len(pandasDF_or_rddRows)
-        cols = to_iterable(cols, iterable_type=list)
-
-        if asPandas:
-            return pandasDF_or_rddRows[cols] \
-                if isinstance(pandasDF_or_rddRows, pandas.DataFrame) \
-                else pandas.DataFrame.from_records(
-                data=pandasDF_or_rddRows,
-                index=None,
-                exclude=None,
-                columns=pandasDF_or_rddRows[0].__fields__,
-                coerce_float=False,
-                nrows=None)
-
-        elif overTime:
-            assert len(cols) == 1, '*** OVER-TIME COLS TO COLLECT: {} ***'.format(cols)
-            col = cols[0]
-
-            if padValue is None:
-                padValue = numpy.nan
-
-            lists = pandasDF_or_rddRows[col].tolist() \
-                if isinstance(pandasDF_or_rddRows, pandas.DataFrame) \
-                else [row[col]
-                      for row in pandasDF_or_rddRows]
-
-            colWidth = self._colWidth(col)
-
-            try:
-                firstNonEmptyRow = \
-                    next(lists[i]
-                         for i in range(nRows)
-                         if lists[i])
-
-                firstValue = firstNonEmptyRow[0]
-
-                arrayForEmptyRows = \
-                    numpy.full(
-                        shape=(1, padUpToNTimeSteps, colWidth),
-                        fill_value=padValue)
-
-                if isinstance(firstValue, Vector):
-                    return numpy.vstack(
-                        (numpy.expand_dims(
-                            pad(array=numpy.vstack(v.toArray() for v in ls),
-                                nRows=padUpToNTimeSteps,
-                                padValue=padValue),
-                            axis=0)
-                         if ls
-                         else arrayForEmptyRows)
-                        for ls in lists)
-
-                elif isinstance(firstValue, (list, tuple)):
-                    isVector = [isinstance(v, Vector) for v in firstValue]
-                    isIterable = [isinstance(v, (list, tuple)) for v in firstValue]
-
-                    return numpy.vstack(
-                        (numpy.expand_dims(
-                            pad(array=numpy.array([flatten(v) for v in ls]),
-                                nRows=padUpToNTimeSteps,
-                                padValue=padValue),
-                            axis=0)
-                         if ls
-                         else arrayForEmptyRows)
-                        for ls in lists) \
-                        if any(isVector) or any(isIterable) \
-                        else numpy.vstack(
-                        (numpy.expand_dims(
-                            pad(array=numpy.vstack(ls),
-                                nRows=padUpToNTimeSteps,
-                                padValue=padValue),
-                            axis=0)
-                         if ls
-                         else arrayForEmptyRows)
-                        for ls in lists)
-
-                else:
-                    return numpy.vstack(
-                        numpy.expand_dims(
-                            pad(array=numpy.expand_dims(ls, axis=1),
-                                nRows=padUpToNTimeSteps,
-                                padValue=padValue),
-                            axis=0)
-                        for ls in lists)
-
-            except StopIteration:
-                return numpy.full(
-                    shape=(nRows, padUpToNTimeSteps, colWidth),
-                    fill_value=padValue)
-
-        else:
-            isVector = []
-            isIterable = []
-
-            if isinstance(pandasDF_or_rddRows, pandas.DataFrame):
-                for col in cols:
-                    firstValue = pandasDF_or_rddRows[col].iat[0]
-                    isVector.append(isinstance(firstValue, Vector))
-                    isIterable.append(isinstance(firstValue, (list, tuple)))
-
-                return numpy.hstack(
-                    (numpy.vstack(v.toArray()
-                                  for v in pandasDF_or_rddRows[col])
-                     if isVector[i]
-                     else (numpy.vstack(flatten(v)
-                                        for v in pandasDF_or_rddRows[col])
-                           if isIterable[i]
-                           else pandasDF_or_rddRows[[col]].values))
-                    for i, col in enumerate(cols)) \
-                    if any(isVector) or any(isIterable) \
-                    else pandasDF_or_rddRows[cols].values
-
-            else:
-                for col in cols:
-                    firstValue = pandasDF_or_rddRows[0][col]
-                    isVector.append(isinstance(firstValue, Vector))
-                    isIterable.append(isinstance(firstValue, (list, tuple)))
-
-                return numpy.vstack(
-                    numpy.hstack(
-                        (row[col].toArray()
-                         if isVector[i]
-                         else (flatten(row[col])
-                               if isIterable[i]
-                               else row[col]))
-                        for i, col in enumerate(cols))
-                    for row in pandasDF_or_rddRows)
-
-    def collect(self, *colsLists, **kwargs):
-        anon = kwargs.get('anon', False)
-        asPandas = kwargs.get('pandas', True)
-
-        if colsLists:
-            colsLists = \
-                ([]
-                 if anon
-                 else [self.indexCols]) + \
-                list(colsLists)
-
-            df = self._sparkDF \
-                .select(*set(flatten(colsLists))) \
-                .toPandas()
-
-            return [self._collectCols(df, cols, asPandas=asPandas)
-                    for cols in colsLists] \
-                if len(colsLists) > 1 \
-                else self._collectCols(df, cols=colsLists[0], asPandas=asPandas)
-
-        else:
-            return self._collectCols(
-                self.toPandas(),
-                cols=(self.possibleFeatureTAuxCols + self.contentCols)
-                if anon
-                else self.columns,
-                asPandas=asPandas)
 
     # ****
     # MISC
     # rename
-    # split
 
     def rename(self, **kwargs):
         """
@@ -3410,75 +3234,6 @@ class FileDF(_FileDFABC):
         fadf._cache.pieceADFs = self._cache.pieceADFs
 
         return fadf
-
-    def fillna(self, *cols, **kwargs):
-        stdKwArgs = self._extractStdKwArgs(kwargs, resetToClassDefaults=False, inplace=False)
-
-        if stdKwArgs.alias and (stdKwArgs.alias == self.alias):
-            stdKwArgs.alias = None
-
-        returnDetails = kwargs.pop('returnDetails', False)
-
-        kwargs['returnDetails'] = \
-            kwargs['returnSQLTransformer'] = True
-
-        adf, nullFillDetails, sqlTransformer = \
-            super(FileADF, self).fillna(*cols, **kwargs)
-
-        fadf = self.transform(
-            sparkDFTransform=sqlTransformer,
-            pandasDFTransform=_FileADF__fillna__pandasDFTransform(nullFillDetails=nullFillDetails),
-            _sparkDF=adf._sparkDF,
-            inheritCache=True,
-            inheritNRows=True,
-            **stdKwArgs.__dict__)
-
-        fadf._inheritCache(adf)
-        fadf._cache.reprSample = self._cache.reprSample
-
-        return (fadf, nullFillDetails) \
-            if returnDetails \
-            else fadf
-
-    def prep(self, *cols, **kwargs):
-        stdKwArgs = self._extractStdKwArgs(kwargs, resetToClassDefaults=False, inplace=False)
-
-        if stdKwArgs.alias and (stdKwArgs.alias == self.alias):
-            stdKwArgs.alias = None
-
-        returnOrigToPrepColMaps = \
-            kwargs.pop('returnOrigToPrepColMaps', False)
-
-        kwargs['returnOrigToPrepColMaps'] = \
-            kwargs['returnPipeline'] = True
-
-        adf, catOrigToPrepColMap, numOrigToPrepColMap, pipelineModel = \
-            super(FileADF, self).prep(*cols, **kwargs)
-
-        if arimo.debug.ON:
-            self.stdout_logger.debug(
-                msg='*** ORIG-TO-PREP METADATA: ***\n{}\n{}'
-                    .format(catOrigToPrepColMap, numOrigToPrepColMap))
-
-        fadf = self.transform(
-            sparkDFTransform=pipelineModel,
-            pandasDFTransform=
-            _FileADF__prep__pandasDFTransform(
-                sparkTypes={catCol: self._initSparkDF._schema[str(catCol)].dataType.simpleString()
-                            for catCol in set(catOrigToPrepColMap).difference(('__OHE__', '__SCALE__'))},
-                catOrigToPrepColMap=catOrigToPrepColMap,
-                numOrigToPrepColMap=numOrigToPrepColMap),
-            _sparkDF=adf._sparkDF,
-            inheritCache=True,
-            inheritNRows=True,
-            **stdKwArgs.__dict__)
-
-        fadf._inheritCache(adf)
-        fadf._cache.reprSample = self._cache.reprSample
-
-        return (fadf, catOrigToPrepColMap, numOrigToPrepColMap) \
-            if returnOrigToPrepColMaps \
-            else fadf
 
     def drop(self, *cols, **kwargs):
         return self.transform(
@@ -3760,23 +3515,6 @@ class FileDF(_FileDFABC):
             nSamplesPerPiece=kwargs.get('nSamplesPerPiece', 10 ** 5),
             anon=kwargs.get('anon', True),
             n_threads=kwargs.get('n_threads', 1))
-
-    # ***********
-    # REPR SAMPLE
-    # reprSampleNPieces
-
-    @property
-    def reprSampleNPieces(self):
-        return self._reprSampleNPieces
-
-    @reprSampleNPieces.setter
-    def reprSampleNPieces(self, reprSampleNPieces):
-        if (reprSampleNPieces <= self.nPieces) and (reprSampleNPieces != self._reprSampleNPieces):
-            self._reprSampleNPieces = reprSampleNPieces
-
-    @reprSampleNPieces.deleter
-    def reprSampleNPieces(self):
-        self._reprSampleNPieces = min(self._DEFAULT_REPR_SAMPLE_N_PIECES, self.nPieces)
 
     # ****
     # MISC
