@@ -177,8 +177,8 @@ class FileDF(_FileDFABC):
             
             _cache.types = Namespace()
 
-            for piecePath in _cache.piecePaths:
-                if piecePath in self._PIECE_CACHES:
+            for i, piecePath in _cache.piecePaths:
+                if i and (piecePath in self._PIECE_CACHES):
                     pieceCache = self._PIECE_CACHES[piecePath]
 
                     pieceCache.fileDFs.add(self)
@@ -194,7 +194,7 @@ class FileDF(_FileDFABC):
                         else:
                             _cache.types[col] = arrowType
 
-                else:
+                elif i:
                     self._PIECE_CACHES[piecePath] = \
                         Namespace(
                             fileDFs={self},
@@ -203,6 +203,24 @@ class FileDF(_FileDFABC):
                                 else piecePath,
                             columns=(),
                             types=Namespace(),
+                            nRows=None)
+
+                else:
+                    pieceLocalOrHDFSPath = self.pieceLocalOrHDFSPath(piecePath=piecePath)
+
+                    schema = read_schema(where=pieceLocalOrHDFSPath)
+
+                    _cache.types = \
+                        Namespace(
+                            **{col: schema.field_by_name(col).type
+                               for col in schema.names})
+
+                    self._PIECE_CACHES[piecePath] = \
+                        Namespace(
+                            fileDFs={self},
+                            localOrHDFSPath=pieceLocalOrHDFSPath,
+                            columns=schema.names,
+                            types=_cache.types,
                             nRows=None)
 
             if path.startswith('s3'):
@@ -262,23 +280,57 @@ class FileDF(_FileDFABC):
     # __short_repr__
 
     @property
-    def _pathsRepr(self):
+    def _pathRepr(self):
         return '"{}"'.format(self.path) \
             if isinstance(self.path, _STR_CLASSES) \
           else '{} Paths e.g. {}'.format(len(self.path), self.path[:3])
 
     def __repr__(self):
-        return '{:,}-piece {} [{}]'.format(
+        cols_and_types_str = []
+
+        if self._iCol:
+            cols_and_types_str += ['(iCol) {}: {}'.format(self._iCol, self.type(self._iCol))]
+
+        if self._tCol:
+            cols_and_types_str += ['(tCol) {}: {}'.format(self._tCol, self.type(self._tCol))]
+
+        cols_and_types_str += \
+            ['{}: {}'.format(col, self.type(col))
+             for col in self.contentCols]
+        
+        return '{:,}-piece {}{}[{}][]'.format(
             self.nPieces,
+            '{:,}-row '.format(self._cache.nRows)
+                if self._cache.nRows
+                else ('approx-{:,.0f}-row '.format(self._cache.approxNRows)
+                      if self._cache.approxNRows
+                      else ''),
             type(self).__name__,
-            self._pathsRepr)
+            self._pathRepr,
+            ', '.join(cols_and_types_str))
 
     @property
     def __short_repr__(self):
-        return '{:,}-piece {} [{}]'.format(
+        cols_desc_str = []
+
+        if self._iCol:
+            cols_desc_str += ['iCol: {}'.format(self._iCol)]
+
+        if self._tCol:
+            cols_desc_str += ['tCol: {}'.format(self._tCol)]
+
+        cols_desc_str += ['{} content col(s)'.format(len(self.contentCols))]
+
+        return '{:,}-piece {}{}[{}][]'.format(
             self.nPieces,
+            '{:,}-row '.format(self._cache.nRows)
+                if self._cache.nRows
+                else ('approx-{:,.0f}-row '.format(self._cache.approxNRows)
+                      if self._cache.approxNRows
+                      else ''),
             type(self).__name__,
-            self._pathsRepr)
+            self._pathRepr,
+            ', '.join(cols_desc_str))
 
     # ***************
     # CACHING METHODS
@@ -2917,66 +2969,6 @@ class FileDF(_FileDFABC):
                   else fadf._alias)
 
         self._cache = fadf._cache
-
-    def __repr__(self):
-        cols = self.columns
-
-        cols_and_types_str = []
-
-        if self._iCol in cols:
-            cols_and_types_str += ['(iCol) {}: {}'.format(self._iCol, self._cache.type[self._iCol])]
-
-        if self._tCol in cols:
-            cols_and_types_str += ['(tCol) {}: {}'.format(self._tCol, self._cache.type[self._tCol])]
-
-        cols_and_types_str += \
-            ['{}: {}'.format(col, self._cache.type[col])
-             for col in self.contentCols]
-
-        return '{}{:,}-piece {:,}-partition {}{}{}["{}" + {} transform(s)][{}]'.format(
-            '"{}" '.format(self._alias)
-            if self._alias
-            else '',
-            self.nPieces,
-            self.nPartitions,
-            '' if self._cache.nRows is None
-            else '{:,}-row '.format(self._cache.nRows),
-            '(cached) '
-            if self.is_cached
-            else '',
-            type(self).__name__,
-            self.path,
-            len(self._sparkDFTransforms),
-            ', '.join(cols_and_types_str))
-
-    @property
-    def __short_repr__(self):
-        cols = self.columns
-
-        cols_desc_str = []
-
-        if self._iCol in cols:
-            cols_desc_str += ['iCol: {}'.format(self._iCol)]
-
-        if self._tCol in cols:
-            cols_desc_str += ['tCol: {}'.format(self._tCol)]
-
-        cols_desc_str += ['{} content col(s)'.format(len(self.contentCols))]
-
-        return '{}{:,}-piece {:,}-partition {}{}{}[{} transform(s)][{}]'.format(
-            '"{}" '.format(self._alias)
-            if self._alias
-            else '',
-            self.nPieces,
-            self.nPartitions,
-            '' if self._cache.nRows is None
-            else '{:,}-row '.format(self._cache.nRows),
-            '(cached) '
-            if self.is_cached
-            else '',
-            type(self).__name__,
-            len(self._sparkDFTransforms),
-            ', '.join(cols_desc_str))
 
     # **********
     # TRANSFORMS
