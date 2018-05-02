@@ -298,7 +298,7 @@ class FileDF(_FileDFABC):
             ['{}: {}'.format(col, self.type(col))
              for col in self.contentCols]
         
-        return '{:,}-piece {}{}[{}][]'.format(
+        return '{:,}-piece {}{}[{}][{}]'.format(
             self.nPieces,
             '{:,}-row '.format(self._cache.nRows)
                 if self._cache.nRows
@@ -321,7 +321,7 @@ class FileDF(_FileDFABC):
 
         cols_desc_str += ['{} content col(s)'.format(len(self.contentCols))]
 
-        return '{:,}-piece {}{}[{}][]'.format(
+        return '{:,}-piece {}{}[{}][{}]'.format(
             self.nPieces,
             '{:,}-row '.format(self._cache.nRows)
                 if self._cache.nRows
@@ -428,7 +428,7 @@ class FileDF(_FileDFABC):
                 self._PIECE_CACHES[piecePath].localOrHDFSPath = localOrHDFSPath
 
             return localOrHDFSPath
-        
+
     # ***********************
     # MAP-REDUCE (PARTITIONS)
     # _mr
