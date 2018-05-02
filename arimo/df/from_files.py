@@ -884,9 +884,8 @@ class ArrowDF(_ArrowDFABC):
         self._cache.nonNullProportion = {}
         self._cache.suffNonNull = {}
 
-    # *** DISABLED: __getattr__ is generally bug-prone ***
-    # def __getattr__(self, attr):
-    #     return getattr(self.reprSample, attr)
+    def __getattr__(self, attr):
+        return getattr(self.reprSample, attr)
 
     def __getitem__(self, item):
         return self.reprSample[item]
