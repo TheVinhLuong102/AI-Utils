@@ -100,6 +100,26 @@ class _DF_ABC(object):
     # data prep cache
     _PREP_CACHE = {}
 
+    # **********
+    # IO METHODS
+    # load / read
+
+    @classmethod
+    @abc.abstractproperty
+    def load(cls, *args, **kwargs):
+        raise NotImplementedError
+
+    @classmethod
+    def read(cls, *args, **kwargs):
+        return cls.load(*args, **kwargs)
+
+    # **********************
+    # PYTHON DEFAULT METHODS
+    # __repr__
+    # __short_repr__
+    # __str__
+    # __unicode__
+
     @abc.abstractmethod
     def __repr__(self):
         raise NotImplementedError
@@ -113,6 +133,13 @@ class _DF_ABC(object):
 
     def __unicode__(self):
         return repr(self)
+
+    # **********************
+    # LOGGERS
+    # class_logger
+    # class_stdout_logger
+    # logger
+    # stdout_logger
 
     @classmethod
     def class_logger(cls, *handlers, **kwargs):

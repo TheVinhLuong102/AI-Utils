@@ -1438,7 +1438,7 @@ class ADF(_DF_ABC):
     # sparkSession
     # create
     # unionAllCols
-    # load / read
+    # load
     # save / write
 
     @property
@@ -1723,13 +1723,6 @@ class ADF(_DF_ABC):
             logger.info(msg + ' done!   <{:,.1f} s>'.format(toc - tic))
 
         return adf
-
-    @classmethod
-    def read(cls, path, format='parquet', schema=None, verbose=True, **options):
-        """
-        Alias for ``.load(...)``
-        """
-        return cls.load(path=path, format=format, schema=schema, verbose=verbose, **options)
 
     def save(self, path, format='parquet',
              aws_access_key_id=None, aws_secret_access_key=None,
