@@ -702,8 +702,6 @@ class FileDF(_FileDFABC):
     # iCol
     # tCol
     # defaultMapper
-    # reprSamplePiecePaths
-    # _assignReprSample
 
     @property
     def iCol(self):
@@ -757,6 +755,12 @@ class FileDF(_FileDFABC):
     def defaultMapper(self):
         self._defaultMapper = None
 
+    # ***********
+    # REPR SAMPLE
+    # reprSamplePiecePaths
+    # _assignReprSample
+    # __getitem__
+
     @property
     def reprSamplePiecePaths(self):
         if self._cache.reprSamplePiecePaths is None:
@@ -778,6 +782,9 @@ class FileDF(_FileDFABC):
 
         self._cache.nonNullProportion = {}
         self._cache.suffNonNull = {}
+
+    def __getitem__(self, item):
+        return self.reprSample[item]
 
     # *********************
     # ROWS, COLUMNS & TYPES
@@ -853,22 +860,6 @@ class FileDF(_FileDFABC):
             organizeTS=True,
             applyDefaultMapper=True,
             verbose=verbose)
-
-    # **********************
-    # PYTHON DEFAULT METHODS
-    # __getitem__
-
-    def __getitem__(self, item):
-        obj = self._sparkDF[item]
-
-        return self._decorate(
-            obj=obj,
-            nRows=self._cache.nRows) \
-            if isinstance(item, (list, tuple)) \
-            else obj
-
-
-
     # *************
     # COLUMN GROUPS
     # indexCols
@@ -938,35 +929,6 @@ class FileDF(_FileDFABC):
         adf._inheritCache(self)
 
         return adf
-
-    def _colWidth(self, *cols, **kwargs):   # *** NOT APPLICABLE TO COLUMNS PRODUCED BY COLLECT_LIST OVER WINDOW ***
-        asDict = kwargs.pop('asDict', False)
-
-        for col in set(cols).difference(self._cache.colWidth):
-            colType = self.type(col)
-
-            assert not (colType.startswith(_ARRAY_TYPE_PREFIX) or
-                        colType.startswith(_MAP_TYPE_PREFIX) or
-                        colType.startswith(_STRUCT_TYPE_PREFIX)), \
-                '*** {}._colWidth(<AComplexColumn>) MUST BE MANUALLY CACHED ***'
-
-            if colType == _VECTOR_TYPE:
-                try:
-                    self._cache.colWidth[col] = \
-                        self.metadata(col).ml_attr.num_attrs
-
-                except Exception as err:
-                    print('*** VECTOR COLUMN "{}" IN SCHEMA {} ***'.format(col, self._sparkDF._schema))
-                    raise err
-
-            else:
-                self._cache.colWidth[col] = 1
-
-        return Namespace(**
-                         {col: self._cache.colWidth[col]
-                          for col in cols}) \
-            if (len(cols) > 1) or asDict \
-            else self._cache.colWidth[cols[0]]
 
     # ****************
     # COLUMN PROFILING
