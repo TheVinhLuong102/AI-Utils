@@ -76,13 +76,19 @@ class FileDF(_FileDFABC):
     def __init__(
             self, path=None, reCache=False,
             aws_access_key_id=None, aws_secret_access_key=None,
-            iCol=None, tCol=None, defaultMapper=None,
+
+            defaultMapper=None,
+
+            iCol=None, tCol=None,
+
             reprSampleNPieces=_FileDFABC._DEFAULT_REPR_SAMPLE_N_PIECES,
             reprSampleSize=_FileDFABC._DEFAULT_REPR_SAMPLE_SIZE,
+
             minNonNullProportion=DefaultDict(_FileDFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
             outlierTailProportion=DefaultDict(_FileDFABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
             maxNCats=DefaultDict(_FileDFABC._DEFAULT_MAX_N_CATS),
             minProportionByMaxNCats=DefaultDict(_FileDFABC._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS),
+
             verbose=True):
         if verbose or arimo.debug.ON:
             logger = self.class_stdout_logger()
@@ -206,6 +212,11 @@ class FileDF(_FileDFABC):
 
         self._reprSampleNPieces = min(reprSampleNPieces, self.nPieces)
         self._reprSampleSize = reprSampleSize
+
+        self._minNonNullProportion = minNonNullProportion
+        self._outlierTailProportion = outlierTailProportion
+        self._maxNCats = maxNCats
+        self._minProportionByMaxNCats = minProportionByMaxNCats
 
         self._cache = \
             Namespace(
