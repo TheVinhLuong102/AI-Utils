@@ -434,7 +434,7 @@ class FileDF(_FileDFABC):
                     pieceCache.types[col] = _arrowType = \
                         pieceArrowTable.schema.field_by_name(col).type
 
-                    if col in self.types.arrow:
+                    if col in self.types:
                         assert _arrowType == self.types[col], \
                             '*** {} COLUMN {}: DETECTED TYPE {} != {} ***'.format(
                                 piecePath, col, _arrowType, self.types[col])
