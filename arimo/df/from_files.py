@@ -16,10 +16,12 @@ import tqdm
 
 import six
 if six.PY2:
-    from urlparse import urlparse
+    from functools32 import lru_cache
+    _NUM_CLASSES = int, long, float
     _STR_CLASSES = str, unicode
 else:
-    from urllib.parse import urlparse
+    from functools import lru_cache
+    _NUM_CLASSES = int, float
     _STR_CLASSES = str
 
 from pyarrow.filesystem import LocalFileSystem
