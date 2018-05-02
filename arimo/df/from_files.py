@@ -395,32 +395,40 @@ class FileDF(_FileDFABC):
                         fileDF._cache.__dict__[cacheCategory][oldCol]
 
     def pieceLocalOrHDFSPath(self, piecePath):
-        if self._PIECE_CACHES[piecePath].localOrHDFSPath is None:
-            parsedURL = \
-                urlparse(
-                    url=piecePath,
-                    scheme='',
-                    allow_fragments=True)
+        if (piecePath in self._PIECE_CACHES) and self._PIECE_CACHES[piecePath].localOrHDFSPath:
+            return self._PIECE_CACHES[piecePath].localOrHDFSPath
 
-            localCachePath = \
-                os.path.join(
-                    self._TMP_DIR_PATH,
-                    parsedURL.netloc,
-                    parsedURL.path[1:])
+        else:
+            if piecePath.startswith('s3'):
+                parsedURL = \
+                    urlparse(
+                        url=piecePath,
+                        scheme='',
+                        allow_fragments=True)
 
-            fs.mkdir(
-                dir=os.path.dirname(localCachePath),
-                hdfs=False)
+                localOrHDFSPath = \
+                    os.path.join(
+                        self._TMP_DIR_PATH,
+                        parsedURL.netloc,
+                        parsedURL.path[1:])
 
-            self.s3Client.download_file(
-                Bucket=parsedURL.netloc,
-                Key=parsedURL.path[1:],
-                Filename=localCachePath)
+                fs.mkdir(
+                    dir=os.path.dirname(localOrHDFSPath),
+                    hdfs=False)
 
-            self._PIECE_CACHES[piecePath].localOrHDFSPath = localCachePath
+                self.s3Client.download_file(
+                    Bucket=parsedURL.netloc,
+                    Key=parsedURL.path[1:],
+                    Filename=localOrHDFSPath)
 
-        return self._PIECE_CACHES[piecePath].localOrHDFSPath
+            else:
+                localOrHDFSPath = piecePath
 
+            if piecePath in self._PIECE_CACHES:
+                self._PIECE_CACHES[piecePath].localOrHDFSPath = localOrHDFSPath
+
+            return localOrHDFSPath
+        
     # ***********************
     # MAP-REDUCE (PARTITIONS)
     # _mr
