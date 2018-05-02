@@ -139,6 +139,27 @@ class ArrowDF(_ArrowDFABC):
                 logger.debug('*** RETRIEVING CACHE FOR "{}" ***'.format(path))
 
         else:
+            if path.startswith('s3'):
+                _cache.s3Client = \
+                    s3.client(
+                        access_key_id=aws_access_key_id,
+                        secret_access_key=aws_secret_access_key)
+
+                _parsedURL = urlparse(url=path, scheme='', allow_fragments=True)
+                _cache.s3Bucket = _parsedURL.netloc
+                _cache.pathS3Key = _parsedURL.path[1:]
+
+                _cache.tmpDirS3Key = self._TMP_DIR_PATH.strip('/')
+
+                _cache.tmpDirPath = \
+                    os.path.join(
+                        's3://{}'.format(_cache.s3Bucket),
+                        _cache.tmpDirS3Key)
+
+            else:
+                _cache.s3Client = _cache.s3Bucket = _cache.tmpDirS3Key = None
+                _cache.tmpDirPath = self._TMP_DIR_PATH
+
             if verbose:
                 msg = 'Loading Arrow Dataset from "{}"...'.format(path)
                 logger.info(msg)
@@ -220,27 +241,6 @@ class ArrowDF(_ArrowDFABC):
                             columns=schema.names,
                             types=_cache.types,
                             nRows=None)
-
-            if path.startswith('s3'):
-                _cache.s3Client = \
-                    s3.client(
-                        access_key_id=aws_access_key_id,
-                        secret_access_key=aws_secret_access_key)
-
-                _parsedURL = urlparse(url=path, scheme='', allow_fragments=True)
-                _cache.s3Bucket = _parsedURL.netloc
-                _cache.pathS3Key = _parsedURL.path[1:]
-
-                _cache.tmpDirS3Key = self._TMP_DIR_PATH.strip('/')
-
-                _cache.tmpDirPath = \
-                    os.path.join(
-                        's3://{}'.format(_cache.s3Bucket),
-                        _cache.tmpDirS3Key)
-
-            else:
-                _cache.s3Client = _cache.s3Bucket = _cache.tmpDirS3Key = None
-                _cache.tmpDirPath = self._TMP_DIR_PATH
 
         self.__dict__.update(_cache)
 
