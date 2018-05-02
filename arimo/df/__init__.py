@@ -305,7 +305,6 @@ class _DF_ABC(object):
     # shape / dim
     # colNames / colnames / names
     # types / type / typeIsNum / typeIsComplex
-    # metadata
 
     def __len__(self):
         """
@@ -385,10 +384,6 @@ class _DF_ABC(object):
 
     @abc.abstractmethod
     def typeIsComplex(self, col):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def metadata(self, *cols):
         raise NotImplementedError
 
     # *************

@@ -40,7 +40,7 @@ from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
 from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
-from arimo.util.types.arrow import is_temporal
+from arimo.util.types.arrow import is_complex, is_num
 import arimo.debug
 
 
@@ -295,8 +295,6 @@ class FileDF(_FileDFABC):
                 nRows=None,
                 approxNRows=None,
 
-                type=self.types,
-
                 count={}, distinct={},   # approx.
 
                 nonNullProportion={},   # approx.
@@ -373,6 +371,8 @@ class FileDF(_FileDFABC):
 
     # ***********************
     # MAP-REDUCE (PARTITIONS)
+    # _mr
+    # collect
 
     def _mr(self, *piecePaths, **kwargs):
         _CHUNK_SIZE = 10 ** 5
@@ -694,11 +694,15 @@ class FileDF(_FileDFABC):
 
         return reducer(results)
 
+    def collect(self, *cols, **kwargs):
+        return self._mr(cols=cols if cols else None, **kwargs)
+
     # *************************
     # KEY (SETTABLE) PROPERTIES
     # iCol
     # tCol
     # defaultMapper
+    # reprSamplePiecePaths
     # _assignReprSample
 
     @property
@@ -753,6 +757,16 @@ class FileDF(_FileDFABC):
     def defaultMapper(self):
         self._defaultMapper = None
 
+    @property
+    def reprSamplePiecePaths(self):
+        if self._cache.reprSamplePiecePaths is None:
+            self._cache.reprSamplePiecePaths = \
+                random.sample(
+                    population=self.piecePaths,
+                    k=self._reprSampleNPieces)
+
+        return self._cache.reprSamplePiecePaths
+
     def _assignReprSample(self):
         self._cache.reprSample = \
             self.sample(
@@ -765,6 +779,12 @@ class FileDF(_FileDFABC):
         self._cache.nonNullProportion = {}
         self._cache.suffNonNull = {}
 
+    # *********************
+    # ROWS, COLUMNS & TYPES
+    # nRows
+    # approxNRows
+    # type / typeIsNum / typeIsComplex
+
     @property
     def nRows(self):
         if self._cache.nRows is None:
@@ -773,19 +793,6 @@ class FileDF(_FileDFABC):
                     for piecePath in tqdm.tqdm(self.piecePaths))
 
         return self._cache.nRows
-
-    def collect(self, *cols, **kwargs):
-        return self._mr(cols=cols if cols else None, **kwargs)
-
-    @property
-    def reprSamplePiecePaths(self):
-        if self._cache.reprSamplePiecePaths is None:
-            self._cache.reprSamplePiecePaths = \
-                random.sample(
-                    population=self.piecePaths,
-                    k=self._reprSampleNPieces)
-
-        return self._cache.reprSamplePiecePaths
 
     @property
     def approxNRows(self):
@@ -797,6 +804,15 @@ class FileDF(_FileDFABC):
                 / self._reprSampleNPieces
 
         return self._cache.approxNRows
+
+    def type(self, col):
+        return self.types[col]
+
+    def typeIsNum(self, col):
+        return is_num(self.type(col))
+
+    def typeIsComplex(self, col):
+        return is_complex(self.type(col))
 
     def sample(self, *cols, **kwargs):
         n = kwargs.pop('n', 1)
@@ -851,27 +867,7 @@ class FileDF(_FileDFABC):
             if isinstance(item, (list, tuple)) \
             else obj
 
-    def type(self, col):
-        pass
 
-    def typeIsNum(self, col):
-        pass
-
-    def typeIsComplex(self, col):
-        t = self.type(col)
-        return t.startswith(_ARRAY_TYPE_PREFIX) \
-               or t.startswith(_MAP_TYPE_PREFIX) \
-               or t.startswith(_STRUCT_TYPE_PREFIX)
-
-    def metadata(self, *cols):
-        if not cols:
-            cols = self.contentCols
-
-        return Namespace(**
-                         {col: Namespace(**self._sparkDF._schema[str(col)].metadata)
-                          for col in cols}) \
-            if len(cols) > 1 \
-            else Namespace(**self._sparkDF._schema[str(cols[0])].metadata)
 
     # *************
     # COLUMN GROUPS
