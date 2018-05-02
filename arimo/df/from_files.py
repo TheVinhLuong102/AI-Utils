@@ -759,6 +759,9 @@ class ArrowDF(_ArrowDFABC):
     def collect(self, *cols, **kwargs):
         return self._mr(cols=cols if cols else None, **kwargs)
 
+    def toPandas(self, *cols, **kwargs):
+        return self.collect(*cols, **kwargs)
+
     # *************************
     # KEY (SETTABLE) PROPERTIES
     # iCol
