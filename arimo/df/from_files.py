@@ -534,6 +534,14 @@ class ArrowDF(_ArrowDFABC):
                     metadata=None,
                     use_pandas_metadata=False)
 
+            partitionKVs = {}
+            for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
+                k, v = partitionKV.split('=')
+                partitionKVs[str(k)] = \
+                    datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
+                    if k == DATE_COL \
+                    else v[:-1]
+
             pieceCache = self._PIECE_CACHES[piecePath]
 
             if not pieceCache.columns:
@@ -582,13 +590,8 @@ class ArrowDF(_ArrowDFABC):
                                 k=nChunksForIntermediateN):
                         chunkPandasDF = recordBatch.to_pandas(nthreads=max(1, psutil.cpu_count() // 2))
 
-                        for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
-                            k, v = partitionKV.split('=')
-
-                            chunkPandasDF[str(k)] = \
-                                datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
-                                if k == DATE_COL \
-                                else v[:-1]
+                        for k, v in partitionKVs.items():
+                            chunkPandasDF[k] = v
 
                         if organizeTS and self._tCol:
                             assert self._tCol in chunkPandasDF.columns, \
@@ -676,13 +679,8 @@ class ArrowDF(_ArrowDFABC):
                             categories=[],
                             integer_object_nulls=False)
 
-                    for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
-                        k, v = partitionKV.split('=')
-
-                        piecePandasDF[str(k)] = \
-                            datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
-                            if k == DATE_COL \
-                            else v[:-1]
+                    for k, v in partitionKVs.items():
+                        piecePandasDF[k] = v
 
                     if organizeTS and self._tCol:
                         assert self._tCol in piecePandasDF.columns, \
@@ -754,13 +752,8 @@ class ArrowDF(_ArrowDFABC):
                         categories=[],
                         integer_object_nulls=False)
 
-                for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
-                    k, v = partitionKV.split('=')
-
-                    piecePandasDF[str(k)] = \
-                        datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
-                        if k == DATE_COL \
-                        else v[:-1]
+                for k, v in partitionKVs.items():
+                    piecePandasDF[k] = v
 
                 if organizeTS and self._tCol:
                     assert self._tCol in piecePandasDF.columns, \
