@@ -441,7 +441,7 @@ class ArrowADF(_ArrowDFABC, ADF):
             self._CACHE[path] = _cache = Namespace()
 
         if 'detPrePartitioned' not in kwargs:
-            kwargs['detPrePartitioned'] = False
+            kwargs['detPrePartitioned'] = True
 
         if _cache:
             if arimo.debug.ON:
