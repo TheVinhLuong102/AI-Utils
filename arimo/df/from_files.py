@@ -40,7 +40,7 @@ from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
 from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
-from arimo.util.types.arrow import is_complex, is_num
+from arimo.util.types.arrow import is_boolean, is_complex, is_num, is_possible_cat, is_string
 import arimo.debug
 
 
@@ -825,6 +825,38 @@ class FileDF(_FileDFABC):
     def typeIsComplex(self, col):
         return is_complex(self.type(col))
 
+    # *************
+    # COLUMN GROUPS
+    # indexCols
+    # tRelAuxCols
+    # possibleFeatureContentCols
+    # possibleCatContentCols
+
+    @property
+    def indexCols(self):
+        return ((self._iCol,) if self._iCol else ()) \
+             + ((self._tCol,) if self._tCol else ())
+
+    @property
+    def tRelAuxCols(self):
+        return (self._T_ORD_COL, self._T_DELTA_COL) \
+            if self.hasTS \
+          else ()
+
+    @property
+    def possibleFeatureContentCols(self):
+        chk = lambda t: is_boolean(t) or is_string(t) or is_num(t)
+
+        return tuple(
+            col for col in self.contentCols
+                if chk(self.type(col)))
+
+    @property
+    def possibleCatContentCols(self):
+        return tuple(
+            col for col in self.contentCols
+                if is_possible_cat(self.type(col)))
+
     def sample(self, *cols, **kwargs):
         n = kwargs.pop('n', 1)
 
@@ -864,58 +896,8 @@ class FileDF(_FileDFABC):
             organizeTS=True,
             applyDefaultMapper=True,
             verbose=verbose)
-    # *************
-    # COLUMN GROUPS
-    # indexCols
-    # tRelAuxCols
-    # tComponentAuxCols
-    # tAuxCols
-    # possibleFeatureTAuxCols
-    # possibleCatTAuxCols
-    # possibleNumTAuxCols
-    # contentCols
-    # possibleFeatureContentCols
-    # possibleCatContentCols
-    # possibleNumContentCols
-    # possibleFeatureCols
-    # possibleCatCols
-    # possibleNumCols
 
-    @property
-    def indexCols(self):
-        cols = self.columns
-        return \
-            ((self._PARTITION_ID_COL,) if self._detPrePartitioned and (self._PARTITION_ID_COL in cols) else ()) + \
-            ((self._iCol,) if self._iCol in cols else ()) + \
-            ((self._dCol,) if (self._dCol in cols) and (self._dCol != self._tCol) else ()) + \
-            ((self._tCol,) if self._tCol in cols else ())
 
-    @property
-    def tRelAuxCols(self):
-        return ((self._T_ORD_COL, self._T_DELTA_COL)
-                if self._detPrePartitioned
-                else self._T_REL_AUX_COLS) \
-            if self.hasTS \
-            else ()
-
-    @property
-    def possibleFeatureContentCols(self):
-        chk = lambda t: \
-            (t == _BOOL_TYPE) or \
-            (t == _STR_TYPE) or \
-            t.startswith(_DECIMAL_TYPE_PREFIX) or \
-            (t in _FLOAT_TYPES) or \
-            (t in _INT_TYPES)
-
-        return tuple(
-            col for col in self.contentCols
-            if chk(self.type(col)))
-
-    @property
-    def possibleCatContentCols(self):
-        return tuple(
-            col for col in self.contentCols
-            if self.type(col).startswith(_DECIMAL_TYPE_PREFIX) or self.type(col) in _POSSIBLE_CAT_TYPES)
 
     # **********
     # copy
