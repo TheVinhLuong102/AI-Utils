@@ -759,6 +759,7 @@ class FileDF(_FileDFABC):
     # REPR SAMPLE
     # reprSamplePiecePaths
     # _assignReprSample
+    # __getattr__
     # __getitem__
 
     @property
@@ -782,6 +783,9 @@ class FileDF(_FileDFABC):
 
         self._cache.nonNullProportion = {}
         self._cache.suffNonNull = {}
+
+    def __getattr__(self, attr):
+        return getattr(self.reprSample, attr)
 
     def __getitem__(self, item):
         return self.reprSample[item]
