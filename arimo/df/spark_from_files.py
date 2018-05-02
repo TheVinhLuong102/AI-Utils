@@ -1327,21 +1327,7 @@ class FileADF(_FileDFABC, ADF):
 
     # ***********
     # REPR SAMPLE
-    # reprSampleNPieces
     # _assignReprSample
-
-    @property
-    def reprSampleNPieces(self):
-        return self._reprSampleNPieces
-
-    @reprSampleNPieces.setter
-    def reprSampleNPieces(self, reprSampleNPieces):
-        if (reprSampleNPieces <= self.nPieces) and (reprSampleNPieces != self._reprSampleNPieces):
-            self._reprSampleNPieces = reprSampleNPieces
-
-    @reprSampleNPieces.deleter
-    def reprSampleNPieces(self):
-        self._reprSampleNPieces = min(self._DEFAULT_REPR_SAMPLE_N_PIECES, self.nPieces)
 
     def _assignReprSample(self):
         adf = self.sample(

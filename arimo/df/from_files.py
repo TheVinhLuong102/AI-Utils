@@ -65,12 +65,36 @@ class _FileDFABC(_DF_ABC):
                     secret=secret)
         return cls._S3_FSs[keyPair]
 
+    @property
+    def reprSampleNPieces(self):
+        return self._reprSampleNPieces
+
+    @reprSampleNPieces.setter
+    def reprSampleNPieces(self, reprSampleNPieces):
+        if (reprSampleNPieces <= self.nPieces) and (reprSampleNPieces != self._reprSampleNPieces):
+            self._reprSampleNPieces = reprSampleNPieces
+
+    @reprSampleNPieces.deleter
+    def reprSampleNPieces(self):
+        self._reprSampleNPieces = min(self._DEFAULT_REPR_SAMPLE_N_PIECES, self.nPieces)
+
 
 @enable_inplace
 class FileDF(_FileDFABC):
-    _inplace_able = ()
+    # "inplace-able" methods
+    _INPLACE_ABLE = \
+        'rename', \
+        'sample', \
+        '_subset', \
+        'drop', \
+        'fillna', \
+        'filter', \
+        'filterByPartitionKeys', \
+        'prep', \
+        'transform'
 
     _CACHE = {}
+    
     _PIECE_CACHES = {}
 
     def __init__(
@@ -703,19 +727,6 @@ class FileDF(_FileDFABC):
         return self._mr(cols=cols if cols else None, **kwargs)
 
     @property
-    def reprSampleNPieces(self):
-        return self._reprSampleNPieces
-
-    @reprSampleNPieces.setter
-    def reprSampleNPieces(self, reprSampleNPieces):
-        if (reprSampleNPieces <= self.nPieces) and (reprSampleNPieces != self._reprSampleNPieces):
-            self._reprSampleNPieces = reprSampleNPieces
-
-    @reprSampleNPieces.deleter
-    def reprSampleNPieces(self):
-        self._reprSampleNPieces = min(self._DEFAULT_REPR_SAMPLE_N_PIECES, self.nPieces)
-
-    @property
     def reprSamplePiecePaths(self):
         if self._cache.reprSamplePiecePaths is None:
             self._cache.reprSamplePiecePaths = \
@@ -847,23 +858,9 @@ class FileDF(_FileDFABC):
 
     # **********************
     # PYTHON DEFAULT METHODS
-    # __dir__
-    # __getattr__
     # __getitem__
     # __repr__
     # __short_repr__
-
-    def __dir__(self):
-        return sorted(set(
-            dir(type(self)) +
-            self.__dict__.keys() +
-            dir(DataFrame) +
-            dir(self._sparkDF)))
-
-    def __getattr__(self, attr):
-        return self._decorate(
-            obj=getattr(self._sparkDF, attr),
-            nRows=self._cache.nRows)
 
     def __getitem__(self, item):
         obj = self._sparkDF[item]
@@ -3353,7 +3350,6 @@ class FileDF(_FileDFABC):
     # MISC
     # rename
     # split
-    # inspectNaNs
 
     def rename(self, **kwargs):
         """
@@ -3384,133 +3380,6 @@ class FileDF(_FileDFABC):
             obj=sparkDF, nRows=self._cache.nRows,
             iCol=iCol, tCol=tCol)
 
-    def split(self, *weights, **kwargs):
-        """
-        Split ``ADF`` into sub-``ADF``'s according to specified weights (which are normalized to sum to 1)
-
-        Return:
-            - If ``ADF``'s ``.tCol`` property is set, implying the data contains time series, return deterministic
-                partitions per ``id`` through time
-
-            - If ``ADF`` does not contain time series, randomly shuffle the data and return shuffled sub-``ADF``'s
-
-        Args:
-            *weights: weights of sub-``ADF``'s to split out
-
-            **kwargs:
-
-                - **seed** (int): randomizer seed; *ignored* in the case of deterministic splitting when ``.tCol`` is set
-        """
-        if (not weights) or weights == (1,):
-            return self
-
-        elif self.hasTS:
-            nWeights = len(weights)
-            cumuWeights = numpy.cumsum(weights) / sum(weights)
-
-            _TS_CHUNK_ID_COL = '__TS_CHUNK_ID__'
-
-            adf = self(
-                '*',
-                "CONCAT(STRING({}), '---', STRING({})) AS {}"
-                    .format(
-                    self._PARTITION_ID_COL
-                    if self._detPrePartitioned
-                    else self._iCol,
-                    self._iCol
-                    if self._detPrePartitioned
-                    else self._T_CHUNK_COL,
-                    _TS_CHUNK_ID_COL),
-                inheritCache=True,
-                inheritNRows=True)
-
-            tsChunkIDs = \
-                adf('SELECT \
-                        DISTINCT({}) \
-                    FROM \
-                        this'.format(_TS_CHUNK_ID_COL),
-                    inheritCache=False,
-                    inheritNRows=False) \
-                    .toPandas()[_TS_CHUNK_ID_COL] \
-                    .unique().tolist()
-
-            nTSChunkIDs = len(tsChunkIDs)
-
-            if arimo.debug.ON:
-                self.stdout_logger.debug(
-                    msg='*** SPLITTING BY ID-AND-CHUNK-NUMBER / PARTITION-AND-ID COMBOS ({} COMBOS IN TOTAL) ***'
-                        .format(nTSChunkIDs))
-
-            cumuIndices = \
-                [0] + \
-                [int(round(cumuWeights[i] * nTSChunkIDs))
-                 for i in range(nWeights)]
-
-            random.shuffle(tsChunkIDs)
-
-            adfs = [adf.filter(
-                condition=
-                '{} IN ({})'.format(
-                    _TS_CHUNK_ID_COL,
-                    ', '.join(
-                        "'{0}'".format(_)
-                        for _ in tsChunkIDs[cumuIndices[i]:cumuIndices[i + 1]])))
-                        .drop(_TS_CHUNK_ID_COL)
-                    for i in range(nWeights)]
-
-        else:
-            seed = kwargs.pop('seed', None)
-
-            adfs = [self._decorate(
-                obj=sparkDF,
-                nRows=None,
-                **kwargs)
-                for sparkDF in
-                self._sparkDF.randomSplit(
-                    weights=[float(w) for w in weights],
-                    seed=seed)]
-
-        for adf in adfs:
-            adf._cache.colWidth = copy.deepcopy(self._cache.colWidth)
-
-        return adfs
-
-    def inspectNaNs(self):
-        mM = self(
-            'SELECT {} FROM this'
-                .format(
-                ', '.join(
-                    'MIN({0}) AS {0}___min, MAX({0}) AS {0}___max'.format(col)
-                    for col in self.columns))) \
-            .toPandas().iloc[0]
-
-        df = pandas.DataFrame(
-            index=self.columns,
-            columns=['min', 'max'])
-
-        colsWithNaNs = []
-
-        for col in self.columns:
-            df.at[col, 'min'] = m = mM['{}___min'.format(col)]
-            df.at[col, 'max'] = M = mM['{}___max'.format(col)]
-
-            if pandas.notnull(m) and pandas.isnull(M):
-                colsWithNaNs.append(col)
-
-        return Namespace(
-            df=df,
-            colsWithNaNs=colsWithNaNs)
-
-    # "inplace-able" methods
-    _INPLACE_ABLE = \
-        '_subset', \
-        'drop', \
-        'fillna', \
-        'filter', \
-        'filterByPartitionKeys', \
-        'prep', \
-        'transform', \
-        'withColumn'
 
     # ********************************
     # "INTERNAL / DON'T TOUCH" METHODS
@@ -4041,7 +3910,6 @@ class FileDF(_FileDFABC):
     # ***********
     # REPR SAMPLE
     # reprSampleNPieces
-    # _assignReprSample
 
     @property
     def reprSampleNPieces(self):
@@ -4055,28 +3923,6 @@ class FileDF(_FileDFABC):
     @reprSampleNPieces.deleter
     def reprSampleNPieces(self):
         self._reprSampleNPieces = min(self._DEFAULT_REPR_SAMPLE_N_PIECES, self.nPieces)
-
-    def _assignReprSample(self):
-        adf = self.sample(
-            n=self._reprSampleSize,
-            minNPieces=self._reprSampleNPieces,
-            anon=True) \
-            .repartition(
-            1,
-            alias=(self.alias + self._REPR_SAMPLE_ALIAS_SUFFIX)
-            if self.alias
-            else None)
-
-        adf.cache(
-            eager=True,
-            verbose=True)
-
-        self._reprSampleSize = adf.nRows
-
-        self._cache.reprSample = adf
-
-        self._cache.nonNullProportion = {}
-        self._cache.suffNonNull = {}
 
     # ****
     # MISC
