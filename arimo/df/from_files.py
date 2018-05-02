@@ -897,25 +897,6 @@ class FileDF(_FileDFABC):
             applyDefaultMapper=True,
             verbose=verbose)
 
-
-
-    # **********
-    # copy
-
-    def copy(self, **kwargs):
-        """
-        Return:
-            A copy of the ``ADF``
-        """
-        adf = self._decorate(
-            obj=self._sparkDF,
-            nRows=self._cache.nRows,
-            **kwargs)
-
-        adf._inheritCache(self)
-
-        return adf
-
     # ****************
     # COLUMN PROFILING
     # _nonNullCol
@@ -2936,22 +2917,6 @@ class FileDF(_FileDFABC):
                   else fadf._alias)
 
         self._cache = fadf._cache
-
-    # __getattr__
-    # __getitem__
-    # __repr__
-    # __short_repr__
-
-    def __getitem__(self, item):
-        return self.transform(
-            sparkDFTransform=
-            lambda sparkDF:
-            sparkDF[item],
-            pandasDFTransform=_FileADF__getitem__pandasDFTransform(item=item),
-            inheritCache=True,
-            inheritNRows=True) \
-            if isinstance(item, (list, tuple)) \
-            else super(FileADF, self).__getitem__(item)
 
     def __repr__(self):
         cols = self.columns
