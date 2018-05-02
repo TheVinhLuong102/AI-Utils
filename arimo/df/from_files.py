@@ -585,7 +585,7 @@ class ArrowDF(_ArrowDFABC):
                                 k=nChunksForIntermediateN):
                         chunkPandasDF = recordBatch.to_pandas(nthreads=max(1, psutil.cpu_count() // 2))
 
-                        for k, v in partitionKVs.items():
+                        for k, v in pieceCache.partitionKVs.items():
                             chunkPandasDF[k] = v
 
                         if organizeTS and self._tCol:
@@ -674,7 +674,7 @@ class ArrowDF(_ArrowDFABC):
                             categories=[],
                             integer_object_nulls=False)
 
-                    for k, v in partitionKVs.items():
+                    for k, v in pieceCache.partitionKVs.items():
                         piecePandasDF[k] = v
 
                     if organizeTS and self._tCol:
@@ -747,7 +747,7 @@ class ArrowDF(_ArrowDFABC):
                         categories=[],
                         integer_object_nulls=False)
 
-                for k, v in partitionKVs.items():
+                for k, v in pieceCache.partitionKVs.items():
                     piecePandasDF[k] = v
 
                 if organizeTS and self._tCol:
