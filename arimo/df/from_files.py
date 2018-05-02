@@ -935,7 +935,7 @@ class ArrowDF(_ArrowDFABC):
                                if self._iCol
                                else self._T_COMPONENT_AUX_COLS)})
 
-            for col, arrowType in self.srcTypes.items()
+            for col, arrowType in self.srcTypes.items():
                 _types[col] = arrowType
 
             return _types
