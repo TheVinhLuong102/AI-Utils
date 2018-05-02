@@ -1,6 +1,7 @@
 from __future__ import division, print_function
 
 import abc
+from argparse import Namespace as _Namespace
 from collections import Counter
 import datetime
 import json
@@ -178,8 +179,6 @@ class FileDF(_FileDFABC):
                     arrow=Namespace(),
                     pandas=Namespace())
 
-            _cache._nRows = _cache._approxNRows = None
-
             for piecePath in _cache.piecePaths:
                 if piecePath in self._PIECE_CACHES:
                     pieceCache = self._PIECE_CACHES[piecePath]
@@ -249,10 +248,7 @@ class FileDF(_FileDFABC):
         self._maxNCats = maxNCats
         self._minProportionByMaxNCats = minProportionByMaxNCats
 
-        self._cache = \
-            Namespace(
-                reprSamplePiecePaths=None,
-                reprSample=None)
+        self._emptyCache()
 
     # **********
     # IO METHODS
@@ -295,6 +291,64 @@ class FileDF(_FileDFABC):
     # _emptyCache
     # _inheritCache
     # pieceLocalOrHDFSPath
+
+    def _emptyCache(self):
+        self._cache = \
+            _Namespace(
+                reprSamplePiecePaths=None,
+                reprSample=None,
+
+                nRows=None,
+                approxNRows=None,
+
+                type=self.types,
+
+                count={}, distinct={},   # approx.
+
+                nonNullProportion={},   # approx.
+                suffNonNullProportionThreshold={},
+                suffNonNull={},
+
+                sampleMin={}, sampleMax={}, sampleMean={}, sampleMedian={},
+                outlierRstMin={}, outlierRstMax={}, outlierRstMean={}, outlierRstMedian={},
+
+                colWidth={})
+
+    def _inheritCache(self, fileDF, *sameCols, **newColToOldColMappings):
+        if fileDF._cache.nRows:
+            if self._cache.nRows is None:
+                self._cache.nRows = fileDF._cache.nRows
+            else:
+                assert self._cache.nRows == fileDF._cache.nRows
+
+        if fileDF._cache.approxNRows and (self._cache.approxNRows is None):
+            self._cache.approxNRows = fileDF._cache.approxNRows
+
+        commonCols = set(self.columns).intersection(fileDF.columns)
+
+        if sameCols or newColToOldColMappings:
+            for newCol, oldCol in newColToOldColMappings.items():
+                assert newCol in self.columns
+                assert oldCol in fileDF.columns
+
+            for sameCol in commonCols.difference(newColToOldColMappings).intersection(sameCols):
+                newColToOldColMappings[sameCol] = sameCol
+
+        else:
+            newColToOldColMappings = \
+                {col: col
+                 for col in commonCols}
+
+        for cacheCategory in \
+                ('count', 'distinct',
+                 'nonNullProportion', 'suffNonNullProportionThreshold', 'suffNonNull',
+                 'sampleMin', 'sampleMax', 'sampleMean', 'sampleMedian',
+                 'outlierRstMin', 'outlierRstMax', 'outlierRstMean', 'outlierRstMedian',
+                 'colWidth'):
+            for newCol, oldCol in newColToOldColMappings.items():
+                if oldCol in fileDF._cache.__dict__[cacheCategory]:
+                    self._cache.__dict__[cacheCategory][newCol] = \
+                        fileDF._cache.__dict__[cacheCategory][oldCol]
 
     def pieceLocalOrHDFSPath(self, piecePath):
         if self._PIECE_CACHES[piecePath].localOrHDFSPath is None:
@@ -793,65 +847,6 @@ class FileDF(_FileDFABC):
             organizeTS=True,
             applyDefaultMapper=True,
             verbose=verbose)
-
-    def _emptyCache(self):
-        self._cache = \
-            _Namespace(
-                nPartitions=self._cache.nPartitions,
-                nRows=self._cache.nRows,
-
-                type=Namespace(**
-                               {col: type
-                                for col, type in self.dtypes}),
-
-                firstRow=None, aRow=None,
-
-                reprSample=None,
-
-                count={}, distinct={},   # approx.
-
-                nonNullProportion={},   # approx.
-                suffNonNullProportionThreshold={},
-                suffNonNull={},
-
-                sampleMin={}, sampleMax={}, sampleMean={}, sampleMedian={},
-                outlierRstMin={}, outlierRstMax={}, outlierRstMean={}, outlierRstMedian={},
-
-                colWidth={})
-
-    def _inheritCache(self, adf, *sameCols, **newColToOldColMappings):
-        if adf._cache.nRows:
-            if self._cache.nRows is None:
-                self._cache.nRows = adf._cache.nRows
-            else:
-                assert self._cache.nRows == adf._cache.nRows
-
-        commonCols = set(self.columns).intersection(adf.columns)
-
-        if sameCols or newColToOldColMappings:
-            for newCol, oldCol in newColToOldColMappings.items():
-                assert newCol in self.columns
-                assert oldCol in adf.columns
-
-            for sameCol in commonCols.difference(newColToOldColMappings).intersection(sameCols):
-                newColToOldColMappings[sameCol] = sameCol
-
-        else:
-            newColToOldColMappings = \
-                {col: col
-                 for col in commonCols}
-
-        for cacheCategory in \
-                ('count', 'distinct',
-                 'nonNullProportion', 'suffNonNullProportionThreshold', 'suffNonNull',
-                 'sampleMin', 'sampleMax', 'sampleMean', 'sampleMedian',
-                 'outlierRstMin', 'outlierRstMax', 'outlierRstMean', 'outlierRstMedian',
-                 'colWidth'):
-            for newCol, oldCol in newColToOldColMappings.items():
-                if oldCol in adf._cache.__dict__[cacheCategory]:
-                    self._cache.__dict__[cacheCategory][newCol] = \
-                        adf._cache.__dict__[cacheCategory][oldCol]
-
 
     # **********************
     # PYTHON DEFAULT METHODS
