@@ -851,8 +851,6 @@ class FileDF(_FileDFABC):
     # **********************
     # PYTHON DEFAULT METHODS
     # __getitem__
-    # __repr__
-    # __short_repr__
 
     def __getitem__(self, item):
         obj = self._sparkDF[item]
@@ -863,74 +861,11 @@ class FileDF(_FileDFABC):
             if isinstance(item, (list, tuple)) \
             else obj
 
-    def __repr__(self):
-        cols_and_types_str = []
+    def type(self, col):
+        pass
 
-        if self._iCol:
-            cols_and_types_str += ['(iCol) {}: {}'.format(self._iCol, self._cache.type[self._iCol])]
-
-        if self._tCol:
-            cols_and_types_str += ['(tCol) {}: {}'.format(self._tCol, self._cache.type[self._tCol])]
-
-        cols_and_types_str += \
-            ['{}: {}'.format(col, self._cache.type[col])
-             for col in self.contentCols]
-
-        return '{}{:,}-partition{} {}{}{}[{}]'.format(
-            '"{}" '.format(self._alias)
-            if self._alias
-            else '',
-
-            self.nPartitions,
-
-            ' (from {:,} deterministic partitions)'.format(self.nDetPrePartitions)
-            if self._detPrePartitioned
-            else '',
-
-            '' if self._cache.nRows is None
-            else '{:,}-row '.format(self._cache.nRows),
-
-            '(cached) '
-            if self.is_cached
-            else '',
-
-            type(self).__name__,
-
-            ', '.join(cols_and_types_str))
-
-    @property
-    def __short_repr__(self):
-        cols_desc_str = []
-
-        if self._iCol:
-            cols_desc_str += ['iCol: {}'.format(self._iCol)]
-
-        if self._tCol:
-            cols_desc_str += ['tCol: {}'.format(self._tCol)]
-
-        cols_desc_str += ['{} content col(s)'.format(len(self.contentCols))]
-
-        return '{}{:,}-partition{} {}{}{}[{}]'.format(
-            '"{}" '.format(self._alias)
-            if self._alias
-            else '',
-
-            self.nPartitions,
-
-            ' (from {:,} deterministic partitions)'.format(self.nDetPrePartitions)
-            if self._detPrePartitioned
-            else '',
-
-            '' if self._cache.nRows is None
-            else '{:,}-row '.format(self._cache.nRows),
-
-            '(cached) '
-            if self.is_cached
-            else '',
-
-            type(self).__name__,
-
-            ', '.join(cols_desc_str))
+    def typeIsNum(self, col):
+        pass
 
     def typeIsComplex(self, col):
         t = self.type(col)
@@ -981,19 +916,6 @@ class FileDF(_FileDFABC):
                 else self._T_REL_AUX_COLS) \
             if self.hasTS \
             else ()
-
-    @property
-    def possibleFeatureContentCols(self):
-        chk = lambda t: \
-            (t == _BOOL_TYPE) or \
-            (t == _STR_TYPE) or \
-            t.startswith(_DECIMAL_TYPE_PREFIX) or \
-            (t in _FLOAT_TYPES) or \
-            (t in _INT_TYPES)
-
-        return tuple(
-            col for col in self.contentCols
-            if chk(self.type(col)))
 
     @property
     def possibleFeatureContentCols(self):
