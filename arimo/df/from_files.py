@@ -3359,3 +3359,7 @@ class ArrowDF(_ArrowDFABC):
 
             return [self._subset(*pieceSubPaths[cumuIndices[i]:cumuIndices[i + 1]])
                     for i in range(nWeights)]
+
+
+class AthenaDF(_DFABC):
+    pass
