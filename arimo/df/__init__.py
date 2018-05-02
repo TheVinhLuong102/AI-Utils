@@ -390,3 +390,89 @@ class _DF_ABC(object):
     @abc.abstractmethod
     def metadata(self, *cols):
         raise NotImplementedError
+
+    # *************
+    # COLUMN GROUPS
+    # indexCols
+    # tRelAuxCols
+    # tComponentAuxCols
+    # tAuxCols
+    # possibleFeatureTAuxCols
+    # possibleCatTAuxCols
+    # possibleNumTAuxCols
+    # contentCols
+    # possibleFeatureContentCols
+    # possibleCatContentCols
+    # possibleNumContentCols
+    # possibleFeatureCols
+    # possibleCatCols
+    # possibleNumCols
+
+    @abc.abstractproperty
+    def indexCols(self):
+        raise NotImplementedError
+
+    @abc.abstractproperty
+    def tRelAuxCols(self):
+        raise NotImplementedError
+
+    @property
+    def tComponentAuxCols(self):
+        return tuple(tComponentAuxCol for tComponentAuxCol in self._T_COMPONENT_AUX_COLS
+                     if tComponentAuxCol in self.columns)
+
+    @property
+    def tAuxCols(self):
+        return self.tRelAuxCols + self.tComponentAuxCols
+
+    @property
+    def possibleFeatureTAuxCols(self):
+        return ((self._T_DELTA_COL,)
+                if self.hasTS
+                else ()) + \
+               self.tComponentAuxCols
+
+    @property
+    def possibleCatTAuxCols(self):
+        return tuple(tComponentAuxCol for tComponentAuxCol in self.tComponentAuxCols
+                     if tComponentAuxCol in self._T_CAT_AUX_COLS)
+
+    @property
+    def possibleNumTAuxCols(self):
+        return ((self._T_DELTA_COL,)
+                if self.hasTS
+                else ()) + \
+               tuple(tComponentAuxCol for tComponentAuxCol in self.tComponentAuxCols
+                     if tComponentAuxCol in self._T_NUM_AUX_COLS)
+
+    @property
+    def contentCols(self):
+        return tuple(
+            col for col in self.columns
+            if col not in (self.indexCols + self._T_AUX_COLS))
+
+    @abc.abstractproperty
+    def possibleFeatureContentCols(self):
+        raise NotImplementedError
+
+    @abc.abstractproperty
+    def possibleCatContentCols(self):
+        raise NotImplementedError
+
+    @property
+    def possibleNumContentCols(self):
+        return tuple(
+            col for col in self.contentCols
+            if self.typeIsNum(col))
+
+    @property
+    def possibleFeatureCols(self):
+        return self.possibleFeatureTAuxCols + self.possibleFeatureContentCols
+
+    @property
+    def possibleCatCols(self):
+        return self.possibleCatTAuxCols + self.possibleCatContentCols
+
+    @property
+    def possibleNumCols(self):
+        return self.possibleNumTAuxCols + self.possibleNumContentCols

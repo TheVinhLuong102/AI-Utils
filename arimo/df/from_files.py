@@ -930,9 +930,6 @@ class FileDF(_FileDFABC):
 
             ', '.join(cols_desc_str))
 
-
-
-
     def typeIsComplex(self, col):
         t = self.type(col)
         return t.startswith(_ARRAY_TYPE_PREFIX) \
@@ -984,39 +981,17 @@ class FileDF(_FileDFABC):
             else ()
 
     @property
-    def tComponentAuxCols(self):
-        return tuple(tComponentAuxCol for tComponentAuxCol in self._T_COMPONENT_AUX_COLS
-                     if tComponentAuxCol in self.columns)
+    def possibleFeatureContentCols(self):
+        chk = lambda t: \
+            (t == _BOOL_TYPE) or \
+            (t == _STR_TYPE) or \
+            t.startswith(_DECIMAL_TYPE_PREFIX) or \
+            (t in _FLOAT_TYPES) or \
+            (t in _INT_TYPES)
 
-    @property
-    def tAuxCols(self):
-        return self.tRelAuxCols + self.tComponentAuxCols
-
-    @property
-    def possibleFeatureTAuxCols(self):
-        return ((self._T_DELTA_COL,)
-                if self.hasTS
-                else ()) + \
-               self.tComponentAuxCols
-
-    @property
-    def possibleCatTAuxCols(self):
-        return tuple(tComponentAuxCol for tComponentAuxCol in self.tComponentAuxCols
-                     if tComponentAuxCol in self._T_CAT_AUX_COLS)
-
-    @property
-    def possibleNumTAuxCols(self):
-        return ((self._T_DELTA_COL,)
-                if self.hasTS
-                else ()) + \
-               tuple(tComponentAuxCol for tComponentAuxCol in self.tComponentAuxCols
-                     if tComponentAuxCol in self._T_NUM_AUX_COLS)
-
-    @property
-    def contentCols(self):
         return tuple(
-            col for col in self.columns
-            if col not in (self.indexCols + self._T_AUX_COLS))
+            col for col in self.contentCols
+            if chk(self.type(col)))
 
     @property
     def possibleFeatureContentCols(self):
@@ -1036,24 +1011,6 @@ class FileDF(_FileDFABC):
         return tuple(
             col for col in self.contentCols
             if self.type(col).startswith(_DECIMAL_TYPE_PREFIX) or self.type(col) in _POSSIBLE_CAT_TYPES)
-
-    @property
-    def possibleNumContentCols(self):
-        return tuple(
-            col for col in self.contentCols
-            if self.typeIsNum(col))
-
-    @property
-    def possibleFeatureCols(self):
-        return self.possibleFeatureTAuxCols + self.possibleFeatureContentCols
-
-    @property
-    def possibleCatCols(self):
-        return self.possibleCatTAuxCols + self.possibleCatContentCols
-
-    @property
-    def possibleNumCols(self):
-        return self.possibleNumTAuxCols + self.possibleNumContentCols
 
     # **********
     # copy
