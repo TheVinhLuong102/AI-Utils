@@ -839,84 +839,6 @@ class FileDF(_FileDFABC):
                     self._cache.__dict__[cacheCategory][newCol] = \
                         adf._cache.__dict__[cacheCategory][oldCol]
 
-    def _inplace(self, df, alias=None, iCol=None, tCol=None, tChunkLen=None):
-        if isinstance(df, (tuple, list)):   # just in case we're taking in multiple inputs
-            df = df[0]
-
-        cols = df.columns
-
-        if isinstance(df, ADF):
-            isADF = True
-
-            self._sparkDF = df._sparkDF
-
-            if df._detPrePartitioned:
-                self._detPrePartitioned = True
-                self._nDetPrePartitions = df._nDetPrePartitions
-
-            elif df._PARTITION_ID_COL not in cols:
-                self._detPrePartitioned = False
-                self._nDetPrePartitions = None
-
-            self._cache.nRows = df._cache.nRows
-
-        elif isinstance(df, DataFrame):
-            isADF = False
-
-            self._sparkDF = df
-
-            if self._PARTITION_ID_COL not in cols:
-                self._detPrePartitioned = False
-                self._nDetPrePartitions = None
-
-            self._cache.nRows = None
-
-        else:
-            raise ValueError("*** ADF._inplace(...)'s 1st argument must be either ADF or Spark SQL DataFrame ***")
-
-        existingICol = self._iCol
-        existingTCol = self._tCol
-
-        if iCol in cols:
-            self._iCol = iCol
-        elif self._iCol not in cols:
-            if isADF and df._iCol in cols:
-                self._iCol = df._iCol
-            elif self._DEFAULT_I_COL in cols:
-                self._iCol = self._DEFAULT_I_COL
-            else:
-                self._iCol = None
-
-        if tCol in cols:
-            self._tCol = tCol
-        elif self._tCol and (self._tCol not in cols):
-            if isADF and df._tCol in cols:
-                self._tCol = df._tCol
-            elif self._DEFAULT_T_COL in cols:
-                self._tCol = self._DEFAULT_T_COL
-            else:
-                self._tCol = None
-
-        if tChunkLen is not None:
-            self._tChunkLen = tChunkLen
-
-        del self._cache.type
-
-        self._organizeTimeSeries(
-            forceGenTRelAuxCols=
-            self._iCol and self._tCol and
-            ((existingICol is None) or (existingICol != self._iCol) or
-             (existingTCol is None) or (existingTCol != self._tCol)))
-
-        self.alias = alias \
-            if alias \
-            else (self._alias if self._alias or (not isADF)
-                  else df._alias)
-
-        if isinstance(df, ADF):
-            self._cache = df._cache
-        else:
-            self._emptyCache()
 
     # **********************
     # PYTHON DEFAULT METHODS
@@ -1025,14 +947,6 @@ class FileDF(_FileDFABC):
     # nDetPrePartitions
     # _maxPartitionId
     # _assignReprSample
-    # reprSampleSize
-    # reprSample
-    # minNonNullProportion
-    # outlierTailProportion
-    # maxNCats
-    # minProportionByMaxNCats
-
-
 
     def _assignReprSample(self):
         adf = self.sample(
@@ -1054,83 +968,6 @@ class FileDF(_FileDFABC):
 
         self._cache.nonNullProportion = {}
         self._cache.suffNonNull = {}
-
-    @property
-    @_docstr_settable_property
-    def reprSampleSize(self):
-        """
-        *Approximate* number of rows to sample for profiling purposes *(int, default = 10,000)*
-        """
-        if self._cache.reprSample is None:
-            self._assignReprSample()
-        return self._reprSampleSize
-
-    @reprSampleSize.setter
-    def reprSampleSize(self, reprSampleSize):
-        self._reprSampleSize = reprSampleSize
-        self._assignReprSample()
-
-    @property
-    def reprSample(self):
-        """
-        Sub-sampled ``ADF`` according to ``.reprSampleSize`` attribute
-        """
-        if self._cache.reprSample is None:
-            self._assignReprSample()
-        return self._cache.reprSample
-
-    @property
-    @_docstr_settable_property
-    def minNonNullProportion(self):
-        """
-        Minimum proportion of non-``NULL`` values in each column to qualify it as a valid feature
-            to use in downstream data analyses *(float between 0 and 1, default = .4)*
-        """
-        return self._minNonNullProportion.default
-
-    @minNonNullProportion.setter
-    def minNonNullProportion(self, minNonNullProportion):
-        if minNonNullProportion != self._minNonNullProportion.default:
-            self._minNonNullProportion.default = minNonNullProportion
-            self._cache.suffNonNull = {}
-
-    @property
-    @_docstr_settable_property
-    def outlierTailProportion(self):
-        """
-        Proportion in each tail end of each numerical column's distribution to exclude
-            when computing outlier-resistant statistics *(float between 0 and .1, default = .005)*
-        """
-        return self._outlierTailProportion.default
-
-    @outlierTailProportion.setter
-    def outlierTailProportion(self, outlierTailProportion):
-        self._outlierTailProportion.default = outlierTailProportion
-
-    @property
-    @_docstr_settable_property
-    def maxNCats(self):
-        """
-        Maximum number of categorical levels to consider for each possible categorical column *(int, default = 30)*
-        """
-        return self._maxNCats.default
-
-    @maxNCats.setter
-    def maxNCats(self, maxNCats):
-        self._maxNCats.default = maxNCats
-
-    @property
-    @_docstr_settable_property
-    def minProportionByMaxNCats(self):
-        """
-        Minimum total proportion accounted for by the most common ``maxNCats`` of each possible categorical column
-            to consider the column truly categorical *(float between 0 and 1, default = .9)*
-        """
-        return self._minProportionByMaxNCats.default
-
-    @minProportionByMaxNCats.setter
-    def minProportionByMaxNCats(self, minProportionByMaxNCats):
-        self._minProportionByMaxNCats.default = minProportionByMaxNCats
 
     # *********************
     # ROWS, COLUMNS & TYPES
@@ -1211,19 +1048,6 @@ class FileDF(_FileDFABC):
     def names(self):   # R style
         # Alias for ``.columns``: `list` of column names
         return self.columns
-
-    @property
-    def types(self):
-        """
-        *dict* of data type per column name
-        """
-        if not hasattr(self._cache, 'type'):
-            self._cache.type = \
-                Namespace(**
-                          {col: type
-                           for col, type in self.dtypes})
-
-        return self._cache.type
 
     def type(self, col):
         """

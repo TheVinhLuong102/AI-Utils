@@ -17,6 +17,7 @@ from arimo.util.date_time import \
      _T_DoW_COL, _T_PoW_COL,
      _T_HoD_COL, _T_PoD_COL,
      _T_COMPONENT_AUX_COLS, _T_CAT_AUX_COLS, _T_NUM_AUX_COLS)
+from arimo.util.decor import _docstr_settable_property
 from arimo.util.log import STDOUT_HANDLER
 import arimo.debug
 
@@ -165,3 +166,84 @@ class _DF_ABC(object):
         return self.logger(
             level=logging.DEBUG,
             verbose=True)
+
+    @abc.abstractmethod
+    def _assignReprSample(self):
+        raise NotImplementedError
+
+    @property
+    @_docstr_settable_property
+    def reprSampleSize(self):
+        """
+        *Approximate* number of rows to sample for profiling purposes *(int, default = 1,000,000)*
+        """
+        if self._cache.reprSample is None:
+            self._assignReprSample()
+        return self._reprSampleSize
+
+    @reprSampleSize.setter
+    def reprSampleSize(self, reprSampleSize):
+        self._reprSampleSize = reprSampleSize
+        self._assignReprSample()
+
+    @property
+    def reprSample(self):
+        """
+        Sub-sampled ``ADF`` according to ``.reprSampleSize`` attribute
+        """
+        if self._cache.reprSample is None:
+            self._assignReprSample()
+        return self._cache.reprSample
+
+    @property
+    @_docstr_settable_property
+    def minNonNullProportion(self):
+        """
+        Minimum proportion of non-``NULL`` values in each column to qualify it as a valid feature
+            to use in downstream data analyses *(float between 0 and 1, default = .32)*
+        """
+        return self._minNonNullProportion.default
+
+    @minNonNullProportion.setter
+    def minNonNullProportion(self, minNonNullProportion):
+        if minNonNullProportion != self._minNonNullProportion.default:
+            self._minNonNullProportion.default = minNonNullProportion
+            self._cache.suffNonNull = {}
+
+    @property
+    @_docstr_settable_property
+    def outlierTailProportion(self):
+        """
+        Proportion in each tail end of each numerical column's distribution to exclude
+            when computing outlier-resistant statistics *(float between 0 and .1, default = .005)*
+        """
+        return self._outlierTailProportion.default
+
+    @outlierTailProportion.setter
+    def outlierTailProportion(self, outlierTailProportion):
+        self._outlierTailProportion.default = outlierTailProportion
+
+    @property
+    @_docstr_settable_property
+    def maxNCats(self):
+        """
+        Maximum number of categorical levels to consider for each possible categorical column *(int, default = 12)*
+        """
+        return self._maxNCats.default
+
+    @maxNCats.setter
+    def maxNCats(self, maxNCats):
+        self._maxNCats.default = maxNCats
+
+    @property
+    @_docstr_settable_property
+    def minProportionByMaxNCats(self):
+        """
+        Minimum total proportion accounted for by the most common ``maxNCats`` of each possible categorical column
+            to consider the column truly categorical *(float between 0 and 1, default = .9)*
+        """
+        return self._minProportionByMaxNCats.default
+
+    @minProportionByMaxNCats.setter
+    def minProportionByMaxNCats(self, minProportionByMaxNCats):
+        self._minProportionByMaxNCats.default = minProportionByMaxNCats
