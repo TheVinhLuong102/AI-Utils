@@ -29,7 +29,7 @@ from pyspark.sql import DataFrame
 import arimo.backend
 from arimo.df import _DFABC
 from arimo.df.from_files import _ArrowDFABC
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 from arimo.util import fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols
@@ -40,7 +40,7 @@ import arimo.debug
 
 
 # https://stackoverflow.com/questions/12019961/python-pickling-nested-functions
-class _ArrowADF__getitem__pandasDFTransform:
+class _ArrowSparkADF__getitem__pandasDFTransform:
     def __init__(self, item):
         self.item = item
 
@@ -48,7 +48,7 @@ class _ArrowADF__getitem__pandasDFTransform:
         return pandasDF[to_iterable(self.item, iterable_type=list)]
 
 
-class _ArrowADF__fillna__pandasDFTransform:
+class _ArrowSparkADF__fillna__pandasDFTransform:
     def __init__(self, nullFillDetails):
         self.nullFillDetails = nullFillDetails
 
@@ -83,7 +83,7 @@ class _ArrowADF__fillna__pandasDFTransform:
         return pandasDF
 
 
-class _ArrowADF__prep__pandasDFTransform:
+class _ArrowSparkADF__prep__pandasDFTransform:
     def __init__(self, sparkTypes, catOrigToPrepColMap, numOrigToPrepColMap):
         self.sparkTypes = sparkTypes
 
@@ -127,7 +127,7 @@ class _ArrowADF__prep__pandasDFTransform:
                     assert minMaxScaledIdxSeries.between(left=-1, right=1, inclusive=True).all(), \
                         '*** "{}" CERTAIN MIN-MAX SCALED INT INDICES NOT BETWEEN -1 AND 1 ***'
 
-        pandasDF = _ArrowADF__fillna__pandasDFTransform(nullFillDetails=self.numOrigToPrepColMap)(pandasDF=pandasDF)
+        pandasDF = _ArrowSparkADF__fillna__pandasDFTransform(nullFillDetails=self.numOrigToPrepColMap)(pandasDF=pandasDF)
 
         for numCol, prepNumColNameNDetails in self.numOrigToPrepColMap.items():
             if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and \
@@ -160,7 +160,7 @@ class _ArrowADF__prep__pandasDFTransform:
         return pandasDF
 
 
-class _ArrowADF__drop__pandasDFTransform:
+class _ArrowSparkADF__drop__pandasDFTransform:
     def __init__(self, cols):
         self.cols = list(cols)
 
@@ -175,7 +175,7 @@ class _ArrowADF__drop__pandasDFTransform:
 _PIECE_LOCAL_CACHE_PATHS = {}
 
 
-class _ArrowADF__pieceArrowTableFunc:
+class _ArrowSparkADF__pieceArrowTableFunc:
     def __init__(self, path, aws_access_key_id=None, aws_secret_access_key=None, n_threads=1):
         self.path = path
 
@@ -226,7 +226,7 @@ class _ArrowADF__pieceArrowTableFunc:
                 use_pandas_metadata=False)
 
 
-class _ArrowADF__gen:
+class _ArrowSparkADF__gen:
     def __init__(
             self, args,
             path,
@@ -259,7 +259,7 @@ class _ArrowADF__gen:
         self.n_threads = n_threads
 
         self.pieceArrowTableFunc = \
-            _ArrowADF__pieceArrowTableFunc(
+            _ArrowSparkADF__pieceArrowTableFunc(
                 path=path,
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
@@ -400,7 +400,7 @@ class _ArrowADF__gen:
 
 
 @enable_inplace
-class ArrowADF(_ArrowDFABC, ADF):
+class ArrowSparkADF(_ArrowDFABC, SparkADF):
     # "inplace-able" methods
     _INPLACE_ABLE = \
         '__call__', \
@@ -595,12 +595,12 @@ class ArrowADF(_ArrowDFABC, ADF):
         alias = kwargs.pop('alias', None)
             
         if _initSparkDF:
-            super(ArrowADF, self).__init__(
+            super(ArrowSparkADF, self).__init__(
                 sparkDF=_initSparkDF,
                 **kwargs)
 
         else:
-            super(ArrowADF, self).__init__(
+            super(ArrowSparkADF, self).__init__(
                 sparkDF=self._srcSparkDF,
                 nRows=self._srcNRows,
                 **kwargs)
@@ -661,7 +661,7 @@ class ArrowADF(_ArrowDFABC, ADF):
         if isinstance(fadf, (tuple, list)):   # just in case we're taking in multiple inputs
             fadf = fadf[0]
 
-        assert isinstance(fadf, ArrowADF)
+        assert isinstance(fadf, ArrowSparkADF)
 
         self.path = fadf.path
 
@@ -700,11 +700,11 @@ class ArrowADF(_ArrowDFABC, ADF):
                 sparkDFTransform=
                     lambda sparkDF:
                         sparkDF[item],
-                pandasDFTransform=_ArrowADF__getitem__pandasDFTransform(item=item),
+                pandasDFTransform=_ArrowSparkADF__getitem__pandasDFTransform(item=item),
                 inheritCache=True,
                 inheritNRows=True) \
             if isinstance(item, (list, tuple)) \
-          else super(ArrowADF, self).__getitem__(item)
+          else super(ArrowSparkADF, self).__getitem__(item)
 
     def __repr__(self):
         cols = self.columns
@@ -831,7 +831,7 @@ class ArrowADF(_ArrowDFABC, ADF):
                             .format(self.path, i, additionalSparkDFTransform))
                     raise err
 
-        fadf = ArrowADF(
+        fadf = ArrowSparkADF(
             path=self.path,
             _initSparkDF=self._initSparkDF,
             _sparkDFTransforms=self._sparkDFTransforms + additionalSparkDFTransforms,
@@ -910,7 +910,7 @@ class ArrowADF(_ArrowDFABC, ADF):
             arg = args[0]
 
             if isinstance(arg, Transformer) or \
-                    (callable(arg) and (not isinstance(arg, ADF)) and (not isinstance(arg, types.ClassType))):
+                    (callable(arg) and (not isinstance(arg, SparkADF)) and (not isinstance(arg, types.ClassType))):
                 return self.transform(
                     sparkDFTransform=arg,
                     *(args[1:]
@@ -939,11 +939,11 @@ class ArrowADF(_ArrowDFABC, ADF):
             kwargs['returnSQLTransformer'] = True
 
         adf, nullFillDetails, sqlTransformer = \
-            super(ArrowADF, self).fillna(*cols, **kwargs)
+            super(ArrowSparkADF, self).fillna(*cols, **kwargs)
 
         fadf = self.transform(
             sparkDFTransform=sqlTransformer,
-            pandasDFTransform=_ArrowADF__fillna__pandasDFTransform(nullFillDetails=nullFillDetails),
+            pandasDFTransform=_ArrowSparkADF__fillna__pandasDFTransform(nullFillDetails=nullFillDetails),
             _sparkDF=adf._sparkDF,
             inheritCache=True,
             inheritNRows=True,
@@ -969,7 +969,7 @@ class ArrowADF(_ArrowDFABC, ADF):
             kwargs['returnPipeline'] = True
 
         adf, catOrigToPrepColMap, numOrigToPrepColMap, pipelineModel = \
-            super(ArrowADF, self).prep(*cols, **kwargs)
+            super(ArrowSparkADF, self).prep(*cols, **kwargs)
 
         if arimo.debug.ON:
             self.stdout_logger.debug(
@@ -979,7 +979,7 @@ class ArrowADF(_ArrowDFABC, ADF):
         fadf = self.transform(
             sparkDFTransform=pipelineModel,
             pandasDFTransform=
-                _ArrowADF__prep__pandasDFTransform(
+                _ArrowSparkADF__prep__pandasDFTransform(
                     sparkTypes={catCol: self._initSparkDF._schema[str(catCol)].dataType.simpleString()
                                 for catCol in set(catOrigToPrepColMap).difference(('__OHE__', '__SCALE__'))},
                     catOrigToPrepColMap=catOrigToPrepColMap,
@@ -1001,7 +1001,7 @@ class ArrowADF(_ArrowDFABC, ADF):
                 sparkDFTransform=
                     lambda sparkDF:
                         sparkDF.drop(*cols),
-                pandasDFTransform=_ArrowADF__drop__pandasDFTransform(cols=cols),
+                pandasDFTransform=_ArrowSparkADF__drop__pandasDFTransform(cols=cols),
                 inheritCache=True,
                 inheritNRows=True,
                 **kwargs)
@@ -1094,7 +1094,7 @@ class ArrowADF(_ArrowDFABC, ADF):
                 if stdKwArgs.detPrePartitioned:
                     stdKwArgs.nDetPrePartitions = nPieceSubPaths
 
-                fadf = ArrowADF(
+                fadf = ArrowSparkADF(
                     path=subsetDirPath,
                     aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
                     _srcSparkDFSchema=self._srcSparkDFSchema,
@@ -1134,7 +1134,7 @@ class ArrowADF(_ArrowDFABC, ADF):
                 piecePath = os.path.join(self.path, pieceSubPath)
 
                 pieceADF = \
-                    ArrowADF(
+                    ArrowSparkADF(
                         path=piecePath,
                         aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
                         _srcSparkDFSchema=self._srcSparkDFSchema,
@@ -1172,7 +1172,7 @@ class ArrowADF(_ArrowDFABC, ADF):
         return pieceADF
 
     def _pieceArrowTable(self, pieceSubPath):
-        return _ArrowADF__pieceArrowTableFunc(
+        return _ArrowSparkADF__pieceArrowTableFunc(
                 path=self.path,
                 aws_access_key_id=self._srcArrowDS.fs.fs.key,
                 aws_secret_access_key=self._srcArrowDS.fs.fs.secret)(pieceSubPath)
@@ -1298,21 +1298,21 @@ class ArrowADF(_ArrowDFABC, ADF):
             if sampleNPieces < self.nPieces \
             else self.pieceSubPaths
 
-        adfs = [super(ArrowADF, self._pieceADF(samplePieceSubPath))
+        adfs = [super(ArrowSparkADF, self._pieceADF(samplePieceSubPath))
                     .sample(n=max(n / sampleNPieces, 1), *args, **kwargs)
                 for samplePieceSubPath in
                     (tqdm.tqdm(samplePieceSubPaths)
                      if verbose
                      else samplePieceSubPaths)]
 
-        adf = ADF.unionAllCols(*adfs, **stdKwArgs.__dict__)
+        adf = SparkADF.unionAllCols(*adfs, **stdKwArgs.__dict__)
 
         adf._cache.colWidth.update(adfs[0]._cache.colWidth)
 
         return adf
 
     def gen(self, *args, **kwargs):
-        return _ArrowADF__gen(
+        return _ArrowSparkADF__gen(
                 args=args,
                 path=self.path,
                 pieceSubPaths=kwargs.get('pieceSubPaths', self.pieceSubPaths),
