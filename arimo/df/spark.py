@@ -134,7 +134,7 @@ class SparkADF(_ADFABC):
 
     _T_REL_AUX_COLS = _ADFABC._T_ORD_COL, _T_CHUNK_COL, _T_ORD_IN_CHUNK_COL, _ADFABC._T_DELTA_COL
 
-    # default ordered chunk size for time-series ADFs
+    # default ordered chunk size for time-series SparkADFs
     _DEFAULT_T_CHUNK_LEN = 1000
 
     # default arguments dict
@@ -244,7 +244,7 @@ class SparkADF(_ADFABC):
                         self._nDetPrePartitions = self.nPartitions
                     else:
                         assert self._nDetPrePartitions == self.nPartitions, \
-                            '*** Deterministically Pre-Partitioned ADF: Set nDetPrePartitions {} != Detected {} Partitions (Likely Due to Big Files Being Split by Spark) ***'.format(
+                            '*** Deterministically Pre-Partitioned SparkADF: Set nDetPrePartitions {} != Detected {} Partitions (Likely Due to Big Files Being Split by Spark) ***'.format(
                                 self._nDetPrePartitions, self.nPartitions)
 
                     self._sparkDF = \
@@ -1167,7 +1167,7 @@ class SparkADF(_ADFABC):
                     self._cache.__dict__[cacheCategory][newCol] = \
                         adf._cache.__dict__[cacheCategory][oldCol]
 
-    # decorator to up-convert any Spark SQL DataFrame result to ADF
+    # decorator to up-convert any Spark SQL DataFrame result to SparkADF
     def _decorate(self, obj, nRows=None, **objKwArgs):
         def methodReturningSparkADF(method):
             def decoratedMethod(*methodArgs, **methodKwArgs):
@@ -1581,7 +1581,7 @@ class SparkADF(_ADFABC):
                 return SparkADF(sparkDF=df, nRows=None, **kwargs)
 
             else:
-                raise ValueError('*** All input data frames must be ADFs or Spark SQL DataFrames ***')
+                raise ValueError('*** All input data frames must be SparkADFs or Spark SQL DataFrames ***')
 
     @classmethod
     def _test_hdfs_load(cls):
@@ -1918,7 +1918,7 @@ class SparkADF(_ADFABC):
                 partitionBy=partitionBy,
                 **options)
 
-        if switch:   # then use the newly-saved file as ADF's source
+        if switch:   # then use the newly-saved file as SparkADF's source
             assert format not in ('jdbc', 'com.databricks.spark.redshift')
             assert mode == 'overwrite'
 
@@ -2107,7 +2107,7 @@ class SparkADF(_ADFABC):
         if iCol != self._iCol:
             self._iCol = iCol
             self._organizeTimeSeries(forceGenTRelAuxCols=True)
-            if self.hasTS:   # if newly turned into a time-series ADF, then set alias to update underlying table
+            if self.hasTS:   # if newly turned into a time-series SparkADF, then set alias to update underlying table
                 self.alias = self._alias
                 self._cache.reprSample = None
 
@@ -3645,7 +3645,7 @@ class SparkADF(_ADFABC):
 
                         if len(methodForCol) == 2:
                             assert self.hasTS, \
-                                "NULL-Filling Methods {} Not Supported for Non-Time-Series ADFs".format(
+                                "NULL-Filling Methods {} Not Supported for Non-Time-Series SparkADFs".format(
                                     ', '.join(s.upper() for s in _TS_FILL_METHODS))
 
                             methodForCol, window = methodForCol
