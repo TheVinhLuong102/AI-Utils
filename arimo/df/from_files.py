@@ -874,6 +874,8 @@ class ArrowADF(_ArrowADFABC):
             for pandasDFTransform in self._pandasDFTransforms:
                 piecePandasDF = pandasDFTransform(piecePandasDF)
 
+            results.append(piecePandasDF)
+
         return reducer(results)
 
     def collect(self, *cols, **kwargs):
