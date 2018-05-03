@@ -383,7 +383,7 @@ class ArrowADF(_ArrowADFABC):
             ['{}: {}'.format(col, self.type(col))
              for col in self.contentCols]
         
-        return '{:,}-piece {}{}[{}][{}]'.format(
+        return '{:,}-piece {}{}[{} + {:,} transform(s)][{}]'.format(
             self.nPieces,
             '{:,}-row '.format(self._cache.nRows)
                 if self._cache.nRows
@@ -392,6 +392,7 @@ class ArrowADF(_ArrowADFABC):
                       else ''),
             type(self).__name__,
             self._pathRepr,
+            len(self._pandasDFTransforms),
             ', '.join(cols_and_types_str))
 
     @property
@@ -409,7 +410,7 @@ class ArrowADF(_ArrowADFABC):
 
         cols_desc_str += ['{} content col(s)'.format(len(self.contentCols))]
 
-        return '{:,}-piece {}{}[{}][{}]'.format(
+        return '{:,}-piece {}{}[{} + {:,} transform(s)][{}]'.format(
             self.nPieces,
             '{:,}-row '.format(self._cache.nRows)
                 if self._cache.nRows
@@ -418,6 +419,7 @@ class ArrowADF(_ArrowADFABC):
                       else ''),
             type(self).__name__,
             self._pathRepr,
+            len(self._pandasDFTransforms),
             ', '.join(cols_desc_str))
 
     # ***************

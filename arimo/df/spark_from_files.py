@@ -703,7 +703,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
             ['{}: {}'.format(col, self._cache.type[col])
              for col in self.contentCols]
 
-        return '{}{:,}-piece {:,}-partition {}{}{}["{}" + {} transform(s)][{}]'.format(
+        return '{}{:,}-piece {:,}-partition {}{}{}["{}" + {:,} transform(s)][{}]'.format(
             '"{}" '.format(self._alias)
                 if self._alias
                 else '',
@@ -736,7 +736,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
 
         cols_desc_str += ['{} content col(s)'.format(len(self.contentCols))]
 
-        return '{}{:,}-piece {:,}-partition {}{}{}[{} transform(s)][{}]'.format(
+        return '{}{:,}-piece {:,}-partition {}{}{}[{:,} transform(s)][{}]'.format(
             '"{}" '.format(self._alias)
                 if self._alias
                 else '',
