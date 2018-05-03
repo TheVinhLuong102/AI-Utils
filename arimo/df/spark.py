@@ -2240,10 +2240,7 @@ class SparkADF(_ADFABC):
         *dict* of data type per column name
         """
         if not hasattr(self._cache, 'type'):
-            self._cache.type = \
-                Namespace(**
-                    {col: type
-                     for col, type in self.dtypes})
+            self._cache.type = Namespace(**dict(self.dtypes))
 
         return self._cache.type
 
