@@ -91,6 +91,22 @@ class _ArrowADFABC(_ADFABC):
         self._reprSampleNPieces = min(self._DEFAULT_REPR_SAMPLE_N_PIECES, self.nPieces)
 
 
+class _ArrowADF__getattr__pandasDFTransform:
+    def __init__(self, attr):
+        self.attr = attr
+
+    def __call__(self, pandasDF):
+        return getattr(pandasDF, self.attr)
+
+
+class _ArrowADF__getitem__pandasDFTransform:
+    def __init__(self, item):
+        self.item = item
+
+    def __call__(self, pandasDF):
+        return pandasDF[self.item]
+
+
 class _ArrowADF__nonNullCol__pandasDFTransform:
     def __init__(self, col, isNum, lower=None, upper=None, strict=False):
         self.col = col
@@ -918,8 +934,6 @@ class ArrowADF(_ArrowADFABC):
     # REPR SAMPLE
     # reprSamplePiecePaths
     # _assignReprSample
-    # __getattr__
-    # __getitem__
 
     @property
     def reprSamplePiecePaths(self):
@@ -942,12 +956,6 @@ class ArrowADF(_ArrowADFABC):
 
         self._cache.nonNullProportion = {}
         self._cache.suffNonNull = {}
-
-    def __getattr__(self, attr):
-        return getattr(self.reprSample, attr)
-
-    def __getitem__(self, item):
-        return self.reprSample[item]
 
     # *********************
     # ROWS, COLUMNS & TYPES
@@ -3137,6 +3145,8 @@ class ArrowADF(_ArrowADFABC):
     # **********
     # TRANSFORMS
     # transform
+    # __getattr__
+    # __getitem__
     # _nonNullCol
     # fillna
     # prep
@@ -3181,6 +3191,14 @@ class ArrowADF(_ArrowADFABC):
             arrowADF._inheritCache(self)
 
         return arrowADF
+
+    def __getattr__(self, attr):
+        return self.transform(
+            pandasDFTransform=_ArrowADF__getattr__pandasDFTransform(attr=attr))
+
+    def __getitem__(self, item):
+        return self.transform(
+            pandasDFTransform=_ArrowADF__getitem__pandasDFTransform(item=item))
 
     def _nonNullCol(self, col, pandasDF=None, lower=None, upper=None, strict=False):
         pandasDFTransform = \

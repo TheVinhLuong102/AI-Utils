@@ -28,7 +28,8 @@ from pyspark.sql import DataFrame
 
 import arimo.backend
 from arimo.df import _ADFABC
-from arimo.df.from_files import _ArrowADFABC
+from arimo.df.from_files import _ArrowADFABC, \
+    _ArrowADF__getitem__pandasDFTransform
 from arimo.df.spark import SparkADF
 from arimo.util import fs, Namespace
 from arimo.util.aws import s3
@@ -37,15 +38,6 @@ from arimo.util.decor import enable_inplace
 from arimo.util.iterables import to_iterable
 from arimo.util.types.spark_sql import _STR_TYPE
 import arimo.debug
-
-
-# https://stackoverflow.com/questions/12019961/python-pickling-nested-functions
-class _ArrowSparkADF__getitem__pandasDFTransform:
-    def __init__(self, item):
-        self.item = item
-
-    def __call__(self, pandasDF):
-        return pandasDF[to_iterable(self.item, iterable_type=list)]
 
 
 class _ArrowSparkADF__fillna__pandasDFTransform:
@@ -679,7 +671,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 sparkDFTransform=
                     lambda sparkDF:
                         sparkDF[item],
-                pandasDFTransform=_ArrowSparkADF__getitem__pandasDFTransform(item=item),
+                pandasDFTransform=_ArrowADF__getitem__pandasDFTransform(item=list(item)),
                 inheritCache=True,
                 inheritNRows=True) \
             if isinstance(item, (list, tuple)) \
