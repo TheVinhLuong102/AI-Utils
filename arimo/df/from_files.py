@@ -36,7 +36,7 @@ from pyarrow.hdfs import HadoopFileSystem
 from pyarrow.parquet import ParquetDataset, read_metadata, read_schema, read_table
 from s3fs import S3FileSystem
 
-from arimo.df import _DFABC
+from arimo.df import _ADFABC
 from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
@@ -47,7 +47,7 @@ from arimo.util.types.arrow import \
 import arimo.debug
 
 
-class _ArrowDFABC(_DFABC):
+class _ArrowADFABC(_ADFABC):
     __metaclass__ = abc.ABCMeta
 
     _DEFAULT_REPR_SAMPLE_N_PIECES = 100
@@ -92,7 +92,7 @@ class _ArrowDFABC(_DFABC):
 
 
 @enable_inplace
-class ArrowDF(_ArrowDFABC):
+class ArrowADF(_ArrowADFABC):
     # "inplace-able" methods
     _INPLACE_ABLE = \
         'rename', \
@@ -110,32 +110,32 @@ class ArrowDF(_ArrowDFABC):
     _PIECE_CACHES = {}
 
     _T_AUX_COL_ARROW_TYPES = {
-        _ArrowDFABC._T_ORD_COL: _ARROW_INT_TYPE,
-        _ArrowDFABC._T_DELTA_COL: _ARROW_DOUBLE_TYPE,
+        _ArrowADFABC._T_ORD_COL: _ARROW_INT_TYPE,
+        _ArrowADFABC._T_DELTA_COL: _ARROW_DOUBLE_TYPE,
 
-        _ArrowDFABC._T_HoY_COL: _ARROW_INT_TYPE,   # Half of Year
-        _ArrowDFABC._T_QoY_COL: _ARROW_INT_TYPE,   # Quarter of Year
-        _ArrowDFABC._T_MoY_COL: _ARROW_INT_TYPE,   # Month of Year
-        # _ArrowDFABC._T_WoY_COL: _ARROW_INT_TYPE,   # Week of Year
-        # _ArrowDFABC._T_DoY_COL: _ARROW_INT_TYPE,   # Day of Year
-        _ArrowDFABC._T_PoY_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Year
+        _ArrowADFABC._T_HoY_COL: _ARROW_INT_TYPE,   # Half of Year
+        _ArrowADFABC._T_QoY_COL: _ARROW_INT_TYPE,   # Quarter of Year
+        _ArrowADFABC._T_MoY_COL: _ARROW_INT_TYPE,   # Month of Year
+        # _ArrowADFABC._T_WoY_COL: _ARROW_INT_TYPE,   # Week of Year
+        # _ArrowADFABC._T_DoY_COL: _ARROW_INT_TYPE,   # Day of Year
+        _ArrowADFABC._T_PoY_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Year
 
-        _ArrowDFABC._T_QoH_COL: _ARROW_INT_TYPE,   # Quarter of Half-Year
-        _ArrowDFABC._T_MoH_COL: _ARROW_INT_TYPE,   # Month of Half-Year
-        _ArrowDFABC._T_PoH_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Half-Year
+        _ArrowADFABC._T_QoH_COL: _ARROW_INT_TYPE,   # Quarter of Half-Year
+        _ArrowADFABC._T_MoH_COL: _ARROW_INT_TYPE,   # Month of Half-Year
+        _ArrowADFABC._T_PoH_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Half-Year
 
-        _ArrowDFABC._T_MoQ_COL: _ARROW_INT_TYPE,   # Month of Quarter
-        _ArrowDFABC._T_PoQ_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Quarter
+        _ArrowADFABC._T_MoQ_COL: _ARROW_INT_TYPE,   # Month of Quarter
+        _ArrowADFABC._T_PoQ_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Quarter
 
-        _ArrowDFABC._T_WoM_COL: _ARROW_INT_TYPE,   # Week of Month
-        _ArrowDFABC._T_DoM_COL: _ARROW_INT_TYPE,   # Day of Month
-        _ArrowDFABC._T_PoM_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Month
+        _ArrowADFABC._T_WoM_COL: _ARROW_INT_TYPE,   # Week of Month
+        _ArrowADFABC._T_DoM_COL: _ARROW_INT_TYPE,   # Day of Month
+        _ArrowADFABC._T_PoM_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Month
 
-        _ArrowDFABC._T_DoW_COL: _ARROW_INT_TYPE,   # Day of Week
-        _ArrowDFABC._T_PoW_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Week
+        _ArrowADFABC._T_DoW_COL: _ARROW_INT_TYPE,   # Day of Week
+        _ArrowADFABC._T_PoW_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Week
 
-        _ArrowDFABC._T_HoD_COL: _ARROW_INT_TYPE,   # Hour of Day
-        _ArrowDFABC._T_PoD_COL: _ARROW_DOUBLE_TYPE   # Part/Proportion/Fraction of Day
+        _ArrowADFABC._T_HoD_COL: _ARROW_INT_TYPE,   # Hour of Day
+        _ArrowADFABC._T_PoD_COL: _ARROW_DOUBLE_TYPE   # Part/Proportion/Fraction of Day
     }
 
     def __init__(
@@ -146,13 +146,13 @@ class ArrowDF(_ArrowDFABC):
 
             iCol=None, tCol=None,
 
-            reprSampleNPieces=_ArrowDFABC._DEFAULT_REPR_SAMPLE_N_PIECES,
-            reprSampleSize=_ArrowDFABC._DEFAULT_REPR_SAMPLE_SIZE,
+            reprSampleNPieces=_ArrowADFABC._DEFAULT_REPR_SAMPLE_N_PIECES,
+            reprSampleSize=_ArrowADFABC._DEFAULT_REPR_SAMPLE_SIZE,
 
-            minNonNullProportion=DefaultDict(_ArrowDFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
-            outlierTailProportion=DefaultDict(_ArrowDFABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
-            maxNCats=DefaultDict(_ArrowDFABC._DEFAULT_MAX_N_CATS),
-            minProportionByMaxNCats=DefaultDict(_ArrowDFABC._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS),
+            minNonNullProportion=DefaultDict(_ArrowADFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
+            outlierTailProportion=DefaultDict(_ArrowADFABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
+            maxNCats=DefaultDict(_ArrowADFABC._DEFAULT_MAX_N_CATS),
+            minProportionByMaxNCats=DefaultDict(_ArrowADFABC._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS),
 
             verbose=True):
         if verbose or arimo.debug.ON:
@@ -3035,28 +3035,28 @@ class ArrowDF(_ArrowDFABC):
     # "INTERNAL / DON'T TOUCH" METHODS
     # _inplace
 
-    def _inplace(self, fadf, alias=None):
-        if isinstance(fadf, (tuple, list)):   # just in case we're taking in multiple inputs
-            fadf = fadf[0]
+    def _inplace(self, adf, alias=None):
+        if isinstance(adf, (tuple, list)):   # just in case we're taking in multiple inputs
+            adf = adf[0]
 
-        assert isinstance(fadf, FileADF)
+        assert isinstance(adf, ArrowSparkADF)
 
-        self.path = fadf.path
+        self.path = adf.path
 
-        self.__dict__.update(self._CACHE[fadf.path])
+        self.__dict__.update(self._CACHE[adf.path])
 
-        self._initSparkDF = fadf._initSparkDF
-        self._sparkDFTransforms = fadf._sparkDFTransforms
-        self._pandasDFTransforms = fadf._pandasDFTransforms
-        self._sparkDF = fadf._sparkDF
+        self._initSparkDF = adf._initSparkDF
+        self._sparkDFTransforms = adf._sparkDFTransforms
+        self._pandasDFTransforms = adf._pandasDFTransforms
+        self._sparkDF = adf._sparkDF
 
         self.alias = alias \
             if alias \
             else (self._alias
                   if self._alias
-                  else fadf._alias)
+                  else adf._alias)
 
-        self._cache = fadf._cache
+        self._cache = adf._cache
 
     # **********
     # TRANSFORMS
@@ -3113,7 +3113,7 @@ class ArrowDF(_ArrowDFABC):
                             .format(self.path, i, additionalSparkDFTransform))
                     raise err
 
-        fadf = FileADF(
+        adf = ArrowSparkADF(
             path=self.path,
             _initSparkDF=self._initSparkDF,
             _sparkDFTransforms=self._sparkDFTransforms + additionalSparkDFTransforms,
@@ -3125,18 +3125,18 @@ class ArrowDF(_ArrowDFABC):
             **stdKwArgs.__dict__)
 
         if inheritCache:
-            fadf._inheritCache(self)
+            adf._inheritCache(self)
 
-        fadf._cache.pieceADFs = self._cache.pieceADFs
+        adf._cache.pieceADFs = self._cache.pieceADFs
 
-        return fadf
+        return adf
 
     def drop(self, *cols, **kwargs):
         return self.transform(
             sparkDFTransform=
             lambda sparkDF:
             sparkDF.drop(*cols),
-            pandasDFTransform=_FileADF__drop__pandasDFTransform(cols=cols),
+            pandasDFTransform=_ArrowSparkADF__drop__pandasDFTransform(cols=cols),
             inheritCache=True,
             inheritNRows=True,
             **kwargs)
@@ -3221,7 +3221,7 @@ class ArrowDF(_ArrowDFABC):
                 if stdKwArgs.detPrePartitioned:
                     stdKwArgs.nDetPrePartitions = nPieceSubPaths
 
-                fadf = FileADF(
+                adf = ArrowSparkADF(
                     path=subsetDirPath,
                     aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
                     _srcSparkDFSchema=self._srcSparkDFSchema,
@@ -3230,9 +3230,9 @@ class ArrowDF(_ArrowDFABC):
                     verbose=verbose,
                     **stdKwArgs.__dict__)
 
-                fadf._cache.colWidth.update(self._cache.colWidth)
+                adf._cache.colWidth.update(self._cache.colWidth)
 
-                return fadf
+                return adf
 
         else:
             return self
@@ -3261,7 +3261,7 @@ class ArrowDF(_ArrowDFABC):
                 piecePath = os.path.join(self.path, pieceSubPath)
 
                 pieceADF = \
-                    FileADF(
+                    ArrowSparkADF(
                         path=piecePath,
                         aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
                         _srcSparkDFSchema=self._srcSparkDFSchema,
@@ -3299,7 +3299,7 @@ class ArrowDF(_ArrowDFABC):
         return pieceADF
 
     def _pieceArrowTable(self, pieceSubPath):
-        return _FileADF__pieceArrowTableFunc(
+        return _ArrowSparkADF__pieceArrowTableFunc(
             path=self.path,
             aws_access_key_id=self._srcArrowDS.fs.fs.key,
             aws_secret_access_key=self._srcArrowDS.fs.fs.secret)(pieceSubPath)
@@ -3397,7 +3397,7 @@ class ArrowDF(_ArrowDFABC):
             return self
 
     def gen(self, *args, **kwargs):
-        return _FileADF__gen(
+        return _ArrowSparkADF__gen(
             args=args,
             path=self.path,
             pieceSubPaths=kwargs.get('pieceSubPaths', self.pieceSubPaths),
@@ -3438,5 +3438,5 @@ class ArrowDF(_ArrowDFABC):
                     for i in range(nWeights)]
 
 
-class AthenaDF(_DFABC):
+class AthenaADF(_ADFABC):
     pass

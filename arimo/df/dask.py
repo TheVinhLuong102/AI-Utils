@@ -1,5 +1,5 @@
-from arimo.df import _DFABC
+from arimo.df import _ADFABC
 
 
-class DaskADF(_DFABC):
+class DaskADF(_ADFABC):
     pass

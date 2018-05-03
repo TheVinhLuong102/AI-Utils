@@ -8,7 +8,7 @@ import pandas
 from pyspark.sql import functions
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
-from arimo.df.from_files import ArrowDF
+from arimo.df.from_files import ArrowADF
 from arimo.df.spark import SparkADF
 from arimo.util.date_time import DATE_COL, MONTH_COL
 from arimo.util.iterables import to_iterable
@@ -504,7 +504,7 @@ class PPPAnalysesMixIn(object):
 
         alpha = kwargs.pop('alpha', .168)
 
-        if isinstance(daily_err_mults_df, ArrowDF):
+        if isinstance(daily_err_mults_df, ArrowADF):
             daily_err_mults_df = daily_err_mults_df.collect()
 
         elif isinstance(daily_err_mults_df, SparkADF):
