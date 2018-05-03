@@ -530,42 +530,14 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                         logger.debug(
                             msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to MAX_JAVA_INTEGER ***')
 
-                    arimo.backend.spark.conf.set(
-                        'spark.files.maxPartitionBytes',
-                        arimo.backend._MAX_JAVA_INTEGER)
-
-                    arimo.backend.spark.conf.set(
-                        'spark.sql.files.maxPartitionBytes',
-                        arimo.backend._MAX_JAVA_INTEGER)
-
-                    arimo.backend.spark.conf.set(
-                        'spark.files.openCostInBytes',
-                        arimo.backend._MAX_JAVA_INTEGER)
-
-                    arimo.backend.spark.conf.set(
-                        'spark.sql.files.openCostInBytes',
-                        arimo.backend._MAX_JAVA_INTEGER)
+                    arimo.backend.setSpark1Partition1File(on=True)
 
                 else:
                     if arimo.debug.ON:
                         logger.debug(
                             msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to Defaults ***')
 
-                    arimo.backend.spark.conf.set(
-                        'spark.files.maxPartitionBytes',
-                        arimo.backend._SPARK_CONF['spark.files.maxPartitionBytes'])
-
-                    arimo.backend.spark.conf.set(
-                        'spark.sql.files.maxPartitionBytes',
-                        arimo.backend._SPARK_CONF['spark.sql.files.maxPartitionBytes'])
-
-                    arimo.backend.spark.conf.set(
-                        'spark.files.openCostInBytes',
-                        arimo.backend._SPARK_CONF['spark.files.openCostInBytes'])
-
-                    arimo.backend.spark.conf.set(
-                        'spark.sql.files.openCostInBytes',
-                        arimo.backend._SPARK_CONF['spark.sql.files.openCostInBytes'])
+                    arimo.backend.setSpark1Partition1File(on=False)
 
             else:
                 sparkConf = kwargs.pop('sparkConf', {})
