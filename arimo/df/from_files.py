@@ -3205,6 +3205,7 @@ class ArrowADF(_ArrowADFABC):
     def _nonNullCol(self, col, pandasDF=None, lower=None, upper=None, strict=False):
         pandasDFTransform = \
             _ArrowADF__nonNullCol__pandasDFTransform(
+                col=col,
                 isNum=is_num(self.type(col)),
                 lower=lower,
                 upper=upper,
