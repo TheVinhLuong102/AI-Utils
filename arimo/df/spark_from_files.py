@@ -526,6 +526,10 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
 
             if arimo.backend.chkSpark():
                 if kwargs['detPrePartitioned']:
+                    if arimo.debug.ON:
+                        logger.debug(
+                            msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to MAX_JAVA_INTEGER ***')
+
                     arimo.backend.spark.conf.set(
                         'spark.files.maxPartitionBytes',
                         arimo.backend._MAX_JAVA_INTEGER)
@@ -543,6 +547,10 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                         arimo.backend._MAX_JAVA_INTEGER)
 
                 else:
+                    if arimo.debug.ON:
+                        logger.debug(
+                            msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to Defaults ***')
+
                     arimo.backend.spark.conf.set(
                         'spark.files.maxPartitionBytes',
                         arimo.backend._SPARK_CONF['spark.files.maxPartitionBytes'])
