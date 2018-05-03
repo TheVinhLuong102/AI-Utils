@@ -3,7 +3,6 @@ from __future__ import division, print_function
 import abc
 from argparse import Namespace as _Namespace
 from collections import Counter
-import copy
 import datetime
 import json
 import math
@@ -160,6 +159,13 @@ class ArrowADF(_ArrowADFABC):
 
         self.path = path
 
+        _aPath = path \
+            if isinstance(path, _STR_CLASSES) \
+            else path[0]
+
+        self.fromS3 = _aPath.startswith('s3://')
+        self.fromHDFS = _aPath.startswith('hdfs:')
+
         if (not reCache) and (path in self._CACHE):
             _cache = self._CACHE[path]
 
@@ -171,7 +177,7 @@ class ArrowADF(_ArrowADFABC):
                 logger.debug('*** RETRIEVING CACHE FOR "{}" ***'.format(path))
 
         else:
-            if path.startswith('s3'):
+            if self.fromS3:
                 self.s3Client = \
                     _cache.s3Client = \
                     s3.client(
@@ -205,9 +211,9 @@ class ArrowADF(_ArrowADFABC):
                         self._s3FS(
                             key=aws_access_key_id,
                             secret=aws_secret_access_key)
-                        if path.startswith('s3')
+                        if self.fromS3
                         else (self._HDFS_ARROW_FS
-                              if path.startswith('hdfs:')
+                              if self.fromHDFS
                               else self._LOCAL_ARROW_FS),
                     schema=None, validate_schema=False, metadata=None,
                     split_row_groups=False)
@@ -259,7 +265,7 @@ class ArrowADF(_ArrowADFABC):
                     if i:
                         localOrHDFSPath = \
                             None \
-                            if path.startswith('s3') \
+                            if self.fromS3 \
                             else piecePath
 
                     else:
@@ -463,7 +469,7 @@ class ArrowADF(_ArrowADFABC):
             return self._PIECE_CACHES[piecePath].localOrHDFSPath
 
         else:
-            if piecePath.startswith('s3'):
+            if self.fromS3:
                 parsedURL = \
                     urlparse(
                         url=piecePath,
