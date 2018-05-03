@@ -810,23 +810,32 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                             .format(self.path, i, additionalSparkDFTransform))
                     raise err
 
-        adf = ArrowSparkADF(
-            path=self.path,
-            _initSparkDF=self._initSparkDF,
-            _sparkDFTransforms=self._sparkDFTransforms + additionalSparkDFTransforms,
-            _pandasDFTransforms=self._pandasDFTransforms + additionalPandasDFTransforms,
-            _sparkDF=_sparkDF,
-            nRows=self._cache.nRows
-                if inheritNRows
-                else None,
-            **stdKwArgs.__dict__)
+        if self.s3Client:
+            aws_access_key_id = self._srcArrowDS.fs.fs.key
+            aws_secret_access_key = self._srcArrowDS.fs.fs.secret
+
+        else:
+            aws_access_key_id = aws_secret_access_key = None
+
+        arrowSparkADF = \
+            ArrowSparkADF(
+                path=self.path,
+                aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
+                _initSparkDF=self._initSparkDF,
+                _sparkDFTransforms=self._sparkDFTransforms + additionalSparkDFTransforms,
+                _pandasDFTransforms=self._pandasDFTransforms + additionalPandasDFTransforms,
+                _sparkDF=_sparkDF,
+                nRows=self._cache.nRows
+                    if inheritNRows
+                    else None,
+                **stdKwArgs.__dict__)
 
         if inheritCache:
-            adf._inheritCache(self)
+            arrowSparkADF._inheritCache(self)
 
-        adf._cache.pieceADFs = self._cache.pieceADFs
+        arrowSparkADF._cache.pieceADFs = self._cache.pieceADFs
 
-        return adf
+        return arrowSparkADF
 
     def select(self, *exprs, **kwargs):
         if exprs:
