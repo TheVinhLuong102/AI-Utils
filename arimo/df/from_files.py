@@ -338,6 +338,24 @@ class ArrowADF(_ArrowADFABC):
     def save(self, *args, **kwargs):
         return NotImplemented
 
+    # ********************************
+    # "INTERNAL / DON'T TOUCH" METHODS
+    # _inplace
+
+    def _inplace(self, arrowADF):
+        if isinstance(arrowADF, (tuple, list)):   # just in case we're taking in multiple inputs
+            arrowADF = arrowADF[0]
+
+        assert isinstance(arrowADF, ArrowADF)
+
+        self.path = arrowADF.path
+
+        self.__dict__.update(self._CACHE[arrowADF.path])
+
+        self._pandasDFTransforms = arrowADF._pandasDFTransforms
+
+        self._cache = arrowADF._cache
+
     # ***************
     # PYTHON STR/REPR
     # __repr__
@@ -3121,34 +3139,6 @@ class ArrowADF(_ArrowADFABC):
         return self._decorate(
             obj=sparkDF, nRows=self._cache.nRows,
             iCol=iCol, tCol=tCol)
-
-
-    # ********************************
-    # "INTERNAL / DON'T TOUCH" METHODS
-    # _inplace
-
-    def _inplace(self, adf, alias=None):
-        if isinstance(adf, (tuple, list)):   # just in case we're taking in multiple inputs
-            adf = adf[0]
-
-        assert isinstance(adf, ArrowSparkADF)
-
-        self.path = adf.path
-
-        self.__dict__.update(self._CACHE[adf.path])
-
-        self._initSparkDF = adf._initSparkDF
-        self._sparkDFTransforms = adf._sparkDFTransforms
-        self._pandasDFTransforms = adf._pandasDFTransforms
-        self._sparkDF = adf._sparkDF
-
-        self.alias = alias \
-            if alias \
-            else (self._alias
-                  if self._alias
-                  else adf._alias)
-
-        self._cache = adf._cache
 
     # **********
     # TRANSFORMS
