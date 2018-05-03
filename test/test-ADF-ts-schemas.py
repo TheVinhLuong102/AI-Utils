@@ -1,10 +1,10 @@
 import pandas
 
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 from arimo.util.types.spark_sql import _BIGINT_TYPE, _INT_TYPE
 
 
-ts_adf = ADF.create(
+ts_adf = SparkADF.create(
     data=pandas.DataFrame(
         data=dict(
             id=3 * ('i0',) + 3 * ('i1',) + 3 * ('i2',),

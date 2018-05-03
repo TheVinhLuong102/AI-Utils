@@ -11,7 +11,7 @@ from pyspark.sql.types import DoubleType, IntegerType, StructField, StructType
 
 import arimo.backend
 from arimo.blueprints.base import _blueprint_from_params, _docstr_blueprint, _PPPBlueprintABC
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 from arimo.util import fs
 from arimo.util.dl import MASK_VAL
 import arimo.debug
@@ -136,7 +136,7 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
 
         if arimo.debug.ON:
             self.stdout_logger.debug(
-                msg='*** SCORE: PREPARED ADF: {} {} ***\n'
+                msg='*** SCORE: PREPARED SparkADF: {} {} ***\n'
                     .format(adf, adf.columns))
 
         prep_vec_over_time_cols = {}
@@ -213,7 +213,7 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
                          for i, label_var_name in enumerate(label_var_names)))
 
         score_adf = \
-            ADF.create(
+            SparkADF.create(
                 data=rdd.flatMap(score),
                 schema=StructType(
                     [StructField(

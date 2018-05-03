@@ -4,7 +4,7 @@ import numpy
 import pandas
 from sklearn import metrics as skl_metrics
 
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 from arimo.eval.metrics import \
     MSE, RMSE, MAE, R2, \
     Prevalence, ConfMat, Acc, Precision, Recall, F1, PR_AuC, ROC_AuC, \
@@ -35,7 +35,7 @@ df = pandas.DataFrame(
         SCORE_BIN_COL: numpy.random.random(18),
         SCORE_MULTI_COL: [numpy.random.dirichlet(numpy.ones(N_MULTI_CLASSES), size=None).tolist()
                           for _ in range(18)]})
-adf = ADF.create(data=df)
+adf = SparkADF.create(data=df)
 sdf = adf._sparkDF
 
 n = len(df)

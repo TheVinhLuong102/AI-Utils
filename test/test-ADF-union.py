@@ -1,7 +1,7 @@
 import os
 
 import arimo.df
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 from arimo.util import fs
 
 
@@ -39,34 +39,34 @@ fs.put(
     _mv=False)
 
 
-adf_0 = ADF.load(
+adf_0 = SparkADF.load(
     path=TINY_PARQUET_PATH,
     format='parquet',
     verbose=True)
 
 
-adf_1 = ADF.load(
+adf_1 = SparkADF.load(
     path=SKEWED_DATA_PARQUET_PATH,
     format='parquet',
     verbose=True)
 
 
-adf_0_0_a = ADF.unionAllCols(adf_0, adf_0)
+adf_0_0_a = SparkADF.unionAllCols(adf_0, adf_0)
 assert adf_0_0_a.nPartitions == 2 * adf_0.nPartitions
 
-adf_0_0_b = ADF.unionAllCols(adf_0, adf_0, _unionRDDs=True)
+adf_0_0_b = SparkADF.unionAllCols(adf_0, adf_0, _unionRDDs=True)
 assert adf_0_0_b.nPartitions == 2 * adf_0.nPartitions
 
 
-adf_0_1_a = ADF.unionAllCols(adf_0, adf_1)
+adf_0_1_a = SparkADF.unionAllCols(adf_0, adf_1)
 assert adf_0_1_a.nPartitions == adf_0.nPartitions + adf_1.nPartitions
 
-adf_0_1_b = ADF.unionAllCols(adf_0, adf_1, _unionRDDs=True)
+adf_0_1_b = SparkADF.unionAllCols(adf_0, adf_1, _unionRDDs=True)
 assert adf_0_1_b.nPartitions == adf_0.nPartitions + adf_1.nPartitions
 
 
-adf_1_1_a = ADF.unionAllCols(adf_1, adf_1)
+adf_1_1_a = SparkADF.unionAllCols(adf_1, adf_1)
 assert adf_1_1_a.nPartitions == 2 * adf_1.nPartitions
 
-adf_1_1_b = ADF.unionAllCols(adf_1, adf_1, _unionRDDs=True)
+adf_1_1_b = SparkADF.unionAllCols(adf_1, adf_1, _unionRDDs=True)
 assert adf_1_1_b.nPartitions == 2 * adf_1.nPartitions

@@ -9,7 +9,7 @@ if sys.version_info.major == 3:
     from functools import reduce
 
 import arimo.backend
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 import arimo.debug
 
 
@@ -62,17 +62,17 @@ dated_df = pandas.DataFrame(
         axis=None)
 
 
-dated_adf_A = ADF.create(data=dated_df)
+dated_adf_A = SparkADF.create(data=dated_df)
 assert (dated_adf_A.alias is None) \
    and (dated_adf_A.iCol is None) \
    and (dated_adf_A.tCol is None) \
-   and (dated_adf_A.tChunkLen == ADF._DEFAULT_T_CHUNK_LEN)
+   and (dated_adf_A.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 dated_adf_A.alias = DATED_TBL_ALIAS_a
 assert (dated_adf_A.alias == DATED_TBL_ALIAS_a) \
    and (dated_adf_A.iCol is None) \
    and (dated_adf_A.tCol is None) \
-   and (dated_adf_A.tChunkLen == ADF._DEFAULT_T_CHUNK_LEN)
+   and (dated_adf_A.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 print('{}:'.format(dated_adf_A))
 dated_adf_A.show(schema=True)
@@ -81,23 +81,23 @@ print('{}:'.format(DATED_TBL_ALIAS_a))
 arimo.backend.spark.sql('SELECT * FROM {}'.format(DATED_TBL_ALIAS_a)).show()
 
 
-dated_adf_ATI = ADF.create(data=dated_df)
+dated_adf_ATI = SparkADF.create(data=dated_df)
 assert (dated_adf_ATI.alias is None) \
    and (dated_adf_ATI.iCol is None) \
    and (dated_adf_ATI.tCol is None) \
-   and (dated_adf_ATI.tChunkLen == ADF._DEFAULT_T_CHUNK_LEN)
+   and (dated_adf_ATI.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 dated_adf_ATI.alias = DATED_TBL_ALIAS_ati
 assert (dated_adf_ATI.alias == DATED_TBL_ALIAS_ati) \
    and (dated_adf_ATI.iCol is None) \
    and (dated_adf_ATI.tCol is None) \
-   and (dated_adf_ATI.tChunkLen == ADF._DEFAULT_T_CHUNK_LEN)
+   and (dated_adf_ATI.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 dated_adf_ATI.tCol = TIME_COL_NAME
 assert (dated_adf_ATI.alias == DATED_TBL_ALIAS_ati) \
    and (dated_adf_ATI.iCol is None) \
    and (dated_adf_ATI.tCol == TIME_COL_NAME) \
-   and (dated_adf_ATI.tChunkLen == ADF._DEFAULT_T_CHUNK_LEN)
+   and (dated_adf_ATI.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 print('{} w/ Date Components:'.format(dated_adf_ATI))
 dated_adf_ATI.show(schema=True, __tAuxCols__=True)
@@ -109,7 +109,7 @@ dated_adf_ATI.iCol = ID_COL_NAME
 assert (dated_adf_ATI.alias == DATED_TBL_ALIAS_ati) \
    and (dated_adf_ATI.iCol == ID_COL_NAME) \
    and (dated_adf_ATI.tCol == TIME_COL_NAME) \
-   and (dated_adf_ATI.tChunkLen == ADF._DEFAULT_T_CHUNK_LEN)
+   and (dated_adf_ATI.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 print('Time-Series {}:'.format(dated_adf_ATI))
 dated_adf_ATI.show(schema=True, __partitionID__=True)
@@ -119,7 +119,7 @@ arimo.backend.spark.sql('SELECT * FROM {}'.format(DATED_TBL_ALIAS_ati)).show()
 
 
 dated_adf_AIT = \
-    ADF.create(
+    SparkADF.create(
         data=dated_df,
         alias=DATED_TBL_ALIAS_ait,
         iCol=ID_COL_NAME,
@@ -160,17 +160,17 @@ timestamped_df = pandas.DataFrame(
         axis=None)
 
 
-timestamped_adf_A = ADF.create(data=timestamped_df)
+timestamped_adf_A = SparkADF.create(data=timestamped_df)
 assert (timestamped_adf_A.alias is None) \
    and (timestamped_adf_A.iCol is None) \
    and (timestamped_adf_A.tCol is None) \
-   and (timestamped_adf_A.tChunkLen == ADF._DEFAULT_T_CHUNK_LEN)
+   and (timestamped_adf_A.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 timestamped_adf_A.alias = TIMESTAMPED_TBL_ALIAS_a
 assert (timestamped_adf_A.alias == TIMESTAMPED_TBL_ALIAS_a) \
    and (timestamped_adf_A.iCol is None) \
    and (timestamped_adf_A.tCol is None) \
-   and (timestamped_adf_A.tChunkLen == ADF._DEFAULT_T_CHUNK_LEN)
+   and (timestamped_adf_A.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 print('{}:'.format(timestamped_adf_A))
 timestamped_adf_A.show(schema=True)
@@ -179,23 +179,23 @@ print('{}:'.format(TIMESTAMPED_TBL_ALIAS_a))
 arimo.backend.spark.sql('SELECT * FROM {}'.format(TIMESTAMPED_TBL_ALIAS_a)).show()
 
 
-timestamped_adf_ATI = ADF.create(data=timestamped_df)
+timestamped_adf_ATI = SparkADF.create(data=timestamped_df)
 assert (timestamped_adf_ATI.alias is None) \
    and (timestamped_adf_ATI.iCol is None) \
    and (timestamped_adf_ATI.tCol is None) \
-   and (timestamped_adf_ATI.tChunkLen == ADF._DEFAULT_T_CHUNK_LEN)
+   and (timestamped_adf_ATI.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 timestamped_adf_ATI.alias = TIMESTAMPED_TBL_ALIAS_ati
 assert (timestamped_adf_ATI.alias == TIMESTAMPED_TBL_ALIAS_ati) \
    and (timestamped_adf_ATI.iCol is None) \
    and (timestamped_adf_ATI.tCol is None) \
-   and (timestamped_adf_ATI.tChunkLen == ADF._DEFAULT_T_CHUNK_LEN)
+   and (timestamped_adf_ATI.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 timestamped_adf_ATI.tCol = TIME_COL_NAME
 assert (timestamped_adf_ATI.alias == TIMESTAMPED_TBL_ALIAS_ati) \
    and (timestamped_adf_ATI.iCol is None) \
    and (timestamped_adf_ATI.tCol == TIME_COL_NAME) \
-   and (timestamped_adf_ATI.tChunkLen == ADF._DEFAULT_T_CHUNK_LEN)
+   and (timestamped_adf_ATI.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 print('{} w/ Date-Time Components:'.format(timestamped_adf_ATI))
 timestamped_adf_ATI.show(schema=True, __tAuxCols__=True)
@@ -207,7 +207,7 @@ timestamped_adf_ATI.iCol = ID_COL_NAME
 assert (timestamped_adf_ATI.alias == TIMESTAMPED_TBL_ALIAS_ati) \
    and (timestamped_adf_ATI.iCol == ID_COL_NAME) \
    and (timestamped_adf_ATI.tCol == TIME_COL_NAME) \
-   and (timestamped_adf_ATI.tChunkLen == ADF._DEFAULT_T_CHUNK_LEN)
+   and (timestamped_adf_ATI.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 print('Time-Series {}:'.format(timestamped_adf_ATI))
 timestamped_adf_ATI.show(schema=True, __partitionID__=True)
@@ -217,7 +217,7 @@ arimo.backend.spark.sql('SELECT * FROM {}'.format(TIMESTAMPED_TBL_ALIAS_ati)).sh
 
 
 timestamped_adf_AIT = \
-    ADF.create(
+    SparkADF.create(
         data=timestamped_df,
         alias=TIMESTAMPED_TBL_ALIAS_ait,
         iCol=ID_COL_NAME,

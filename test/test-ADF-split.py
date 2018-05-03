@@ -8,7 +8,7 @@ import sys
 if sys.version_info.major == 3:
     from functools import reduce
 
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 
 
 N_IDS = 3
@@ -28,7 +28,7 @@ SPLIT_ADF_T_CHUNK_LEN = 3
 ORIG_T_CHUNK_LEN = 2 * SPLIT_ADF_T_CHUNK_LEN
 
 
-adf = ADF.create(
+adf = SparkADF.create(
     data=pandas.DataFrame(
         data={
             ID_COL_NAME:
@@ -59,8 +59,8 @@ adf_1, adf_2 = adf.split(.5, .5)
 
 adf_1.tChunkLen = adf_2.tChunkLen = SPLIT_ADF_T_CHUNK_LEN
 
-print('Split ADF #1:')
+print('Split SparkADF #1:')
 adf_1.show()
 
-print('Split ADF #2')
+print('Split SparkADF #2')
 adf_2.show()

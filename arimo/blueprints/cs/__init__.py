@@ -15,7 +15,7 @@ from pyspark.sql.types import ArrayType, DoubleType, StructField, StructType
 
 import arimo.backend
 from arimo.blueprints.base import _docstr_blueprint, _SupervisedBlueprintABC, _DLSupervisedBlueprintABC
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 import arimo.eval.metrics
 from arimo.util import fs
 from arimo.util.log import STDOUT_HANDLER
@@ -342,7 +342,7 @@ class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSu
                                 verbose=0))]
 
         score_adf = \
-            ADF.create(
+            SparkADF.create(
                 data=rdd.flatMap(score),
                 schema=StructType(
                     list(adf.schema) +

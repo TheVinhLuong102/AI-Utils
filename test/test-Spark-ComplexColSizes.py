@@ -3,10 +3,10 @@ import pandas
 from pyspark.ml.feature import VectorAssembler, VectorSizeHint
 from pyspark.ml import PipelineModel
 
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 
 
-adf = ADF.create(
+adf = SparkADF.create(
     data=pandas.DataFrame(
         data=dict(
             x=[0],

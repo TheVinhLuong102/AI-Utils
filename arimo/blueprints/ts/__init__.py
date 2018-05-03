@@ -15,7 +15,7 @@ from pyspark.sql.types import ArrayType, DoubleType, IntegerType, StructField, S
 
 import arimo.backend
 from arimo.blueprints.base import _docstr_blueprint, _DLSupervisedBlueprintABC
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 import arimo.eval.metrics
 from arimo.util import fs, Namespace
 from arimo.util.decor import _docstr_verbose
@@ -170,7 +170,7 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
 
         if arimo.debug.ON:
             model.stdout_logger.debug(
-                msg='*** SCORE: PREPARED ADF: {} {} ***'
+                msg='*** SCORE: PREPARED SparkADF: {} {} ***'
                     .format(adf, adf.columns))
 
         id_col = str(self.params.data.id_col)
@@ -264,7 +264,7 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
                                 verbose=0))]
 
         score_adf = \
-            ADF.create(
+            SparkADF.create(
                 data=rdd.flatMap(score),
                 schema=StructType(
                     [StructField(
@@ -377,7 +377,7 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
 
         if arimo.debug.ON:
             model.stdout_logger.debug(
-                msg='*** EVAL: POST-PREP_XY ADF: {} {} ***'
+                msg='*** EVAL: POST-PREP_XY SparkADF: {} {} ***'
                     .format(adf, adf.columns))
 
         score_adf = \
@@ -395,7 +395,7 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
 
         if arimo.debug.ON:
             model.stdout_logger.debug(
-                msg='*** EVAL: SCORED ADF: {} {} ***'
+                msg='*** EVAL: SCORED SparkADF: {} {} ***'
                     .format(score_adf, score_adf.columns))
 
         label_var = \

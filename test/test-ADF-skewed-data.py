@@ -1,7 +1,7 @@
 import os
 
 import arimo.backend
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 from arimo.util.date_time import _T_ORD_COL
 from arimo.util import fs
 
@@ -38,7 +38,7 @@ if not arimo.backend.chkSpark():
     arimo.backend.init(sparkConf={'spark.locality.wait': SPARK_LOCALITY_WAIT})
 
 
-adf = ADF.load(
+adf = SparkADF.load(
         path=SKEWED_DATA_PARQUET_HDFS_PATH,
         format='parquet',
         verbose=True)(
@@ -64,7 +64,7 @@ skewed_adf.cache()
 skewed_adf.unpersist()
 
 
-# TS ADF has even distribution across executors thanks to chunking
+# TS SparkADF has even distribution across executors thanks to chunking
 ts_adf = adf('*', iCol=ID_COL_NAME, tCol=TIME_COL_NAME)
 
 ts_adf.cache()

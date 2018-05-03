@@ -3,14 +3,14 @@ import pandas
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import StandardScaler, VectorAssembler
 
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 
 
 df = pandas.DataFrame(
     data=dict(
         int_x=[1, 2, 3],
         flt_x=[10., 20., 30.]))
-adf = ADF.create(data=df)
+adf = SparkADF.create(data=df)
 sdf = adf._sparkDF
 
 

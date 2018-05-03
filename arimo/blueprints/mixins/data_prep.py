@@ -16,8 +16,8 @@ from pyspark.ml.feature import StringIndexer, VectorAssembler
 import pyspark.sql
 
 import arimo.backend
-from arimo.df.spark import ADF
-from arimo.df.spark_from_files import FileADF
+from arimo.df.spark import SparkADF
+from arimo.df.spark_from_files import ArrowSparkADF
 import arimo.eval.metrics
 from arimo.util import clean_uuid, Namespace
 from arimo.util.iterables import to_iterable
@@ -76,7 +76,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
 
         __first_train__ = __train__ and (not os.path.isdir(self.data_transforms_dir))
 
-        if isinstance(df, ADF):
+        if isinstance(df, SparkADF):
             adf = df
 
             adf.tCol = self.params.data.time_col
@@ -91,7 +91,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                 kwargs['iCol'] = self.params.data.id_col
 
             if isinstance(df, pandas.DataFrame):
-                adf = ADF.create(
+                adf = SparkADF.create(
                     data=df,
                     schema=None,
                     samplingRatio=None,
@@ -99,14 +99,14 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                     **kwargs)
 
             elif isinstance(df, pyspark.sql.DataFrame):
-                adf = ADF(sparkDF=df, **kwargs)
+                adf = SparkADF(sparkDF=df, **kwargs)
 
             else:
                 assert isinstance(df, _STR_CLASSES)
-                adf = FileADF(path=df, **kwargs)
+                adf = ArrowSparkADF(path=df, **kwargs)
 
         if __from_ensemble__ or __from_ppp__:
-            assert isinstance(adf, ADF) and adf.alias
+            assert isinstance(adf, SparkADF) and adf.alias
 
         else:
             adf_uuid = clean_uuid(uuid.uuid4())
@@ -442,7 +442,7 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
 
         __first_train__ = __train__ and (not os.path.isdir(self.data_transforms_dir))
 
-        if isinstance(df, ADF):
+        if isinstance(df, SparkADF):
             adf = df
 
             adf.tCol = self.params.data.time_col
@@ -457,7 +457,7 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                 kwargs['iCol'] = self.params.data.id_col
 
             if isinstance(df, pandas.DataFrame):
-                adf = ADF.create(
+                adf = SparkADF.create(
                     data=df,
                     schema=None,
                     samplingRatio=None,
@@ -465,11 +465,11 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                     **kwargs)
 
             elif isinstance(df, pyspark.sql.DataFrame):
-                adf = ADF(sparkDF=df, **kwargs)
+                adf = SparkADF(sparkDF=df, **kwargs)
 
             else:
                 assert isinstance(df, _STR_CLASSES)
-                adf = FileADF(path=df, **kwargs)
+                adf = ArrowSparkADF(path=df, **kwargs)
 
         assert (self.params.data.id_col in adf.columns) \
            and (self.params.data.time_col in adf.columns)

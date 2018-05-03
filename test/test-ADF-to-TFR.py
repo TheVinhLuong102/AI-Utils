@@ -8,14 +8,14 @@ from pyspark.ml.feature import VectorAssembler
 from google.protobuf.json_format import MessageToJson
 import tensorflow as tf
 
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 from arimo.util import fs
 
 
 TFR_PATH = '/tmp/.adf.tfr'
 
 
-adf = ADF.create(
+adf = SparkADF.create(
     data=pandas.DataFrame(
         data=dict(
             x=[-1, 0, 1],

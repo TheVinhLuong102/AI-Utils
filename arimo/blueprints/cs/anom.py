@@ -6,12 +6,11 @@ import os
 import shutil
 import uuid
 
-from pyspark import SparkFiles
 from pyspark.sql.types import DoubleType, StructField, StructType
 
 import arimo.backend
 from arimo.blueprints.base import _docstr_blueprint, _blueprint_from_params, _PPPBlueprintABC
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 from arimo.util import fs
 import arimo.debug
 
@@ -129,7 +128,7 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
                                     verbose=0)
                               for dl_model_file_path, x in zip(model_file_paths, tup[1:])))]
 
-        return ADF.create(
+        return SparkADF.create(
                 data=rdd.flatMap(score),
                 schema=StructType(
                     list(adf.schema) +

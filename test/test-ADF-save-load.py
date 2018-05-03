@@ -5,7 +5,7 @@ import pandas
 import random
 
 import arimo.backend
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 from arimo.util import fs
 
 
@@ -56,11 +56,11 @@ FULL_FORMAT_NAMES = dict(avro='com.databricks.spark.avro')
 
 
 arimo.backend.init(
-    sparkApp='test ADF save/load ({} in-memory partitions)'.format(N_IN_MEMORY_PARTITIONS),
+    sparkApp='test SparkADF save/load ({} in-memory partitions)'.format(N_IN_MEMORY_PARTITIONS),
     sparkConf={'spark.default.parallelism': N_IN_MEMORY_PARTITIONS})
 
 
-TEST_ADF = ADF.create(
+TEST_ADF = SparkADF.create(
     data=pandas.DataFrame(
         data=dict(
             boolX=[None, False, True],
@@ -143,9 +143,9 @@ ADFS_FOR_FORMATS = \
 
 
 for fmt, compression_codecs in FORMATS_N_COMPRESSION_CODECS:
-    if fmt in ADFS_FOR_FORMATS:
+    if fmt in SparkADFS_FOR_FORMATS:
         for compression_codec in compression_codecs:
-            adf = ADFS_FOR_FORMATS[fmt]
+            adf = SparkADFS_FOR_FORMATS[fmt]
             full_format_name = FULL_FORMAT_NAMES.get(fmt, fmt)
             for n_file_partitions in Ns_FILE_PARTITIONS:
                 path = '{}.{}-partition.{}.{}'.format(PERSIST_BASEPATH, n_file_partitions, fmt, compression_codec)
@@ -155,7 +155,7 @@ for fmt, compression_codecs in FORMATS_N_COMPRESSION_CODECS:
                     .save(path=path, mode='overwrite',
                           format=full_format_name, compression=compression_codec,
                           verbose=True)
-                adf = ADF.load(path=path,
+                adf = SparkADF.load(path=path,
                                format=full_format_name,
                                schema=None,
                                verbose=True)

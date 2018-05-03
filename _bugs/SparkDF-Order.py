@@ -4,7 +4,7 @@ import datetime
 import itertools
 import pandas
 
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 
 import sys
 if sys.version_info.major == 3:
@@ -26,7 +26,7 @@ TIME_COL_NAME = 't'
 CONTENT_COL_NAME = 'x'
 
 
-sparkDF = ADF.create(
+sparkDF = SparkADF.create(
     data=pandas.DataFrame(
         data={
             ID_COL_NAME:

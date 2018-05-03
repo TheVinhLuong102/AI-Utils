@@ -17,7 +17,7 @@ from pyspark.ml.feature import \
     \
     VectorAssembler
 
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 from arimo.util import Namespace
 
 
@@ -36,7 +36,7 @@ def data(spark_data=True):
             flt_x=[10., 20., 30.]))
 
     if spark_data:
-        adf = ADF.create(data=df)
+        adf = SparkADF.create(data=df)
         sdf = adf._sparkDF
 
         fltXVectorAssembler = \

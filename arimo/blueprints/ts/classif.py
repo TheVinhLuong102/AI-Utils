@@ -7,7 +7,7 @@ import random
 import arimo.backend
 from arimo.blueprints.base import _docstr_blueprint
 from arimo.blueprints.mixins.eval import ClassifEvalMixIn
-from arimo.df.spark_from_files import FileADF
+from arimo.df.spark_from_files import ArrowSparkADF
 from arimo.util import fs, Namespace
 from arimo.util.decor import _docstr_verbose
 from arimo.util.dl import MASK_VAL
@@ -177,7 +177,7 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
             self.params.model._persist.struct_file), 'w') \
             .write(model.to_json())
 
-        assert isinstance(adf, FileADF)
+        assert isinstance(adf, ArrowSparkADF)
         piece_sub_paths = list(adf.pieceSubPaths)
         random.shuffle(piece_sub_paths)
         split_idx = int(math.ceil(self.params.model.train.train_proportion * adf.nPieces))

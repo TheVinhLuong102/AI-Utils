@@ -3,10 +3,10 @@ from __future__ import print_function
 import numpy
 import pandas
 
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 
 
-adf = ADF.create(
+adf = SparkADF.create(
     data=pandas.DataFrame(
         data=dict(
             x=[numpy.nan, 0., -1., 1.]))) \

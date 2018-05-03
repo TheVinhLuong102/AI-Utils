@@ -8,8 +8,8 @@ import pandas
 from pyspark.sql import functions
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
-from arimo.df.from_files import FileDF
-from arimo.df.spark import ADF
+from arimo.df.from_files import ArrowDF
+from arimo.df.spark import SparkADF
 from arimo.util.date_time import DATE_COL, MONTH_COL
 from arimo.util.iterables import to_iterable
 
@@ -121,7 +121,7 @@ class PPPAnalysesMixIn(object):
 
         id_col = self.params.data.id_col
 
-        if isinstance(df, ADF):
+        if isinstance(df, SparkADF):
             _is_adf = True
 
             benchmark_metrics_df = \
@@ -145,7 +145,7 @@ class PPPAnalysesMixIn(object):
                     benchmark_metrics_df[benchmark_metric_col_names[self._GLOBAL_PREFIX][_raw_metric][label_var_name]] = \
                         self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric]
 
-            ADF.create(
+            SparkADF.create(
                 data=benchmark_metrics_df.where(
                     cond=pandas.notnull(benchmark_metrics_df),
                     other=None,
@@ -398,7 +398,7 @@ class PPPAnalysesMixIn(object):
                      for _metric, _indiv_or_global_prefix, _sgn in
                         itertools.product(cls._RAW_METRICS, cls._INDIV_OR_GLOBAL_PREFIXES, cls._SGN_PREFIXES)]
 
-        if isinstance(df_w_err_mults, ADF):
+        if isinstance(df_w_err_mults, SparkADF):
             from arimo.blueprints.base import _SupervisedBlueprintABC
 
             col_strs = []
@@ -504,10 +504,10 @@ class PPPAnalysesMixIn(object):
 
         alpha = kwargs.pop('alpha', .168)
 
-        if isinstance(daily_err_mults_df, FileDF):
+        if isinstance(daily_err_mults_df, ArrowDF):
             daily_err_mults_df = daily_err_mults_df.collect()
 
-        elif isinstance(daily_err_mults_df, ADF):
+        elif isinstance(daily_err_mults_df, SparkADF):
             daily_err_mults_df = daily_err_mults_df.toPandas()
 
         daily_err_mults_df.sort_values(

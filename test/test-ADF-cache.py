@@ -1,10 +1,10 @@
 import pandas
 
 import arimo.backend
-from arimo.df.spark import ADF
+from arimo.df.spark import SparkADF
 
 
-adf_0 = ADF.create(
+adf_0 = SparkADF.create(
     data=pandas.DataFrame(
         data=dict(
             x=[0, 1, 2],
@@ -17,7 +17,7 @@ adf_0.cache()
 assert arimo.backend.spark.catalog.isCached(tableName='tbl_0')
 
 
-adf_1 = ADF.create(
+adf_1 = SparkADF.create(
     data=pandas.DataFrame(
         data=dict(
             x=[0, 10, 20],
@@ -28,7 +28,7 @@ adf_1 = ADF.create(
 assert not arimo.backend.spark.catalog.isCached(tableName='tbl_1')
 
 
-adf_0_ = ADF.create(
+adf_0_ = SparkADF.create(
     data=pandas.DataFrame(
         data=dict(
             x=[0, 100, 200],
