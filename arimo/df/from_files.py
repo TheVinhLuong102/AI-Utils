@@ -290,8 +290,8 @@ class ArrowADF(_ArrowADFABC):
                 _cache.nPieces = 1
                 _cache.piecePaths = {path}
 
-            _cache.srcCols = set()
-            _cache.srcTypes = Namespace()
+            _cache.srcColsInclPartitionKVs = set()
+            _cache.srcTypesInclPartitionKVs = Namespace()
 
             for i, piecePath in enumerate(_cache.piecePaths):
                 if piecePath in self._PIECE_CACHES:
@@ -300,8 +300,10 @@ class ArrowADF(_ArrowADFABC):
                     pieceCache.arrowDFs.add(self)
 
                 else:
-                    srcCols = []
-                    srcTypes = Namespace()
+                    srcColsInclPartitionKVs = []
+
+                    srcTypesExclPartitionKVs = Namespace()
+                    srcTypesInclPartitionKVs = Namespace()
 
                     partitionKVs = {}
 
@@ -309,14 +311,14 @@ class ArrowADF(_ArrowADFABC):
                         k, v = partitionKV.split('=')
                         k = str(k)   # ensure not Unicode
 
-                        srcCols.append(k)
+                        srcColsInclPartitionKVs.append(k)
 
                         if k == DATE_COL:
-                            srcTypes[k] = _ARROW_DATE_TYPE
+                            srcTypesInclPartitionKVs[k] = _ARROW_DATE_TYPE
                             partitionKVs[k] = datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date()
 
                         else:
-                            srcTypes[k] = _ARROW_STR_TYPE
+                            srcTypesInclPartitionKVs[k] = _ARROW_STR_TYPE
                             partitionKVs[k] = v[:-1]
 
                     if i:
@@ -325,36 +327,52 @@ class ArrowADF(_ArrowADFABC):
                             if self.fromS3 \
                             else piecePath
 
+                        srcColsExclPartitionKVs = None
+
+                        nRows = None
+
                     else:
                         localOrHDFSPath = self.pieceLocalOrHDFSPath(piecePath=piecePath)
 
                         schema = read_schema(where=localOrHDFSPath)
 
-                        srcCols += schema.names
+                        srcColsExclPartitionKVs = schema.names
+
+                        srcColsInclPartitionKVs += schema.names
 
                         for col in schema.names:
-                            srcTypes[col] = schema.field_by_name(col).type
+                            srcTypesExclPartitionKVs[col] = \
+                                srcTypesInclPartitionKVs[col] = \
+                                schema.field_by_name(col).type
+
+                        nRows = read_metadata(where=localOrHDFSPath).num_rows
 
                     self._PIECE_CACHES[piecePath] = \
                         pieceCache = \
                         Namespace(
                             arrowDFs={self},
+
                             localOrHDFSPath=localOrHDFSPath,
                             partitionKVs=partitionKVs,
-                            srcCols=srcCols,
-                            srcTypes=srcTypes,
-                            nRows=None)
 
-                _cache.srcCols.update(pieceCache.srcCols)
+                            srcColsExclPartitionKVs=srcColsExclPartitionKVs,
+                            srcColsInclPartitionKVs=srcColsInclPartitionKVs,
 
-                for col, arrowType in pieceCache.srcTypes.items():
-                    if col in _cache.srcTypes:
-                        assert arrowType == _cache.srcTypes[col], \
+                            srcTypesExclPartitionKVs=srcTypesExclPartitionKVs,
+                            srcTypesInclPartitionKVs=srcTypesInclPartitionKVs,
+                            
+                            nRows=nRows)
+
+                _cache.srcColsInclPartitionKVs.update(pieceCache.srcColsInclPartitionKVs)
+
+                for col, arrowType in pieceCache.srcTypesInclPartitionKVs.items():
+                    if col in _cache.srcTypesInclPartitionKVs:
+                        assert arrowType == _cache.srcTypesInclPartitionKVs[col], \
                             '*** {} COLUMN {}: DETECTED TYPE {} != {} ***'.format(
-                                piecePath, col, arrowType, _cache.srcTypes[col])
+                                piecePath, col, arrowType, _cache.srcTypesInclPartitionKVs[col])
 
                     else:
-                        _cache.srcTypes[col] = arrowType
+                        _cache.srcTypesInclPartitionKVs[col] = arrowType
 
         self.__dict__.update(_cache)
 
@@ -364,7 +382,7 @@ class ArrowADF(_ArrowADFABC):
         self.hasTS = iCol and tCol
 
         self._dCol = DATE_COL \
-            if DATE_COL in self.srcCols \
+            if DATE_COL in self.srcColsInclPartitionKVs \
             else None
 
         self._pandasDFTransforms = _pandasDFTransforms
@@ -989,7 +1007,7 @@ class ArrowADF(_ArrowADFABC):
 
     @property
     def columns(self):
-        return list(self.srcCols) + \
+        return list(self.srcColsInclPartitionKVs) + \
             (list(self._T_AUX_COLS
                   if self._iCol
                   else self._T_COMPONENT_AUX_COLS)
@@ -1005,13 +1023,13 @@ class ArrowADF(_ArrowADFABC):
                                if self._iCol
                                else self._T_COMPONENT_AUX_COLS)})
 
-            for col, arrowType in self.srcTypes.items():
+            for col, arrowType in self.srcTypesInclPartitionKVs.items():
                 _types[col] = arrowType
 
             return _types
 
         else:
-            return self.srcTypes
+            return self.srcTypesInclPartitionKVs
 
     def type(self, col):
         return self.types[col]
