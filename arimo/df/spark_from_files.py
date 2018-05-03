@@ -628,7 +628,6 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                             if isinstance(sparkDFTransform, Transformer) \
                             else sparkDFTransform(self._sparkDF)
 
-
                     except Exception as err:
                         self.stdout_logger.error(
                             msg='*** {} TRANSFORM #{}: ***'
