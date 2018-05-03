@@ -91,6 +91,47 @@ class _ArrowADFABC(_ADFABC):
         self._reprSampleNPieces = min(self._DEFAULT_REPR_SAMPLE_N_PIECES, self.nPieces)
 
 
+class _ArrowADF__nonNullCol__pandasDFTransform:
+    def __init__(self, col, isNum, lower=None, upper=None, strict=False):
+        self.col = col
+
+        self.filterNum = \
+            isNum and \
+            (pandas.notnull(lower) or
+             pandas.notnull(upper))
+
+        if self.filterNum:
+            if pandas.notnull(lower) and pandas.notnull(upper) and (lower + 1e-6 > upper):
+                print('*** "{}": LOWER {} >= UPPER {} ***'.format(col, lower, upper))
+
+                upper = lower + 1e-6
+
+            self.lower = lower
+            self.upper = upper
+
+            self.strict = strict
+
+    def __call__(self, pandasDF):
+        series = pandasDF[self.col]
+
+        condition = pandas.notnull(series)
+
+        if self.filterNum:
+            if self.lower:
+                condition &= \
+                    ((series > self.lower)
+                     if self.strict
+                     else (series >= self.lower))
+
+            if self.upper:
+                condition &= \
+                    ((series < self.upper)
+                     if self.strict
+                     else (series <= self.upper))
+
+        return series.loc[condition]
+
+
 @enable_inplace
 class ArrowADF(_ArrowADFABC):
     # "inplace-able" methods
@@ -523,6 +564,8 @@ class ArrowADF(_ArrowADFABC):
     # MAP-REDUCE (PARTITIONS)
     # _mr
     # collect
+    # reduce
+    # toPandas
 
     def _mr(self, *piecePaths, **kwargs):
         _CHUNK_SIZE = 10 ** 5
@@ -819,6 +862,9 @@ class ArrowADF(_ArrowADFABC):
 
     def collect(self, *cols, **kwargs):
         return self._mr(cols=cols if cols else None, **kwargs)
+
+    def reduce(self, *cols, **kwargs):
+        return self.collect(*cols, **kwargs)
 
     def toPandas(self, *cols, **kwargs):
         return self.collect(*cols, **kwargs)
@@ -1151,7 +1197,6 @@ class ArrowADF(_ArrowADFABC):
 
     # ****************
     # COLUMN PROFILING
-    # _nonNullCol
     # count
     # nonNullProportion
     # suffNonNull
@@ -1159,54 +1204,6 @@ class ArrowADF(_ArrowADFABC):
     # sampleStat / sampleMedian
     # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
     # profile
-
-    def _nonNullCol(self, col, lower=None, upper=None, strict=False):
-        colType = self.type(col)
-
-        condition = \
-            '({} IS NOT NULL)'.format(col) + \
-            ('' if colType.startswith(_ARRAY_TYPE_PREFIX) or
-                   colType.startswith(_MAP_TYPE_PREFIX) or
-                   colType.startswith(_STRUCT_TYPE_PREFIX)
-             else " AND (STRING({}) != 'NaN')".format(col))
-
-        if (colType.startswith(_DECIMAL_TYPE_PREFIX) or (colType in _NUM_TYPES)) and \
-                (pandas.notnull(lower) or pandas.notnull(upper)):
-            _debugLogCondition = False
-
-            if colType.startswith(_DECIMAL_TYPE_PREFIX) or (colType in _FLOAT_TYPES):
-                numStrFormatter = '%.9f'
-
-                if pandas.notnull(lower) and pandas.notnull(upper) and (lower + 1e-6 > upper):
-                    self.stdout_logger.warning(
-                        msg='*** LOWER {} >= UPPER {} ***'
-                            .format(lower, upper))
-
-                    upper = lower + 1e-6
-
-                    _debugLogCondition = True
-
-            else:
-                numStrFormatter = '%i'
-
-            equalSignStr = '' if strict else '='
-
-            condition += ' AND {}{}{}'.format(
-                '' if pandas.isnull(lower)
-                else '({} >{} {})'.format(col, equalSignStr, numStrFormatter % lower),
-
-                '' if pandas.isnull(lower) or pandas.isnull(upper)
-                else ' AND ',
-
-                '' if pandas.isnull(upper)
-                else '({} <{} {})'.format(col, equalSignStr, numStrFormatter % upper))
-
-            if _debugLogCondition:
-                self.stdout_logger.debug(
-                    msg='*** CONDITION: "{}" ***'
-                        .format(condition))
-
-        return self._sparkDF[[col]].filter(condition=condition)
 
     @_docstr_verbose
     def count(self, *cols, **kwargs):
@@ -3104,11 +3101,6 @@ class ArrowADF(_ArrowADFABC):
             if returnOrigToPrepColMaps \
             else adf
 
-    # *******************************
-    # ITERATIVE GENERATION / SAMPLING
-    # sample
-    # gen
-
     # ****
     # MISC
     # rename
@@ -3145,6 +3137,7 @@ class ArrowADF(_ArrowADFABC):
     # **********
     # TRANSFORMS
     # transform
+    # _nonNullCol
     # fillna
     # prep
     # drop
@@ -3188,6 +3181,18 @@ class ArrowADF(_ArrowADFABC):
             arrowADF._inheritCache(self)
 
         return arrowADF
+
+    def _nonNullCol(self, col, pandasDF=None, lower=None, upper=None, strict=False):
+        pandasDFTransform = \
+            _ArrowADF__nonNullCol__pandasDFTransform(
+                isNum=is_num(self.type(col)),
+                lower=lower,
+                upper=upper,
+                strict=strict)
+
+        return pandasDFTransform(pandasDF=pandasDF) \
+            if pandasDF \
+          else self.transform(pandasDFTransform=pandasDFTransform)
 
     def drop(self, *cols, **kwargs):
         return self.transform(
