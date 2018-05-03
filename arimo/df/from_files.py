@@ -1028,6 +1028,7 @@ class ArrowADF(_ArrowADFABC):
 
     def filterByPartitionKeys(self, *filterCriteriaTuples, **kwargs):
         filterCriteria = {}
+
         _samplePiecePath = next(iter(self.piecePaths))
 
         for filterCriteriaTuple in filterCriteriaTuples:
@@ -3157,70 +3158,44 @@ class ArrowADF(_ArrowADFABC):
     # drop
     # filter
 
-    def transform(self, sparkDFTransform, _sparkDF=None, pandasDFTransform=[], *args, **kwargs):
-        stdKwArgs = self._extractStdKwArgs(kwargs, resetToClassDefaults=False, inplace=False)
-
-        if stdKwArgs.alias and (stdKwArgs.alias == self.alias):
-            stdKwArgs.alias = None
-
+    def transform(self, pandasDFTransform=[], **kwargs):
         inheritCache = kwargs.pop('inheritCache', False)
-
-        if isinstance(sparkDFTransform, list):
-            additionalSparkDFTransforms = sparkDFTransform
-
-            inheritCache |= \
-                all(isinstance(additionalSparkDFTransform, Transformer)
-                    for additionalSparkDFTransform in additionalSparkDFTransforms)
-
-        elif isinstance(sparkDFTransform, Transformer):
-            additionalSparkDFTransforms = [sparkDFTransform]
-            inheritCache = True
-
-        else:
-            additionalSparkDFTransforms = \
-                [(lambda sparkDF: sparkDFTransform(sparkDF, *args, **kwargs))
-                 if args or kwargs
-                 else sparkDFTransform]
+        inheritNRows = kwargs.pop('inheritNRows', inheritCache)
 
         additionalPandasDFTransforms = \
             pandasDFTransform \
                 if isinstance(pandasDFTransform, list) \
                 else [pandasDFTransform]
 
-        inheritNRows = kwargs.pop('inheritNRows', inheritCache)
+        if self.fromS3:
+            aws_access_key_id = self._srcArrowDS.fs.fs.key
+            aws_secret_access_key = self._srcArrowDS.fs.fs.secret
 
-        if _sparkDF is None:
-            _sparkDF = self._sparkDF
+        else:
+            aws_access_key_id = aws_secret_access_key = None
 
-            for i, additionalSparkDFTransform in enumerate(additionalSparkDFTransforms):
-                try:
-                    _sparkDF = additionalSparkDFTransform.transform(dataset=_sparkDF) \
-                        if isinstance(additionalSparkDFTransform, Transformer) \
-                        else additionalSparkDFTransform(_sparkDF)
+        arrowADF = \
+            ArrowADF(
+                path=self.path,
+                aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
 
-                except Exception as err:
-                    self.stdout_logger.error(
-                        msg='*** {} ADDITIONAL TRANSFORM #{} ({}): ***'
-                            .format(self.path, i, additionalSparkDFTransform))
-                    raise err
+                iCol=self._iCol, tCol=self._tCol,
+                _pandasDFTransforms=self._pandasDFTransforms + additionalPandasDFTransforms,
 
-        adf = ArrowSparkADF(
-            path=self.path,
-            _initSparkDF=self._initSparkDF,
-            _sparkDFTransforms=self._sparkDFTransforms + additionalSparkDFTransforms,
-            _pandasDFTransforms=self._pandasDFTransforms + additionalPandasDFTransforms,
-            _sparkDF=_sparkDF,
-            nRows=self._cache.nRows
-            if inheritNRows
-            else None,
-            **stdKwArgs.__dict__)
+                reprSampleNPieces=self._reprSampleNPieces,
+                reprSampleSize=self._reprSampleSize,
+
+                minNonNullProportion=self._minNonNullProportion,
+                outlierTailProportion=self._outlierTailProportion,
+                maxNCats=self._maxNCats,
+                minProportionByMaxNCats=self._minProportionByMaxNCats,
+
+                **kwargs)
 
         if inheritCache:
-            adf._inheritCache(self)
+            arrowADF._inheritCache(self)
 
-        adf._cache.pieceADFs = self._cache.pieceADFs
-
-        return adf
+        return arrowADF
 
     def drop(self, *cols, **kwargs):
         return self.transform(
