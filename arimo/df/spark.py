@@ -1517,7 +1517,7 @@ class SparkADF(_DFABC):
 
         _unionRDDs = kwargs.pop('_unionRDDs', False)
 
-        assert all(isinstance(adfs_and_or_sparkDF, (ADF, DataFrame))
+        assert all(isinstance(adfs_and_or_sparkDF, (SparkADF, DataFrame))
                    for adfs_and_or_sparkDF in adfs_and_or_sparkDFs)
                 
         nDFs = len(adfs_and_or_sparkDFs)
