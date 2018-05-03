@@ -141,9 +141,8 @@ class ArrowADF(_ArrowADFABC):
             self, path=None, reCache=False,
             aws_access_key_id=None, aws_secret_access_key=None,
 
-            defaultMapper=None,
-
             iCol=None, tCol=None,
+            _pandasDFTransforms=[],
 
             reprSampleNPieces=_ArrowADFABC._DEFAULT_REPR_SAMPLE_N_PIECES,
             reprSampleSize=_ArrowADFABC._DEFAULT_REPR_SAMPLE_SIZE,
@@ -204,7 +203,7 @@ class ArrowADF(_ArrowADFABC):
                 logger.info(msg)
                 tic = time.time()
 
-            _cache._arrowDS = \
+            _cache._srcArrowDS = \
                 ParquetDataset(
                     path_or_paths=path,
                     filesystem=
@@ -222,12 +221,12 @@ class ArrowADF(_ArrowADFABC):
                 toc = time.time()
                 logger.info(msg + ' done!   <{:,.1f} s>'.format(toc - tic))
 
-            _cache.nPieces = len(_cache._arrowDS.pieces)
+            _cache.nPieces = len(_cache._srcArrowDS.pieces)
 
             if _cache.nPieces:
                 _cache.piecePaths = \
                     {piece.path
-                     for piece in _cache._arrowDS.pieces}
+                     for piece in _cache._srcArrowDS.pieces}
 
             else:
                 _cache.nPieces = 1
@@ -310,7 +309,7 @@ class ArrowADF(_ArrowADFABC):
             if DATE_COL in self.srcCols \
             else None
 
-        self._defaultMapper = defaultMapper
+        self._pandasDFTransforms = _pandasDFTransforms
 
         self._reprSampleNPieces = min(reprSampleNPieces, self.nPieces)
         self._reprSampleSize = reprSampleSize
@@ -513,12 +512,6 @@ class ArrowADF(_ArrowADFABC):
 
         nSamplesPerPiece = kwargs.get('nSamplesPerPiece')
 
-        organizeTS = kwargs.get('organizeTS', True)
-
-        applyDefaultMapper = kwargs.get('applyDefaultMapper', True)
-
-        mapper = kwargs.get('mapper')
-
         reducer = \
             kwargs.get(
                 'reducer',
@@ -605,36 +598,36 @@ class ArrowADF(_ArrowADFABC):
                         for k, v in pieceCache.partitionKVs.items():
                             chunkPandasDF[k] = v
 
-                        if organizeTS and self._tCol:
+                        if self._tCol:
                             assert self._tCol in chunkPandasDF.columns, \
                                 '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._tCol, chunkPandasDF.columns)
 
-                        if self._iCol:
-                            assert self._iCol in chunkPandasDF.columns, \
-                                '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._iCol, chunkPandasDF.columns)
+                            if self._iCol:
+                                assert self._iCol in chunkPandasDF.columns, \
+                                    '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._iCol, chunkPandasDF.columns)
 
-                            try:
-                                chunkPandasDF = \
-                                    gen_aux_cols(
-                                        df=chunkPandasDF.loc[
-                                            pandas.notnull(chunkPandasDF[self._iCol]) &
-                                            pandas.notnull(chunkPandasDF[self._tCol])],
-                                        i_col=self._iCol, t_col=self._tCol)
+                                try:
+                                    chunkPandasDF = \
+                                        gen_aux_cols(
+                                            df=chunkPandasDF.loc[
+                                                pandas.notnull(chunkPandasDF[self._iCol]) &
+                                                pandas.notnull(chunkPandasDF[self._tCol])],
+                                            i_col=self._iCol, t_col=self._tCol)
 
-                            except Exception as err:
-                                print('*** {} ***'.format(piecePath))
-                                raise err
+                                except Exception as err:
+                                    print('*** {} ***'.format(piecePath))
+                                    raise err
 
-                        else:
-                            try:
-                                chunkPandasDF = \
-                                    gen_aux_cols(
-                                        df=chunkPandasDF.loc[pandas.notnull(chunkPandasDF[self._tCol])],
-                                        i_col=None, t_col=self._tCol)
+                            else:
+                                try:
+                                    chunkPandasDF = \
+                                        gen_aux_cols(
+                                            df=chunkPandasDF.loc[pandas.notnull(chunkPandasDF[self._tCol])],
+                                            i_col=None, t_col=self._tCol)
 
-                            except Exception as err:
-                                print('*** {} ***'.format(piecePath))
-                                raise err
+                                except Exception as err:
+                                    print('*** {} ***'.format(piecePath))
+                                    raise err
 
                         if nSamplesPerChunk < len(chunkPandasDF):
                             chunkPandasDF = \
@@ -694,7 +687,7 @@ class ArrowADF(_ArrowADFABC):
                     for k, v in pieceCache.partitionKVs.items():
                         piecePandasDF[k] = v
 
-                    if organizeTS and self._tCol:
+                    if self._tCol:
                         assert self._tCol in piecePandasDF.columns, \
                             '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._tCol, piecePandasDF.columns)
 
@@ -767,7 +760,7 @@ class ArrowADF(_ArrowADFABC):
                 for k, v in pieceCache.partitionKVs.items():
                     piecePandasDF[k] = v
 
-                if organizeTS and self._tCol:
+                if self._tCol:
                     assert self._tCol in piecePandasDF.columns, \
                         '*** {} DOES NOT HAVE COLUMN {} AMONG {} ***'.format(piecePath, self._tCol, piecePandasDF.columns)
 
@@ -798,13 +791,8 @@ class ArrowADF(_ArrowADFABC):
                             print('*** {} ***'.format(piecePath))
                             raise err
 
-            if applyDefaultMapper and self._defaultMapper:
-                piecePandasDF = self._defaultMapper(piecePandasDF)
-
-            results.append(
-                mapper(piecePandasDF)
-                if mapper
-                else piecePandasDF)
+            for pandasDFTransform in self._pandasDFTransforms:
+                piecePandasDF = pandasDFTransform(piecePandasDF)
 
         return reducer(results)
 
@@ -818,7 +806,6 @@ class ArrowADF(_ArrowADFABC):
     # KEY (SETTABLE) PROPERTIES
     # iCol
     # tCol
-    # defaultMapper
 
     @property
     def iCol(self):
@@ -859,18 +846,6 @@ class ArrowADF(_ArrowADFABC):
     def tCol(self):
         self._tCol = None
         self.hasTS = False
-
-    @property
-    def defaultMapper(self):
-        return self._defaultMapper
-
-    @defaultMapper.setter
-    def defaultMapper(self, defaultMapper):
-        self._defaultMapper = defaultMapper
-
-    @defaultMapper.deleter
-    def defaultMapper(self):
-        self._defaultMapper = None
 
     # ***********
     # REPR SAMPLE
@@ -1003,6 +978,53 @@ class ArrowADF(_ArrowADFABC):
             col for col in self.contentCols
                 if is_possible_cat(self.type(col)))
 
+    # **************
+    # SUBSET METHODS
+    # _subset
+    # filterByPartitionKeys
+    # sample
+    # gen
+
+    def _subset(self, *piecePaths, **kwargs):
+        if piecePaths:
+            assert self.piecePaths.issuperset(piecePaths)
+
+            nPiecePaths = len(piecePaths)
+
+            if nPiecePaths == self.nPieces:
+                return self
+
+            else:
+                if self.fromS3:
+                    aws_access_key_id = self._srcArrowDS.fs.fs.key
+                    aws_secret_access_key = self._srcArrowDS.fs.fs.secret
+
+                else:
+                    aws_access_key_id = aws_secret_access_key = None
+
+                return ArrowADF(
+                    path=tuple(sorted(piecePaths))
+                        if len(piecePaths) > 1
+                        else piecePaths[0],
+
+                    aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
+
+                    iCol=self._iCol, tCol=self._tCol,
+                    _pandasDFTransforms=self._pandasDFTransforms,
+
+                    reprSampleNPieces=self._reprSampleNPieces,
+                    reprSampleSize=self._reprSampleSize,
+        
+                    minNonNullProportion=self._minNonNullProportion,
+                    outlierTailProportion=self._outlierTailProportion,
+                    maxNCats=self._maxNCats,
+                    minProportionByMaxNCats=self._minProportionByMaxNCats,
+
+                    **kwargs)
+
+        else:
+            return self
+
     def sample(self, *cols, **kwargs):
         n = kwargs.pop('n', 1)
 
@@ -1039,8 +1061,6 @@ class ArrowADF(_ArrowADFABC):
             *piecePaths,
             cols=cols,
             nSamplesPerPiece=int(math.ceil(n / nSamplePieces)),
-            organizeTS=True,
-            applyDefaultMapper=True,
             verbose=verbose)
 
     # ****************
@@ -3158,90 +3178,7 @@ class ArrowADF(_ArrowADFABC):
             inheritNRows=True,
             **kwargs)
 
-    # **************
-    # SUBSET METHODS
-    # _subset
-    # filterByPartitionKeys
-    # sample
-    # gen
 
-    def _subset(self, *pieceSubPaths, **kwargs):
-        if pieceSubPaths:
-            assert self.pieceSubPaths.issuperset(pieceSubPaths)
-
-            nPieceSubPaths = len(pieceSubPaths)
-
-            if nPieceSubPaths == self.nPieces:
-                return self
-
-            else:
-                verbose = kwargs.pop('verbose', True)
-
-                if self.s3Client:
-                    subsetDirS3Key = \
-                        os.path.join(
-                            self.tmpDirS3Key,
-                            str(uuid.uuid4()))
-
-                    subsetDirPath = \
-                        os.path.join(
-                            's3://{}'.format(self.s3Bucket),
-                            subsetDirS3Key)
-
-                    for pieceSubPath in \
-                            (tqdm.tqdm(pieceSubPaths)
-                            if verbose
-                            else pieceSubPaths):
-                        self.s3Client.copy(
-                            CopySource=dict(
-                                Bucket=self.s3Bucket,
-                                Key=os.path.join(self.pathS3Key, pieceSubPath)),
-                            Bucket=self.s3Bucket,
-                            Key=os.path.join(subsetDirS3Key, pieceSubPath))
-
-                    aws_access_key_id = self._srcArrowDS.fs.fs.key
-                    aws_secret_access_key = self._srcArrowDS.fs.fs.secret
-
-                else:
-                    subsetDirPath = \
-                        os.path.join(
-                            self.tmpDirPath,
-                            str(uuid.uuid4()))
-
-                    for pieceSubPath in \
-                            (tqdm.tqdm(pieceSubPaths)
-                            if verbose
-                            else pieceSubPaths):
-                        fs.cp(
-                            from_path=os.path.join(self.path, pieceSubPath),
-                            to_path=os.path.join(subsetDirPath, pieceSubPath),
-                            hdfs=fs._ON_LINUX_CLUSTER_WITH_HDFS, is_dir=False)
-
-                    aws_access_key_id = aws_secret_access_key = None
-
-                stdKwArgs = self._extractStdKwArgs(kwargs, resetToClassDefaults=False, inplace=False)
-
-                if stdKwArgs.alias and (stdKwArgs.alias == self.alias):
-                    stdKwArgs.alias = None
-
-                if stdKwArgs.detPrePartitioned:
-                    stdKwArgs.nDetPrePartitions = nPieceSubPaths
-
-                adf = ArrowSparkADF(
-                    path=subsetDirPath,
-                    aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
-                    _srcSparkDFSchema=self._srcSparkDFSchema,
-                    _sparkDFTransforms=self._sparkDFTransforms,
-                    _pandasDFTransforms=self._pandasDFTransforms,
-                    verbose=verbose,
-                    **stdKwArgs.__dict__)
-
-                adf._cache.colWidth.update(self._cache.colWidth)
-
-                return adf
-
-        else:
-            return self
 
     def _pieceADF(self, pieceSubPath):
         pieceADF = self._cache.pieceADFs.get(pieceSubPath)
