@@ -40,6 +40,7 @@ from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
 from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
+from arimo.util.iterables import to_iterable
 from arimo.util.types.arrow import \
     _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE, \
     is_boolean, is_complex, is_num, is_possible_cat, is_string
@@ -1021,6 +1022,70 @@ class ArrowADF(_ArrowADFABC):
                     minProportionByMaxNCats=self._minProportionByMaxNCats,
 
                     **kwargs)
+
+        else:
+            return self
+
+    def filterByPartitionKeys(self, *filterCriteriaTuples, **kwargs):
+        filterCriteria = {}
+        _samplePiecePath = next(iter(self.piecePaths))
+
+        for filterCriteriaTuple in filterCriteriaTuples:
+            assert isinstance(filterCriteriaTuple, (list, tuple))
+            filterCriteriaTupleLen = len(filterCriteriaTuple)
+
+            col = filterCriteriaTuple[0]
+
+            if '{}='.format(col) in _samplePiecePath:
+                if filterCriteriaTupleLen == 2:
+                    fromVal = toVal = None
+                    inSet = {str(v) for v in to_iterable(filterCriteriaTuple[1])}
+
+                elif filterCriteriaTupleLen == 3:
+                    fromVal = filterCriteriaTuple[1]
+                    if fromVal is not None:
+                        fromVal = str(fromVal)
+
+                    toVal = filterCriteriaTuple[2]
+                    if toVal is not None:
+                        toVal = str(toVal)
+
+                    inSet = None
+
+                else:
+                    raise ValueError(
+                        '*** {} FILTER CRITERIA MUST BE EITHER (<colName>, <fromVal>, <toVal>) OR (<colName>, <inValsSet>) ***'
+                            .format(type(self)))
+
+                filterCriteria[col] = fromVal, toVal, inSet
+
+        if filterCriteria:
+            piecePaths = set()
+
+            for piecePath in self.piecePaths:
+                chk = True
+
+                for col, (fromVal, toVal, inSet) in filterCriteria.items():
+                    v = re.search('{}=(.*?)/'.format(col), piecePath).group(1)
+
+                    if ((fromVal is not None) and (v < fromVal)) or \
+                            ((toVal is not None) and (v > toVal)) or \
+                            ((inSet is not None) and (v not in inSet)):
+                        chk = False
+                        break
+
+                if chk:
+                    piecePaths.add(piecePath)
+
+            assert piecePaths, \
+                '*** {}: NO PIECE PATHS SATISFYING FILTER CRITERIA {} ***'.format(self, filterCriteria)
+
+            if arimo.debug.ON:
+                self.stdout_logger.debug(
+                    msg='*** {} PIECES SATISFYING FILTERING CRITERIA: {} ***'
+                        .format(len(piecePaths), filterCriteria))
+
+            return self._subset(*piecePaths, **kwargs)
 
         else:
             return self
@@ -3180,8 +3245,8 @@ class ArrowADF(_ArrowADFABC):
 
 
 
-    def _pieceADF(self, pieceSubPath):
-        pieceADF = self._cache.pieceADFs.get(pieceSubPath)
+    def _pieceADF(self, piecePath):
+        pieceADF = self._cache.pieceADFs.get(piecePath)
 
         if pieceADF is None:
             if self._partitionedByDateOnly:
@@ -3201,7 +3266,7 @@ class ArrowADF(_ArrowADFABC):
                 if stdKwArgs.detPrePartitioned:
                     stdKwArgs.nDetPrePartitions = 1
 
-                piecePath = os.path.join(self.path, pieceSubPath)
+                piecePath = os.path.join(self.path, piecePath)
 
                 pieceADF = \
                     ArrowSparkADF(
@@ -3216,9 +3281,9 @@ class ArrowADF(_ArrowADFABC):
                 pieceADF._cache.colWidth.update(self._cache.colWidth)
 
             else:
-                pieceADF = self._subset(pieceSubPath, verbose=False)
+                pieceADF = self._subset(piecePath, verbose=False)
 
-            self._cache.pieceADFs[pieceSubPath] = pieceADF
+            self._cache.pieceADFs[piecePath] = pieceADF
 
         else:
             pieceADF._sparkDFTransforms = sparkDFTransforms = self._sparkDFTransforms
@@ -3232,7 +3297,7 @@ class ArrowADF(_ArrowADFABC):
                 except Exception as err:
                     self.stdout_logger.error(
                         msg='*** {} TRANSFORM #{}: ***'
-                            .format(pieceSubPath, i))
+                            .format(piecePath, i))
                     raise err
 
             pieceADF._pandasDFTransforms = self._pandasDFTransforms
@@ -3241,15 +3306,15 @@ class ArrowADF(_ArrowADFABC):
 
         return pieceADF
 
-    def _pieceArrowTable(self, pieceSubPath):
+    def _pieceArrowTable(self, piecePath):
         return _ArrowSparkADF__pieceArrowTableFunc(
             path=self.path,
             aws_access_key_id=self._srcArrowDS.fs.fs.key,
-            aws_secret_access_key=self._srcArrowDS.fs.fs.secret)(pieceSubPath)
+            aws_secret_access_key=self._srcArrowDS.fs.fs.secret)(piecePath)
 
-    def _piecePandasDF(self, pieceSubPath):
+    def _piecePandasDF(self, piecePath):
         pandasDF = \
-            self._pieceArrowTable(pieceSubPath) \
+            self._pieceArrowTable(piecePath) \
                 .to_pandas(
                 nthreads=max(1, psutil.cpu_count(logical=True) // 2),
                 strings_to_categorical=False,
@@ -3270,80 +3335,17 @@ class ArrowADF(_ArrowADFABC):
             except Exception as err:
                 self.stdout_logger.error(
                     msg='*** "{}": PANDAS TRANSFORM #{} ***'
-                        .format(pieceSubPath, i))
+                        .format(piecePath, i))
                 raise err
 
         return pandasDF
 
-    def filterByPartitionKeys(self, *filterCriteriaTuples, **kwargs):
-        filterCriteria = {}
-        _samplePieceSubPath = next(iter(self.pieceSubPaths))
-
-        for filterCriteriaTuple in filterCriteriaTuples:
-            assert isinstance(filterCriteriaTuple, (list, tuple))
-            filterCriteriaTupleLen = len(filterCriteriaTuple)
-
-            col = filterCriteriaTuple[0]
-
-            if '{}='.format(col) in _samplePieceSubPath:
-                if filterCriteriaTupleLen == 2:
-                    fromVal = toVal = None
-                    inSet = {str(v) for v in to_iterable(filterCriteriaTuple[1])}
-
-                elif filterCriteriaTupleLen == 3:
-                    fromVal = filterCriteriaTuple[1]
-                    if fromVal is not None:
-                        fromVal = str(fromVal)
-
-                    toVal = filterCriteriaTuple[2]
-                    if toVal is not None:
-                        toVal = str(toVal)
-
-                    inSet = None
-
-                else:
-                    raise ValueError(
-                        '*** {} FILTER CRITERIA MUST BE EITHER (<colName>, <fromVal>, <toVal>) OR (<colName>, <inValsSet>) ***'
-                            .format(type(self)))
-
-                filterCriteria[col] = fromVal, toVal, inSet
-
-        if filterCriteria:
-            pieceSubPaths = set()
-
-            for pieceSubPath in self.pieceSubPaths:
-                chk = True
-
-                for col, (fromVal, toVal, inSet) in filterCriteria.items():
-                    v = re.search('{}=(.*?)/'.format(col), pieceSubPath).group(1)
-
-                    if ((fromVal is not None) and (v < fromVal)) or \
-                            ((toVal is not None) and (v > toVal)) or \
-                            ((inSet is not None) and (v not in inSet)):
-                        chk = False
-                        break
-
-                if chk:
-                    pieceSubPaths.add(pieceSubPath)
-
-            assert pieceSubPaths, \
-                '*** {}: NO PIECE PATHS SATISFYING FILTER CRITERIA {} ***'.format(self, filterCriteria)
-
-            if arimo.debug.ON:
-                self.stdout_logger.debug(
-                    msg='*** {} PIECES SATISFYING FILTERING CRITERIA: {} ***'
-                        .format(len(pieceSubPaths), filterCriteria))
-
-            return self._subset(*pieceSubPaths, **kwargs)
-
-        else:
-            return self
 
     def gen(self, *args, **kwargs):
         return _ArrowSparkADF__gen(
             args=args,
             path=self.path,
-            pieceSubPaths=kwargs.get('pieceSubPaths', self.pieceSubPaths),
+            piecePaths=kwargs.get('piecePaths', self.piecePaths),
             aws_access_key_id=self._srcArrowDS.fs.fs.key, aws_secret_access_key=self._srcArrowDS.fs.fs.secret,
             iCol=self._iCol, tCol=self._tCol,
             possibleFeatureTAuxCols=self.possibleFeatureTAuxCols,
@@ -3369,15 +3371,15 @@ class ArrowADF(_ArrowADFABC):
 
             nPieces = self.nPieces
 
-            pieceSubPaths = list(self.pieceSubPaths)
-            random.shuffle(pieceSubPaths)
+            piecePaths = list(self.piecePaths)
+            random.shuffle(piecePaths)
 
             cumuIndices = \
                 [0] + \
                 [int(round(cumuWeights[i] * nPieces))
                  for i in range(nWeights)]
 
-            return [self._subset(*pieceSubPaths[cumuIndices[i]:cumuIndices[i + 1]])
+            return [self._subset(*piecePaths[cumuIndices[i]:cumuIndices[i + 1]])
                     for i in range(nWeights)]
 
 
