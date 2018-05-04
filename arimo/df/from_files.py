@@ -212,7 +212,7 @@ class ArrowADF(_ArrowADFABC):
             aws_access_key_id=None, aws_secret_access_key=None,
 
             iCol=None, tCol=None,
-            _pandasDFTransforms=[],
+            _mappers=[],
 
             reprSampleMinNPieces=_ArrowADFABC._REPR_SAMPLE_MIN_N_PIECES,
             reprSampleSize=_ArrowADFABC._DEFAULT_REPR_SAMPLE_SIZE,
@@ -397,7 +397,7 @@ class ArrowADF(_ArrowADFABC):
             if DATE_COL in self.srcColsInclPartitionKVs \
             else None
 
-        self._pandasDFTransforms = _pandasDFTransforms
+        self._mappers = _mappers
 
         self._reprSampleMinNPieces = min(reprSampleMinNPieces, self.nPieces)
         self._reprSampleSize = reprSampleSize
@@ -439,7 +439,7 @@ class ArrowADF(_ArrowADFABC):
 
         self.__dict__.update(self._CACHE[arrowADF.path])
 
-        self._pandasDFTransforms = arrowADF._pandasDFTransforms
+        self._mappers = arrowADF._mappers
 
         self._cache = arrowADF._cache
 
@@ -479,7 +479,7 @@ class ArrowADF(_ArrowADFABC):
                       else ''),
             type(self).__name__,
             self._pathRepr,
-            len(self._pandasDFTransforms),
+            len(self._mappers),
             ', '.join(cols_and_types_str))
 
     @property
@@ -506,7 +506,7 @@ class ArrowADF(_ArrowADFABC):
                       else ''),
             type(self).__name__,
             self._pathRepr,
-            len(self._pandasDFTransforms),
+            len(self._mappers),
             ', '.join(cols_desc_str))
 
     # ***************
@@ -608,12 +608,52 @@ class ArrowADF(_ArrowADFABC):
 
     # ***********************
     # MAP-REDUCE (PARTITIONS)
-    # _mr
+    # map
+    # reduce
     # collect
     # reduce
     # toPandas
 
-    def _mr(self, *piecePaths, **kwargs):
+    def map(self, mapper=[], **kwargs):
+        inheritCache = kwargs.pop('inheritCache', False)
+        inheritNRows = kwargs.pop('inheritNRows', inheritCache)
+
+        additionalMappers = \
+            mapper \
+                if isinstance(mapper, list) \
+                else [mapper]
+
+        if self.fromS3:
+            aws_access_key_id = self._srcArrowDS.fs.fs.key
+            aws_secret_access_key = self._srcArrowDS.fs.fs.secret
+
+        else:
+            aws_access_key_id = aws_secret_access_key = None
+
+        arrowADF = \
+            ArrowADF(
+                path=self.path,
+                aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
+
+                iCol=self._iCol, tCol=self._tCol,
+                _mappers=self._mappers + additionalMappers,
+
+                reprSampleMinNPieces=self._reprSampleMinNPieces,
+                reprSampleSize=self._reprSampleSize,
+
+                minNonNullProportion=self._minNonNullProportion,
+                outlierTailProportion=self._outlierTailProportion,
+                maxNCats=self._maxNCats,
+                minProportionByMaxNCats=self._minProportionByMaxNCats,
+
+                **kwargs)
+
+        if inheritCache:
+            arrowADF._inheritCache(self)
+
+        return arrowADF
+
+    def reduce(self, *piecePaths, **kwargs):
         _CHUNK_SIZE = 10 ** 5
 
         nSamplesPerPiece = kwargs.get('nSamplesPerPiece')
@@ -909,15 +949,15 @@ class ArrowADF(_ArrowADFABC):
                 for k in partitionKeyCols:
                     piecePandasDF[k] = pieceCache.partitionKVs[k]
 
-            for pandasDFTransform in self._pandasDFTransforms:
-                piecePandasDF = pandasDFTransform(piecePandasDF)
+            for mapper in self._mappers:
+                piecePandasDF = mapper(piecePandasDF)
 
             results.append(piecePandasDF)
 
         return reducer(results)
 
     def collect(self, *cols, **kwargs):
-        return self._mr(cols=cols if cols else None, **kwargs)
+        return self.reduce(cols=cols if cols else None, **kwargs)
 
     def reduce(self, *cols, **kwargs):
         return self.collect(*cols, **kwargs)
@@ -1125,7 +1165,7 @@ class ArrowADF(_ArrowADFABC):
                     aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
 
                     iCol=self._iCol, tCol=self._tCol,
-                    _pandasDFTransforms=self._pandasDFTransforms,
+                    _mappers=self._mappers,
 
                     reprSampleMinNPieces=self._reprSampleMinNPieces,
                     reprSampleSize=self._reprSampleSize,
@@ -1235,7 +1275,7 @@ class ArrowADF(_ArrowADFABC):
                 nSamplePieces = self.nPieces
                 piecePaths = self.piecePaths
 
-        return self._mr(
+        return self.reduce(
                 *piecePaths,
                 cols=cols,
                 nSamplesPerPiece=int(math.ceil(n / nSamplePieces)),
@@ -1286,9 +1326,9 @@ class ArrowADF(_ArrowADFABC):
                     tic = time.time()
 
                 self._cache.count[col] = result = \
-                    self._sparkDF.select(sparkSQLFuncs.count(col)).first()[0] \
-                        if self.typeIsComplex(col) \
-                        else self._nonNullCol(col=col).count()
+                    self._nonNullCol(col=col) \
+                        .map(mapper=len) \
+                        .reduce(reducer=sum)
 
                 assert isinstance(result, int), \
                     '*** "{}" COUNT = {} ***'.format(col, result)
@@ -3180,9 +3220,8 @@ class ArrowADF(_ArrowADFABC):
             obj=sparkDF, nRows=self._cache.nRows,
             iCol=iCol, tCol=tCol)
 
-    # **********
-    # TRANSFORMS
-    # transform
+    # **************
+    # MAP TRANSFORMS
     # __getattr__
     # __getitem__
     # _nonNullCol
@@ -3191,54 +3230,15 @@ class ArrowADF(_ArrowADFABC):
     # drop
     # filter
 
-    def transform(self, pandasDFTransform=[], **kwargs):
-        inheritCache = kwargs.pop('inheritCache', False)
-        inheritNRows = kwargs.pop('inheritNRows', inheritCache)
-
-        additionalPandasDFTransforms = \
-            pandasDFTransform \
-                if isinstance(pandasDFTransform, list) \
-                else [pandasDFTransform]
-
-        if self.fromS3:
-            aws_access_key_id = self._srcArrowDS.fs.fs.key
-            aws_secret_access_key = self._srcArrowDS.fs.fs.secret
-
-        else:
-            aws_access_key_id = aws_secret_access_key = None
-
-        arrowADF = \
-            ArrowADF(
-                path=self.path,
-                aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
-
-                iCol=self._iCol, tCol=self._tCol,
-                _pandasDFTransforms=self._pandasDFTransforms + additionalPandasDFTransforms,
-
-                reprSampleMinNPieces=self._reprSampleMinNPieces,
-                reprSampleSize=self._reprSampleSize,
-
-                minNonNullProportion=self._minNonNullProportion,
-                outlierTailProportion=self._outlierTailProportion,
-                maxNCats=self._maxNCats,
-                minProportionByMaxNCats=self._minProportionByMaxNCats,
-
-                **kwargs)
-
-        if inheritCache:
-            arrowADF._inheritCache(self)
-
-        return arrowADF
-
     def __getattr__(self, col):
         assert col in self.columns
 
-        return self.transform(
-            pandasDFTransform=_ArrowADF__getattr__pandasDFTransform(col=col))
+        return self.map(
+            mapper=_ArrowADF__getattr__pandasDFTransform(col=col))
 
     def __getitem__(self, item):
-        return self.transform(
-            pandasDFTransform=_ArrowADF__getitem__pandasDFTransform(item=item))
+        return self.map(
+            mapper=_ArrowADF__getitem__pandasDFTransform(item=item))
 
     def _nonNullCol(self, col, pandasDF=None, lower=None, upper=None, strict=False, **kwargs):
         pandasDFTransform = \
@@ -3251,27 +3251,25 @@ class ArrowADF(_ArrowADFABC):
 
         return pandasDFTransform(pandasDF=pandasDF) \
             if pandasDF \
-          else self.transform(
-                pandasDFTransform=pandasDFTransform,
+          else self.map(
+                mapper=pandasDFTransform,
                 **kwargs)
 
     def drop(self, *cols, **kwargs):
-        return self.transform(
-                pandasDFTransform=_ArrowADF__drop__pandasDFTransform(cols=cols),
+        return self.map(
+                mapper=_ArrowADF__drop__pandasDFTransform(cols=cols),
                 **kwargs)
 
     def filter(self, condition, **kwargs):
-        return self.transform(
+        return self.map(
             sparkDFTransform=
             lambda sparkDF:
             sparkDF.filter(
                 condition=condition),
-            pandasDFTransform=[],   # no Pandas equivalent
+            mapper=[],   # no Pandas equivalent
             inheritCache=True,
             inheritNRows=True,
             **kwargs)
-
-
 
     def _pieceADF(self, piecePath):
         pieceADF = self._cache.pieceADFs.get(piecePath)
