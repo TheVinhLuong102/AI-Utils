@@ -107,6 +107,18 @@ class _ArrowADF__getitem__pandasDFTransform:
         return pandasDF[self.item]
 
 
+class _ArrowADF__drop__pandasDFTransform:
+    def __init__(self, cols):
+        self.cols = list(cols)
+
+    def __call__(self, pandasDF):
+        return pandasDF.drop(
+                columns=self.cols,
+                level=None,
+                inplace=False,
+                errors='ignore')
+
+
 class _ArrowADF__nonNullCol__pandasDFTransform:
     def __init__(self, col, isNum, lower=None, upper=None, strict=False):
         self.col = col
@@ -3228,7 +3240,7 @@ class ArrowADF(_ArrowADFABC):
         return self.transform(
             pandasDFTransform=_ArrowADF__getitem__pandasDFTransform(item=item))
 
-    def _nonNullCol(self, col, pandasDF=None, lower=None, upper=None, strict=False):
+    def _nonNullCol(self, col, pandasDF=None, lower=None, upper=None, strict=False, **kwargs):
         pandasDFTransform = \
             _ArrowADF__nonNullCol__pandasDFTransform(
                 col=col,
@@ -3239,17 +3251,14 @@ class ArrowADF(_ArrowADFABC):
 
         return pandasDFTransform(pandasDF=pandasDF) \
             if pandasDF \
-          else self.transform(pandasDFTransform=pandasDFTransform)
+          else self.transform(
+                pandasDFTransform=pandasDFTransform,
+                **kwargs)
 
     def drop(self, *cols, **kwargs):
         return self.transform(
-            sparkDFTransform=
-            lambda sparkDF:
-            sparkDF.drop(*cols),
-            pandasDFTransform=_ArrowSparkADF__drop__pandasDFTransform(cols=cols),
-            inheritCache=True,
-            inheritNRows=True,
-            **kwargs)
+                pandasDFTransform=_ArrowADF__drop__pandasDFTransform(cols=cols),
+                **kwargs)
 
     def filter(self, condition, **kwargs):
         return self.transform(

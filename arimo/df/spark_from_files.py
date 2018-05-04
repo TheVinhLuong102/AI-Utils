@@ -29,7 +29,7 @@ from pyspark.sql import DataFrame
 import arimo.backend
 from arimo.df import _ADFABC
 from arimo.df.from_files import _ArrowADFABC, \
-    _ArrowADF__getitem__pandasDFTransform
+    _ArrowADF__getitem__pandasDFTransform, _ArrowADF__drop__pandasDFTransform
 from arimo.df.spark import SparkADF
 from arimo.util import fs, Namespace
 from arimo.util.aws import s3
@@ -150,18 +150,6 @@ class _ArrowSparkADF__prep__pandasDFTransform:
                         targetRange * (nullFillColSeries - origMin) / origRange + targetMin
 
         return pandasDF
-
-
-class _ArrowSparkADF__drop__pandasDFTransform:
-    def __init__(self, cols):
-        self.cols = list(cols)
-
-    def __call__(self, pandasDF):
-        return pandasDF.drop(
-                columns=self.cols,
-                level=None,
-                inplace=False,
-                errors='ignore')
 
 
 _PIECE_LOCAL_CACHE_PATHS = {}
@@ -981,7 +969,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 sparkDFTransform=
                     lambda sparkDF:
                         sparkDF.drop(*cols),
-                pandasDFTransform=_ArrowSparkADF__drop__pandasDFTransform(cols=cols),
+                pandasDFTransform=_ArrowADF__drop__pandasDFTransform(cols=cols),
                 inheritCache=True,
                 inheritNRows=True,
                 **kwargs)
