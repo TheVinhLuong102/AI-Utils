@@ -1311,8 +1311,8 @@ class ArrowADF(_ArrowADFABC):
 
         if len(cols) > 1:
             return Namespace(**
-                             {col: self.count(col, **kwargs)
-                              for col in cols})
+                {col: self.count(col, **kwargs)
+                 for col in cols})
 
         else:
             col = cols[0]
