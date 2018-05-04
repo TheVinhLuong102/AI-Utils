@@ -491,7 +491,7 @@ class _ADFABC(object):
     # count
     # nonNullProportion
     # suffNonNull
-    # distinct
+    # distinct / unique
     # quantile
     # sampleStat / sampleMedian
     # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
@@ -558,6 +558,9 @@ class _ADFABC(object):
     @abc.abstractmethod
     def distinct(self, *cols, **kwargs):
         raise NotImplementedError
+
+    def unique(self, *cols, **kwargs):
+        return self.distinct(*cols, **kwargs)
 
     @abc.abstractmethod
     def quantile(self, *cols, **kwargs):
