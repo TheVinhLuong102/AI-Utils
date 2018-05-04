@@ -6,7 +6,6 @@ import os
 import shutil
 import uuid
 
-from pyspark import SparkFiles
 from pyspark.sql.types import DoubleType, IntegerType, StructField, StructType
 
 import arimo.backend
