@@ -2737,52 +2737,6 @@ class SparkADF(_ADFABC):
             return self._cache.nonNullProportion[col]
 
     @_docstr_verbose
-    def suffNonNull(self, *cols, **kwargs):
-        """
-        Check whether the columns has at least ``.minNonNullProportion`` of non-``NULL`` values
-
-        Return:
-            - If 1 column name is given, return ``True``/``False``
-
-            - If multiple column names are given, return a {``col``: ``True`` or ``False``} *dict*
-
-            - If no column names are given, return a {``col``: ``True`` or ``False``} *dict* for all columns
-
-        Args:
-            *cols (str): column names
-
-            **kwargs:
-        """
-        if not cols:
-            cols = self.contentCols
-
-        if len(cols) > 1:
-            return Namespace(**
-                {col: self.suffNonNull(col, **kwargs)
-                 for col in cols})
-
-        else:
-            col = cols[0]
-
-            minNonNullProportion = self._minNonNullProportion[col]
-
-            outdatedSuffNonNullProportionThreshold = False
-
-            if col in self._cache.suffNonNullProportionThreshold:
-                if self._cache.suffNonNullProportionThreshold[col] != minNonNullProportion:
-                    outdatedSuffNonNullProportionThreshold = True
-                    self._cache.suffNonNullProportionThreshold[col] = minNonNullProportion
-
-            else:
-                self._cache.suffNonNullProportionThreshold[col] = minNonNullProportion
-
-            if (col not in self._cache.suffNonNull) or outdatedSuffNonNullProportionThreshold:
-                self._cache.suffNonNull[col] = \
-                    self.nonNullProportion(col) >= self._cache.suffNonNullProportionThreshold[col]
-                
-            return self._cache.suffNonNull[col]
-
-    @_docstr_verbose
     def distinct(self, col=None, count=True, collect=True, **kwargs):
         """
         Return:

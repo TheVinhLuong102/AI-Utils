@@ -17,6 +17,7 @@ from arimo.util.date_time import \
      _T_DoW_COL, _T_PoW_COL,
      _T_HoD_COL, _T_PoD_COL,
      _T_COMPONENT_AUX_COLS, _T_CAT_AUX_COLS, _T_NUM_AUX_COLS)
+from arimo.util import Namespace
 from arimo.util.decor import _docstr_settable_property
 from arimo.util.log import STDOUT_HANDLER
 import arimo.debug
@@ -483,3 +484,58 @@ class _ADFABC(object):
     @property
     def possibleNumCols(self):
         return self.possibleNumTAuxCols + self.possibleNumContentCols
+
+    # *********
+    # PROFILING
+    # nonNullProportion
+    # suffNonNull
+
+    @abc.abstractmethod
+    def nonNullProportion(self, *cols, **kwargs):
+        raise NotImplementedError
+
+    def suffNonNull(self, *cols, **kwargs):
+        """
+        Check whether the columns has at least ``.minNonNullProportion`` of non-``NULL`` values
+
+        Return:
+            - If 1 column name is given, return ``True``/``False``
+
+            - If multiple column names are given, return a {``col``: ``True`` or ``False``} *dict*
+
+            - If no column names are given, return a {``col``: ``True`` or ``False``} *dict* for all columns
+
+        Args:
+            *cols (str): column names
+
+            **kwargs:
+        """
+        if not cols:
+            cols = self.contentCols
+
+        if len(cols) > 1:
+            return Namespace(**
+                {col: self.suffNonNull(col, **kwargs)
+                 for col in cols})
+
+        else:
+            col = cols[0]
+
+            minNonNullProportion = self._minNonNullProportion[col]
+
+            outdatedSuffNonNullProportionThreshold = False
+
+            if col in self._cache.suffNonNullProportionThreshold:
+                if self._cache.suffNonNullProportionThreshold[col] != minNonNullProportion:
+                    outdatedSuffNonNullProportionThreshold = True
+                    self._cache.suffNonNullProportionThreshold[col] = minNonNullProportion
+
+            else:
+                self._cache.suffNonNullProportionThreshold[col] = minNonNullProportion
+
+            if (col not in self._cache.suffNonNull) or outdatedSuffNonNullProportionThreshold:
+                self._cache.suffNonNull[col] = \
+                    (self.nonNullProportion(col) >=
+                     self._cache.suffNonNullProportionThreshold[col])
+
+            return self._cache.suffNonNull[col]

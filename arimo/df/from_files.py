@@ -1314,29 +1314,37 @@ class ArrowADF(_ArrowADFABC):
         else:
             col = cols[0]
 
-            if col not in self._cache.count:
-                verbose = True \
-                    if arimo.debug.ON \
-                    else kwargs.get('verbose')
+            pandasDF = kwargs.get('pandasDF')
 
-                if verbose:
-                    tic = time.time()
+            if pandasDF:
+                return self._nonNullCol(
+                        col=col,
+                        pandasDF=pandasDF)
 
-                self._cache.count[col] = result = \
-                    self._nonNullCol(col=col) \
-                        .map(mapper=len) \
-                        .reduce(reducer=sum)
+            else:
+                if col not in self._cache.count:
+                    verbose = True \
+                        if arimo.debug.ON \
+                        else kwargs.get('verbose')
 
-                assert isinstance(result, int), \
-                    '*** "{}" COUNT = {} ***'.format(col, result)
+                    if verbose:
+                        tic = time.time()
 
-                if verbose:
-                    toc = time.time()
-                    self.stdout_logger.info(
-                        msg='No. of Non-NULLs of Column "{}" = {:,}   <{:,.1f} s>'
-                            .format(col, result, toc - tic))
+                    self._cache.count[col] = result = \
+                        self._nonNullCol(col=col) \
+                            .map(mapper=len) \
+                            .reduce(reducer=sum)
 
-            return self._cache.count[col]
+                    assert isinstance(result, int), \
+                        '*** "{}" COUNT = {} ***'.format(col, result)
+
+                    if verbose:
+                        toc = time.time()
+                        self.stdout_logger.info(
+                            msg='No. of Non-NULLs of Column "{}" = {:,}   <{:,.1f} s>'
+                                .format(col, result, toc - tic))
+
+                return self._cache.count[col]
 
     @_docstr_verbose
     def nonNullProportion(self, *cols, **kwargs):
@@ -1358,63 +1366,21 @@ class ArrowADF(_ArrowADFABC):
 
         if len(cols) > 1:
             return Namespace(**
-                             {col: self.nonNullProportion(col, **kwargs)
-                              for col in cols})
+                {col: self.nonNullProportion(col, **kwargs)
+                 for col in cols})
 
         else:
             col = cols[0]
 
             if col not in self._cache.nonNullProportion:
                 self._cache.nonNullProportion[col] = \
-                    self.reprSample.count(col, **kwargs) / self.reprSampleSize
+                    self.count(
+                        col=col,
+                        pandasDF=self.reprSample,
+                        **kwargs) \
+                    / self.reprSampleSize
 
             return self._cache.nonNullProportion[col]
-
-    @_docstr_verbose
-    def suffNonNull(self, *cols, **kwargs):
-        """
-        Check whether the columns has at least ``.minNonNullProportion`` of non-``NULL`` values
-
-        Return:
-            - If 1 column name is given, return ``True``/``False``
-
-            - If multiple column names are given, return a {``col``: ``True`` or ``False``} *dict*
-
-            - If no column names are given, return a {``col``: ``True`` or ``False``} *dict* for all columns
-
-        Args:
-            *cols (str): column names
-
-            **kwargs:
-        """
-        if not cols:
-            cols = self.contentCols
-
-        if len(cols) > 1:
-            return Namespace(**
-                             {col: self.suffNonNull(col, **kwargs)
-                              for col in cols})
-
-        else:
-            col = cols[0]
-
-            minNonNullProportion = self._minNonNullProportion[col]
-
-            outdatedSuffNonNullProportionThreshold = False
-
-            if col in self._cache.suffNonNullProportionThreshold:
-                if self._cache.suffNonNullProportionThreshold[col] != minNonNullProportion:
-                    outdatedSuffNonNullProportionThreshold = True
-                    self._cache.suffNonNullProportionThreshold[col] = minNonNullProportion
-
-            else:
-                self._cache.suffNonNullProportionThreshold[col] = minNonNullProportion
-
-            if (col not in self._cache.suffNonNull) or outdatedSuffNonNullProportionThreshold:
-                self._cache.suffNonNull[col] = \
-                    self.nonNullProportion(col) >= self._cache.suffNonNullProportionThreshold[col]
-
-            return self._cache.suffNonNull[col]
 
     @_docstr_verbose
     def distinct(self, col=None, count=True, collect=True, **kwargs):
