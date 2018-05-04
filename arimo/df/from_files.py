@@ -1316,12 +1316,7 @@ class ArrowADF(_ArrowADFABC):
 
             pandasDF = kwargs.get('pandasDF')
 
-            if pandasDF:
-                return self._nonNullCol(
-                        col=col,
-                        pandasDF=pandasDF)
-
-            else:
+            if pandasDF is None:
                 if col not in self._cache.count:
                     verbose = True \
                         if arimo.debug.ON \
@@ -1345,6 +1340,12 @@ class ArrowADF(_ArrowADFABC):
                                 .format(col, result, toc - tic))
 
                 return self._cache.count[col]
+
+            else:
+                return len(
+                    self._nonNullCol(
+                        col=col,
+                        pandasDF=pandasDF))
 
     @_docstr_verbose
     def nonNullProportion(self, *cols, **kwargs):
