@@ -1470,7 +1470,7 @@ class ArrowADF(_ArrowADFABC):
             else:
                 return len(q) * [numpy.nan] \
                     if _multiQs \
-                    else numpy.nan
+                  else numpy.nan
 
     @_docstr_verbose
     def sampleStat(self, *cols, **kwargs):
