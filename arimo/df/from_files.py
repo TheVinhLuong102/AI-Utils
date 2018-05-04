@@ -569,8 +569,10 @@ class ArrowADF(_ArrowADFABC):
     # MAP-REDUCE (PARTITIONS)
     # map
     # reduce
+    # __getattr__
+    # __getitem__
+    # drop
     # collect
-    # reduce
     # toPandas
 
     def map(self, mapper=[], **kwargs):
@@ -915,6 +917,21 @@ class ArrowADF(_ArrowADFABC):
 
         return reducer(results)
 
+    def __getattr__(self, col):
+        assert col in self.columns
+
+        return self.map(
+                mapper=_ArrowADF__getattr__pandasDFTransform(col=col))
+
+    def __getitem__(self, item):
+        return self.map(
+                mapper=_ArrowADF__getitem__pandasDFTransform(item=item))
+
+    def drop(self, *cols, **kwargs):
+        return self.map(
+                mapper=_ArrowADF__drop__pandasDFTransform(cols=cols),
+                **kwargs)
+
     def collect(self, *cols, **kwargs):
         return self.reduce(cols=cols if cols else None, **kwargs)
 
@@ -1243,8 +1260,8 @@ class ArrowADF(_ArrowADFABC):
     # nonNullProportion
     # distinct
     # quantile
-    # sampleStat / sampleMedian
-    # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
+    # sampleStat
+    # outlierRstStat / outlierRstMin / outlierRstMax
     # profile
 
     @_docstr_verbose
@@ -2966,28 +2983,10 @@ class ArrowADF(_ArrowADFABC):
 
     # **************
     # MAP TRANSFORMS
-    # __getattr__
-    # __getitem__
-    # _nonNullCol
-    # fillna
-    # prep
-    # drop
+
     # filter
 
-    def __getattr__(self, col):
-        assert col in self.columns
 
-        return self.map(
-            mapper=_ArrowADF__getattr__pandasDFTransform(col=col))
-
-    def __getitem__(self, item):
-        return self.map(
-            mapper=_ArrowADF__getitem__pandasDFTransform(item=item))
-
-    def drop(self, *cols, **kwargs):
-        return self.map(
-                mapper=_ArrowADF__drop__pandasDFTransform(cols=cols),
-                **kwargs)
 
     def filter(self, condition, **kwargs):
         return self.map(
