@@ -2763,9 +2763,9 @@ class SparkADF(_ADFABC):
         else:
             col = cols[0]
 
-            count = kwargs.get('count')
+            count = kwargs.get('count', True)
 
-            collect = kwargs.get('collect')
+            collect = kwargs.get('collect', True)
 
             if col in self._cache.distinct:
                 series = self._cache.distinct[col]
@@ -4916,7 +4916,7 @@ class SparkADF(_ADFABC):
 
         adf._cache.colWidth.update(overTimeColWidths)
 
-        n = kwargs.get('n', 10 ** 6)
+        n = kwargs.get('n', self._DEFAULT_REPR_SAMPLE_SIZE)
         if n:
             fraction = min(n / adf.nRows, 1.)
         else:

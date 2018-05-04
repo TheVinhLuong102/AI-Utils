@@ -1243,7 +1243,7 @@ class ArrowADF(_ArrowADFABC):
             return self
 
     def sample(self, *cols, **kwargs):
-        n = kwargs.pop('n', 10 ** 6)
+        n = kwargs.pop('n', self._DEFAULT_REPR_SAMPLE_SIZE)
 
         piecePaths = kwargs.pop('piecePaths', None)
 
