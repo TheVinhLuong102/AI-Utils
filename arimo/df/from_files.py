@@ -1341,8 +1341,8 @@ class ArrowADF(_ArrowADFABC):
                         tic = time.time()
 
                     self._cache.count[col] = result = \
-                        self._nonNullCol(col=col) \
-                            .map(mapper=len) \
+                        self[col] \
+                            .map(mapper=lambda series: len(series.loc[pandas.notnull(series)])) \
                             .reduce(reducer=sum)
 
                     assert isinstance(result, int), \
@@ -1357,10 +1357,7 @@ class ArrowADF(_ArrowADFABC):
                 return self._cache.count[col]
 
             else:
-                return len(
-                    self._nonNullCol(
-                        col=col,
-                        pandasDF=pandasDF))
+                return len(pandasDF.loc[pandas.notnull(pandasDF[col])])
 
     @_docstr_verbose
     def nonNullProportion(self, *cols, **kwargs):
@@ -1449,28 +1446,13 @@ class ArrowADF(_ArrowADFABC):
 
     @lru_cache()
     def quantile(self, *cols, **kwargs):
-        if len(cols) > 1:
-            return Namespace(**
+        return Namespace(**
                 {col: self.approxQuantile(col, **kwargs)
-                 for col in cols})
-
-        else:
-            col = cols[0]
-
-            q = kwargs.get('q', .5)
-            _multiQs = isinstance(q, (list, tuple))
-
-            nonNullCol = self._nonNullCol(col=col, **kwargs)
-
-            if len(nonNullCol):
-                return nonNullCol.quantile(
-                        q=q,
-                        interpolation='linear')
-
-            else:
-                return len(q) * [numpy.nan] \
-                    if _multiQs \
-                  else numpy.nan
+                 for col in cols}) \
+            if len(cols) > 1 \
+          else self[cols[0]].reduce().quantile(
+                q=kwargs.get('q', .5),
+                interpolation='linear')
 
     @_docstr_verbose
     def sampleStat(self, *cols, **kwargs):
@@ -1490,8 +1472,7 @@ class ArrowADF(_ArrowADFABC):
                     - ``max``
         """
         if not cols:
-            cols = [col for col in self.contentCols
-                    if self.typeIsNum(col)]
+            cols = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**
@@ -1525,11 +1506,10 @@ class ArrowADF(_ArrowADFABC):
                             tic = time.time()
 
                         cache[col] = result = \
-                            getattr(
-                                self._nonNullCol(
-                                    col=col,
-                                    pandasDF=self.reprSample),
-                                stat)()
+                            getattr(self.reprSample[col], stat)(
+                                axis='index',
+                                skipna=True,
+                                level=None)
 
                         assert isinstance(result, (float, int)), \
                             '*** "{}" SAMPLE {} = {} ***'.format(col, capitalizedStatName.upper(), result)
@@ -1549,13 +1529,12 @@ class ArrowADF(_ArrowADFABC):
 
     def outlierRstStat(self, *cols, **kwargs):
         if not cols:
-            cols = [col for col in self.contentCols
-                    if self.typeIsNum(col)]
+            cols = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**
-                             {col: self.outlierRstStat(col, **kwargs)
-                              for col in cols})
+                {col: self.outlierRstStat(col, **kwargs)
+                 for col in cols})
 
         else:
             col = cols[0]
@@ -1583,23 +1562,28 @@ class ArrowADF(_ArrowADFABC):
                         if verbose:
                             tic = time.time()
 
+                        series = self.reprSample[col]
+
                         outlierTails = kwargs.pop('outlierTails', 'both')
 
-                        cache[col] = result = \
-                            self.reprSample \
-                                ._nonNullCol(
-                                col=col,
-                                lower=self.outlierRstMin(col)
-                                if outlierTails in ('lower', 'both')
-                                else None,
-                                upper=self.outlierRstMax(col)
-                                if outlierTails in ('upper', 'both')
-                                else None,
-                                strict=False) \
-                                .select(getattr(sparkSQLFuncs, stat)(col)) \
-                                .first()[0]
+                        if outlierTails == 'both':
+                            series = series.loc[
+                                (series >= self.outlierRstMin(col)) &
+                                (series <= self.outlierRstMax(col))]
 
-                        if result is None:
+                        elif outlierTails == 'lower':
+                            series = series.loc[series >= self.outlierRstMin(col)]
+
+                        elif outlierTails == 'upper':
+                            series = series.loc[series <= self.outlierRstMax(col)]
+
+                        cache[col] = result = \
+                            getattr(series, stat)(
+                                axis='index',
+                                skipna=True,
+                                level=None)
+
+                        if pandas.isnull(result):
                             self.stdout_logger.warning(
                                 msg='*** "{}" OUTLIER-RESISTANT {} = {} ***'.format(col, capitalizedStatName.upper(), result))
 
@@ -1615,18 +1599,23 @@ class ArrowADF(_ArrowADFABC):
 
                     return cache[col]
 
+            else:
+                raise ValueError(
+                    '{0}.outlierRstStat({1}, ...): Column "{1}" Is Not of Numeric Type'
+                        .format(self, col))
+
     def outlierRstMin(self, *cols, **kwargs):
         if not cols:
-            cols = [col for col in self.contentCols
-                    if self.typeIsNum(col)]
+            cols = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**
-                             {col: self.outlierRstMin(col, **kwargs)
-                              for col in cols})
+                {col: self.outlierRstMin(col, **kwargs)
+                 for col in cols})
 
         else:
             col = cols[0]
+
             if self.typeIsNum(col):
                 if 'outlierRstMin' not in self._cache:
                     self._cache.outlierRstMin = {}
@@ -1639,26 +1628,23 @@ class ArrowADF(_ArrowADFABC):
                     if verbose:
                         tic = time.time()
 
+                    series = self.reprSample[col]
+
                     outlierRstMin = \
-                        self.reprSample \
-                            .approxQuantile(
-                            col,
-                            probabilities=self._outlierTailProportion[col],
-                            relativeError=0)
+                        series.quantile(
+                            q=self._outlierTailProportion[col],
+                            interpolation='linear')
 
                     sampleMin = self.sampleStat(col, stat='min')
-                    sampleMedian = self.sampleMedian(col)
+                    sampleMedian = self.sampleStat(col, stat='median')
 
                     self._cache.outlierRstMin[col] = result = \
-                        self.reprSample \
-                            ._nonNullCol(
-                            col=col,
-                            lower=sampleMin,
-                            strict=True) \
-                            .select(sparkSQLFuncs.min(col)) \
-                            .first()[0] \
-                            if (outlierRstMin == sampleMin) and (outlierRstMin < sampleMedian) \
-                            else outlierRstMin
+                        series.loc[series > sampleMin] \
+                            .min(axis='index',
+                                 skipna=True,
+                                 level=None) \
+                        if (outlierRstMin == sampleMin) and (outlierRstMin < sampleMedian) \
+                        else outlierRstMin
 
                     assert isinstance(result, (float, int)), \
                         '*** "{}" OUTLIER-RESISTANT MIN = {} ***'.format(col, result)
@@ -1671,10 +1657,14 @@ class ArrowADF(_ArrowADFABC):
 
                 return self._cache.outlierRstMin[col]
 
+            else:
+                raise ValueError(
+                    '{0}.outlierRstMin({1}, ...): Column "{1}" Is Not of Numeric Type'
+                        .format(self, col))
+
     def outlierRstMax(self, *cols, **kwargs):
         if not cols:
-            cols = [col for col in self.contentCols
-                    if self.typeIsNum(col)]
+            cols = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**
@@ -1683,6 +1673,7 @@ class ArrowADF(_ArrowADFABC):
 
         else:
             col = cols[0]
+
             if self.typeIsNum(col):
                 if 'outlierRstMax' not in self._cache:
                     self._cache.outlierRstMax = {}
@@ -1695,26 +1686,23 @@ class ArrowADF(_ArrowADFABC):
                     if verbose:
                         tic = time.time()
 
+                    series = self.reprSample[col]
+
                     outlierRstMax = \
-                        self.reprSample \
-                            .approxQuantile(
-                            col,
-                            probabilities=1 - self._outlierTailProportion[col],
-                            relativeError=0)
+                        series.quantile(
+                            q=1 - self._outlierTailProportion[col],
+                            interpolation='linear')
 
                     sampleMax = self.sampleStat(col, stat='max')
-                    sampleMedian = self.sampleMedian(col)
+                    sampleMedian = self.sampleStat(col, stat='median')
 
                     self._cache.outlierRstMax[col] = result = \
-                        self.reprSample \
-                            ._nonNullCol(
-                            col=col,
-                            upper=sampleMax,
-                            strict=True) \
-                            .select(sparkSQLFuncs.max(col)) \
-                            .first()[0] \
-                            if (outlierRstMax == sampleMax) and (outlierRstMax > sampleMedian) \
-                            else outlierRstMax
+                        series.loc[series < sampleMax] \
+                            .max(axis='index',
+                                 skipna=True,
+                                 level=None) \
+                        if (outlierRstMax == sampleMax) and (outlierRstMax > sampleMedian) \
+                        else outlierRstMax
 
                     assert isinstance(result, (float, int)), \
                         '*** "{}" OUTLIER-RESISTANT MAX = {} ***'.format(col, result)
@@ -1727,49 +1715,10 @@ class ArrowADF(_ArrowADFABC):
 
                 return self._cache.outlierRstMax[col]
 
-    def outlierRstMedian(self, *cols, **kwargs):
-        if not cols:
-            cols = [col for col in self.contentCols
-                    if self.typeIsNum(col)]
-
-        if len(cols) > 1:
-            return Namespace(**
-                             {col: self.outlierRstMedian(col, **kwargs)
-                              for col in cols})
-
-        else:
-            col = cols[0]
-            if self.typeIsNum(col):
-                if 'outlierRstMedian' not in self._cache:
-                    self._cache.outlierRstMedian = {}
-
-                if col not in self._cache.outlierRstMedian:
-                    verbose = kwargs.get('verbose')
-                    if verbose:
-                        tic = time.time()
-
-                    self._cache.outlierRstMedian[col] = result = \
-                        self.reprSample \
-                            ._nonNullCol(
-                            col=col,
-                            lower=self.outlierRstMin(col),
-                            upper=self.outlierRstMax(col),
-                            strict=False) \
-                            .approxQuantile(
-                            col=col,
-                            probabilities=(.5,),
-                            relativeError=0)[0]
-
-                    assert isinstance(result, (float, int)), \
-                        '*** "{}" OUTLIER-RESISTANT MEDIAN = {} ***'.format(col, result)
-
-                    if verbose:
-                        toc = time.time()
-                        self.stdout_logger.info(
-                            msg='Outlier-Resistant Median of Column "{}" = {:,.3g}    <{:,.1f} s>'
-                                .format(col, result, toc - tic))
-
-                return self._cache.outlierRstMedian[col]
+            else:
+                raise ValueError(
+                    '{0}.outlierRstMax({1}, ...): Column "{1}" Is Not of Numeric Type'
+                        .format(self, col))
 
     @_docstr_verbose
     def profile(self, *cols, **kwargs):
