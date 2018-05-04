@@ -1414,12 +1414,26 @@ class ArrowADF(_ArrowADFABC):
 
             **kwargs:
         """
-        if col:
+        if not cols:
+            cols = self.contentCols
+
+        if len(cols) > 1:
+            return Namespace(**
+                {col: self.distinct(col, **kwargs)
+                 for col in cols})
+
+        else:
+            col = cols[0]
+
+            count = kwargs.get('count', True)
+
             if col in self._cache.distinct:
-                df = self._cache.distinct[col]
-                assert isinstance(df, pandas.DataFrame)
-                if len(df.columns) or not count:
-                    return df
+                series = self._cache.distinct[col]
+
+                assert isinstance(series, pandas.Series)
+
+                if (series.dtype in (float, int)) or not count:
+                    return series
 
             verbose = True \
                 if arimo.debug.ON \
@@ -1430,98 +1444,21 @@ class ArrowADF(_ArrowADFABC):
                 self.stdout_logger.info(msg)
                 tic = time.time()
 
-            adf = self.reprSample(
-                'SELECT \
-                    {0}, \
-                    COUNT(*) AS __sample_count__, \
-                    (COUNT(*) / {1}) AS __proportion__ \
-                FROM \
-                    this \
-                GROUP BY \
-                    {0} \
-                ORDER BY \
-                    __sample_count__ DESC'
-                    .format(col, self.reprSampleSize),
-                **kwargs) \
+            self._cache.distinct[col] = \
+                self.reprSample[col].value_counts(
+                    normalize=True,
+                    sort=True,
+                    ascending=False,
+                    bins=None,
+                    dropna=False) \
                 if count \
-                else \
-                self.reprSample(
-                    'SELECT \
-                        DISTINCT({}) \
-                    FROM \
-                        this'.format(col),
-                    **kwargs)
-
-            if collect:
-                df = adf.toPandas()
-
-                dups = {k: v
-                        for k, v in Counter(df[col]).items()
-                        if v > 1}
-
-                if dups:
-                    assert all(pandas.isnull(k) for k in dups), \
-                        '*** {}.distinct("{}"): POSSIBLE SPARK SQL/HIVEQL BUG: DUPLICATES {} ***'.format(self, col, dups)
-
-                    index_of_first_row_with_null = None
-                    row_indices_to_delete = []
-
-                    for i, row in df.iterrows():
-                        if pandas.isnull(row[col]):
-                            if index_of_first_row_with_null is None:
-                                index_of_first_row_with_null = i
-
-                            else:
-                                row_indices_to_delete.append(i)
-
-                                if count:
-                                    df.at[index_of_first_row_with_null, '__sample_count__'] += df.at[i, '__sample_count__']
-                                    df.at[index_of_first_row_with_null, '__proportion__'] += df.at[i, '__proportion__']
-
-                    df.drop(
-                        index=row_indices_to_delete,
-                        level=None,
-                        inplace=True,
-                        errors='raise')
-
-                    if count:
-                        df.sort_values(
-                            by='__sample_count__',
-                            ascending=False,
-                            inplace=True,
-                            kind='quicksort',
-                            na_position='last')
-
-                        df.reset_index(
-                            level=None,
-                            drop=True,
-                            inplace=True,
-                            col_level=0,
-                            col_fill='')
-
-                self._cache.distinct[col] = \
-                    result = \
-                    df.set_index(
-                        keys=col,
-                        drop=True,
-                        append=False,
-                        inplace=False,
-                        verify_integrity=False)
-
-            else:
-                result = adf
+                else self.reprSample[col].unique()
 
             if verbose:
                 toc = time.time()
                 self.stdout_logger.info(msg + ' done!   <{:,.1f} s>'.format(toc - tic))
 
-            return result
-
-        else:
-            return self._decorate(
-                obj=self._sparkDF.distinct(),
-                nRows=None,
-                **kwargs)
+            return self._cache.distinct[col]
 
     @lru_cache()
     def approxQuantile(self, *cols, **kwargs):   # make Spark SQL approxQuantile method NULL-resistant
