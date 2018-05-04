@@ -1206,7 +1206,7 @@ class ArrowADF(_ArrowADFABC):
             maxNPieces = kwargs.pop('maxNPieces', None)
 
             nSamplePieces = \
-                max(int(math.ceil(((min(n, self.nRows) / self.nRows) ** .5)
+                max(int(math.ceil(((min(n, self.approxNRows) / self.approxNRows) ** .5)
                                   * self.nPieces)),
                     minNPieces)
 
