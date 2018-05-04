@@ -1464,8 +1464,8 @@ class ArrowADF(_ArrowADFABC):
 
             if len(nonNullCol):
                 return nonNullCol.quantile(
-                    q=q,
-                    interpolation='linear')
+                        q=q,
+                        interpolation='linear')
 
             else:
                 return len(q) * [numpy.nan] \
