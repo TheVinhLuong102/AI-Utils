@@ -1461,37 +1461,28 @@ class ArrowADF(_ArrowADFABC):
             return self._cache.distinct[col]
 
     @lru_cache()
-    def approxQuantile(self, *cols, **kwargs):   # make Spark SQL approxQuantile method NULL-resistant
+    def quantile(self, *cols, **kwargs):
         if len(cols) > 1:
             return Namespace(**
-                             {col: self.approxQuantile(col, **kwargs)
-                              for col in cols})
+                {col: self.approxQuantile(col, **kwargs)
+                 for col in cols})
 
-        elif len(cols) == 1:
+        else:
             col = cols[0]
 
-            prob = kwargs.get('probabilities', .5)
-            _multiProbs = isinstance(prob, (list, tuple))
+            q = kwargs.get('q', .5)
+            _multiQs = isinstance(q, (list, tuple))
 
-            relErr = kwargs.get('relativeError', 0)
+            nonNullCol = self._nonNullCol(col=col, **kwargs)
 
-            if self.count(col):
-                result = \
-                    self._nonNullCol(col=col) \
-                        .approxQuantile(
-                        col=col,
-                        probabilities=prob
-                        if _multiProbs
-                        else (prob,),
-                        relativeError=relErr)
-
-                return result \
-                    if _multiProbs \
-                    else result[0]
+            if len(nonNullCol):
+                return nonNullCol.quantile(
+                    q=q,
+                    interpolation='linear')
 
             else:
-                return len(prob) * [numpy.nan] \
-                    if _multiProbs \
+                return len(q) * [numpy.nan] \
+                    if _multiQs \
                     else numpy.nan
 
     @_docstr_verbose

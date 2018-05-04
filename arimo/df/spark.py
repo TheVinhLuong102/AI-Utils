@@ -2879,11 +2879,11 @@ class SparkADF(_ADFABC):
                 {col: self.quantile(col, **kwargs)
                  for col in cols})
 
-        elif len(cols) == 1:
+        else:
             col = cols[0]
 
             q = kwargs.get('q', .5)
-            _multiProbs = isinstance(q, (list, tuple))
+            _multiQs = isinstance(q, (list, tuple))
 
             relErr = kwargs.get('relativeError', 0)
 
@@ -2893,17 +2893,17 @@ class SparkADF(_ADFABC):
                         .approxQuantile(
                             col=col,
                             probabilities=q
-                                if _multiProbs
+                                if _multiQs
                                 else (q,),
                             relativeError=relErr)
 
                 return result \
-                    if _multiProbs \
+                    if _multiQs \
                   else result[0]
 
             else:
                 return len(q) * [numpy.nan] \
-                    if _multiProbs \
+                    if _multiQs \
                   else numpy.nan
 
     @_docstr_verbose
