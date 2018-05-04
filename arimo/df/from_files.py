@@ -92,11 +92,11 @@ class _ArrowADFABC(_ADFABC):
 
 
 class _ArrowADF__getattr__pandasDFTransform:
-    def __init__(self, attr):
-        self.attr = attr
+    def __init__(self, col):
+        self.col = col
 
     def __call__(self, pandasDF):
-        return getattr(pandasDF, self.attr)
+        return getattr(pandasDF, self.col)
 
 
 class _ArrowADF__getitem__pandasDFTransform:
@@ -3218,9 +3218,11 @@ class ArrowADF(_ArrowADFABC):
 
         return arrowADF
 
-    def __getattr__(self, attr):
+    def __getattr__(self, col):
+        assert col in self.columns
+
         return self.transform(
-            pandasDFTransform=_ArrowADF__getattr__pandasDFTransform(attr=attr))
+            pandasDFTransform=_ArrowADF__getattr__pandasDFTransform(col=col))
 
     def __getitem__(self, item):
         return self.transform(
