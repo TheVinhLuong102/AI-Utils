@@ -50,7 +50,7 @@ import arimo.debug
 class _ArrowADFABC(_ADFABC):
     __metaclass__ = abc.ABCMeta
 
-    _DEFAULT_REPR_SAMPLE_N_PIECES = 100
+    _REPR_SAMPLE_MIN_N_PIECES = 100
 
     # file systems
     _LOCAL_ARROW_FS = LocalFileSystem()
@@ -78,17 +78,17 @@ class _ArrowADFABC(_ADFABC):
         return cls._S3_FSs[keyPair]
 
     @property
-    def reprSampleNPieces(self):
-        return self._reprSampleNPieces
+    def reprSampleMinNPieces(self):
+        return self._reprSampleMinNPieces
 
-    @reprSampleNPieces.setter
-    def reprSampleNPieces(self, reprSampleNPieces):
-        if (reprSampleNPieces <= self.nPieces) and (reprSampleNPieces != self._reprSampleNPieces):
-            self._reprSampleNPieces = reprSampleNPieces
+    @reprSampleMinNPieces.setter
+    def reprSampleMinNPieces(self, reprSampleMinNPieces):
+        if (reprSampleMinNPieces <= self.nPieces) and (reprSampleMinNPieces != self._reprSampleMinNPieces):
+            self._reprSampleMinNPieces = reprSampleMinNPieces
 
-    @reprSampleNPieces.deleter
-    def reprSampleNPieces(self):
-        self._reprSampleNPieces = min(self._DEFAULT_REPR_SAMPLE_N_PIECES, self.nPieces)
+    @reprSampleMinNPieces.deleter
+    def reprSampleMinNPieces(self):
+        self._reprSampleMinNPieces = min(self._REPR_SAMPLE_MIN_N_PIECES, self.nPieces)
 
 
 class _ArrowADF__getattr__pandasDFTransform:
@@ -202,7 +202,7 @@ class ArrowADF(_ArrowADFABC):
             iCol=None, tCol=None,
             _pandasDFTransforms=[],
 
-            reprSampleNPieces=_ArrowADFABC._DEFAULT_REPR_SAMPLE_N_PIECES,
+            reprSampleMinNPieces=_ArrowADFABC._REPR_SAMPLE_MIN_N_PIECES,
             reprSampleSize=_ArrowADFABC._DEFAULT_REPR_SAMPLE_SIZE,
 
             minNonNullProportion=DefaultDict(_ArrowADFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
@@ -387,7 +387,7 @@ class ArrowADF(_ArrowADFABC):
 
         self._pandasDFTransforms = _pandasDFTransforms
 
-        self._reprSampleNPieces = min(reprSampleNPieces, self.nPieces)
+        self._reprSampleMinNPieces = min(reprSampleMinNPieces, self.nPieces)
         self._reprSampleSize = reprSampleSize
 
         self._minNonNullProportion = minNonNullProportion
@@ -969,7 +969,7 @@ class ArrowADF(_ArrowADFABC):
             self._cache.reprSamplePiecePaths = \
                 random.sample(
                     population=self.piecePaths,
-                    k=self._reprSampleNPieces)
+                    k=self._reprSampleMinNPieces)
 
         return self._cache.reprSamplePiecePaths
 
@@ -1009,7 +1009,7 @@ class ArrowADF(_ArrowADFABC):
                 self.nPieces \
                 * sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
                       for piecePath in tqdm.tqdm(self.reprSamplePiecePaths)) \
-                / self._reprSampleNPieces
+                / self._reprSampleMinNPieces
 
         return self._cache.approxNRows
 
@@ -1115,7 +1115,7 @@ class ArrowADF(_ArrowADFABC):
                     iCol=self._iCol, tCol=self._tCol,
                     _pandasDFTransforms=self._pandasDFTransforms,
 
-                    reprSampleNPieces=self._reprSampleNPieces,
+                    reprSampleMinNPieces=self._reprSampleMinNPieces,
                     reprSampleSize=self._reprSampleSize,
         
                     minNonNullProportion=self._minNonNullProportion,
@@ -1202,7 +1202,7 @@ class ArrowADF(_ArrowADFABC):
             nSamplePieces = len(piecePaths)
 
         else:
-            minNPieces = kwargs.pop('minNPieces', self._reprSampleNPieces)
+            minNPieces = kwargs.pop('minNPieces', self._reprSampleMinNPieces)
             maxNPieces = kwargs.pop('maxNPieces', None)
 
             nSamplePieces = \
@@ -3203,7 +3203,7 @@ class ArrowADF(_ArrowADFABC):
                 iCol=self._iCol, tCol=self._tCol,
                 _pandasDFTransforms=self._pandasDFTransforms + additionalPandasDFTransforms,
 
-                reprSampleNPieces=self._reprSampleNPieces,
+                reprSampleMinNPieces=self._reprSampleMinNPieces,
                 reprSampleSize=self._reprSampleSize,
 
                 minNonNullProportion=self._minNonNullProportion,

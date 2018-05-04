@@ -419,7 +419,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
             self, path, aws_access_key_id=None, aws_secret_access_key=None, reCache=False,
             _srcSparkDFSchema=None, _initSparkDF=None, _sparkDFTransforms=[], _sparkDF=None,
             _pandasDFTransforms=[],
-            reprSampleNPieces=_ArrowADFABC._DEFAULT_REPR_SAMPLE_N_PIECES,
+            reprSampleMinNPieces=_ArrowADFABC._REPR_SAMPLE_MIN_N_PIECES,
             verbose=True, **kwargs):
         if verbose or arimo.debug.ON:
             logger = self.class_stdout_logger()
@@ -616,7 +616,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                     {col: type
                      for col, type in self.dtypes})
 
-        self._reprSampleNPieces = min(reprSampleNPieces, self.nPieces)
+        self._reprSampleMinNPieces = min(reprSampleMinNPieces, self.nPieces)
 
         self._cache.pieceADFs = {}
 
@@ -1259,7 +1259,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
         stdKwArgs.nDetPrePartitions = None
 
         n = kwargs.pop('n', 10 ** 6)
-        minNPieces = kwargs.pop('minNPieces', self._reprSampleNPieces)
+        minNPieces = kwargs.pop('minNPieces', self._reprSampleMinNPieces)
         maxNPieces = kwargs.pop('maxNPieces', None)
         verbose = kwargs.pop('verbose', True)
 
@@ -1314,7 +1314,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
     def _assignReprSample(self):
         adf = self.sample(
                 n=self._reprSampleSize,
-                minNPieces=self._reprSampleNPieces,
+                minNPieces=self._reprSampleMinNPieces,
                 anon=True) \
             .repartition(
                 1,
