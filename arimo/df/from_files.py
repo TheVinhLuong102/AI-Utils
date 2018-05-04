@@ -1815,6 +1815,7 @@ class ArrowADF(_ArrowADFABC):
                     profile.sampleMean = \
                         self.sampleStat(
                             col,
+                            stat='mean',
                             verbose=verbose)
 
                     profile.outlierRstMean = \
@@ -1822,13 +1823,15 @@ class ArrowADF(_ArrowADFABC):
                             col,
                             self.outlierRstStat(
                                 col,
+                                stat='mean',
                                 verbose=verbose))
 
                     profile.outlierRstMedian = \
                         self._cache.outlierRstMedian.get(
                             col,
-                            self.outlierRstMedian(
+                            self.outlierRstStat(
                                 col,
+                                stat='median',
                                 verbose=verbose))
 
             if verbose:
