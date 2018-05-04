@@ -2737,7 +2737,7 @@ class SparkADF(_ADFABC):
             return self._cache.nonNullProportion[col]
 
     @_docstr_verbose
-    def distinct(self, *cols, count=True, collect=True, **kwargs):
+    def distinct(self, *cols, **kwargs):
         """
         Return:
             *Approximate* list of distinct values of ``SparkADF``'s column ``col``,
