@@ -1194,7 +1194,7 @@ class ArrowADF(_ArrowADFABC):
             return self
 
     def sample(self, *cols, **kwargs):
-        n = kwargs.pop('n', 1)
+        n = kwargs.pop('n', 10 ** 6)
 
         piecePaths = kwargs.pop('piecePaths')
 

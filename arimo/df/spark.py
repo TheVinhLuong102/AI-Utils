@@ -4951,7 +4951,7 @@ class SparkADF(_ADFABC):
 
         adf._cache.colWidth.update(overTimeColWidths)
 
-        n = kwargs.get('n')
+        n = kwargs.get('n', 10 ** 6)
         if n:
             fraction = min(n / adf.nRows, 1.)
         else:

@@ -1258,7 +1258,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
         stdKwArgs.detPrePartitioned = False
         stdKwArgs.nDetPrePartitions = None
 
-        n = kwargs.pop('n', 1)
+        n = kwargs.pop('n', 10 ** 6)
         minNPieces = kwargs.pop('minNPieces', self._reprSampleNPieces)
         maxNPieces = kwargs.pop('maxNPieces', None)
         verbose = kwargs.pop('verbose', True)
