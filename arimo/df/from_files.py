@@ -1196,9 +1196,7 @@ class ArrowADF(_ArrowADFABC):
     def sample(self, *cols, **kwargs):
         n = kwargs.pop('n', 10 ** 6)
 
-        piecePaths = kwargs.pop('piecePaths')
-
-        verbose = kwargs.pop('verbose', True)
+        piecePaths = kwargs.pop('piecePaths', None)
 
         if piecePaths:
             nSamplePieces = len(piecePaths)
@@ -1226,10 +1224,10 @@ class ArrowADF(_ArrowADFABC):
                 piecePaths = self.piecePaths
 
         return self._mr(
-            *piecePaths,
-            cols=cols,
-            nSamplesPerPiece=int(math.ceil(n / nSamplePieces)),
-            verbose=verbose)
+                *piecePaths,
+                cols=cols,
+                nSamplesPerPiece=int(math.ceil(n / nSamplePieces)),
+                **kwargs)
 
     # ****************
     # COLUMN PROFILING
