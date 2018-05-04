@@ -3213,11 +3213,11 @@ class ArrowADF(_ArrowADFABC):
                 upper=upper,
                 strict=strict)
 
-        return pandasDFTransform(pandasDF=pandasDF) \
-            if pandasDF \
-          else self.map(
+        return self.map(
                 mapper=pandasDFTransform,
-                **kwargs)
+                **kwargs) \
+            if pandasDF is None \
+          else pandasDFTransform(pandasDF=pandasDF)
 
     def drop(self, *cols, **kwargs):
         return self.map(
