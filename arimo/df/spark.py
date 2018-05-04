@@ -3327,7 +3327,7 @@ class SparkADF(_ADFABC):
                             col,
                             count=True,
                             collect=True,
-                            verbose=verbose > 1).__proportion__
+                            verbose=verbose > 1)
 
                 # profile numerical column
                 if kwargs.get('profileNum', True) and (colType.startswith(_DECIMAL_TYPE_PREFIX) or (colType in _NUM_TYPES)):

@@ -1407,8 +1407,6 @@ class ArrowADF(_ArrowADFABC):
 
             count (bool): whether to count the number of appearances of each distinct value of the specified ``col``
 
-            collect (bool): whether to return a ``pandas.DataFrame`` (``collect=True``) or a ``Spark SQL DataFrame``
-
             **kwargs:
         """
         if not cols:
@@ -1744,8 +1742,8 @@ class ArrowADF(_ArrowADFABC):
 
         if len(cols) > 1:
             return Namespace(**
-                             {col: self.profile(col, **kwargs)
-                              for col in cols})
+                {col: self.profile(col, **kwargs)
+                 for col in cols})
 
         else:
             col = cols[0]
@@ -1770,16 +1768,15 @@ class ArrowADF(_ArrowADFABC):
 
             if self.suffNonNull(col) or (not kwargs.get('skipIfInvalid', False)):
                 # profile categorical column
-                if kwargs.get('profileCat', True) and (colType.startswith(_DECIMAL_TYPE_PREFIX) or (colType in _POSSIBLE_CAT_TYPES)):
+                if kwargs.get('profileCat', True) and is_possible_cat(colType):
                     profile.distinctProportions = \
                         self.distinct(
                             col=col,
                             count=True,
-                            collect=True,
-                            verbose=verbose > 1).__proportion__
+                            verbose=verbose > 1)
 
                 # profile numerical column
-                if kwargs.get('profileNum', True) and (colType.startswith(_DECIMAL_TYPE_PREFIX) or (colType in _NUM_TYPES)):
+                if kwargs.get('profileNum', True) and is_num(colType):
                     outlierTailProportion = self._outlierTailProportion[col]
 
                     quantilesOfInterest = \
@@ -1831,13 +1828,13 @@ class ArrowADF(_ArrowADFABC):
                         quantileProbsToQuery += [1.]
                         toCacheSampleMax = True
 
+                    series = self.reprSample[col]
+
                     if quantileProbsToQuery:
                         quantilesOfInterest[numpy.isnan(quantilesOfInterest)] = \
-                            self.reprSample \
-                                .approxQuantile(
-                                col,
-                                probabilities=quantileProbsToQuery,
-                                relativeError=0)
+                            series.quantile(
+                                q=quantileProbsToQuery,
+                                interpolation='linear')
 
                     sampleMin, outlierRstMin, sampleMedian, outlierRstMax, sampleMax = quantilesOfInterest
 
@@ -1847,13 +1844,10 @@ class ArrowADF(_ArrowADFABC):
                     if toCacheOutlierRstMin:
                         if (outlierRstMin == sampleMin) and (outlierRstMin < sampleMedian):
                             outlierRstMin = \
-                                self.reprSample \
-                                    ._nonNullCol(
-                                    col,
-                                    lower=sampleMin,
-                                    strict=True) \
-                                    .select(sparkSQLFuncs.min(col)) \
-                                    .first()[0]
+                                series.loc[series > sampleMin] \
+                                    .min(axis='index',
+                                         skipna=True,
+                                         level=None)
                         self._cache.outlierRstMin[col] = outlierRstMin
 
                     if toCacheSampleMedian:
@@ -1862,13 +1856,10 @@ class ArrowADF(_ArrowADFABC):
                     if toCacheOutlierRstMax:
                         if (outlierRstMax == sampleMax) and (outlierRstMax > sampleMedian):
                             outlierRstMax = \
-                                self.reprSample \
-                                    ._nonNullCol(
-                                    col,
-                                    upper=sampleMax,
-                                    strict=True) \
-                                    .select(sparkSQLFuncs.max(col)) \
-                                    .first()[0]
+                                series.loc[series < sampleMax] \
+                                    .max(axis='index',
+                                         skipna=True,
+                                         level=None)
                         self._cache.outlierRstMax[col] = outlierRstMax
 
                     if toCacheSampleMax:
