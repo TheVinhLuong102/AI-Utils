@@ -2882,8 +2882,8 @@ class SparkADF(_ADFABC):
         elif len(cols) == 1:
             col = cols[0]
 
-            prob = kwargs.get('probabilities', .5)
-            _multiProbs = isinstance(prob, (list, tuple))
+            q = kwargs.get('q', .5)
+            _multiProbs = isinstance(q, (list, tuple))
 
             relErr = kwargs.get('relativeError', 0)
 
@@ -2892,9 +2892,9 @@ class SparkADF(_ADFABC):
                     self._nonNullCol(col=col) \
                         .approxQuantile(
                             col=col,
-                            probabilities=prob
+                            probabilities=q
                                 if _multiProbs
-                                else (prob,),
+                                else (q,),
                             relativeError=relErr)
 
                 return result \
@@ -2902,7 +2902,7 @@ class SparkADF(_ADFABC):
                   else result[0]
 
             else:
-                return len(prob) * [numpy.nan] \
+                return len(q) * [numpy.nan] \
                     if _multiProbs \
                   else numpy.nan
 
@@ -3004,7 +3004,7 @@ class SparkADF(_ADFABC):
                         self.reprSample \
                             .quantile(
                                 col,
-                                probabilities=.5,
+                                q=.5,
                                 relativeError=0)
 
                     assert isinstance(result, (float, int)), \
@@ -3114,7 +3114,7 @@ class SparkADF(_ADFABC):
                         self.reprSample \
                             .quantile(
                                 col,
-                                probabilities=self._outlierTailProportion[col],
+                                q=self._outlierTailProportion[col],
                                 relativeError=0)
 
                     sampleMin = self.sampleStat(col, stat='min')
@@ -3170,7 +3170,7 @@ class SparkADF(_ADFABC):
                         self.reprSample \
                             .quantile(
                                 col,
-                                probabilities=1 - self._outlierTailProportion[col],
+                                q=1 - self._outlierTailProportion[col],
                                 relativeError=0)
 
                     sampleMax = self.sampleStat(col, stat='max')
@@ -3358,7 +3358,7 @@ class SparkADF(_ADFABC):
                             self.reprSample \
                                 .quantile(
                                     col,
-                                    probabilities=quantileProbsToQuery,
+                                    q=quantileProbsToQuery,
                                     relativeError=0)
 
                     sampleMin, outlierRstMin, sampleMedian, outlierRstMax, sampleMax = quantilesOfInterest
