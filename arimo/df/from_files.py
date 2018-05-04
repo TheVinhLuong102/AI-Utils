@@ -119,47 +119,6 @@ class _ArrowADF__drop__pandasDFTransform:
                 errors='ignore')
 
 
-class _ArrowADF__nonNullCol__pandasDFTransform:
-    def __init__(self, col, isNum, lower=None, upper=None, strict=False):
-        self.col = col
-
-        self.filterNum = \
-            isNum and \
-            (pandas.notnull(lower) or
-             pandas.notnull(upper))
-
-        if self.filterNum:
-            if pandas.notnull(lower) and pandas.notnull(upper) and (lower + 1e-6 > upper):
-                print('*** "{}": LOWER {} >= UPPER {} ***'.format(col, lower, upper))
-
-                upper = lower + 1e-6
-
-            self.lower = lower
-            self.upper = upper
-
-            self.strict = strict
-
-    def __call__(self, pandasDF):
-        series = pandasDF[self.col]
-
-        condition = pandas.notnull(series)
-
-        if self.filterNum:
-            if self.lower:
-                condition &= \
-                    ((series > self.lower)
-                     if self.strict
-                     else (series >= self.lower))
-
-            if self.upper:
-                condition &= \
-                    ((series < self.upper)
-                     if self.strict
-                     else (series <= self.upper))
-
-        return series.loc[condition]
-
-
 @enable_inplace
 class ArrowADF(_ArrowADFABC):
     # "inplace-able" methods
@@ -1287,21 +1246,6 @@ class ArrowADF(_ArrowADFABC):
     # sampleStat / sampleMedian
     # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
     # profile
-
-    def _nonNullCol(self, col, pandasDF=None, lower=None, upper=None, strict=False, **kwargs):
-        pandasDFTransform = \
-            _ArrowADF__nonNullCol__pandasDFTransform(
-                col=col,
-                isNum=is_num(self.type(col)),
-                lower=lower,
-                upper=upper,
-                strict=strict)
-
-        return self.map(
-                mapper=pandasDFTransform,
-                **kwargs) \
-            if pandasDF is None \
-            else pandasDFTransform(pandasDF=pandasDF)
 
     @_docstr_verbose
     def count(self, *cols, **kwargs):

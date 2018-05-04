@@ -487,7 +487,6 @@ class _ADFABC(object):
 
     # ****************
     # COLUMN PROFILING
-    # _nonNullCol
     # count
     # nonNullProportion
     # suffNonNull
@@ -496,10 +495,6 @@ class _ADFABC(object):
     # sampleStat / sampleMedian
     # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
     # profile
-
-    @abc.abstractmethod
-    def _nonNullCol(self, col, lower=None, upper=None, strict=False, **kwargs):
-        raise NotImplementedError
 
     @abc.abstractmethod
     def count(self, *cols, **kwargs):
@@ -576,4 +571,16 @@ class _ADFABC(object):
 
     @abc.abstractmethod
     def profile(self, *cols, **kwargs):
+        raise NotImplementedError
+
+    # *********
+    # DATA PREP
+    # fillna
+    # prep
+
+    @abc.abstractmethod
+    def fillna(self, *cols, **kwargs):
+        raise NotImplementedError
+
+    def prep(self, *cols, **kwargs):
         raise NotImplementedError
