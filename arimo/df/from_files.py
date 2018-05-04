@@ -1715,7 +1715,7 @@ class ArrowADF(_ArrowADFABC):
                 if kwargs.get('profileCat', True) and is_possible_cat(colType):
                     profile.distinctProportions = \
                         self.distinct(
-                            col=col,
+                            col,
                             count=True,
                             verbose=verbose > 1)
 
