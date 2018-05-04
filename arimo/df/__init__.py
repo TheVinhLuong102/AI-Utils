@@ -565,3 +565,15 @@ class _ADFABC(object):
     @abc.abstractmethod
     def quantile(self, *cols, **kwargs):
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def sampleStat(self, *cols, **kwargs):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def outlierRstStat(self, *cols, **kwargs):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def profile(self, *cols, **kwargs):
+        raise NotImplementedError
