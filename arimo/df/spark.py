@@ -2599,8 +2599,8 @@ class SparkADF(_ADFABC):
     # _nonNullCol
     # count
     # nonNullProportion
-    # suffNonNull
-    # approxQuantile
+    # distinct
+    # quantile
     # sampleStat / sampleMedian
     # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
     # profile
@@ -2737,7 +2737,7 @@ class SparkADF(_ADFABC):
             return self._cache.nonNullProportion[col]
 
     @_docstr_verbose
-    def distinct(self, col=None, count=True, collect=True, **kwargs):
+    def distinct(self, *cols, count=True, collect=True, **kwargs):
         """
         Return:
             *Approximate* list of distinct values of ``SparkADF``'s column ``col``,
@@ -2752,12 +2752,28 @@ class SparkADF(_ADFABC):
 
             **kwargs:
         """
-        if col:
+        if not cols:
+            cols = self.contentCols
+
+        if len(cols) > 1:
+            return Namespace(**
+                {col: self.distinct(col, **kwargs)
+                 for col in cols})
+
+        else:
+            col = cols[0]
+
+            count = kwargs.get('count')
+
+            collect = kwargs.get('collect')
+
             if col in self._cache.distinct:
-                df = self._cache.distinct[col]
-                assert isinstance(df, pandas.DataFrame)
-                if len(df.columns) or not count:
-                    return df
+                series = self._cache.distinct[col]
+
+                assert isinstance(series, pandas.Series)
+
+                if (series.dtype in (float, int)) or not count:
+                    return series
 
             verbose = True \
                 if arimo.debug.ON \
@@ -2771,14 +2787,13 @@ class SparkADF(_ADFABC):
             adf = self.reprSample(
                     'SELECT \
                         {0}, \
-                        COUNT(*) AS __sample_count__, \
                         (COUNT(*) / {1}) AS __proportion__ \
                     FROM \
                         this \
                     GROUP BY \
                         {0} \
                     ORDER BY \
-                        __sample_count__ DESC'
+                        __proportion__ DESC'
                         .format(col, self.reprSampleSize),
                     **kwargs) \
                 if count \
@@ -2824,7 +2839,7 @@ class SparkADF(_ADFABC):
 
                     if count:
                         df.sort_values(
-                            by='__sample_count__',
+                            by='__proportion__',
                             ascending=False,
                             inplace=True,
                             kind='quicksort',
@@ -2844,7 +2859,9 @@ class SparkADF(_ADFABC):
                             drop=True,
                             append=False,
                             inplace=False,
-                            verify_integrity=False)
+                            verify_integrity=False).__proportion__ \
+                        if count \
+                        else df[col]
 
             else:
                 result = adf
@@ -2855,17 +2872,11 @@ class SparkADF(_ADFABC):
 
             return result
 
-        else:
-            return self._decorate(
-                obj=self._sparkDF.distinct(),
-                nRows=None,
-                **kwargs)
-
     @lru_cache()
-    def approxQuantile(self, *cols, **kwargs):   # make Spark SQL approxQuantile method NULL-resistant
+    def quantile(self, *cols, **kwargs):   # make Spark SQL approxQuantile method NULL-resistant
         if len(cols) > 1:
             return Namespace(**
-                {col: self.approxQuantile(col, **kwargs)
+                {col: self.quantile(col, **kwargs)
                  for col in cols})
 
         elif len(cols) == 1:
@@ -2991,7 +3002,7 @@ class SparkADF(_ADFABC):
 
                     self._cache.sampleMedian[col] = result = \
                         self.reprSample \
-                            .approxQuantile(
+                            .quantile(
                                 col,
                                 probabilities=.5,
                                 relativeError=0)
@@ -3101,7 +3112,7 @@ class SparkADF(_ADFABC):
 
                     outlierRstMin = \
                         self.reprSample \
-                            .approxQuantile(
+                            .quantile(
                                 col,
                                 probabilities=self._outlierTailProportion[col],
                                 relativeError=0)
@@ -3157,7 +3168,7 @@ class SparkADF(_ADFABC):
 
                     outlierRstMax = \
                         self.reprSample \
-                            .approxQuantile(
+                            .quantile(
                                 col,
                                 probabilities=1 - self._outlierTailProportion[col],
                                 relativeError=0)
@@ -3284,7 +3295,7 @@ class SparkADF(_ADFABC):
                 if kwargs.get('profileCat', True) and (colType.startswith(_DECIMAL_TYPE_PREFIX) or (colType in _POSSIBLE_CAT_TYPES)):
                     profile.distinctProportions = \
                         self.distinct(
-                            col=col,
+                            col,
                             count=True,
                             collect=True,
                             verbose=verbose > 1).__proportion__
@@ -3345,7 +3356,7 @@ class SparkADF(_ADFABC):
                     if quantileProbsToQuery:
                         quantilesOfInterest[numpy.isnan(quantilesOfInterest)] = \
                             self.reprSample \
-                                .approxQuantile(
+                                .quantile(
                                     col,
                                     probabilities=quantileProbsToQuery,
                                     relativeError=0)

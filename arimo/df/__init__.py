@@ -485,10 +485,25 @@ class _ADFABC(object):
     def possibleNumCols(self):
         return self.possibleNumTAuxCols + self.possibleNumContentCols
 
-    # *********
-    # PROFILING
+    # ****************
+    # COLUMN PROFILING
+    # _nonNullCol
+    # count
     # nonNullProportion
     # suffNonNull
+    # distinct
+    # quantile
+    # sampleStat / sampleMedian
+    # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
+    # profile
+
+    @abc.abstractmethod
+    def _nonNullCol(self, col, lower=None, upper=None, strict=False, **kwargs):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def count(self, *cols, **kwargs):
+        raise NotImplementedError
 
     @abc.abstractmethod
     def nonNullProportion(self, *cols, **kwargs):
@@ -539,3 +554,11 @@ class _ADFABC(object):
                      self._cache.suffNonNullProportionThreshold[col])
 
             return self._cache.suffNonNull[col]
+
+    @abc.abstractmethod
+    def distinct(self, *cols, **kwargs):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def quantile(self, *cols, **kwargs):
+        raise NotImplementedError

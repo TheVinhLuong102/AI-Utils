@@ -1282,11 +1282,26 @@ class ArrowADF(_ArrowADFABC):
     # COLUMN PROFILING
     # count
     # nonNullProportion
-    # suffNonNull
-    # approxQuantile
+    # distinct
+    # quantile
     # sampleStat / sampleMedian
     # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
     # profile
+
+    def _nonNullCol(self, col, pandasDF=None, lower=None, upper=None, strict=False, **kwargs):
+        pandasDFTransform = \
+            _ArrowADF__nonNullCol__pandasDFTransform(
+                col=col,
+                isNum=is_num(self.type(col)),
+                lower=lower,
+                upper=upper,
+                strict=strict)
+
+        return self.map(
+                mapper=pandasDFTransform,
+                **kwargs) \
+            if pandasDF is None \
+            else pandasDFTransform(pandasDF=pandasDF)
 
     @_docstr_verbose
     def count(self, *cols, **kwargs):
@@ -1384,7 +1399,7 @@ class ArrowADF(_ArrowADFABC):
             return self._cache.nonNullProportion[col]
 
     @_docstr_verbose
-    def distinct(self, col=None, count=True, collect=True, **kwargs):
+    def distinct(self, *cols, **kwargs):
         """
         Return:
             *Approximate* list of distinct values of ``ADF``'s column ``col``,
@@ -3203,21 +3218,6 @@ class ArrowADF(_ArrowADFABC):
     def __getitem__(self, item):
         return self.map(
             mapper=_ArrowADF__getitem__pandasDFTransform(item=item))
-
-    def _nonNullCol(self, col, pandasDF=None, lower=None, upper=None, strict=False, **kwargs):
-        pandasDFTransform = \
-            _ArrowADF__nonNullCol__pandasDFTransform(
-                col=col,
-                isNum=is_num(self.type(col)),
-                lower=lower,
-                upper=upper,
-                strict=strict)
-
-        return self.map(
-                mapper=pandasDFTransform,
-                **kwargs) \
-            if pandasDF is None \
-          else pandasDFTransform(pandasDF=pandasDF)
 
     def drop(self, *cols, **kwargs):
         return self.map(
