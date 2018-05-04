@@ -2256,11 +2256,13 @@ class SparkADF(_ADFABC):
 
     def typeIsNum(self, col):
         t = self.type(col)
+
         return t.startswith(_DECIMAL_TYPE_PREFIX) \
             or (t in _NUM_TYPES)
 
     def typeIsComplex(self, col):
         t = self.type(col)
+
         return t.startswith(_ARRAY_TYPE_PREFIX) \
             or t.startswith(_MAP_TYPE_PREFIX) \
             or t.startswith(_STRUCT_TYPE_PREFIX)
@@ -2924,8 +2926,7 @@ class SparkADF(_ADFABC):
                     - ``max``
         """
         if not cols:
-            cols = [col for col in self.contentCols
-                        if self.typeIsNum(col)]
+            cols = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**
@@ -2975,10 +2976,14 @@ class SparkADF(_ADFABC):
 
                     return cache[col]
 
+            else:
+                raise ValueError(
+                    '{0}.sampleStat({1}, ...): Column "{1}" Is Not of Numeric Type'
+                        .format(self, col))
+
     def sampleMedian(self, *cols, **kwargs):
         if not cols:
-            cols = [col for col in self.contentCols
-                        if self.typeIsNum(col)]
+            cols = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**
@@ -3018,10 +3023,14 @@ class SparkADF(_ADFABC):
 
                 return self._cache.sampleMedian[col]
 
+            else:
+                raise ValueError(
+                    '{0}.sampleMedian({1}, ...): Column "{1}" Is Not of Numeric Type'
+                        .format(self, col))
+
     def outlierRstStat(self, *cols, **kwargs):
         if not cols:
-            cols = [col for col in self.contentCols
-                        if self.typeIsNum(col)]
+            cols = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**
@@ -3086,10 +3095,14 @@ class SparkADF(_ADFABC):
 
                     return cache[col]
 
+            else:
+                raise ValueError(
+                    '{0}.outlierRstStat({1}, ...): Column "{1}" Is Not of Numeric Type'
+                        .format(self, col))
+
     def outlierRstMin(self, *cols, **kwargs):
         if not cols:
-            cols = [col for col in self.contentCols
-                        if self.typeIsNum(col)]
+            cols = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**
@@ -3098,6 +3111,7 @@ class SparkADF(_ADFABC):
 
         else:
             col = cols[0]
+
             if self.typeIsNum(col):
                 if 'outlierRstMin' not in self._cache:
                     self._cache.outlierRstMin = {}
@@ -3142,10 +3156,14 @@ class SparkADF(_ADFABC):
 
                 return self._cache.outlierRstMin[col]
 
+            else:
+                raise ValueError(
+                    '{0}.outlierRstMin({1}, ...): Column "{1}" Is Not of Numeric Type'
+                        .format(self, col))
+
     def outlierRstMax(self, *cols, **kwargs):
         if not cols:
-            cols = [col for col in self.contentCols
-                        if self.typeIsNum(col)]
+            cols = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**
@@ -3154,6 +3172,7 @@ class SparkADF(_ADFABC):
 
         else:
             col = cols[0]
+
             if self.typeIsNum(col):
                 if 'outlierRstMax' not in self._cache:
                     self._cache.outlierRstMax = {}
@@ -3198,10 +3217,14 @@ class SparkADF(_ADFABC):
 
                 return self._cache.outlierRstMax[col]
 
+            else:
+                raise ValueError(
+                    '{0}.outlierRstMax({1}, ...): Column "{1}" Is Not of Numeric Type'
+                        .format(self, col))
+
     def outlierRstMedian(self, *cols, **kwargs):
         if not cols:
-            cols = [col for col in self.contentCols
-                        if self.typeIsNum(col)]
+            cols = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**
@@ -3210,6 +3233,7 @@ class SparkADF(_ADFABC):
 
         else:
             col = cols[0]
+
             if self.typeIsNum(col):
                 if 'outlierRstMedian' not in self._cache:
                     self._cache.outlierRstMedian = {}
@@ -3241,6 +3265,11 @@ class SparkADF(_ADFABC):
                                 .format(col, result, toc - tic))
 
                 return self._cache.outlierRstMedian[col]
+
+            else:
+                raise ValueError(
+                    '{0}.outlierRstMedian({1}, ...): Column "{1}" Is Not of Numeric Type'
+                        .format(self, col))
 
     @_docstr_verbose
     def profile(self, *cols, **kwargs):
