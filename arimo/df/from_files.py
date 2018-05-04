@@ -1495,8 +1495,8 @@ class ArrowADF(_ArrowADFABC):
 
         if len(cols) > 1:
             return Namespace(**
-                             {col: self.sampleStat(col, **kwargs)
-                              for col in cols})
+                {col: self.sampleStat(col, **kwargs)
+                 for col in cols})
 
         else:
             col = cols[0]
@@ -1525,10 +1525,11 @@ class ArrowADF(_ArrowADFABC):
                             tic = time.time()
 
                         cache[col] = result = \
-                            self.reprSample \
-                                ._nonNullCol(col=col) \
-                                .select(getattr(sparkSQLFuncs, stat)(col)) \
-                                .first()[0]
+                            getattr(
+                                self._nonNullCol(
+                                    col=col,
+                                    pandasDF=self.reprSample),
+                                stat)()
 
                         assert isinstance(result, (float, int)), \
                             '*** "{}" SAMPLE {} = {} ***'.format(col, capitalizedStatName.upper(), result)
@@ -1541,48 +1542,10 @@ class ArrowADF(_ArrowADFABC):
 
                     return cache[col]
 
-    def sampleMedian(self, *cols, **kwargs):
-        if not cols:
-            cols = [col for col in self.contentCols
-                    if self.typeIsNum(col)]
-
-        if len(cols) > 1:
-            return Namespace(**
-                             {col: self.sampleMedian(col, **kwargs)
-                              for col in cols})
-
-        else:
-            col = cols[0]
-
-            if self.typeIsNum(col):
-                if 'sampleMedian' not in self._cache:
-                    self._cache.sampleMedian = {}
-
-                if col not in self._cache.sampleMedian:
-                    verbose = True \
-                        if arimo.debug.ON \
-                        else kwargs.get('verbose')
-
-                    if verbose:
-                        tic = time.time()
-
-                    self._cache.sampleMedian[col] = result = \
-                        self.reprSample \
-                            .approxQuantile(
-                            col,
-                            probabilities=.5,
-                            relativeError=0)
-
-                    assert isinstance(result, (float, int)), \
-                        '*** "{}" SAMPLE MEDIAN = {} ***'.format(col, result)
-
-                    if verbose:
-                        toc = time.time()
-                        self.stdout_logger.info(
-                            msg='Sample Median of Column "{}" = {:,.3g}   <{:,.1f} s>'
-                                .format(col, result, toc - tic))
-
-                return self._cache.sampleMedian[col]
+            else:
+                raise ValueError(
+                    '{0}.sampleStat({1}, ...): Column "{1}" Is Not of Numeric Type'
+                        .format(self, col))
 
     def outlierRstStat(self, *cols, **kwargs):
         if not cols:
