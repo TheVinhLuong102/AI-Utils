@@ -1435,15 +1435,6 @@ class ArrowADF(_ArrowADFABC):
                 if (series.dtype in (float, int)) or not count:
                     return series
 
-            verbose = True \
-                if arimo.debug.ON \
-                else kwargs.get('verbose')
-
-            if verbose:
-                msg = 'Profiling Distinct Values of Column "{}"...'.format(col)
-                self.stdout_logger.info(msg)
-                tic = time.time()
-
             self._cache.distinct[col] = \
                 self.reprSample[col].value_counts(
                     normalize=True,
@@ -1453,10 +1444,6 @@ class ArrowADF(_ArrowADFABC):
                     dropna=False) \
                 if count \
                 else self.reprSample[col].unique()
-
-            if verbose:
-                toc = time.time()
-                self.stdout_logger.info(msg + ' done!   <{:,.1f} s>'.format(toc - tic))
 
             return self._cache.distinct[col]
 
