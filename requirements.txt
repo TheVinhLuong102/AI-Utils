@@ -1,1 +1,2 @@
 FastParquet >= 0.1.5
+HDFS3 >= 0.3.0
