@@ -606,7 +606,7 @@ class ArrowADF(_ArrowADFABC):
 
         nSamplesPerPiece = kwargs.get('nSamplesPerPiece')
 
-        organizeTS = kwargs.get('organizeTS', True)
+        genTAuxCols = kwargs.get('genTAuxCols', True)
 
         reducer = \
             kwargs.get(
@@ -713,7 +713,7 @@ class ArrowADF(_ArrowADFABC):
                             for k in partitionKeyCols:
                                 chunkPandasDF[k] = pieceCache.partitionKVs[k]
 
-                            if organizeTS and (self._tCol in chunkPandasDF.columns):
+                            if genTAuxCols and (self._tCol in chunkPandasDF.columns):
                                 if self._iCol in chunkPandasDF.columns:
                                     try:
                                         chunkPandasDF = \
@@ -796,7 +796,7 @@ class ArrowADF(_ArrowADFABC):
                         for k in partitionKeyCols:
                             piecePandasDF[k] = pieceCache.partitionKVs[k]
 
-                        if organizeTS and (self._tCol in piecePandasDF.columns):
+                        if genTAuxCols and (self._tCol in piecePandasDF.columns):
                             if self._iCol in piecePandasDF.columns:
                                 try:
                                     piecePandasDF = \
@@ -863,7 +863,7 @@ class ArrowADF(_ArrowADFABC):
                     for k in partitionKeyCols:
                         piecePandasDF[k] = pieceCache.partitionKVs[k]
 
-                    if organizeTS and (self._tCol in piecePandasDF.columns):
+                    if genTAuxCols and (self._tCol in piecePandasDF.columns):
                         if self._iCol in piecePandasDF.columns:
                             try:
                                 piecePandasDF = \
