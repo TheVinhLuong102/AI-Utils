@@ -959,9 +959,6 @@ class ArrowADF(_ArrowADFABC):
     def collect(self, *cols, **kwargs):
         return self.reduce(cols=cols if cols else None, **kwargs)
 
-    def reduce(self, *cols, **kwargs):
-        return self.collect(*cols, **kwargs)
-
     def toPandas(self, *cols, **kwargs):
         return self.collect(*cols, **kwargs)
 
