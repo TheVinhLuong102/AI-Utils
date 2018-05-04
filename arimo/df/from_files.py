@@ -1376,7 +1376,7 @@ class ArrowADF(_ArrowADFABC):
             if col not in self._cache.nonNullProportion:
                 self._cache.nonNullProportion[col] = \
                     self.count(
-                        col=col,
+                        col,
                         pandasDF=self.reprSample,
                         **kwargs) \
                     / self.reprSampleSize
