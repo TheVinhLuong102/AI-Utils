@@ -310,6 +310,9 @@ class PPPAnalysesMixIn(object):
             return df.select('*', *_row_summ_col_exprs)
 
         else:
+            if isinstance(df, ArrowADF):
+                df = df.toPandas()
+            
             for _raw_metric in self._RAW_METRICS:
                 for _indiv_or_global_prefix in self._INDIV_OR_GLOBAL_PREFIXES:
                     _row_summ_col_name_body = \
@@ -504,11 +507,7 @@ class PPPAnalysesMixIn(object):
 
         alpha = kwargs.pop('alpha', .168)
 
-        if isinstance(daily_err_mults_df, ArrowADF):
-            daily_err_mults_df = daily_err_mults_df.collect()
-
-        elif isinstance(daily_err_mults_df, SparkADF):
-            daily_err_mults_df = daily_err_mults_df.toPandas()
+        daily_err_mults_df = daily_err_mults_df.toPandas()
 
         daily_err_mults_df.sort_values(
             by=[id_col, DATE_COL],
