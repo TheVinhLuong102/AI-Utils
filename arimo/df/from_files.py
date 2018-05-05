@@ -2640,6 +2640,8 @@ class ArrowADF(_ArrowADFABC):
             return '({} * (({}) - ({})) / {}) + ({})'.format(
                 targetRange, sqlItem, origMin, origRange, targetMin)
 
+        kwargs.pop('alias', None)   # *** NOT USED ***
+
         nulls = kwargs.pop('nulls', {})
 
         forceCatIncl = kwargs.pop('forceCatIncl', None)
