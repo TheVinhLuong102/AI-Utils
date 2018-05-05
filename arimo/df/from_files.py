@@ -2556,6 +2556,10 @@ class ArrowADF(_ArrowADFABC):
                 self.stdout_logger.info(msg)
                 _tic = time.time()
 
+            fs.mkdir(
+                dir=savePath,
+                hdfs=False)
+
             json.dump(
                 sqlStatement,
                 open(os.path.join(savePath, self._NULL_FILL_SQL_STATEMENT_FILE_NAME), 'w'),
@@ -3069,6 +3073,10 @@ class ArrowADF(_ArrowADFABC):
                 msg = 'Saving Data Transformations to Local Path "{}"...'.format(savePath)
                 self.stdout_logger.info(msg)
                 _tic = time.time()
+
+            fs.mkdir(
+                dir=savePath,
+                hdfs=False)
 
             json.dump(
                 catOrigToPrepColMap,
