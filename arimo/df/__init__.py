@@ -584,3 +584,13 @@ class _ADFABC(object):
 
     def prep(self, *cols, **kwargs):
         raise NotImplementedError
+
+    # *******************************
+    # SAMPLING / ITERATIVE GENERATION
+
+    @abc.abstractmethod
+    def sample(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def gen(self, *args, **kwargs):
+        raise NotImplementedError

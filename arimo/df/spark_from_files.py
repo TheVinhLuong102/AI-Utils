@@ -27,8 +27,9 @@ from pyspark.ml.feature import SQLTransformer
 from pyspark.sql import DataFrame
 
 import arimo.backend
-from arimo.df import _ADFABC
-from arimo.df.from_files import _ArrowADFABC, _ArrowADF__fillna__pandasDFTransform, _ArrowADF__prep__pandasDFTransform
+from arimo.df.from_files import _ArrowADFABC, \
+    _ArrowADF__fillna__pandasDFTransform, _ArrowADF__prep__pandasDFTransform, \
+    _ArrowADF__pieceArrowTableFunc, _ArrowADF__gen
 from arimo.df.spark import SparkADF
 from arimo.util import fs, Namespace
 from arimo.util.aws import s3
@@ -36,237 +37,6 @@ from arimo.util.date_time import gen_aux_cols
 from arimo.util.decor import enable_inplace
 from arimo.util.iterables import to_iterable
 import arimo.debug
-
-
-_PIECE_LOCAL_CACHE_PATHS = {}
-
-
-# class with __call__ to serve as pickle-able function for use in multi-processing
-# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
-class _ArrowSparkADF__pieceArrowTableFunc:
-    def __init__(self, path, aws_access_key_id=None, aws_secret_access_key=None, n_threads=1):
-        self.path = path
-
-        self.aws_access_key_id = aws_access_key_id
-        self.aws_secret_access_key = aws_secret_access_key
-
-        self.n_threads = n_threads
-
-    def __call__(self, pieceSubPath):
-        path = os.path.join(self.path, pieceSubPath)
-
-        if self.path.startswith('s3'):
-            global _PIECE_LOCAL_CACHE_PATHS
-
-            if path in _PIECE_LOCAL_CACHE_PATHS:
-                path = _PIECE_LOCAL_CACHE_PATHS[path]
-
-            else:
-                parsedURL = \
-                    urlparse(
-                        url=path,
-                        scheme='',
-                        allow_fragments=True)
-
-                _PIECE_LOCAL_CACHE_PATHS[path] = path = \
-                    os.path.join(
-                        _ADFABC._TMP_DIR_PATH,
-                        parsedURL.netloc,
-                        parsedURL.path[1:])
-
-                fs.mkdir(
-                    dir=os.path.dirname(path),
-                    hdfs=False)
-
-                s3.client(
-                        access_key_id=self.aws_access_key_id,
-                        secret_access_key=self.aws_secret_access_key) \
-                    .download_file(
-                        Bucket=parsedURL.netloc,
-                        Key=parsedURL.path[1:],
-                        Filename=path)
-
-        return read_table(
-                source=path,
-                columns=None,
-                nthreads=self.n_threads,
-                metadata=None,
-                use_pandas_metadata=False)
-
-
-# class with __call__ to serve as pickle-able function for use in multi-processing
-# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
-class _ArrowSparkADF__gen:
-    def __init__(
-            self, args,
-            path,
-            pieceSubPaths,
-            aws_access_key_id, aws_secret_access_key,
-            iCol, tCol,
-            possibleFeatureTAuxCols, contentCols,
-            pandasDFTransforms,
-            filterConditions,
-            n, sampleN,
-            anon,
-            n_threads):
-        def cols_rowFrom_rowTo(x):
-            if isinstance(x, _STR_CLASSES):
-                return [x], None, None
-            elif isinstance(x, (list, tuple)) and x:
-                lastItem = x[-1]
-                if isinstance(lastItem, _STR_CLASSES):
-                    return x, None, None
-                elif isinstance(lastItem, int):
-                    secondLastItem = x[-2]
-                    return ((x[:-1], 0, lastItem)
-                            if lastItem >= 0
-                            else (x[:-1], lastItem, 0)) \
-                        if isinstance(secondLastItem, _STR_CLASSES) \
-                        else (x[:-2], secondLastItem, lastItem)
-
-        self.pieceSubPaths = list(pieceSubPaths)
-
-        self.n_threads = n_threads
-
-        self.pieceArrowTableFunc = \
-            _ArrowSparkADF__pieceArrowTableFunc(
-                path=path,
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key,
-                n_threads=n_threads)
-
-        self.filterConditions = filterConditions
-
-        if filterConditions and arimo.debug.ON:
-            print('*** FILTER CONDITION: {} ***'.format(filterConditions))
-
-        self.n = n
-        self.sampleN = sampleN
-
-        self.anon = anon
-
-        self.iCol = iCol
-        self.tCol = tCol
-
-        self.hasTS = self.iCol and self.tCol
-
-        self.possibleFeatureTAuxCols = possibleFeatureTAuxCols
-        self.contentCols = contentCols
-
-        self.pandasDFTransforms = pandasDFTransforms
-
-        _hasTS = False
-        minTOrd = 0
-
-        if args:
-            if self.hasTS:
-                self.colsLists = []
-                self.colsOverTime = []
-                self.rowFrom_n_rowTo_tups = []
-
-                for cols, rowFrom, rowTo in map(cols_rowFrom_rowTo, args):
-                    self.colsLists.append(cols)
-
-                    if (rowFrom is None) and (rowTo is None):
-                        self.colsOverTime.append(False)
-                        self.rowFrom_n_rowTo_tups.append(None)
-
-                    else:
-                        assert (rowFrom < rowTo) and (rowTo <= 0)
-
-                        self.colsOverTime.append(True)
-                        self.rowFrom_n_rowTo_tups.append((rowFrom, rowTo))
-
-                        _hasTS = True
-
-                        if -rowFrom > minTOrd:
-                            minTOrd = -rowFrom
-
-            else:
-                self.colsLists = list(args)
-                nArgs = len(args)
-                self.colsOverTime = nArgs * [False]
-                self.rowFrom_n_rowTo_tups = nArgs * [None]
-
-        else:
-            self.colsLists = [self.possibleFeatureTAuxCols + self.contentCols]
-            self.colsOverTime = [False]
-            self.rowFrom_n_rowTo_tups = [None]
-
-        if _hasTS:
-            self.filterConditions[_ADFABC._T_ORD_COL] = minTOrd, numpy.inf
-
-        if (not self.anon) and (self.iCol or self.tCol):
-            self.colsLists.insert(0, ([self.iCol] if self.iCol else []) + ([self.tCol] if self.tCol else []))
-            self.colsOverTime.insert(0, False)
-            self.rowFrom_n_rowTo_tups.insert(0, None)
-
-    def __call__(self):
-        if arimo.debug.ON:
-            print('*** GENERATING BATCHES OF {} ***'.format(self.colsLists))
-
-        while True:
-            pieceSubPath = random.choice(self.pieceSubPaths)
-
-            chunkPandasDF = \
-                random.choice(
-                    self.pieceArrowTableFunc(pieceSubPath=pieceSubPath)
-                        .to_batches(chunksize=self.sampleN)) \
-                .to_pandas(
-                    nthreads=self.n_threads)
-
-            if self.tCol:
-                chunkPandasDF = \
-                    gen_aux_cols(
-                        df=chunkPandasDF,
-                        i_col=self.iCol,
-                        t_col=self.tCol)
-
-            for i, pandasDFTransform in enumerate(self.pandasDFTransforms):
-                try:
-                    chunkPandasDF = pandasDFTransform(chunkPandasDF)
-
-                except Exception as err:
-                    print('*** "{}": PANDAS TRANSFORM #{} ***'.format(pieceSubPath, i))
-                    raise err
-
-            if self.filterConditions:
-                filterChunkPandasDF = chunkPandasDF[list(self.filterConditions)]
-
-                rowIndices = \
-                    filterChunkPandasDF.loc[
-                        sum((filterChunkPandasDF[filterCol]
-                                .between(
-                                    left=left,
-                                    right=right,
-                                    inclusive=True)
-                             if pandas.notnull(left) and pandas.notnull(right)
-                             else ((filterChunkPandasDF[filterCol] >= left)
-                                    if pandas.notnull(left)
-                                    else ((filterChunkPandasDF[filterCol] <= right))))
-                            for filterCol, (left, right) in self.filterConditions.items())
-                        == len(self.filterConditions)] \
-                    .index.tolist()
-
-            else:
-                rowIndices = chunkPandasDF.index.tolist()
-
-            random.shuffle(rowIndices)
-
-            n_batches = len(rowIndices) // self.n
-
-            for i in range(n_batches):
-                rowIndicesSubset = rowIndices[(i * self.n):((i + 1) * self.n)]
-
-                yield [(numpy.vstack(
-                            numpy.expand_dims(
-                                chunkPandasDF.loc[(rowIdx + rowFrom_n_rowTo[0]):(rowIdx + rowFrom_n_rowTo[1] + 1), cols].values,
-                                axis=0)
-                            for rowIdx in rowIndicesSubset)
-                        if overTime
-                        else chunkPandasDF.loc[rowIndicesSubset, cols].values)
-                       for cols, overTime, rowFrom_n_rowTo in
-                            zip(self.colsLists, self.colsOverTime, self.rowFrom_n_rowTo_tups)]
 
 
 @enable_inplace
@@ -1039,10 +809,10 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
         return pieceADF
 
     def _pieceArrowTable(self, pieceSubPath):
-        return _ArrowSparkADF__pieceArrowTableFunc(
-                path=self.path,
+        return _ArrowADF__pieceArrowTableFunc(
                 aws_access_key_id=self._srcArrowDS.fs.fs.key,
-                aws_secret_access_key=self._srcArrowDS.fs.fs.secret)(pieceSubPath)
+                aws_secret_access_key=self._srcArrowDS.fs.fs.secret)(
+            os.path.join(self.path, pieceSubPath))
 
     def _piecePandasDF(self, pieceSubPath):
         pandasDF = \
@@ -1179,10 +949,9 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
         return adf
 
     def gen(self, *args, **kwargs):
-        return _ArrowSparkADF__gen(
+        return _ArrowADF__gen(
                 args=args,
-                path=self.path,
-                pieceSubPaths=kwargs.get('pieceSubPaths', self.pieceSubPaths),
+                piecePaths=kwargs.get('piecePaths', self.piecePaths),
                 aws_access_key_id=self._srcArrowDS.fs.fs.key, aws_secret_access_key=self._srcArrowDS.fs.fs.secret,
                 iCol=self._iCol, tCol=self._tCol,
                 possibleFeatureTAuxCols=self.possibleFeatureTAuxCols,
