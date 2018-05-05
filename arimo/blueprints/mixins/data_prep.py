@@ -102,19 +102,23 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
             elif isinstance(df, pyspark.sql.DataFrame):
                 adf = SparkADF(sparkDF=df, **kwargs)
 
-            elif isinstance(df, ArrowADF):
-                adf = df
-
             else:
-                assert isinstance(df, _STR_CLASSES)
+                __vectorize__ = False
 
-                adf = (ArrowADF
-                       if __train__
-                       else ArrowSparkADF)(
-                    path=df, **kwargs)
+                if isinstance(df, ArrowADF):
+                    adf = df
+
+                else:
+                    assert isinstance(df, _STR_CLASSES)
+
+                    adf = (ArrowADF
+                           if __train__
+                           else ArrowSparkADF)(
+                        path=df, **kwargs)
 
         if __from_ensemble__ or __from_ppp__:
-            assert isinstance(adf, SparkADF) and adf.alias
+            if isinstance(adf, SparkADF):
+                assert adf.alias
 
         else:
             adf_uuid = clean_uuid(uuid.uuid4())
@@ -279,17 +283,19 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                             msg='*** DATA PREP FOR TRAIN: CONDITION ROBUST TO LABEL OUTLIERS: {} {}... ***\n'
                                 .format(self.params.data.label.var, _outlier_robust_condition))
 
-                    adf('IF({0} {1}, {0}, NULL) AS {0}'
-                            .format(
-                                self.params.data.label.var,
-                                _outlier_robust_condition),
-                        *(col for col in adf.columns
-                              if col != self.params.data.label.var),
-                        inheritCache=True,
-                        inheritNRows=True,
-                        inplace=True)
+                    if isinstance(adf, SparkADF):
+                        adf('IF({0} {1}, {0}, NULL) AS {0}'
+                                .format(
+                                    self.params.data.label.var,
+                                    _outlier_robust_condition),
+                            *(col for col in adf.columns
+                                  if col != self.params.data.label.var),
+                            inheritCache=True,
+                            inheritNRows=True,
+                            inplace=True)
 
-            adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
+            if isinstance(adf, SparkADF):
+                adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
 
         if __from_ensemble__ or __from_ppp__:
             if __vectorize__:
@@ -627,8 +633,6 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                              if cat_orig_to_prep_col_map['__OHE__']
                              else len(component_blueprint_params.data._cat_prep_cols))
 
-                    _alias = adf.alias + '__LABEL__' + label_var_name
-
                     component_labeled_adfs[label_var_name] = \
                         (adf(VectorAssembler(
                                 inputCols=component_blueprint_params.data._cat_prep_cols +
@@ -639,7 +643,7 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                              label_var_name,
                              component_blueprint_params.data._prep_vec_col,
                              *(adf.indexCols + adf.tAuxCols),
-                             alias=_alias,
+                             alias=adf.alias + '__LABEL__' + label_var_name,
                              inheritCache=True,
                              inheritNRows=True) \
                          if (__vectorize__ is None) or __vectorize__ \
@@ -647,7 +651,7 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                                   *(adf.indexCols + adf.tAuxCols +
                                     component_blueprint_params.data._cat_prep_cols +
                                     component_blueprint_params.data._num_prep_cols),
-                                  alias=_alias,
+                                  alias=adf.alias + '__LABEL__' + label_var_name,
                                   inheritCache=True,
                                   inheritNRows=True)) \
                         if isinstance(adf, SparkADF) \
