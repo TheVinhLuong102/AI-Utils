@@ -78,11 +78,11 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
             if self.params.data.label._int_var is None \
             else self.params.data.label._int_var
 
-        def batch_gen(adf, batch, piece_sub_paths):
+        def batch_gen(adf, batch, piece_paths):
             gen = adf.gen(
                 self.params.data._cat_prep_cols + self.params.data._num_prep_cols,
                 label_var,
-                pieceSubPaths=piece_sub_paths,
+                piecePaths=piece_paths,
                 n=batch,
                 withReplacement=True,   # to avoid running of out samples from rare classes
                 seed=None,
@@ -150,11 +150,11 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
             .write(model.to_json())
 
         assert isinstance(adf, ArrowSparkADF)
-        piece_sub_paths = list(adf.pieceSubPaths)
-        random.shuffle(piece_sub_paths)
+        piece_paths = list(adf.piecePaths)
+        random.shuffle(piece_paths)
         split_idx = int(math.ceil(self.params.model.train.train_proportion * adf.nPieces))
-        train_piece_sub_paths = piece_sub_paths[:split_idx]
-        val_piece_sub_paths = piece_sub_paths[split_idx:]
+        train_piece_paths = piece_paths[:split_idx]
+        val_piece_paths = piece_paths[split_idx:]
 
         model.history = \
             model.fit_generator(
@@ -162,7 +162,7 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                     batch_gen(
                         adf=adf,
                         batch=self.params.model.train.batch_size,
-                        piece_sub_paths=train_piece_sub_paths),
+                        piece_paths=train_piece_paths),
                     # a generator.
                     # The output of the generator must be either a tuple(inputs, targets)
                     # or a tuple(inputs, targets, sample_weights).
@@ -297,7 +297,7 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                     batch_gen(
                         adf=adf,
                         batch=self.params.model.train.val_batch_size,
-                        piece_sub_paths=val_piece_sub_paths),
+                        piece_paths=val_piece_paths),
                     # this can be either:
                     # - a generator for the validation data;
                     # - a tuple(inputs, targets); or

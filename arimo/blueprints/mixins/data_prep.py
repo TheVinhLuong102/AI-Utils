@@ -16,6 +16,7 @@ from pyspark.ml.feature import StringIndexer, VectorAssembler
 import pyspark.sql
 
 import arimo.backend
+from arimo.df.from_files import ArrowADF
 from arimo.df.spark import SparkADF
 from arimo.df.spark_from_files import ArrowSparkADF
 import arimo.eval.metrics
@@ -103,7 +104,11 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
 
             else:
                 assert isinstance(df, _STR_CLASSES)
-                adf = ArrowSparkADF(path=df, **kwargs)
+
+                adf = (ArrowADF
+                       if __train__
+                       else ArrowSparkADF)(
+                    path=df, **kwargs)
 
         if __from_ensemble__ or __from_ppp__:
             assert isinstance(adf, SparkADF) and adf.alias
@@ -468,7 +473,11 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
 
             else:
                 assert isinstance(df, _STR_CLASSES)
-                adf = ArrowSparkADF(path=df, **kwargs)
+
+                adf = (ArrowADF
+                       if __train__
+                       else ArrowSparkADF)(
+                    path=df, **kwargs)
 
         assert (self.params.data.id_col in adf.columns) \
            and (self.params.data.time_col in adf.columns)
@@ -615,26 +624,31 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                     _alias = adf.alias + '__LABEL__' + label_var_name
 
                     component_labeled_adfs[label_var_name] = \
-                        adf(VectorAssembler(
+                        (adf(VectorAssembler(
                                 inputCols=component_blueprint_params.data._cat_prep_cols +
                                           component_blueprint_params.data._num_prep_cols,
                                 outputCol=component_blueprint_params.data._prep_vec_col).transform,
-                            inheritCache=True,
-                            inheritNRows=True)(
-                            label_var_name,
-                            component_blueprint_params.data._prep_vec_col,
-                            *(adf.indexCols + adf.tAuxCols),
-                            alias=_alias,
-                            inheritCache=True,
-                            inheritNRows=True) \
-                        if (__vectorize__ is None) or __vectorize__ \
-                        else adf(label_var_name,
-                                 *(adf.indexCols + adf.tAuxCols +
-                                   component_blueprint_params.data._cat_prep_cols +
-                                   component_blueprint_params.data._num_prep_cols),
-                                 alias=_alias,
-                                 inheritCache=True,
-                                 inheritNRows=True)
+                             inheritCache=True,
+                             inheritNRows=True)(
+                             label_var_name,
+                             component_blueprint_params.data._prep_vec_col,
+                             *(adf.indexCols + adf.tAuxCols),
+                             alias=_alias,
+                             inheritCache=True,
+                             inheritNRows=True) \
+                         if (__vectorize__ is None) or __vectorize__ \
+                         else adf(label_var_name,
+                                  *(adf.indexCols + adf.tAuxCols +
+                                    component_blueprint_params.data._cat_prep_cols +
+                                    component_blueprint_params.data._num_prep_cols),
+                                  alias=_alias,
+                                  inheritCache=True,
+                                  inheritNRows=True)) \
+                        if isinstance(adf, SparkADF) \
+                        else adf[[label_var_name] +
+                                 list(adf.indexCols + adf.tAuxCols +
+                                      component_blueprint_params.data._cat_prep_cols +
+                                      component_blueprint_params.data._num_prep_cols)]
 
             # save Blueprint & data transforms
             self.save()

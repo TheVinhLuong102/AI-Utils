@@ -166,8 +166,8 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
         assert adf.alias
 
         assert isinstance(adf, ArrowSparkADF)
-        piece_sub_paths = list(adf.pieceSubPaths)
-        random.shuffle(piece_sub_paths)
+        piece_paths = list(adf.piecePaths)
+        random.shuffle(piece_paths)
         split_idx = int(math.ceil(self.params.model.train.train_proportion * adf.nPieces))
 
         n_threads = int(math.ceil(psutil.cpu_count(logical=True) / __n_workers__))
@@ -178,7 +178,7 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                     (- self.params.pred_horizon_len - self.params.max_input_ser_len + 1,
                      - self.params.pred_horizon_len),
                 self.params.data.label.var,
-                pieceSubPaths=piece_sub_paths[:split_idx],
+                piecePaths=piece_paths[:split_idx],
                 n=self.params.model.train.batch_size,
                 withReplacement=False,
                 seed=None,
@@ -199,7 +199,7 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                     (- self.params.pred_horizon_len - self.params.max_input_ser_len + 1,
                      - self.params.pred_horizon_len),
                 self.params.data.label.var,
-                pieceSubPaths=piece_sub_paths[split_idx:],
+                piecePaths=piece_paths[split_idx:],
                 n=self.params.model.train.val_batch_size,
                 withReplacement=False,
                 seed=None,
