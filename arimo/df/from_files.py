@@ -91,6 +91,8 @@ class _ArrowADFABC(_ADFABC):
         self._reprSampleMinNPieces = min(self._REPR_SAMPLE_MIN_N_PIECES, self.nPieces)
 
 
+# class with __call__ to serve as pickle-able function for use in multi-processing
+# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowADF__fillna__pandasDFTransform:
     def __init__(self, nullFillDetails):
         self.nullFillDetails = nullFillDetails
@@ -126,6 +128,8 @@ class _ArrowADF__fillna__pandasDFTransform:
         return pandasDF
 
 
+# class with __call__ to serve as pickle-able function for use in multi-processing
+# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowADF__prep__pandasDFTransform:
     def __init__(self, typeStrs, catOrigToPrepColMap, numOrigToPrepColMap):
         self.typeStrs = typeStrs

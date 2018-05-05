@@ -41,6 +41,8 @@ import arimo.debug
 _PIECE_LOCAL_CACHE_PATHS = {}
 
 
+# class with __call__ to serve as pickle-able function for use in multi-processing
+# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowSparkADF__pieceArrowTableFunc:
     def __init__(self, path, aws_access_key_id=None, aws_secret_access_key=None, n_threads=1):
         self.path = path
@@ -92,6 +94,8 @@ class _ArrowSparkADF__pieceArrowTableFunc:
                 use_pandas_metadata=False)
 
 
+# class with __call__ to serve as pickle-able function for use in multi-processing
+# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowSparkADF__gen:
     def __init__(
             self, args,
