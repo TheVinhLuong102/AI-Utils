@@ -116,18 +116,23 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                            else ArrowSparkADF)(
                         path=df, **kwargs)
 
-        if __from_ensemble__ or __from_ppp__:
-            if isinstance(adf, SparkADF):
-                assert adf.alias
-
+        if __train__:
+            assert isinstance(adf, ArrowADF)
+            
         else:
-            adf_uuid = clean_uuid(uuid.uuid4())
+            assert isinstance(adf, SparkADF)
 
-            adf.alias = \
-                '{}__{}__{}'.format(
-                    self.params._uuid,
-                    __mode__,
-                    adf_uuid)
+            if __from_ensemble__ or __from_ppp__:
+                    assert adf.alias
+
+            else:
+                adf_uuid = clean_uuid(uuid.uuid4())
+
+                adf.alias = \
+                    '{}__{}__{}'.format(
+                        self.params._uuid,
+                        __mode__,
+                        adf_uuid)
 
         if __train__ or __eval__:
             assert self._INT_LABEL_COL not in adf.columns
