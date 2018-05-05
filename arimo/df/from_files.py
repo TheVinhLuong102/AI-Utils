@@ -142,7 +142,9 @@ class _ArrowADF__fillna__pandasDFTransform:
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowADF__prep__pandasDFTransform:
-    def __init__(self, typeStrs, catOrigToPrepColMap, numOrigToPrepColMap):
+    def __init__(self, addCols, typeStrs, catOrigToPrepColMap, numOrigToPrepColMap):
+        self.addCols = addCols
+
         self.typeStrs = typeStrs
 
         assert not catOrigToPrepColMap['__OHE__']
@@ -155,6 +157,9 @@ class _ArrowADF__prep__pandasDFTransform:
 
     def __call__(self, pandasDF):
         _FLOAT_ABS_TOL = 1e-6
+
+        for col, value in self.addCols.items():
+            pandasDF[col] = value
 
         for catCol, prepCatColNameNDetails in self.catOrigToPrepColMap.items():
             if (catCol not in ('__OHE__', '__SCALE__')) and \
@@ -257,7 +262,7 @@ class _ArrowADF__pieceArrowTableFunc:
                 s3.client(
                     access_key_id=self.aws_access_key_id,
                     secret_access_key=self.aws_secret_access_key) \
-                    .download_file(
+                .download_file(
                     Bucket=parsedURL.netloc,
                     Key=parsedURL.path[1:],
                     Filename=path)
@@ -390,7 +395,7 @@ class _ArrowADF__gen:
                     self.pieceArrowTableFunc(piecePath=piecePath)
                         .to_batches(chunksize=self.sampleN)) \
                     .to_pandas(
-                    nthreads=self.n_threads)
+                        nthreads=self.n_threads)
 
             if self.tCol:
                 chunkPandasDF = \
@@ -728,6 +733,9 @@ class ArrowADF(_ArrowADFABC):
         self._mappers = arrowADF._mappers
 
         self._cache = arrowADF._cache
+
+    def copy(self, **kwargs):
+        return self
 
     # ***************
     # PYTHON STR/REPR
@@ -1994,8 +2002,8 @@ class ArrowADF(_ArrowADFABC):
 
         if len(cols) > 1:
             return Namespace(**
-                             {col: self.outlierRstMax(col, **kwargs)
-                              for col in cols})
+                {col: self.outlierRstMax(col, **kwargs)
+                 for col in cols})
 
         else:
             col = cols[0]
@@ -2550,7 +2558,8 @@ class ArrowADF(_ArrowADFABC):
 
             json.dump(
                 sqlStatement,
-                open(os.path.join(savePath, self._NULL_FILL_SQL_STATEMENT_FILE_NAME), 'w'))
+                open(os.path.join(savePath, self._NULL_FILL_SQL_STATEMENT_FILE_NAME), 'w'),
+                indent=2)
 
             if verbose:
                 _toc = time.time()
@@ -2636,16 +2645,16 @@ class ArrowADF(_ArrowADFABC):
             (set()
              if forceCat is None
              else to_iterable(forceCat, iterable_type=set)) \
-                .union(
+            .union(
                 ()
                 if forceCatIncl is None
                 else to_iterable(forceCatIncl)) \
-                .difference(
+            .difference(
                 ()
                 if forceCatExcl is None
                 else to_iterable(forceCatExcl))
 
-        oheCat = kwargs.pop('oheCat', False)
+        kwargs.pop('oheCat')   # *** NOT USED ***
         scaleCat = kwargs.pop('scaleCat', True)
 
         forceNumIncl = kwargs.pop('forceNumIncl', None)
@@ -2655,11 +2664,11 @@ class ArrowADF(_ArrowADFABC):
             (set()
              if forceNum is None
              else to_iterable(forceNum, iterable_type=set)) \
-                .union(
+            .union(
                 ()
                 if forceNumIncl is None
                 else to_iterable(forceNumIncl)) \
-                .difference(
+            .difference(
                 ()
                 if forceNumExcl is None
                 else to_iterable(forceNumExcl))
@@ -2677,16 +2686,10 @@ class ArrowADF(_ArrowADFABC):
         if scaler:
             scaler = scaler.lower()
 
-        vecColsToAssemble = kwargs.pop('assembleVec', None)
-
-        if not vecColsToAssemble:
-            oheCat = False
-
-        if oheCat:
-            scaleCat = False
+        kwargs.pop('assembleVec', None)   # *** NOT USED ***
 
         returnOrigToPrepColMaps = kwargs.pop('returnOrigToPrepColMaps', False)
-        returnPipeline = kwargs.pop('returnPipeline', False)
+        returnSQLStatement = kwargs.pop('returnSQLStatement', False)
 
         loadPath = kwargs.pop('loadPath', None)
         savePath = kwargs.pop('savePath', None)
@@ -2704,14 +2707,15 @@ class ArrowADF(_ArrowADFABC):
             if loadPath in self._PREP_CACHE:
                 prepCache = self._PREP_CACHE[loadPath]
 
-                sqlTransformer = prepCache.sqlTransformer
-                catOHETransformer = prepCache.catOHETransformer
-                pipelineModelWithoutVectors = prepCache.pipelineModelWithoutVectors
-
                 catOrigToPrepColMap = prepCache.catOrigToPrepColMap
                 numOrigToPrepColMap = prepCache.numOrigToPrepColMap
-
                 defaultVecCols = prepCache.defaultVecCols
+
+                sqlStatement = prepCache.sqlStatement
+                sqlTransformer = prepCache.sqlTransformer
+
+                catOHETransformer = prepCache.catOHETransformer
+                pipelineModelWithoutVectors = prepCache.pipelineModelWithoutVectors
 
             else:
                 if fs._ON_LINUX_CLUSTER_WITH_HDFS:
@@ -2753,83 +2757,33 @@ class ArrowADF(_ArrowADFABC):
                      for numCol in sorted(set(numOrigToPrepColMap)
                                           .difference(('__TS_WINDOW_CLAUSE__', '__SCALER__')))]
 
-                try:
-                    pipelineModelWithoutVectors = sqlTransformer = SQLTransformer.load(path=loadPath)
-
-                    catOHETransformer = None
-
-                except:
-                    pipelineModel = PipelineModel.load(path=loadPath)
-
-                    nPipelineModelStages = len(pipelineModel.stages)
-
-                    if nPipelineModelStages == 2:
-                        sqlTransformer, secondTransformer = pipelineModel.stages
-
-                        assert isinstance(sqlTransformer, SQLTransformer), \
-                            '*** {} ***'.format(sqlTransformer)
-
-                        if isinstance(secondTransformer, OneHotEncoderModel):
-                            catOHETransformer = secondTransformer
-                            vectorAssembler = None
-                            pipelineModelWithoutVectors = pipelineModel
-
-                        elif isinstance(secondTransformer, VectorAssembler):
-                            catOHETransformer = None
-                            vectorAssembler = secondTransformer
-                            pipelineModelWithoutVectors = sqlTransformer
-
-                        else:
-                            raise ValueError('*** {} ***'.format(secondTransformer))
-
-                    elif nPipelineModelStages == 3:
-                        sqlTransformer, catOHETransformer, vectorAssembler = pipelineModel.stages
-
-                        assert isinstance(sqlTransformer, SQLTransformer), \
-                            '*** {} ***'.format(sqlTransformer)
-
-                        assert isinstance(catOHETransformer, OneHotEncoderModel), \
-                            '*** {} ***'.format(catOHETransformer)
-
-                        assert isinstance(vectorAssembler, VectorAssembler), \
-                            '*** {} ***'.format(vectorAssembler)
-
-                        pipelineModelWithoutVectors = \
-                            PipelineModel(stages=[sqlTransformer, catOHETransformer])
-
-                    else:
-                        raise ValueError('*** {} ***'.format(pipelineModel.stages))
-
-                    if vectorAssembler:
-                        vecInputCols = vectorAssembler.getInputCols()
-
-                        assert set(defaultVecCols) == set(vecInputCols)
-
-                        defaultVecCols = vecInputCols
+                sqlStatement = \
+                    json.load(open(os.path.join(loadPath, self._PREP_SQL_STATEMENT_FILE_NAME), 'r'))
 
                 self._PREP_CACHE[loadPath] = \
                     Namespace(
-                        sqlTransformer=sqlTransformer,
-                        catOHETransformer=catOHETransformer,
-                        pipelineModelWithoutVectors=pipelineModelWithoutVectors,
-
                         catOrigToPrepColMap=catOrigToPrepColMap,
                         numOrigToPrepColMap=numOrigToPrepColMap,
+                        defaultVecCols=defaultVecCols,
 
-                        defaultVecCols=defaultVecCols)
+                        sqlStatement=sqlStatement,
+                        sqlTransformer=None,
+
+                        catOHETransformer=None,
+                        pipelineModelWithoutVectors=None)
 
         else:
             if cols:
                 cols = set(cols)
 
                 cols = cols.intersection(self.possibleFeatureTAuxCols).union(
-                    possibleFeatureContentCol for possibleFeatureContentCol in cols.intersection(self.possibleFeatureContentCols)
-                    if self.suffNonNull(possibleFeatureContentCol))
+                        possibleFeatureContentCol for possibleFeatureContentCol in cols.intersection(self.possibleFeatureContentCols)
+                                                  if self.suffNonNull(possibleFeatureContentCol))
 
             else:
                 cols = self.possibleFeatureTAuxCols + \
-                       tuple(possibleFeatureContentCol for possibleFeatureContentCol in self.possibleFeatureContentCols
-                             if self.suffNonNull(possibleFeatureContentCol))
+                        tuple(possibleFeatureContentCol for possibleFeatureContentCol in self.possibleFeatureContentCols
+                                                        if self.suffNonNull(possibleFeatureContentCol))
 
             if cols:
                 profile = \
@@ -2846,23 +2800,23 @@ class ArrowADF(_ArrowADFABC):
 
             cols = {col for col in cols
                     if self.suffNonNull(col) and
-                    (len(profile[col].distinctProportions
-                         .loc[# (profile[col].distinctProportions.index != '') &
-                             # FutureWarning: elementwise comparison failed; returning scalar instead,
-                             # but in the future will perform elementwise comparison
-                             pandas.notnull(profile[col].distinctProportions.index)]) > 1)}
+                        (len(profile[col].distinctProportions
+                            .loc[# (profile[col].distinctProportions.index != '') &
+                                 # FutureWarning: elementwise comparison failed; returning scalar instead,
+                                 # but in the future will perform elementwise comparison
+                                 pandas.notnull(profile[col].distinctProportions.index)]) > 1)}
 
             if not cols:
                 return self.copy()
 
             catCols = \
                 [col for col in cols.intersection(self.possibleCatCols).difference(forceNum)
-                 if (col in forceCat) or
-                 (profile[col].distinctProportions.iloc[:self._maxNCats[col]].sum()
-                  >= self._minProportionByMaxNCats[col])]
+                     if (col in forceCat) or
+                        (profile[col].distinctProportions.iloc[:self._maxNCats[col]].sum()
+                         >= self._minProportionByMaxNCats[col])]
 
             numCols = [col for col in cols.difference(catCols)
-                       if self.typeIsNum(col)]
+                           if self.typeIsNum(col)]
 
             cols = catCols + numCols
 
@@ -2874,7 +2828,7 @@ class ArrowADF(_ArrowADFABC):
             prepSqlItems = {}
 
             catOrigToPrepColMap = \
-                dict(__OHE__=oheCat,
+                dict(__OHE__=False,
                      __SCALE__=scaleCat)
 
             if catCols:
@@ -2885,18 +2839,16 @@ class ArrowADF(_ArrowADFABC):
                     _tic = time.time()
 
                 catIdxCols = []
-                if oheCat:
-                    catOHECols = []
-                elif scaleCat:
+
+                if scaleCat:
                     catScaledIdxCols = []
 
                 for catCol in catCols:
                     catIdxCol = self._CAT_IDX_PREFIX + catCol + self._PREP_SUFFIX
 
                     catColType = self.type(catCol)
-                    isBool = (catColType == _BOOL_TYPE)
 
-                    if isBool:
+                    if is_boolean(catColType):
                         cats = [0, 1]
 
                         nCats = 2
@@ -2907,12 +2859,12 @@ class ArrowADF(_ArrowADFABC):
                                   ELSE 0 END'.format(catCol)
 
                     else:
-                        isStr = (catColType == _STR_TYPE)
+                        isStr = is_string(catColType)
 
                         cats = [cat for cat in
-                                (profile[catCol].distinctProportions.index
-                                 if catCol in forceCat
-                                 else profile[catCol].distinctProportions.index[:self._maxNCats[catCol]])
+                                    (profile[catCol].distinctProportions.index
+                                     if catCol in forceCat
+                                     else profile[catCol].distinctProportions.index[:self._maxNCats[catCol]])
                                 if (cat != '') and pandas.notnull(cat)]
 
                         nCats = len(cats)
@@ -2920,23 +2872,15 @@ class ArrowADF(_ArrowADFABC):
                         catIdxSqlItem = \
                             'CASE {} ELSE {} END'.format(
                                 ' '.join('WHEN {} = {} THEN {}'.format(
-                                    catCol,
-                                    "'{}'".format(cat.replace("'", "''").replace('"', '""'))
-                                    if isStr
-                                    else cat,
-                                    i)
+                                            catCol,
+                                            "'{}'".format(cat.replace("'", "''").replace('"', '""'))
+                                                if isStr
+                                                else cat,
+                                            i)
                                          for i, cat in enumerate(cats)),
                                 nCats)
 
-                    if oheCat:
-                        catIdxCols.append(catIdxCol)
-
-                        prepSqlItems[catIdxCol] = catIdxSqlItem
-
-                        catPrepCol = self._OHE_PREFIX + catCol + self._PREP_SUFFIX
-                        catOHECols.append(catPrepCol)
-
-                    elif scaleCat:
+                    if scaleCat:
                         catPrepCol = self._MIN_MAX_SCL_PREFIX + self._CAT_IDX_PREFIX + catCol + self._PREP_SUFFIX
                         catScaledIdxCols.append(catPrepCol)
 
@@ -2957,32 +2901,9 @@ class ArrowADF(_ArrowADFABC):
                          dict(Cats=cats,
                               NCats=nCats)]
 
-                if oheCat:
-                    catOHETransformer = \
-                        OneHotEncoder(
-                            inputCols=catIdxCols,
-                            outputCols=catOHECols,
-                            handleInvalid='error',
-                            # 'keep': invalid data presented as an extra categorical feature
-                            # When handleInvalid is configured to 'keep',
-                            # an extra "category" indicating invalid values is added as last category,
-                            # so when dropLast is true, invalid values are encoded as all-zeros vector
-                            dropLast=True) \
-                            .fit(dataset=self.reprSample._sparkDF[catCols].union(
-                            arimo.backend.spark.sql(
-                                'VALUES ({})'.format(', '.join(len(catCols) * ('NULL',)))))
-                                 .selectExpr(*('{} AS {}'.format(catSqlItem, strIdxCol)
-                                               for strIdxCol, catSqlItem in prepSqlItems.items())))
-
-                else:
-                    catOHETransformer = None
-
                 if verbose:
                     _toc = time.time()
                     self.stdout_logger.info(msg + ' done!   <{:,.1f} s>'.format(_toc - tic))
-
-            else:
-                catOHETransformer = None
 
             numOrigToPrepColMap = \
                 dict(__SCALER__=scaler)
@@ -3037,17 +2958,29 @@ class ArrowADF(_ArrowADFABC):
                             if scaler == 'standard':
                                 scaledCol = self._STD_SCL_PREFIX + numCol + self._PREP_SUFFIX
 
-                                mean = self.outlierRstStat(numCol)
+                                series = self.reprSample[numCol]
 
-                                stdDev = \
-                                    self.reprSample \
-                                        ._nonNullCol(
-                                        col=numCol,
-                                        lower=colMin if excludeLowerTail else None,
-                                        upper=colMax if excludeUpperTail else None,
-                                        strict=False) \
-                                        .select(sparkSQLFuncs.stddev(numCol)) \
-                                        .first()[0]
+                                if colOutlierTails == 'both':
+                                    series = series.loc[
+                                        (series > colMin) &
+                                        (series < colMax)]
+
+                                elif colOutlierTails == 'lower':
+                                    series = series.loc[series > colMin]
+
+                                elif colOutlierTails == 'upper':
+                                    series = series.loc[series < colMax]
+
+                                mean = series.mean(
+                                    axis='index',
+                                    skipna=True,
+                                    level=None)
+
+                                stdDev = series.std(
+                                    axis='index',
+                                    skipna=True,
+                                    level=None,
+                                    ddof=1)
 
                                 prepSqlItems[scaledCol] = \
                                     sqlStdScl(
@@ -3125,50 +3058,32 @@ class ArrowADF(_ArrowADFABC):
                  for numCol in sorted(set(numOrigToPrepColMap)
                                       .difference(('__TS_WINDOW_CLAUSE__', '__SCALER__')))]
 
-            sqlTransformer = \
-                SQLTransformer(
-                    statement=
-                    'SELECT *, {} FROM __THIS__ {}'.format(
-                        ', '.join('{} AS {}'.format(sqlItem, prepCol)
-                                  for prepCol, sqlItem in prepSqlItems.items()),
-                        numNullFillDetails.get('__TS_WINDOW_CLAUSE__', '')))
-
-            pipelineModelWithoutVectors = \
-                PipelineModel(stages=[sqlTransformer, catOHETransformer]) \
-                    if catCols and oheCat \
-                    else sqlTransformer
+            sqlStatement = \
+                'SELECT *, {} FROM __THIS__ {}'.format(
+                    ', '.join('{} AS {}'.format(sqlItem, prepCol)
+                              for prepCol, sqlItem in prepSqlItems.items()),
+                    numNullFillDetails.get('__TS_WINDOW_CLAUSE__', ''))
 
         if savePath and (savePath != loadPath):
             if verbose:
-                msg = 'Saving Data Transformations to Local Path {}...'.format(savePath)
+                msg = 'Saving Data Transformations to Local Path "{}"...'.format(savePath)
                 self.stdout_logger.info(msg)
                 _tic = time.time()
-
-            # *** NEED TO ENHANCE TO ALLOW OVERWRITING ***
-            fs.rm(
-                path=savePath,
-                hdfs=arimo.backend._ON_LINUX_CLUSTER_WITH_HDFS,
-                is_dir=True,
-                hadoop_home=arimo.backend._HADOOP_HOME)
-
-            pipelineModelWithoutVectors.save(path=savePath)
-
-            if arimo.backend._ON_LINUX_CLUSTER_WITH_HDFS:
-                fs.get(
-                    from_hdfs=savePath,
-                    to_local=savePath,
-                    is_dir=True,
-                    _mv=False)
 
             json.dump(
                 catOrigToPrepColMap,
                 open(os.path.join(savePath, self._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME), 'w'),
-                indent=4)
+                indent=2)
 
             json.dump(
                 numOrigToPrepColMap,
                 open(os.path.join(savePath, self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME), 'w'),
-                indent=4)
+                indent=2)
+
+            json.dump(
+                sqlStatement,
+                open(os.path.join(savePath, self._PREP_SQL_STATEMENT_FILE_NAME), 'w'),
+                indent=2)
 
             if verbose:
                 _toc = time.time()
@@ -3176,133 +3091,94 @@ class ArrowADF(_ArrowADFABC):
 
             self._PREP_CACHE[savePath] = \
                 Namespace(
-                    sqlTransformer=sqlTransformer,
-                    catOHETransformer=catOHETransformer,
-                    pipelineModelWithoutVectors=pipelineModelWithoutVectors,
-
                     catOrigToPrepColMap=catOrigToPrepColMap,
                     numOrigToPrepColMap=numOrigToPrepColMap,
+                    defaultVecCols=defaultVecCols,
+                    
+                    sqlStatement=sqlStatement,
+                    sqlTransformer=None,
+                    
+                    catOHETransformer=None,
+                    pipelineModelWithoutVectors=None)
 
-                    defaultVecCols=defaultVecCols)
-
-        if self._detPrePartitioned and self.hasTS:
-            _partitionBy_str = 'PARTITION BY {}, {}'.format(self._iCol, self._T_CHUNK_COL)
-
-            statement = sqlTransformer.getStatement()
-
-            if _partitionBy_str in statement:
-                sqlTransformer = \
-                    SQLTransformer(
-                        statement=
-                        statement.replace(
-                            _partitionBy_str,
-                            'PARTITION BY {}'.format(self._iCol)))
-
-        pipelineModelStages = \
-            [sqlTransformer] + \
-            ([catOHETransformer]
-             if catOHETransformer
-             else [])
-
-        if vecColsToAssemble:
-            if isinstance(vecColsToAssemble, _STR_CLASSES):
-                pipelineModelStages.append(
-                    VectorAssembler(
-                        inputCols=defaultVecCols,
-                        outputCol=vecColsToAssemble))
-
-            else:
-                assert isinstance(vecColsToAssemble, (dict, Namespace))
-
-                for vecOutputCol, vecInputCols in vecColsToAssemble.items():
-                    pipelineModelStages.append(
-                        VectorAssembler(
-                            inputCols=vecInputCols
-                            if vecInputCols
-                            else defaultVecCols,
-                            outputCol=vecOutputCol))
-
-        pipelineModel = \
-            PipelineModel(stages=pipelineModelStages) \
-                if len(pipelineModelStages) > 1 \
-                else sqlTransformer
-
-        try:   # in case SELF is FilesBasedADF
-            sparkDF = self._initSparkDF
-        except:
-            sparkDF = self._sparkDF
+        colsToKeep = \
+            self.columns + \
+            (([catPrepColDetails[0]
+               for catCol, catPrepColDetails in catOrigToPrepColMap.items()
+               if (catCol not in ('__OHE__', '__SCALE__')) and
+                    isinstance(catPrepColDetails, list) and (len(catPrepColDetails) == 2)] +
+              [numPrepColDetails[0]
+               for numCol, numPrepColDetails in numOrigToPrepColMap.items()
+               if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and
+                    isinstance(numPrepColDetails, list) and (len(numPrepColDetails) == 2)])
+             if loadPath
+             else (((catScaledIdxCols
+                     if scaleCat
+                     else catIdxCols)
+                    if catCols
+                    else []) +
+                   (numScaledCols
+                    if numCols
+                    else [])))
 
         missingCatCols = \
             set(catOrigToPrepColMap) \
-                .difference(
-                sparkDF.columns +
+            .difference(
+                self.columns +
                 ['__OHE__', '__SCALE__'])
 
         missingNumCols = \
             set(numOrigToPrepColMap) \
-                .difference(
-                sparkDF.columns +
+            .difference(
+                self.columns +
                 ['__TS_WINDOW_CLAUSE__', '__SCALER__'])
 
-        if missingCatCols or missingNumCols:
+        missingCols = missingCatCols | missingNumCols
+
+        addCols = {}
+
+        if missingCols:
             if arimo.debug.ON:
                 self.stdout_logger.debug(
                     msg='*** FILLING MISSING COLS {} ***'
-                        .format(missingCatCols | missingNumCols))
+                        .format())
 
-            sparkDF = \
-                sparkDF.select(
-                    '*',
-                    *([sparkSQLFuncs.lit(None)
-                      .alias(missingCatCol)
-                       for missingCatCol in missingCatCols] +
-                      [sparkSQLFuncs.lit(numOrigToPrepColMap[missingNumCol][1]['NullFillValue'])
-                      .alias(missingNumCol)
-                       for missingNumCol in missingNumCols]))
+            for missingCol in missingCols:
+                addCols[missingCol] = \
+                    numpy.nan \
+                    if missingCol in missingCatCols \
+                    else numOrigToPrepColMap[missingCol][1]['NullFillValue']
 
-        colsToKeep = \
-            sparkDF.columns + \
-            (to_iterable(vecColsToAssemble, iterable_type=list)
-             if vecColsToAssemble
-             else (([catPrepColDetails[0]
-                     for catCol, catPrepColDetails in catOrigToPrepColMap.items()
-                     if (catCol not in ('__OHE__', '__SCALE__')) and
-                     isinstance(catPrepColDetails, list) and (len(catPrepColDetails) == 2)] +
-                    [numPrepColDetails[0]
-                     for numCol, numPrepColDetails in numOrigToPrepColMap.items()
-                     if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and
-                     isinstance(numPrepColDetails, list) and (len(numPrepColDetails) == 2)])
-                   if loadPath
-                   else (((catScaledIdxCols
-                           if scaleCat
-                           else catIdxCols)
-                          if catCols
-                          else []) +
-                         (numScaledCols
-                          if numCols
-                          else []))))
+                colsToKeep.append(missingCol)
 
-        adf = self._decorate(
-            obj=pipelineModel.transform(dataset=sparkDF)[colsToKeep],
-            nRows=self._cache.nRows,
-            **kwargs)
+        arrowADF = \
+            self.map(
+                mapper=_ArrowADF__prep__pandasDFTransform(
+                    addCols=addCols,
+                    typeStrs=
+                        {catCol: str(self.type(catCol))
+                         for catCol in set(catOrigToPrepColMap).difference(('__OHE__', '__SCALE__'))},
+                    catOrigToPrepColMap=catOrigToPrepColMap,
+                    numOrigToPrepColMap=numOrigToPrepColMap),
+                inheritNRows=True,
+                **kwargs)[colsToKeep]
 
-        adf._inheritCache(
+        arrowADF._inheritCache(
             self,
             *(() if loadPath
-              else colsToKeep))
+                 else colsToKeep))
 
-        adf._cache.reprSample = self._cache.reprSample
+        arrowADF._cache.reprSample = self._cache.reprSample
 
         if verbose:
             toc = time.time()
             self.stdout_logger.info(message + ' done!   <{:,.1f} m>'.format((toc - tic) / 60))
 
-        return ((adf, catOrigToPrepColMap, numOrigToPrepColMap, pipelineModel)
-                if returnPipeline
-                else (adf, catOrigToPrepColMap, numOrigToPrepColMap)) \
+        return ((arrowADF, catOrigToPrepColMap, numOrigToPrepColMap, sqlStatement)
+                if returnSQLStatement
+                else (arrowADF, catOrigToPrepColMap, numOrigToPrepColMap)) \
             if returnOrigToPrepColMaps \
-            else adf
+          else arrowADF
 
     # *******************************
     # ITERATIVE GENERATION / SAMPLING

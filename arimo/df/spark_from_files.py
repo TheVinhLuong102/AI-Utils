@@ -610,6 +610,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
             sparkDFTransform=pipelineModel,
             pandasDFTransform=
                 _ArrowADF__prep__pandasDFTransform(
+                    addCols={},   # TODO
                     typeStrs=
                         {catCol: self._initSparkDF._schema[str(catCol)].dataType.simpleString()
                          for catCol in set(catOrigToPrepColMap).difference(('__OHE__', '__SCALE__'))},

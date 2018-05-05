@@ -4049,14 +4049,15 @@ class SparkADF(_ADFABC):
 
                 self._PREP_CACHE[loadPath] = \
                     Namespace(
-                        sqlTransformer=sqlTransformer,
-                        catOHETransformer=catOHETransformer,
-                        pipelineModelWithoutVectors=pipelineModelWithoutVectors,
-
                         catOrigToPrepColMap=catOrigToPrepColMap,
                         numOrigToPrepColMap=numOrigToPrepColMap,
+                        defaultVecCols=defaultVecCols,
 
-                        defaultVecCols=defaultVecCols)
+                        sqlStatement=None,
+                        sqlTransformer=sqlTransformer,
+
+                        catOHETransformer=catOHETransformer,
+                        pipelineModelWithoutVectors=pipelineModelWithoutVectors)
                 
         else:
             if cols:
@@ -4134,9 +4135,8 @@ class SparkADF(_ADFABC):
                     catIdxCol = self._CAT_IDX_PREFIX + catCol + self._PREP_SUFFIX
 
                     catColType = self.type(catCol)
-                    isBool = (catColType == _BOOL_TYPE)
 
-                    if isBool:
+                    if catColType == _BOOL_TYPE:
                         cats = [0, 1]
 
                         nCats = 2
@@ -4403,12 +4403,12 @@ class SparkADF(_ADFABC):
             json.dump(
                 catOrigToPrepColMap,
                 open(os.path.join(savePath, self._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME), 'w'),
-                indent=4)
+                indent=2)
 
             json.dump(
                 numOrigToPrepColMap,
                 open(os.path.join(savePath, self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME), 'w'),
-                indent=4)
+                indent=2)
 
             if verbose:
                 _toc = time.time()
@@ -4474,15 +4474,15 @@ class SparkADF(_ADFABC):
 
         missingCatCols = \
             set(catOrigToPrepColMap) \
-                .difference(
-                    sparkDF.columns +
-                    ['__OHE__', '__SCALE__'])
+            .difference(
+                sparkDF.columns +
+                ['__OHE__', '__SCALE__'])
 
         missingNumCols = \
             set(numOrigToPrepColMap) \
-                .difference(
-                    sparkDF.columns +
-                    ['__TS_WINDOW_CLAUSE__', '__SCALER__'])
+            .difference(
+                sparkDF.columns +
+                ['__TS_WINDOW_CLAUSE__', '__SCALER__'])
 
         if missingCatCols or missingNumCols:
             if arimo.debug.ON:
