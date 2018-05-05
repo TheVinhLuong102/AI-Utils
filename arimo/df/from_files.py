@@ -2,7 +2,6 @@ from __future__ import division, print_function
 
 import abc
 from argparse import Namespace as _Namespace
-from collections import Counter
 import datetime
 import json
 import math
@@ -44,6 +43,7 @@ from arimo.util.iterables import to_iterable
 from arimo.util.types.arrow import \
     _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE, \
     is_boolean, is_complex, is_num, is_possible_cat, is_string
+from arimo.util.types.spark_sql import _STR_TYPE
 import arimo.debug
 
 
@@ -89,6 +89,118 @@ class _ArrowADFABC(_ADFABC):
     @reprSampleMinNPieces.deleter
     def reprSampleMinNPieces(self):
         self._reprSampleMinNPieces = min(self._REPR_SAMPLE_MIN_N_PIECES, self.nPieces)
+
+
+class _ArrowADF__fillna__pandasDFTransform:
+    def __init__(self, nullFillDetails):
+        self.nullFillDetails = nullFillDetails
+
+    def __call__(self, pandasDF):
+        for col, nullFillColNameNDetails in self.nullFillDetails.items():
+            if (col not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and \
+                    isinstance(nullFillColNameNDetails, list) and (len(nullFillColNameNDetails) == 2):
+                _, nullFill = nullFillColNameNDetails
+
+                lowerNull, upperNull = nullFill['Nulls']
+
+                series = pandasDF[col]
+
+                chks = series.notnull()
+
+                if lowerNull is not None:
+                    chks &= (series > lowerNull)
+
+                if upperNull is not None:
+                    chks &= (series < upperNull)
+
+                pandasDF[_ADFABC._NULL_FILL_PREFIX + col + _ADFABC._PREP_SUFFIX] = \
+                    pandasDF[col].where(
+                        cond=chks,
+                        other=nullFill['NullFillValue'],
+                        inplace=False,
+                        axis=None,
+                        level=None,
+                        errors='raise',
+                        try_cast=False)
+
+        return pandasDF
+
+
+class _ArrowADF__prep__pandasDFTransform:
+    def __init__(self, typeStrs, catOrigToPrepColMap, numOrigToPrepColMap):
+        self.typeStrs = typeStrs
+
+        assert not catOrigToPrepColMap['__OHE__']
+        self.catOrigToPrepColMap = catOrigToPrepColMap
+        self.scaleCat = catOrigToPrepColMap['__SCALE__']
+
+        self.numOrigToPrepColMap = numOrigToPrepColMap
+        self.numScaler = numOrigToPrepColMap['__SCALER__']
+        assert self.numScaler in ('standard', 'maxabs', 'minmax', None)
+
+    def __call__(self, pandasDF):
+        _FLOAT_ABS_TOL = 1e-6
+
+        for catCol, prepCatColNameNDetails in self.catOrigToPrepColMap.items():
+            if (catCol not in ('__OHE__', '__SCALE__')) and \
+                    isinstance(prepCatColNameNDetails, list) and (len(prepCatColNameNDetails) == 2):
+                prepCatCol, catColDetails = prepCatColNameNDetails
+
+                cats = catColDetails['Cats']
+                nCats = catColDetails['NCats']
+
+                s = pandasDF[catCol]
+
+                pandasDF[prepCatCol] = \
+                    (sum(((s == cat) * i)
+                         for i, cat in enumerate(cats)) +
+                     ((~s.isin(cats)) * nCats)) \
+                    if self.typeStrs[catCol] == _STR_TYPE \
+                    else (sum((((s - cat).abs() < _FLOAT_ABS_TOL) * i)
+                              for i, cat in enumerate(cats)) +
+                          ((1 -
+                            sum(((s - cat).abs() < _FLOAT_ABS_TOL)
+                                for cat in cats)) *
+                           nCats))
+
+                if self.scaleCat:
+                    pandasDF[prepCatCol] = minMaxScaledIdxSeries = \
+                        2 * pandasDF[prepCatCol] / nCats - 1
+
+                    assert minMaxScaledIdxSeries.between(left=-1, right=1, inclusive=True).all(), \
+                        '*** "{}" CERTAIN MIN-MAX SCALED INT INDICES NOT BETWEEN -1 AND 1 ***'
+
+        pandasDF = _ArrowADF__fillna__pandasDFTransform(nullFillDetails=self.numOrigToPrepColMap)(pandasDF=pandasDF)
+
+        for numCol, prepNumColNameNDetails in self.numOrigToPrepColMap.items():
+            if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and \
+                    isinstance(prepNumColNameNDetails, list) and (len(prepNumColNameNDetails) == 2):
+                prepNumCol, numColDetails = prepNumColNameNDetails
+
+                nullFillColSeries = \
+                    pandasDF[_ADFABC._NULL_FILL_PREFIX + numCol + _ADFABC._PREP_SUFFIX]
+
+                if self.numScaler == 'standard':
+                    pandasDF[prepNumCol] = \
+                        (nullFillColSeries - numColDetails['Mean']) / numColDetails['StdDev']
+
+                elif self.numScaler == 'maxabs':
+                    pandasDF[prepNumCol] = \
+                        nullFillColSeries / numColDetails['MaxAbs']
+
+                elif self.numScaler == 'minmax':
+                    origMin = numColDetails['OrigMin']
+                    origMax = numColDetails['OrigMax']
+                    origRange = origMax - origMin
+
+                    targetMin = numColDetails['TargetMin']
+                    targetMax = numColDetails['TargetMax']
+                    targetRange = targetMax - targetMin
+
+                    pandasDF[prepNumCol] = \
+                        targetRange * (nullFillColSeries - origMin) / origRange + targetMin
+
+        return pandasDF
 
 
 @enable_inplace
