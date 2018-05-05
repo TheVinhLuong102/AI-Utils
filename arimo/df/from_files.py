@@ -2312,7 +2312,7 @@ class ArrowADF(_ArrowADFABC):
                 Namespace(
                     partition=
                         '{} AS (PARTITION BY {}, {})'
-                            .format(_TS_WINDOW_NAMES.partition, self._iCol, self._T_CHUNK_COL),
+                            .format(_TS_WINDOW_NAMES.partition, self._iCol, SparkADF._T_CHUNK_COL),
                     before=
                         '{} AS (PARTITION BY {}, {} ORDER BY {} ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)'
                             .format(_TS_WINDOW_NAMES.before, self._iCol, SparkADF._T_CHUNK_COL, self._T_ORD_COL),
