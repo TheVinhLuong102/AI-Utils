@@ -36,7 +36,7 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
 
         adf = self.prep_data(*args, **kwargs)
 
-        assert adf.alias
+        assert isinstance(adf, SparkADF) and adf.alias
 
         if arimo.debug.ON:
             self.stdout_logger.debug(

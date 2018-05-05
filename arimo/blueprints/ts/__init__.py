@@ -133,6 +133,8 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
                 if self.params.data.label._int_var is None \
                 else self.params.data.label._int_var
 
+        assert isinstance(adf, SparkADF) and adf.alias
+
         if __cache_vector_data__:   # *** cache here to potentially speed up window funcs creating sequences below ***
             adf.cache(
                 eager=True,
@@ -369,6 +371,8 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
                 __mode__=self._EVAL_MODE,
                 verbose=verbose,
                 *args, **kwargs)
+
+        assert isinstance(adf, SparkADF) and adf.alias
 
         model = self.model(
             ver=self.params.model.ver

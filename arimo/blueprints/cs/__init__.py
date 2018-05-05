@@ -77,6 +77,9 @@ class _CrossSectSupervisedBlueprintABC(LabeledDataPrepMixIn, _SupervisedBlueprin
                 verbose=verbose,
                 *args, **kwargs)
 
+        assert isinstance(adf, SparkADF) and adf.alias
+        _adf_alias = adf.alias
+
         model = self.model(
             ver=self.params.model.ver
                 if self.params.model.ver
@@ -111,9 +114,6 @@ class _CrossSectSupervisedBlueprintABC(LabeledDataPrepMixIn, _SupervisedBlueprin
                         .format(label_var, _outlier_robust_condition))
 
         # score
-        _adf_alias = adf.alias
-        assert _adf_alias
-
         adf = \
             self.score(
                 __mode__=self._EVAL_MODE,
@@ -256,6 +256,8 @@ class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSu
                 ver=self.params.model.ver
                     if self.params.model.ver
                     else 'latest')
+
+        assert isinstance(adf, SparkADF) and adf.alias
 
         prep_vec_col = self.params.data._prep_vec_col
 
