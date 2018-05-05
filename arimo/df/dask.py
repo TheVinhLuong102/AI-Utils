@@ -1,6 +1,6 @@
 from dask.dataframe import DataFrame
 
-from arimo.df import _ADFABC
+from . import _ADFABC
 
 
 class DaskADF(_ADFABC):

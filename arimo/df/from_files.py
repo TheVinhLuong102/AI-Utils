@@ -34,8 +34,6 @@ from pyarrow.hdfs import HadoopFileSystem
 from pyarrow.parquet import ParquetDataset, read_metadata, read_schema, read_table
 from s3fs import S3FileSystem
 
-from arimo.df import _ADFABC
-from arimo.df.spark import SparkADF
 from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
@@ -46,6 +44,9 @@ from arimo.util.types.arrow import \
     is_boolean, is_complex, is_float, is_integer, is_num, is_possible_cat, is_string
 from arimo.util.types.spark_sql import _STR_TYPE
 import arimo.debug
+
+from . import _ADFABC
+from .spark import SparkADF
 
 
 class _ArrowADFABC(_ADFABC):

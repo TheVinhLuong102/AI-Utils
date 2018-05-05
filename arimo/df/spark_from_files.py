@@ -3,7 +3,6 @@ from __future__ import division, print_function
 import math
 import numpy
 import os
-import pandas
 import psutil
 import random
 import re
@@ -20,7 +19,7 @@ else:
     from urllib.parse import urlparse
     _STR_CLASSES = str
 
-from pyarrow.parquet import ParquetDataset, read_table
+from pyarrow.parquet import ParquetDataset
 
 from pyspark.ml import Transformer
 from pyspark.ml.feature import SQLTransformer
@@ -30,13 +29,14 @@ import arimo.backend
 from arimo.df.from_files import _ArrowADFABC, \
     _ArrowADF__fillna__pandasDFTransform, _ArrowADF__prep__pandasDFTransform, \
     _ArrowADF__pieceArrowTableFunc, _ArrowADF__gen
-from arimo.df.spark import SparkADF
 from arimo.util import fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols
 from arimo.util.decor import enable_inplace
 from arimo.util.iterables import to_iterable
 import arimo.debug
+
+from .spark import SparkADF
 
 
 @enable_inplace

@@ -68,7 +68,6 @@ from pyspark.ml.linalg import Vector
 from pyspark.sql import DataFrame, functions as sparkSQLFuncs
 from pyspark.sql.window import Window
 
-from arimo.df import _ADFABC
 from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import rds, s3
 from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
@@ -79,6 +78,8 @@ from arimo.util.types.spark_sql import \
     _VECTOR_TYPE, _DECIMAL_TYPE_PREFIX, _ARRAY_TYPE_PREFIX, _MAP_TYPE_PREFIX, _STRUCT_TYPE_PREFIX, \
     StructField, StructType
 import arimo.debug
+
+from . import _ADFABC
 
 
 # decorator to add standard SparkADF keyword-arguments docstring
