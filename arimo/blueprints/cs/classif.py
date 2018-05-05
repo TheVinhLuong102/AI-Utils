@@ -10,7 +10,7 @@ import arimo.backend
 from arimo.blueprints.base import _docstr_blueprint
 from arimo.blueprints.cs import _DLCrossSectSupervisedBlueprintABC
 from arimo.blueprints.mixins.eval import ClassifEvalMixIn
-from arimo.df.spark_from_files import ArrowSparkADF
+from arimo.df.from_files import ArrowADF
 from arimo.util import fs, Namespace
 from arimo.util.decor import _docstr_verbose
 from arimo.util.pkl import pickle_able
@@ -149,7 +149,7 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                 self.params.model._persist.struct_file), 'w') \
             .write(model.to_json())
 
-        assert isinstance(adf, ArrowSparkADF)
+        assert isinstance(adf, ArrowADF)
         piece_paths = list(adf.piecePaths)
         random.shuffle(piece_paths)
         split_idx = int(math.ceil(self.params.model.train.train_proportion * adf.nPieces))
