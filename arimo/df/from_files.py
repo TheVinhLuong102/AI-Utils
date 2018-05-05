@@ -2654,7 +2654,7 @@ class ArrowADF(_ArrowADFABC):
                 if forceCatExcl is None
                 else to_iterable(forceCatExcl))
 
-        kwargs.pop('oheCat')   # *** NOT USED ***
+        kwargs.pop('oheCat', None)   # *** NOT USED ***
         scaleCat = kwargs.pop('scaleCat', True)
 
         forceNumIncl = kwargs.pop('forceNumIncl', None)
