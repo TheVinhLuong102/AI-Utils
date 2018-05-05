@@ -102,6 +102,9 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
             elif isinstance(df, pyspark.sql.DataFrame):
                 adf = SparkADF(sparkDF=df, **kwargs)
 
+            elif isinstance(df, ArrowADF):
+                adf = df
+
             else:
                 assert isinstance(df, _STR_CLASSES)
 
@@ -470,6 +473,9 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
 
             elif isinstance(df, pyspark.sql.DataFrame):
                 adf = SparkADF(sparkDF=df, **kwargs)
+
+            elif isinstance(df, ArrowADF):
+                adf = df
 
             else:
                 assert isinstance(df, _STR_CLASSES)
