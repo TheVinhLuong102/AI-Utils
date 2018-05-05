@@ -28,8 +28,7 @@ from pyspark.sql import DataFrame
 
 import arimo.backend
 from arimo.df import _ADFABC
-from arimo.df.from_files import _ArrowADFABC, \
-    _ArrowADF__getitem__pandasDFTransform, _ArrowADF__drop__pandasDFTransform
+from arimo.df.from_files import _ArrowADFABC
 from arimo.df.spark import SparkADF
 from arimo.util import fs, Namespace
 from arimo.util.aws import s3
@@ -659,7 +658,9 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 sparkDFTransform=
                     lambda sparkDF:
                         sparkDF[item],
-                pandasDFTransform=_ArrowADF__getitem__pandasDFTransform(item=list(item)),
+                pandasDFTransform=
+                    lambda pandasDF:
+                        pandasDF[list(item)],
                 inheritCache=True,
                 inheritNRows=True) \
             if isinstance(item, (list, tuple)) \
@@ -969,7 +970,13 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 sparkDFTransform=
                     lambda sparkDF:
                         sparkDF.drop(*cols),
-                pandasDFTransform=_ArrowADF__drop__pandasDFTransform(cols=cols),
+                pandasDFTransform=
+                    lambda pandasDF:
+                        pandasDF.drop(
+                            columns=list(cols),
+                            level=None,
+                            inplace=False,
+                            errors='ignore'),
                 inheritCache=True,
                 inheritNRows=True,
                 **kwargs)

@@ -91,34 +91,6 @@ class _ArrowADFABC(_ADFABC):
         self._reprSampleMinNPieces = min(self._REPR_SAMPLE_MIN_N_PIECES, self.nPieces)
 
 
-class _ArrowADF__getattr__pandasDFTransform:
-    def __init__(self, col):
-        self.col = col
-
-    def __call__(self, pandasDF):
-        return getattr(pandasDF, self.col)
-
-
-class _ArrowADF__getitem__pandasDFTransform:
-    def __init__(self, item):
-        self.item = item
-
-    def __call__(self, pandasDF):
-        return pandasDF[self.item]
-
-
-class _ArrowADF__drop__pandasDFTransform:
-    def __init__(self, cols):
-        self.cols = list(cols)
-
-    def __call__(self, pandasDF):
-        return pandasDF.drop(
-                columns=self.cols,
-                level=None,
-                inplace=False,
-                errors='ignore')
-
-
 @enable_inplace
 class ArrowADF(_ArrowADFABC):
     # "inplace-able" methods
@@ -572,6 +544,8 @@ class ArrowADF(_ArrowADFABC):
     # __getattr__
     # __getitem__
     # drop
+    # rename
+    # filter
     # collect
     # toPandas
 
@@ -921,16 +895,54 @@ class ArrowADF(_ArrowADFABC):
         assert col in self.columns
 
         return self.map(
-                mapper=_ArrowADF__getattr__pandasDFTransform(col=col))
+                mapper=lambda pandasDF: pandasDF[col])
 
     def __getitem__(self, item):
         return self.map(
-                mapper=_ArrowADF__getitem__pandasDFTransform(item=item))
+                mapper=lambda pandasDF: pandasDF[item])
 
     def drop(self, *cols, **kwargs):
         return self.map(
-                mapper=_ArrowADF__drop__pandasDFTransform(cols=cols),
+                mapper=lambda pandasDF:
+                    pandasDF.drop(
+                        columns=list(cols),
+                        level=None,
+                        inplace=False,
+                        errors='ignore'),
                 **kwargs)
+
+    def rename(self, **kwargs):
+        """
+        Return:
+            ``ADF`` with new column names
+
+        Args:
+            **kwargs: arguments of the form ``newColName`` = ``existingColName``
+        """
+        renameDict = {}
+        remainingKwargs = {}
+
+        for k, v in kwargs.items():
+            if v in self.columns:
+                if v not in self._T_AUX_COLS:
+                    renameDict[v] = k
+            else:
+                remainingKwargs[k] = v
+
+        return self.map(
+                mapper=lambda pandasDF:
+                    pandasDF.rename(
+                        mapper=None,
+                        index=None,
+                        columns=renameDict,
+                        axis='index',
+                        copy=False,
+                        inplace=False,
+                        level=None),
+                **remainingKwargs)
+
+    def filter(self, *conditions, **kwargs):
+        pass   # TODO
 
     def collect(self, *cols, **kwargs):
         return self.reduce(cols=cols if cols else None, **kwargs)
@@ -2950,170 +2962,9 @@ class ArrowADF(_ArrowADFABC):
 
     # ****
     # MISC
-    # rename
-
-    def rename(self, **kwargs):
-        """
-        Return:
-            ``ADF`` with new column names
-
-        Args:
-            **kwargs: arguments of the form ``newColName`` = ``existingColName``
-        """
-        sparkDF = self._sparkDF
-        iCol = self._iCol
-        tCol = self._tCol
-
-        for newColName, existingColName in kwargs.items():
-            if existingColName not in self._T_AUX_COLS:
-                if existingColName == iCol:
-                    iCol = newColName
-
-                elif existingColName == tCol:
-                    tCol = newColName
-
-                sparkDF = \
-                    sparkDF.withColumnRenamed(
-                        existing=existingColName,
-                        new=newColName)
-
-        return self._decorate(
-            obj=sparkDF, nRows=self._cache.nRows,
-            iCol=iCol, tCol=tCol)
-
-    # **************
-    # MAP TRANSFORMS
-
-    # filter
-
-
-
-    def filter(self, condition, **kwargs):
-        return self.map(
-            sparkDFTransform=
-            lambda sparkDF:
-            sparkDF.filter(
-                condition=condition),
-            mapper=[],   # no Pandas equivalent
-            inheritCache=True,
-            inheritNRows=True,
-            **kwargs)
-
-    def _pieceADF(self, piecePath):
-        pieceADF = self._cache.pieceADFs.get(piecePath)
-
-        if pieceADF is None:
-            if self._partitionedByDateOnly:
-                if self.s3Client:
-                    aws_access_key_id = self._srcArrowDS.fs.fs.key
-                    aws_secret_access_key = self._srcArrowDS.fs.fs.secret
-
-                else:
-                    aws_access_key_id = aws_secret_access_key = None
-
-                stdKwArgs = self._extractStdKwArgs({}, resetToClassDefaults=False, inplace=False)
-
-                if stdKwArgs.alias:
-                    assert stdKwArgs.alias == self.alias
-                    stdKwArgs.alias = None
-
-                if stdKwArgs.detPrePartitioned:
-                    stdKwArgs.nDetPrePartitions = 1
-
-                piecePath = os.path.join(self.path, piecePath)
-
-                pieceADF = \
-                    ArrowSparkADF(
-                        path=piecePath,
-                        aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
-                        _srcSparkDFSchema=self._srcSparkDFSchema,
-                        _sparkDFTransforms=self._sparkDFTransforms,
-                        _pandasDFTransforms=self._pandasDFTransforms,
-                        verbose=False,
-                        **stdKwArgs.__dict__)
-
-                pieceADF._cache.colWidth.update(self._cache.colWidth)
-
-            else:
-                pieceADF = self._subset(piecePath, verbose=False)
-
-            self._cache.pieceADFs[piecePath] = pieceADF
-
-        else:
-            pieceADF._sparkDFTransforms = sparkDFTransforms = self._sparkDFTransforms
-
-            pieceADF._sparkDF = pieceADF._initSparkDF
-
-            for i, sparkDFTransform in enumerate(sparkDFTransforms):
-                try:
-                    pieceADF._sparkDF = sparkDFTransform(pieceADF._sparkDF)
-
-                except Exception as err:
-                    self.stdout_logger.error(
-                        msg='*** {} TRANSFORM #{}: ***'
-                            .format(piecePath, i))
-                    raise err
-
-            pieceADF._pandasDFTransforms = self._pandasDFTransforms
-
-            pieceADF._cache.type = self._cache.type
-
-        return pieceADF
-
-    def _pieceArrowTable(self, piecePath):
-        return _ArrowSparkADF__pieceArrowTableFunc(
-            path=self.path,
-            aws_access_key_id=self._srcArrowDS.fs.fs.key,
-            aws_secret_access_key=self._srcArrowDS.fs.fs.secret)(piecePath)
-
-    def _piecePandasDF(self, piecePath):
-        pandasDF = \
-            self._pieceArrowTable(piecePath) \
-                .to_pandas(
-                nthreads=max(1, psutil.cpu_count(logical=True) // 2),
-                strings_to_categorical=False,
-                memory_pool=None,
-                zero_copy_only=True)
-
-        if self._tCol:
-            pandasDF = \
-                gen_aux_cols(
-                    df=pandasDF,
-                    i_col=self._iCol,
-                    t_col=self._tCol)
-
-        for i, pandasDFTransform in enumerate(self._pandasDFTransforms):
-            try:
-                pandasDF = pandasDFTransform(pandasDF)
-
-            except Exception as err:
-                self.stdout_logger.error(
-                    msg='*** "{}": PANDAS TRANSFORM #{} ***'
-                        .format(piecePath, i))
-                raise err
-
-        return pandasDF
-
-
-    def gen(self, *args, **kwargs):
-        return _ArrowSparkADF__gen(
-            args=args,
-            path=self.path,
-            piecePaths=kwargs.get('piecePaths', self.piecePaths),
-            aws_access_key_id=self._srcArrowDS.fs.fs.key, aws_secret_access_key=self._srcArrowDS.fs.fs.secret,
-            iCol=self._iCol, tCol=self._tCol,
-            possibleFeatureTAuxCols=self.possibleFeatureTAuxCols,
-            contentCols=self.contentCols,
-            pandasDFTransforms=self._pandasDFTransforms,
-            filterConditions=kwargs.get('filter', {}),
-            n=kwargs.get('n', 512),
-            nSamplesPerPiece=kwargs.get('nSamplesPerPiece', 10 ** 5),
-            anon=kwargs.get('anon', True),
-            n_threads=kwargs.get('n_threads', 1))
-
-    # ****
-    # MISC
     # split
+
+
 
     def split(self, *weights):
         if (not weights) or weights == (1,):
