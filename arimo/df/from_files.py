@@ -2964,9 +2964,7 @@ class ArrowADF(_ArrowADFABC):
     # MISC
     # split
 
-
-
-    def split(self, *weights):
+    def split(self, *weights, **kwargs):
         if (not weights) or weights == (1,):
             return self
 
@@ -2984,7 +2982,7 @@ class ArrowADF(_ArrowADFABC):
                 [int(round(cumuWeights[i] * nPieces))
                  for i in range(nWeights)]
 
-            return [self._subset(*piecePaths[cumuIndices[i]:cumuIndices[i + 1]])
+            return [self._subset(*piecePaths[cumuIndices[i]:cumuIndices[i + 1]], **kwargs)
                     for i in range(nWeights)]
 
 
