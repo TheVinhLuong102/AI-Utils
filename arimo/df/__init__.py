@@ -79,6 +79,9 @@ class _ADFABC(object):
     _DEFAULT_MAX_N_CATS = 12   # Month of Year is probably most numerous-category cat var
     _DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS = .9
 
+    # NULL-filling
+    _NULL_FILL_SQL_STATEMENT_FILE_NAME = 'nullFillSQLStatement.json'
+
     # prep col prefixes / suffix
     _NULL_FILL_PREFIX = '__NullFill__'
 
@@ -94,6 +97,8 @@ class _ADFABC(object):
 
     _CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME = 'catOrigToPrepColMap.json'
     _NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME = 'numOrigToPrepColMap.json'
+
+    _PREP_SQL_STATEMENT_FILE_NAME = 'prepSQLStatement.json'
 
     # temp dir
     _TMP_DIR_PATH = '/tmp/.arimo/df'

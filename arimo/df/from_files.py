@@ -2275,8 +2275,6 @@ class ArrowADF(_ArrowADFABC):
 
                 - **savePath** *(str)*: path to save new ``NULL``-filling data transformations
         """
-        _NULL_FILL_SQL_STATEMENT_FILE_NAME = 'nullFillSQLStatement.json'
-
         _TS_FILL_METHODS = \
             'avg_partition', 'mean_partition', 'min_partition', 'max_partition', \
             'avg_before', 'mean_before', 'min_before', 'max_before', \
@@ -2331,7 +2329,7 @@ class ArrowADF(_ArrowADFABC):
 
             sqlStatement = \
                 json.load(
-                    open(os.path.join(loadPath, _NULL_FILL_SQL_STATEMENT_FILE_NAME), 'r'))
+                    open(os.path.join(loadPath, self._NULL_FILL_SQL_STATEMENT_FILE_NAME), 'r'))
 
             details = None
 
@@ -2552,7 +2550,7 @@ class ArrowADF(_ArrowADFABC):
 
             json.dump(
                 sqlStatement,
-                open(os.path.join(savePath, _NULL_FILL_SQL_STATEMENT_FILE_NAME), 'w'))
+                open(os.path.join(savePath, self._NULL_FILL_SQL_STATEMENT_FILE_NAME), 'w'))
 
             if verbose:
                 _toc = time.time()
