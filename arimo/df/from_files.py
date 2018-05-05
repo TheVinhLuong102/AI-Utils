@@ -35,6 +35,7 @@ from pyarrow.parquet import ParquetDataset, read_metadata, read_schema, read_tab
 from s3fs import S3FileSystem
 
 from arimo.df import _ADFABC
+from arimo.df.spark import SparkADF
 from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
@@ -2308,10 +2309,10 @@ class ArrowADF(_ArrowADFABC):
                             .format(_TS_WINDOW_NAMES.partition, self._iCol, self._T_CHUNK_COL),
                     before=
                         '{} AS (PARTITION BY {}, {} ORDER BY {} ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)'
-                            .format(_TS_WINDOW_NAMES.before, self._iCol, self._T_CHUNK_COL, self._T_ORD_COL),
+                            .format(_TS_WINDOW_NAMES.before, self._iCol, SparkADF._T_CHUNK_COL, self._T_ORD_COL),
                     after=
                         '{} AS (PARTITION BY {}, {} ORDER BY {} ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)'
-                            .format(_TS_WINDOW_NAMES.after, self._iCol, self._T_CHUNK_COL, self._T_ORD_COL))
+                            .format(_TS_WINDOW_NAMES.after, self._iCol, SparkADF._T_CHUNK_COL, self._T_ORD_COL))
 
         returnDetails = kwargs.pop('returnDetails', False)
         returnSQLStatement = kwargs.pop('returnSQLStatement', False)
