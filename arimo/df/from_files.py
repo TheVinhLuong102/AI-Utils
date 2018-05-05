@@ -42,7 +42,7 @@ from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_
 from arimo.util.iterables import to_iterable
 from arimo.util.types.arrow import \
     _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE, \
-    is_boolean, is_complex, is_num, is_possible_cat, is_string
+    is_boolean, is_complex, is_float, is_integer, is_num, is_possible_cat, is_string
 from arimo.util.types.spark_sql import _STR_TYPE
 import arimo.debug
 
@@ -2302,7 +2302,7 @@ class ArrowADF(_ArrowADFABC):
                         .format(_TS_WINDOW_NAMES.after, self._iCol, self._T_CHUNK_COL, self._T_ORD_COL))
 
         returnDetails = kwargs.pop('returnDetails', False)
-        returnSQLTransformer = kwargs.pop('returnSQLTransformer', False)
+        returnSQLStatement = kwargs.pop('returnSQLStatement', False)
         loadPath = kwargs.pop('loadPath', None)
         savePath = kwargs.pop('savePath', None)
 
@@ -2316,9 +2316,9 @@ class ArrowADF(_ArrowADFABC):
                 self.stdout_logger.info(message)
                 tic = time.time()
 
-            sqlTransformer = \
-                SQLTransformer.load(
-                    path=loadPath)
+            # *** TODO ***
+            sqlStatement = \
+                json.load(open(loadPath, 'r'))
 
             details = None
 
@@ -2328,7 +2328,7 @@ class ArrowADF(_ArrowADFABC):
             method = kwargs.pop(
                 'method',
                 'mean' if value is None
-                else None)
+                       else None)
 
             cols = set(cols)
 
@@ -2343,16 +2343,17 @@ class ArrowADF(_ArrowADFABC):
 
             cols.difference_update(
                 self.indexCols +
-                (self._T_ORD_COL, self._T_ORD_IN_CHUNK_COL))
+                (self._T_ORD_COL,))
 
             nulls = kwargs.pop('nulls', {})
 
             for col in cols:
                 if col in nulls:
                     colNulls = nulls[col]
+
                     assert isinstance(colNulls, (list, tuple)) and (len(colNulls) == 2) \
-                           and ((colNulls[0] is None) or isinstance(colNulls[0], (float, int))) \
-                           and ((colNulls[1] is None) or isinstance(colNulls[1], (float, int)))
+                       and ((colNulls[0] is None) or isinstance(colNulls[0], (float, int))) \
+                       and ((colNulls[1] is None) or isinstance(colNulls[1], (float, int)))
 
                 else:
                     nulls[col] = (None, None)
@@ -2366,8 +2367,8 @@ class ArrowADF(_ArrowADFABC):
             fillOutliers = kwargs.pop('fillOutliers', False)
             fillOutliers = \
                 cols \
-                    if fillOutliers is True \
-                    else to_iterable(fillOutliers)
+                if fillOutliers is True \
+                else to_iterable(fillOutliers)
 
             tsWindowDefs = set()
             details = {}
@@ -2382,7 +2383,7 @@ class ArrowADF(_ArrowADFABC):
                 colType = self.type(col)
                 colFallBackVal = None
 
-                if colType.startswith(_DECIMAL_TYPE_PREFIX) or (colType in _NUM_TYPES):
+                if is_num(colType):
                     isNum = True
 
                     colOutlierTails = outlierTails.get(col, 'both')
@@ -2391,8 +2392,8 @@ class ArrowADF(_ArrowADFABC):
 
                     methodForCol = \
                         method[col] \
-                            if isinstance(method, dict) and (col in method) \
-                            else method
+                        if isinstance(method, dict) and (col in method) \
+                        else method
 
                     if methodForCol:
                         methodForCol = methodForCol.lower().split('_')
@@ -2414,8 +2415,8 @@ class ArrowADF(_ArrowADFABC):
                             self.outlierRstStat(
                                 col,
                                 stat=methodForCol
-                                if (not self.hasTS) or (window is None) or (window == 'partition')
-                                else 'mean',
+                                    if (not self.hasTS) or (window is None) or (window == 'partition')
+                                    else 'mean',
                                 outlierTails=colOutlierTails,
                                 verbose=verbose > 1)
 
@@ -2440,11 +2441,10 @@ class ArrowADF(_ArrowADFABC):
 
                 if pandas.notnull(colFallBackVal):
                     valFormatter = \
-                        '%f' if colType.startswith(_DECIMAL_TYPE_PREFIX) or (colType in _FLOAT_TYPES) \
-                            else ('%i' if colType in _INT_TYPES
-                                  else ("'%s'" if (colType == _STR_TYPE) and
-                                                  isinstance(colFallBackVal, _STR_CLASSES)
-                                        else '%s'))
+                        '%f' if is_float(colType) \
+                             else ('%i' if is_integer(colType)
+                                   else ("'%s'" if is_string(colType) and isinstance(colFallBackVal, _STR_CLASSES)
+                                         else '%s'))
 
                     fallbackStrs = [valFormatter % colFallBackVal]
 
@@ -2454,42 +2454,44 @@ class ArrowADF(_ArrowADFABC):
                         partitionFallBackStrTemplate = \
                             "%s(CASE WHEN (STRING(%s) = 'NaN')%s%s%s%s THEN NULL ELSE %s END) OVER %s"
 
-                        fallbackStrs.insert(0,
-                                            partitionFallBackStrTemplate
-                                            % (methodForCol,
-                                               col,
-                                               '' if lowerNull is None
-                                               else ' OR ({} <= {})'.format(col, lowerNull),
-                                               '' if upperNull is None
-                                               else ' OR ({} >= {})'.format(col, upperNull),
-                                               ' OR (%s < %s)' % (col, valFormatter % self.outlierRstMin(col))
-                                               if fixLowerTail
-                                               else '',
-                                               ' OR (%s > %s)' % (col, valFormatter % self.outlierRstMax(col))
-                                               if fixUpperTail
-                                               else '',
-                                               col,
-                                               _TS_WINDOW_NAMES[window]))
+                        fallbackStrs.insert(
+                            0,
+                            partitionFallBackStrTemplate
+                                % (methodForCol,
+                                   col,
+                                   '' if lowerNull is None
+                                      else ' OR ({} <= {})'.format(col, lowerNull),
+                                   '' if upperNull is None
+                                      else ' OR ({} >= {})'.format(col, upperNull),
+                                   ' OR (%s < %s)' % (col, valFormatter % self.outlierRstMin(col))
+                                        if fixLowerTail
+                                        else '',
+                                   ' OR (%s > %s)' % (col, valFormatter % self.outlierRstMax(col))
+                                        if fixUpperTail
+                                        else '',
+                                   col,
+                                   _TS_WINDOW_NAMES[window]))
                         tsWindowDefs.add(_TS_WINDOW_DEFS[window])
 
                         if window != 'partition':
                             oppositeWindow = _TS_OPPOSITE_WINDOW_NAMES[window]
-                            fallbackStrs.insert(1,
-                                                partitionFallBackStrTemplate
-                                                % (_TS_OPPOSITE_METHODS[methodForCol],
-                                                   col,
-                                                   '' if lowerNull is None
-                                                   else ' OR ({} <= {})'.format(col, lowerNull),
-                                                   '' if upperNull is None
-                                                   else ' OR ({} >= {})'.format(col, upperNull),
-                                                   ' OR (%s < %s)' % (col, valFormatter % self.outlierRstMin(col))
-                                                   if fixLowerTail
-                                                   else '',
-                                                   ' OR (%s > %s)' % (col, valFormatter % self.outlierRstMax(col))
-                                                   if fixUpperTail
-                                                   else '',
-                                                   col,
-                                                   _TS_WINDOW_NAMES[oppositeWindow]))
+                            fallbackStrs.insert(
+                                1,
+                                partitionFallBackStrTemplate
+                                    % (_TS_OPPOSITE_METHODS[methodForCol],
+                                       col,
+                                       '' if lowerNull is None
+                                          else ' OR ({} <= {})'.format(col, lowerNull),
+                                       '' if upperNull is None
+                                          else ' OR ({} >= {})'.format(col, upperNull),
+                                       ' OR (%s < %s)' % (col, valFormatter % self.outlierRstMin(col))
+                                            if fixLowerTail
+                                            else '',
+                                       ' OR (%s > %s)' % (col, valFormatter % self.outlierRstMax(col))
+                                            if fixUpperTail
+                                            else '',
+                                       col,
+                                       _TS_WINDOW_NAMES[oppositeWindow]))
                             tsWindowDefs.add(_TS_WINDOW_DEFS[oppositeWindow])
 
                     details[col] = \
@@ -2497,18 +2499,18 @@ class ArrowADF(_ArrowADFABC):
 
                          dict(SQL="COALESCE(CASE WHEN (STRING({0}) = 'NaN'){1}{2}{3}{4} THEN NULL ELSE {0} END, {5})"
                              .format(
-                             col,
-                             '' if lowerNull is None
-                             else ' OR ({} <= {})'.format(col, lowerNull),
-                             '' if upperNull is None
-                             else ' OR ({} >= {})'.format(col, upperNull),
-                             ' OR ({} < {})'.format(col, valFormatter % self.outlierRstMin(col))
-                             if isNum and (col in fillOutliers) and fixLowerTail
-                             else '',
-                             ' OR ({} > {})'.format(col, valFormatter % self.outlierRstMax(col))
-                             if isNum and (col in fillOutliers) and fixUpperTail
-                             else '',
-                             ', '.join(fallbackStrs)),
+                                col,
+                                '' if lowerNull is None
+                                   else ' OR ({} <= {})'.format(col, lowerNull),
+                                '' if upperNull is None
+                                   else ' OR ({} >= {})'.format(col, upperNull),
+                                ' OR ({} < {})'.format(col, valFormatter % self.outlierRstMin(col))
+                                    if isNum and (col in fillOutliers) and fixLowerTail
+                                    else '',
+                                ' OR ({} > {})'.format(col, valFormatter % self.outlierRstMax(col))
+                                    if isNum and (col in fillOutliers) and fixUpperTail
+                                    else '',
+                                ', '.join(fallbackStrs)),
 
                              Nulls=colNulls,
                              NullFillValue=colFallBackVal)]
@@ -2518,25 +2520,16 @@ class ArrowADF(_ArrowADFABC):
                     _tsWindowClause = \
                     'WINDOW {}'.format(', '.join(tsWindowDefs))
 
-                if self._detPrePartitioned:
-                    _tsWindowClause = \
-                        _tsWindowClause.replace(
-                            'PARTITION BY {}, {}'.format(self._iCol, self._T_CHUNK_COL),
-                            'PARTITION BY {}'.format(self._iCol))
-
             else:
                 _tsWindowClause = ''
 
-            sqlTransformer = \
-                SQLTransformer(
-                    statement=
-                    'SELECT *, {} FROM __THIS__ {}'
-                        .format(
-                        ', '.join(
-                            '{} AS {}'.format(nullFillDetails['SQL'], nullFillCol)
-                            for col, (nullFillCol, nullFillDetails) in details.items()
-                            if col != '__TS_WINDOW_CLAUSE__'),
-                        _tsWindowClause))
+            sqlStatement = \
+                'SELECT *, {} FROM __THIS__ {}'.format(
+                    ', '.join(
+                        '{} AS {}'.format(nullFillDetails['SQL'], nullFillCol)
+                        for col, (nullFillCol, nullFillDetails) in details.items()
+                        if col != '__TS_WINDOW_CLAUSE__'),
+                    _tsWindowClause)
 
         if savePath and (savePath != loadPath):
             if verbose:
@@ -2544,14 +2537,10 @@ class ArrowADF(_ArrowADFABC):
                 self.stdout_logger.info(msg)
                 _tic = time.time()
 
-            fs.rm(
-                path=savePath,
-                hdfs=arimo.backend._ON_LINUX_CLUSTER_WITH_HDFS,
-                is_dir=True,
-                hadoop_home=arimo.backend._HADOOP_HOME)
-
-            sqlTransformer.save(   # *** NEED TO ENHANCE TO ALLOW OVERWRITING ***
-                path=savePath)
+            # *** TODO ***
+            json.dump(
+                sqlStatement,
+                open(savePath, 'w'))
 
             if verbose:
                 _toc = time.time()
@@ -2565,7 +2554,7 @@ class ArrowADF(_ArrowADFABC):
         adf._inheritCache(
             self,
             *(() if loadPath
-              else cols))
+                 else cols))
 
         adf._cache.reprSample = self._cache.reprSample
 
@@ -2573,8 +2562,8 @@ class ArrowADF(_ArrowADFABC):
             toc = time.time()
             self.stdout_logger.info(message + ' done!   <{:,.1f} m>'.format((toc - tic) / 60))
 
-        return ((adf, details, sqlTransformer)
-                if returnSQLTransformer
+        return ((adf, details, sqlStatement)
+                if returnSQLStatement
                 else (adf, details)) \
             if returnDetails \
             else adf
