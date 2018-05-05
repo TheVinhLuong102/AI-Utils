@@ -3500,9 +3500,9 @@ class SparkADF(_ADFABC):
 
                 - **fillOutliers** *(bool or list of column names, default = False)*: whether to treat detected out-lying values as ``NULL`` values to be replaced in the same way
 
-                - **loadPath** *(str)*: HDFS path to load existing ``NULL``-filling data transformations
+                - **loadPath** *(str)*: path to load existing ``NULL``-filling data transformations
 
-                - **savePath** *(str)*: HDFS path to save new ``NULL``-filling data transformations
+                - **savePath** *(str)*: path to save new ``NULL``-filling data transformations
         """
         _TS_FILL_METHODS = \
             'avg_partition', 'mean_partition', 'min_partition', 'max_partition', \
@@ -3552,7 +3552,7 @@ class SparkADF(_ADFABC):
 
         if loadPath:
             if verbose:
-                message = 'Loading NULL-Filling SQL Transformations from HDFS Paths {}...'.format(loadPath)
+                message = 'Loading NULL-Filling SQL Transformations from Paths "{}"...'.format(loadPath)
                 self.stdout_logger.info(message)
                 tic = time.time()
 
@@ -3780,7 +3780,7 @@ class SparkADF(_ADFABC):
 
         if savePath and (savePath != loadPath):
             if verbose:
-                msg = 'Saving NULL-Filling SQL Transformations to HDFS Paths {}...'.format(savePath)
+                msg = 'Saving NULL-Filling SQL Transformations to Path "{}"...'.format(savePath)
                 self.stdout_logger.info(msg)
                 _tic = time.time()
 
@@ -3851,9 +3851,9 @@ class SparkADF(_ADFABC):
 
                 - **assembleVec** *(str, default = '__X__')*: name of vector column to build from pre-processed features; *ignored* if loading existing ``prep`` pipeline from ``loadPath``
 
-                - **loadPath** *(str)*: HDFS path to load existing data transformations
+                - **loadPath** *(str)*: path to load existing data transformations
 
-                - **savePath** *(str)*: HDFS path to save new fitted data transformations
+                - **savePath** *(str)*: path to save new fitted data transformations
         """
         def sqlStdScl(sqlItem, mean, std):
             return '(({}) - {}) / {}'.format(sqlItem, mean, std)
@@ -3937,7 +3937,7 @@ class SparkADF(_ADFABC):
 
         if loadPath:
             if verbose:
-                message = 'Loading & Applying Data Transformations from HDFS Path {}...'.format(loadPath)
+                message = 'Loading & Applying Data Transformations from Path "{}"...'.format(loadPath)
                 self.stdout_logger.info(message)
                 tic = time.time()
 

@@ -115,10 +115,20 @@ class _ArrowADF__fillna__pandasDFTransform:
                 if upperNull is not None:
                     chks &= (series < upperNull)
 
+                nullFillValue = \
+                    series.loc[chks] \
+                        .median(
+                            axis='index',
+                            skipna=True,
+                            level=None)
+
+                if pandas.isnull(nullFillValue):
+                    nullFillValue = nullFill['NullFillValue']
+
                 pandasDF[_ADFABC._NULL_FILL_PREFIX + col + _ADFABC._PREP_SUFFIX] = \
-                    pandasDF[col].where(
+                    series.where(
                         cond=chks,
-                        other=nullFill['NullFillValue'],
+                        other=nullFillValue,
                         inplace=False,
                         axis=None,
                         level=None,
@@ -2260,10 +2270,12 @@ class ArrowADF(_ArrowADFABC):
 
                 - **fillOutliers** *(bool or list of column names, default = False)*: whether to treat detected out-lying values as ``NULL`` values to be replaced in the same way
 
-                - **loadPath** *(str)*: HDFS path to load existing ``NULL``-filling data transformations
+                - **loadPath** *(str)*: path to load existing ``NULL``-filling data transformations
 
-                - **savePath** *(str)*: HDFS path to save new ``NULL``-filling data transformations
+                - **savePath** *(str)*: path to save new ``NULL``-filling data transformations
         """
+        _NULL_FILL_SQL_STATEMENT_FILE_NAME = 'nullFillSQLStatement.json'
+
         _TS_FILL_METHODS = \
             'avg_partition', 'mean_partition', 'min_partition', 'max_partition', \
             'avg_before', 'mean_before', 'min_before', 'max_before', \
@@ -2312,13 +2324,13 @@ class ArrowADF(_ArrowADFABC):
 
         if loadPath:
             if verbose:
-                message = 'Loading NULL-Filling SQL Transformations from HDFS Paths {}...'.format(loadPath)
+                message = 'Loading NULL-Filling SQL Statement from Path "{}"...'.format(loadPath)
                 self.stdout_logger.info(message)
                 tic = time.time()
 
-            # *** TODO ***
             sqlStatement = \
-                json.load(open(loadPath, 'r'))
+                json.load(
+                    open(os.path.join(loadPath, _NULL_FILL_SQL_STATEMENT_FILE_NAME), 'r'))
 
             details = None
 
@@ -2533,40 +2545,40 @@ class ArrowADF(_ArrowADFABC):
 
         if savePath and (savePath != loadPath):
             if verbose:
-                msg = 'Saving NULL-Filling SQL Transformations to HDFS Paths {}...'.format(savePath)
+                msg = 'Saving NULL-Filling SQL Statement to Path "{}"...'.format(savePath)
                 self.stdout_logger.info(msg)
                 _tic = time.time()
 
-            # *** TODO ***
             json.dump(
                 sqlStatement,
-                open(savePath, 'w'))
+                open(os.path.join(savePath, _NULL_FILL_SQL_STATEMENT_FILE_NAME), 'w'))
 
             if verbose:
                 _toc = time.time()
                 self.stdout_logger.info(msg + ' done!   <{:,.1f} s>'.format(_toc - _tic))
 
-        adf = self(
-            sqlTransformer.transform,
-            inheritNRows=True,
-            **kwargs)
+        arrowADF = \
+            self.map(
+                mapper=_ArrowADF__fillna__pandasDFTransform(nullFillDetails=details),
+                inheritNRows=True,
+                **kwargs)
 
-        adf._inheritCache(
+        arrowADF._inheritCache(
             self,
             *(() if loadPath
                  else cols))
 
-        adf._cache.reprSample = self._cache.reprSample
+        arrowADF._cache.reprSample = self._cache.reprSample
 
         if verbose:
             toc = time.time()
             self.stdout_logger.info(message + ' done!   <{:,.1f} m>'.format((toc - tic) / 60))
 
-        return ((adf, details, sqlStatement)
+        return ((arrowADF, details, sqlStatement)
                 if returnSQLStatement
-                else (adf, details)) \
+                else (arrowADF, details)) \
             if returnDetails \
-            else adf
+          else arrowADF
 
     @_docstr_verbose
     def prep(self, *cols, **kwargs):
@@ -2600,9 +2612,9 @@ class ArrowADF(_ArrowADFABC):
 
                 - **assembleVec** *(str, default = '__X__')*: name of vector column to build from pre-processed features; *ignored* if loading existing ``prep`` pipeline from ``loadPath``
 
-                - **loadPath** *(str)*: HDFS path to load existing data transformations
+                - **loadPath** *(str)*: path to load existing data transformations
 
-                - **savePath** *(str)*: HDFS path to save new fitted data transformations
+                - **savePath** *(str)*: path to save new fitted data transformations
         """
         def sqlStdScl(sqlItem, mean, std):
             return '(({}) - {}) / {}'.format(sqlItem, mean, std)
@@ -2686,7 +2698,7 @@ class ArrowADF(_ArrowADFABC):
 
         if loadPath:
             if verbose:
-                message = 'Loading & Applying Data Transformations from HDFS Path {}...'.format(loadPath)
+                message = 'Loading & Applying Data Transformations from Path "{}"...'.format(loadPath)
                 self.stdout_logger.info(message)
                 tic = time.time()
 
