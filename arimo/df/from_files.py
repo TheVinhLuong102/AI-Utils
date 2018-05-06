@@ -95,6 +95,53 @@ class _ArrowADFABC(_ADFABC):
 
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
+class _ArrowADF__castType__pandasDFTransform:
+    def __init__(self, col, asType, asCol=None):
+        self.col = col
+        self.asType = asType
+        self.asCol = asCol
+
+    def __call__(self, pandasDF):
+        series = \
+            pandasDF[self.col].astype(
+                dtype=self.asType,
+                copy=False,
+                errors='raise')
+
+        if self.asCol:
+            pandasDF[self.asCol] = series
+
+        else:
+            pandasDF[self.col] = series
+
+        return pandasDF
+
+
+# class with __call__ to serve as pickle-able function for use in multi-processing
+# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
+class _ArrowADF__encodeStr__pandasDFTransform:
+    def __init__(self, col, strs, asCol=None):
+        self.col = col
+        self.strs = strs
+        self.asCol = asCol
+
+    def __call__(self, pandasDF):
+        series = \
+            pandasDF[self.col] \
+            .loc[pandas.notnull(pandasDF[self.col])] \
+            .map(lambda x: self.strs.index(x))
+
+        if self.asCol:
+            pandasDF[self.asCol] = series
+
+        else:
+            pandasDF[self.col] = series
+
+        return pandasDF
+
+
+# class with __call__ to serve as pickle-able function for use in multi-processing
+# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowADF__fillna__pandasDFTransform:
     def __init__(self, nullFillDetails):
         self.nullFillDetails = nullFillDetails
@@ -456,15 +503,14 @@ class _ArrowADF__gen:
 class ArrowADF(_ArrowADFABC):
     # "inplace-able" methods
     _INPLACE_ABLE = \
+        'filter', \
+        'map', \
         'rename', \
-        'sample', \
         '_subset', \
         'drop', \
         'fillna', \
-        'filter', \
         'filterByPartitionKeys', \
-        'prep', \
-        'transform'
+        'prep',
 
     _CACHE = {}
     

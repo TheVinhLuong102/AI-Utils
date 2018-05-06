@@ -11,17 +11,20 @@ _STR_CLASSES = \
     if six.PY2 \
     else str
 
+from sklearn.preprocessing import LabelEncoder
+
 from pyspark.ml import PipelineModel
 from pyspark.ml.feature import StringIndexer, VectorAssembler
 import pyspark.sql
 
 import arimo.backend
-from arimo.df.from_files import ArrowADF
+from arimo.df.from_files import ArrowADF, _ArrowADF__castType__pandasDFTransform, _ArrowADF__encodeStr__pandasDFTransform
 from arimo.df.spark import SparkADF
 from arimo.df.spark_from_files import ArrowSparkADF
 import arimo.eval.metrics
 from arimo.util import clean_uuid, Namespace
 from arimo.util.iterables import to_iterable
+from arimo.util.types.arrow import is_boolean, is_float, is_num, is_string, string
 from arimo.util.types.spark_sql import _BOOL_TYPE, _FLOAT_TYPES, _INT_TYPES, _NUM_TYPES, _STR_TYPE
 import arimo.debug
 
@@ -117,115 +120,55 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                         path=df, **kwargs)
 
         if __train__:
-            assert isinstance(adf, ArrowADF)
-            
-        else:
-            assert isinstance(adf, SparkADF)
-
-            if __from_ensemble__ or __from_ppp__:
-                    assert adf.alias
-
-            else:
-                adf_uuid = clean_uuid(uuid.uuid4())
-
-                adf.alias = \
-                    '{}__{}__{}'.format(
-                        self.params._uuid,
-                        __mode__,
-                        adf_uuid)
-
-        if __train__ or __eval__:
-            assert self._INT_LABEL_COL not in adf.columns
+            assert isinstance(adf, ArrowADF) \
+               and (self._INT_LABEL_COL not in adf.columns)
 
             # then convert target variable column if necessary
             label_col_type = adf.type(self.params.data.label.var)
 
-            _spark_model = ('spark.ml' in self.params.model.factory.name)
-
-            if (label_col_type.startswith('decimal') or (label_col_type in _FLOAT_TYPES)) \
-                    and isinstance(self, ClassifEvalMixIn):
-                adf('STRING({0}) AS {0}'.format(self.params.data.label.var),
-                    *(col for col in adf.columns
-                          if col != self.params.data.label.var),
-                    inheritCache=True,
+            if is_float(label_col_type) and isinstance(self, ClassifEvalMixIn):
+                adf.map(
+                    mapper=_ArrowADF__castType__pandasDFTransform(
+                            col=self.params.data.label.var,
+                            asType=str,
+                            asCol=None),
                     inheritNRows=True,
                     inplace=True)
 
-                label_col_type = _STR_TYPE
+                label_col_type = string()
 
-            if label_col_type == _BOOL_TYPE:
+            if is_boolean(label_col_type):
                 if __first_train__:
                     self.params.data.label._int_var = self._INT_LABEL_COL
 
-                    if _spark_model:
-                        self.params.model.factory.labelCol = self._INT_LABEL_COL
-
-                adf('*',
-                    'INT({}) AS {}'.format(
-                        self.params.data.label.var,
-                        self.params.data.label._int_var),
-                    inheritCache=True,
+                adf.map(
+                    mapper=_ArrowADF__castType__pandasDFTransform(
+                            col=self.params.data.label.var,
+                            asType=int,
+                            asCol=self.params.data.label._int_var),
                     inheritNRows=True,
                     inplace=True)
 
-            elif label_col_type == _STR_TYPE:
+            elif is_string(label_col_type):
                 if __first_train__:
                     self.params.data.label._int_var = self._INT_LABEL_COL
 
-                    if _spark_model:
-                        self.params.model.factory.labelCol = self._INT_LABEL_COL
+                    label_series = adf[self.params.data.label.var].reduce()
 
                     self.params.data.label._strings = \
-                        [s for s in
-                            StringIndexer(
-                                inputCol=self.params.data.label.var,
-                                outputCol=self.params.data.label._int_var,
-                                handleInvalid='skip'   # filter out rows with invalid data (just in case there are NULL labels)
-                                    # 'error': throw an error
-                                    # 'keep': put invalid data in a special additional bucket, at index numLabels
-                            ).fit(dataset=adf).labels
-                         if pandas.notnull(s)]
+                        LabelEncoder().fit(
+                            label_series.loc[pandas.notnull(label_series)]) \
+                        .classes_.tolist()
 
-                adf('*',
-                    '(CASE {} ELSE NULL END) AS {}'.format(
-                        ' '.join(
-                            "WHEN {} = '{}' THEN {}".format(
-                                self.params.data.label.var, label, i)
-                            for i, label in enumerate(self.params.data.label._strings)),
-                        self.params.data.label._int_var),
-                    inheritCache=True,
+                adf.map(
+                    mapper=_ArrowADF__encodeStr__pandasDFTransform(
+                            col=self.params.data.label.var,
+                            strs=self.params.data.label._strings,
+                            asCol=self.params.data.label._int_var),
                     inheritNRows=True,
                     inplace=True)
 
-            elif (label_col_type in _INT_TYPES) and __first_train__:
-                self.params.data.label._int_var = self.params.data.label.var
-
-                if _spark_model:
-                    self.params.model.factory.labelCol = self.params.data.label.var
-
-            elif _spark_model and __first_train__:
-                self.params.model.factory.labelCol = self.params.data.label.var
-
-            if _spark_model:
-                self.params.model.factory.featuresCol = self.params.data._prep_vec_col
-
-                if self.params.model.factory.name in \
-                        {'pyspark.ml.classification.LogisticRegression',
-                         'pyspark.ml.classification.RandomForestClassifier'}:
-                    self.params.model.factory.probabilityCol = \
-                        self.params.model.score.raw_score_col_prefix + self.params.data.label.var
-
-                elif self.params.model.factory.name in \
-                        {'pyspark.ml.classification.GBTClassifier',
-                         'pyspark.ml.regression.GBTRegressor',
-                         'pyspark.ml.regression.LinearRegression',
-                         'pyspark.ml.regression.RandomForestRegressor',
-                         'pyspark.ml.regression.GeneralizedLinearRegression'}:
-                    self.params.model.factory.predictionCol = \
-                        self.params.model.score.raw_score_col_prefix + self.params.data.label.var
-
-            if __train__ and (label_col_type.startswith('decimal') or (label_col_type in _NUM_TYPES)) \
-                    and isinstance(self, RegrEvalMixIn) and self.params.data.label.excl_outliers:
+            if is_num(label_col_type) and isinstance(self, RegrEvalMixIn) and self.params.data.label.excl_outliers:
                 assert self.params.data.label.outlier_tails \
                    and self.params.data.label.outlier_tail_proportion \
                    and (self.params.data.label.outlier_tail_proportion < .5)
@@ -249,22 +192,19 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                                 adf.quantile(
                                     self.params.data.label.var,
                                     q=(self.params.data.label.outlier_tail_proportion,
-                                       1 - self.params.data.label.outlier_tail_proportion),
-                                    relativeError=self.params.data.label.outlier_tail_proportion / 3)
+                                       1 - self.params.data.label.outlier_tail_proportion))
 
                         else:
                             self.params.data.label.lower_outlier_threshold = \
                                 adf.quantile(
                                     self.params.data.label.var,
-                                    q=self.params.data.label.outlier_tail_proportion,
-                                    relativeError=self.params.data.label.outlier_tail_proportion / 3)
+                                    q=self.params.data.label.outlier_tail_proportion)
 
                     elif _calc_upper_outlier_threshold:
                         self.params.data.label.upper_outlier_threshold = \
                             adf.quantile(
                                 self.params.data.label.var,
-                                q=1 - self.params.data.label.outlier_tail_proportion,
-                                relativeError=self.params.data.label.outlier_tail_proportion / 3)
+                                q=1 - self.params.data.label.outlier_tail_proportion)
 
                 _lower_outlier_threshold_applicable = \
                     pandas.notnull(self.params.data.label.lower_outlier_threshold)
@@ -288,25 +228,65 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                             msg='*** DATA PREP FOR TRAIN: CONDITION ROBUST TO LABEL OUTLIERS: {} {}... ***\n'
                                 .format(self.params.data.label.var, _outlier_robust_condition))
 
-                    if isinstance(adf, SparkADF):
-                        adf('IF({0} {1}, {0}, NULL) AS {0}'
-                                .format(
-                                    self.params.data.label.var,
-                                    _outlier_robust_condition),
-                            *(col for col in adf.columns
-                                  if col != self.params.data.label.var),
-                            inheritCache=True,
-                            inheritNRows=True,
-                            inplace=True)
+        else:
+            assert isinstance(adf, SparkADF)
 
-            if isinstance(adf, SparkADF):
+            if __from_ensemble__ or __from_ppp__:
+                assert adf.alias
+
+            else:
+                adf_uuid = clean_uuid(uuid.uuid4())
+
+                adf.alias = \
+                    '{}__{}__{}'.format(
+                        self.params._uuid,
+                        __mode__,
+                        adf_uuid)
+
+            if __eval__:
+                assert self._INT_LABEL_COL not in adf.columns
+
+                # then convert target variable column if necessary
+                label_col_type = adf.type(self.params.data.label.var)
+
+                if (label_col_type.startswith('decimal') or (label_col_type in _FLOAT_TYPES)) \
+                        and isinstance(self, ClassifEvalMixIn):
+                    adf('STRING({0}) AS {0}'.format(self.params.data.label.var),
+                        *(col for col in adf.columns
+                              if col != self.params.data.label.var),
+                        inheritCache=True,
+                        inheritNRows=True,
+                        inplace=True)
+
+                    label_col_type = _STR_TYPE
+
+                if label_col_type == _BOOL_TYPE:
+                    if __first_train__:
+                        self.params.data.label._int_var = self._INT_LABEL_COL
+
+                    adf('*',
+                        'INT({}) AS {}'.format(
+                            self.params.data.label.var,
+                            self.params.data.label._int_var),
+                        inheritCache=True,
+                        inheritNRows=True,
+                        inplace=True)
+
+                elif label_col_type == _STR_TYPE:
+                    adf('*',
+                        '(CASE {} ELSE NULL END) AS {}'.format(
+                            ' '.join(
+                                "WHEN {} = '{}' THEN {}".format(
+                                    self.params.data.label.var, label, i)
+                                for i, label in enumerate(self.params.data.label._strings)),
+                            self.params.data.label._int_var),
+                        inheritCache=True,
+                        inheritNRows=True,
+                        inplace=True)
+
                 adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
 
-        if __from_ensemble__ or __from_ppp__:
-            if __vectorize__:
-                assert self.params.data._prep_vec_col in adf.columns
-
-        else:
+        if not __from_ppp__:
             # Prepare data into model-able vectors
             if __train__:
                 if __first_train__:
@@ -324,7 +304,8 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                             (to_iterable(self.params.data.pred_vars_excl, iterable_type=list)
                              if self.params.data.pred_vars_excl
                              else []) +
-                            [self.params.data.label.var])
+                            [self.params.data.label.var,
+                             self.params.data.label._int_var])
 
                     data_transforms_load_path = None
                     data_transforms_save_path = self.data_transforms_dir
@@ -383,7 +364,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                         adf_uuid,
                         self._PREP_ADF_ALIAS_SUFFIX))
 
-            if __train__ or __eval__:
+            if __train__
                 if __first_train__:
                     self.params.data.pred_vars = \
                         tuple(self.params.data.pred_vars
@@ -418,6 +399,16 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                                if cat_orig_to_prep_col_map['__OHE__']
                                else len(self.params.data._cat_prep_cols)))
 
+                adf = adf[
+                    [self.params.data.label.var
+                     if self.params.data.label._int_var is None
+                     else self.params.data.label._int_var] +
+                    ([] if self.params.data.id_col in adf.indexCols
+                        else [self.params.data.id_col]) +
+                    list(adf.indexCols + adf.tAuxCols +
+                         self.params.data._cat_prep_cols + self.params.data._num_prep_cols)]
+
+            elif __eval__:
                 adf(self.params.data.label.var
                         if self.params.data.label._int_var is None
                         else self.params.data.label._int_var,
