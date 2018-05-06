@@ -585,13 +585,7 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
 
                 inplace=False,
 
-                verbose=verbose,
-
-                alias='{}__{}__{}{}'.format(
-                    self.params._uuid,
-                    __mode__,
-                    adf_uuid,
-                    self._PREP_ADF_ALIAS_SUFFIX))
+                verbose=verbose)
 
         if __train__:
             component_labeled_adfs = Namespace()
@@ -645,6 +639,13 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
             return component_labeled_adfs
 
         else:
+            adf.alias = \
+                '{}__{}__{}{}'.format(
+                    self.params._uuid,
+                    __mode__,
+                    adf_uuid,
+                    self._PREP_ADF_ALIAS_SUFFIX)
+            
             if __vectorize__:
                 vector_assemblers = []
                 vector_cols = []
