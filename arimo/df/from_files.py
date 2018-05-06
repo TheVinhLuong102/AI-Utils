@@ -3241,19 +3241,26 @@ class ArrowADF(_ArrowADFABC):
     # ITERATIVE GENERATION / SAMPLING
 
     def gen(self, *args, **kwargs):
+        if self.fromS3:
+            aws_access_key_id=self._srcArrowDS.fs.fs.key
+            aws_secret_access_key=self._srcArrowDS.fs.fs.secret
+
+        else:
+            aws_access_key_id = aws_secret_access_key = None
+
         return _ArrowADF__gen(
-            args=args,
-            piecePaths=kwargs.get('piecePaths', self.piecePaths),
-            aws_access_key_id=self._srcArrowDS.fs.fs.key, aws_secret_access_key=self._srcArrowDS.fs.fs.secret,
-            iCol=self._iCol, tCol=self._tCol,
-            possibleFeatureTAuxCols=self.possibleFeatureTAuxCols,
-            contentCols=self.contentCols,
-            pandasDFTransforms=self._mappers,
-            filterConditions=kwargs.get('filter', {}),
-            n=kwargs.get('n', 512),
-            sampleN=kwargs.get('sampleN', 10 ** 5),
-            anon=kwargs.get('anon', True),
-            n_threads=kwargs.get('n_threads', 1))
+                args=args,
+                piecePaths=kwargs.get('piecePaths', self.piecePaths),
+                aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
+                iCol=self._iCol, tCol=self._tCol,
+                possibleFeatureTAuxCols=self.possibleFeatureTAuxCols,
+                contentCols=self.contentCols,
+                pandasDFTransforms=self._mappers,
+                filterConditions=kwargs.get('filter', {}),
+                n=kwargs.get('n', 512),
+                sampleN=kwargs.get('sampleN', 10 ** 5),
+                anon=kwargs.get('anon', True),
+                n_threads=kwargs.get('n_threads', 1))
 
     # ****
     # MISC
