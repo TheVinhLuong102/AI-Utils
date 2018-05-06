@@ -364,7 +364,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                         adf_uuid,
                         self._PREP_ADF_ALIAS_SUFFIX))
 
-            if __train__
+            if __train__:
                 if __first_train__:
                     self.params.data.pred_vars = \
                         tuple(self.params.data.pred_vars
