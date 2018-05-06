@@ -95,6 +95,40 @@ class _ArrowADFABC(_ADFABC):
 
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
+class _ArrowADF__getattr__pandasDFTransform:
+    def __init__(self, col):
+        self.col = col
+
+    def __call__(self, pandasDF):
+        return getattr(pandasDF, self.col)
+
+
+# class with __call__ to serve as pickle-able function for use in multi-processing
+# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
+class _ArrowADF__getitem__pandasDFTransform:
+    def __init__(self, item):
+        self.item = item
+
+    def __call__(self, pandasDF):
+        return pandasDF[self.item]
+
+
+# class with __call__ to serve as pickle-able function for use in multi-processing
+# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
+class _ArrowADF__drop__pandasDFTransform:
+    def __init__(self, cols):
+        self.cols = list(cols)
+
+    def __call__(self, pandasDF):
+        return pandasDF.drop(
+            columns=self.cols,
+            level=None,
+            inplace=False,
+            errors='ignore')
+
+
+# class with __call__ to serve as pickle-able function for use in multi-processing
+# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowADF__castType__pandasDFTransform:
     def __init__(self, col, asType, asCol=None):
         self.col = col
@@ -1305,20 +1339,15 @@ class ArrowADF(_ArrowADFABC):
         assert col in self.columns
 
         return self.map(
-                mapper=lambda pandasDF: pandasDF[col])
+                mapper=_ArrowADF__getattr__pandasDFTransform(col=col))
 
     def __getitem__(self, item):
         return self.map(
-                mapper=lambda pandasDF: pandasDF[item])
+                mapper=_ArrowADF__getitem__pandasDFTransform(item=item))
 
     def drop(self, *cols, **kwargs):
         return self.map(
-                mapper=lambda pandasDF:
-                    pandasDF.drop(
-                        columns=list(cols),
-                        level=None,
-                        inplace=False,
-                        errors='ignore'),
+                mapper=_ArrowADF__drop__pandasDFTransform(cols=cols),
                 **kwargs)
 
     def rename(self, **kwargs):
