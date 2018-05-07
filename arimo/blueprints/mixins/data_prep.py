@@ -126,7 +126,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
             # then convert target variable column if necessary
             label_col_type = adf.type(self.params.data.label.var)
 
-            _adf = adf.copy(resetMappers=True)
+            sample_label_series = None
 
             if is_float(label_col_type) and isinstance(self, ClassifEvalMixIn):
                 adf.map(
@@ -155,13 +155,21 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                 if __first_train__:
                     self.params.data.label._int_var = self._INT_LABEL_COL
 
-                    label_series = \
-                        _adf[self.params.data.label.var] \
-                        .reduce(cols=self.params.data.label.var)
+                    if sample_label_series is None:
+                        sample_label_series = \
+                            adf.copy(resetMappers=True) \
+                                .sample(
+                                    self.params.data.label.var,
+                                    n=10 ** 8,   # 1mil = 68MB
+                                )[self.params.data.label.var]
+
+                        sample_label_series = \
+                            sample_label_series.loc[
+                                pandas.notnull(sample_label_series)]
 
                     self.params.data.label._strings = \
-                        LabelEncoder().fit(
-                            label_series.loc[pandas.notnull(label_series)]) \
+                        LabelEncoder() \
+                        .fit(sample_label_series) \
                         .classes_.tolist()
 
                 adf.map(
@@ -190,25 +198,49 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                         pandas.isnull(self.params.data.label.upper_outlier_threshold)
 
                     if _calc_lower_outlier_threshold:
+                        if sample_label_series is None:
+                            sample_label_series = \
+                                adf.copy(resetMappers=True) \
+                                    .sample(
+                                    self.params.data.label.var,
+                                    n=10 ** 8,   # 1mil = 68MB
+                                )[self.params.data.label.var]
+
+                            sample_label_series = \
+                                sample_label_series.loc[
+                                    pandas.notnull(sample_label_series)]
+
                         if _calc_upper_outlier_threshold:
                             self.params.data.label.lower_outlier_threshold, \
                             self.params.data.label.upper_outlier_threshold = \
-                                _adf.quantile(
-                                    self.params.data.label.var,
+                                sample_label_series.quantile(
                                     q=(self.params.data.label.outlier_tail_proportion,
-                                       1 - self.params.data.label.outlier_tail_proportion))
+                                       1 - self.params.data.label.outlier_tail_proportion),
+                                    interpolation='linear')
 
                         else:
                             self.params.data.label.lower_outlier_threshold = \
-                                _adf.quantile(
-                                    self.params.data.label.var,
-                                    q=self.params.data.label.outlier_tail_proportion)
+                                sample_label_series.quantile(
+                                    q=self.params.data.label.outlier_tail_proportion,
+                                    interpolation='linear')
 
                     elif _calc_upper_outlier_threshold:
+                        if sample_label_series is None:
+                            sample_label_series = \
+                                adf.copy(resetMappers=True) \
+                                    .sample(
+                                    self.params.data.label.var,
+                                    n=10 ** 8,   # 1mil = 68MB
+                                )[self.params.data.label.var]
+
+                            sample_label_series = \
+                                sample_label_series.loc[
+                                    pandas.notnull(sample_label_series)]
+
                         self.params.data.label.upper_outlier_threshold = \
-                            _adf.quantile(
-                                self.params.data.label.var,
-                                q=1 - self.params.data.label.outlier_tail_proportion)
+                            sample_label_series.quantile(
+                                q=1 - self.params.data.label.outlier_tail_proportion,
+                                interpolation='linear')
 
                 _lower_outlier_threshold_applicable = \
                     pandas.notnull(self.params.data.label.lower_outlier_threshold)
