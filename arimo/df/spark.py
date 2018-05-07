@@ -2889,7 +2889,7 @@ class SparkADF(_ADFABC):
             q = kwargs.get('q', .5)
             _multiQs = isinstance(q, (list, tuple))
 
-            relErr = kwargs.get('relativeError', 0)
+            relErr = kwargs.get('relativeError', 0.)
 
             if self.count(col):
                 result = \
@@ -3012,7 +3012,7 @@ class SparkADF(_ADFABC):
                             .quantile(
                                 col,
                                 q=.5,
-                                relativeError=0)
+                                relativeError=0.)
 
                     assert isinstance(result, (float, int)), \
                         '*** "{}" SAMPLE MEDIAN = {} ***'.format(col, result)
@@ -3131,7 +3131,7 @@ class SparkADF(_ADFABC):
                             .quantile(
                                 col,
                                 q=self._outlierTailProportion[col],
-                                relativeError=0)
+                                relativeError=0.)
 
                     sampleMin = self.sampleStat(col, stat='min')
                     sampleMedian = self.sampleMedian(col)
@@ -3192,7 +3192,7 @@ class SparkADF(_ADFABC):
                             .quantile(
                                 col,
                                 q=1 - self._outlierTailProportion[col],
-                                relativeError=0)
+                                relativeError=0.)
 
                     sampleMax = self.sampleStat(col, stat='max')
                     sampleMedian = self.sampleMedian(col)
@@ -3255,7 +3255,7 @@ class SparkADF(_ADFABC):
                             .approxQuantile(
                                 col=col,
                                 probabilities=(.5,),
-                                relativeError=0)[0]
+                                relativeError=0.)[0]
 
                     assert isinstance(result, (float, int)), \
                         '*** "{}" OUTLIER-RESISTANT MEDIAN = {} ***'.format(col, result)
@@ -3390,7 +3390,7 @@ class SparkADF(_ADFABC):
                                 .quantile(
                                     col,
                                     q=tuple(quantileProbsToQuery),
-                                    relativeError=0)
+                                    relativeError=0.)
 
                     sampleMin, outlierRstMin, sampleMedian, outlierRstMax, sampleMax = quantilesOfInterest
 
