@@ -3337,19 +3337,19 @@ class SparkADF(_ADFABC):
 
                     quantilesOfInterest = \
                         pandas.Series(
-                            index=(0,
+                            index=(0.,
                                    outlierTailProportion,
                                    .5,
                                    1 - outlierTailProportion,
-                                   1))
+                                   1.))
                     quantileProbsToQuery = []
 
                     sampleMin = self._cache.sampleMin.get(col)
                     if sampleMin:
-                        quantilesOfInterest[0] = sampleMin
+                        quantilesOfInterest[0.] = sampleMin
                         toCacheSampleMin = False
                     else:
-                        quantileProbsToQuery.append(0)
+                        quantileProbsToQuery.append(0.)
                         toCacheSampleMin = True
 
                     outlierRstMin = self._cache.outlierRstMin.get(col)
@@ -3378,7 +3378,7 @@ class SparkADF(_ADFABC):
 
                     sampleMax = self._cache.sampleMax.get(col)
                     if sampleMax:
-                        quantilesOfInterest[1] = sampleMax
+                        quantilesOfInterest[1.] = sampleMax
                         toCacheSampleMax = False
                     else:
                         quantileProbsToQuery.append(1.)
