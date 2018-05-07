@@ -153,7 +153,9 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                 if __first_train__:
                     self.params.data.label._int_var = self._INT_LABEL_COL
 
-                    label_series = adf[self.params.data.label.var].reduce()
+                    label_series = \
+                        adf[self.params.data.label.var] \
+                        .reduce(cols=self.params.data.label.var)
 
                     self.params.data.label._strings = \
                         LabelEncoder().fit(

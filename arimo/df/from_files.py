@@ -1760,8 +1760,10 @@ class ArrowADF(_ArrowADFABC):
 
                     self._cache.count[col] = result = \
                         self[col] \
-                            .map(mapper=lambda series: len(series.loc[pandas.notnull(series)])) \
-                            .reduce(reducer=sum)
+                        .map(mapper=lambda series: len(series.loc[pandas.notnull(series)])) \
+                        .reduce(
+                            cols=col,
+                            reducer=sum)
 
                     assert isinstance(result, int), \
                         '*** "{}" COUNT = {} ***'.format(col, result)
@@ -1862,13 +1864,19 @@ class ArrowADF(_ArrowADFABC):
 
     @lru_cache()
     def quantile(self, *cols, **kwargs):
-        return Namespace(**
+        if len(cols) > 1:
+            return Namespace(**
                 {col: self.approxQuantile(col, **kwargs)
                  for col in cols}) \
-            if len(cols) > 1 \
-          else self[cols[0]].reduce().quantile(
-                q=kwargs.get('q', .5),
-                interpolation='linear')
+
+        else:
+            col = cols[0]
+
+            return self[col] \
+                .reduce(cols=col) \
+                .quantile(
+                    q=kwargs.get('q', .5),
+                    interpolation='linear')
 
     @_docstr_verbose
     def sampleStat(self, *cols, **kwargs):
