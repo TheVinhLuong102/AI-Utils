@@ -134,6 +134,7 @@ class SparkADF(_ADFABC):
     _T_ORD_IN_CHUNK_COL = '__tOrd_inChunk__'
 
     _T_REL_AUX_COLS = _ADFABC._T_ORD_COL, _T_CHUNK_COL, _T_ORD_IN_CHUNK_COL, _ADFABC._T_DELTA_COL
+    _T_AUX_COLS = _T_REL_AUX_COLS + _ADFABC._T_COMPONENT_AUX_COLS
 
     # default ordered chunk size for time-series SparkADFs
     _DEFAULT_T_CHUNK_LEN = 1000
