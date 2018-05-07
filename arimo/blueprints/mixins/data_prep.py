@@ -126,6 +126,8 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
             # then convert target variable column if necessary
             label_col_type = adf.type(self.params.data.label.var)
 
+            _adf = adf.copy(resetMappers=True)
+
             if is_float(label_col_type) and isinstance(self, ClassifEvalMixIn):
                 adf.map(
                     mapper=_ArrowADF__castType__pandasDFTransform(
@@ -154,7 +156,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                     self.params.data.label._int_var = self._INT_LABEL_COL
 
                     label_series = \
-                        adf[self.params.data.label.var] \
+                        _adf[self.params.data.label.var] \
                         .reduce(cols=self.params.data.label.var)
 
                     self.params.data.label._strings = \
@@ -191,20 +193,20 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                         if _calc_upper_outlier_threshold:
                             self.params.data.label.lower_outlier_threshold, \
                             self.params.data.label.upper_outlier_threshold = \
-                                adf.quantile(
+                                _adf.quantile(
                                     self.params.data.label.var,
                                     q=(self.params.data.label.outlier_tail_proportion,
                                        1 - self.params.data.label.outlier_tail_proportion))
 
                         else:
                             self.params.data.label.lower_outlier_threshold = \
-                                adf.quantile(
+                                _adf.quantile(
                                     self.params.data.label.var,
                                     q=self.params.data.label.outlier_tail_proportion)
 
                     elif _calc_upper_outlier_threshold:
                         self.params.data.label.upper_outlier_threshold = \
-                            adf.quantile(
+                            _adf.quantile(
                                 self.params.data.label.var,
                                 q=1 - self.params.data.label.outlier_tail_proportion)
 

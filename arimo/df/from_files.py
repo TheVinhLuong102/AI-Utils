@@ -822,7 +822,34 @@ class ArrowADF(_ArrowADFABC):
         self._cache = arrowADF._cache
 
     def copy(self, **kwargs):
-        return self
+        resetMappers = kwargs.pop('resetMappers')
+
+        if self.fromS3:
+            aws_access_key_id = self._srcArrowDS.fs.fs.key
+            aws_secret_access_key = self._srcArrowDS.fs.fs.secret
+
+        else:
+            aws_access_key_id = aws_secret_access_key = None
+
+        return ArrowADF(
+                path=self.path,
+                aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
+
+                iCol=self._iCol, tCol=self._tCol,
+
+                _mappers=[]
+                    if resetMappers
+                    else self._mappers,
+
+                reprSampleMinNPieces=self._reprSampleMinNPieces,
+                reprSampleSize=self._reprSampleSize,
+
+                minNonNullProportion=self._minNonNullProportion,
+                outlierTailProportion=self._outlierTailProportion,
+                maxNCats=self._maxNCats,
+                minProportionByMaxNCats=self._minProportionByMaxNCats,
+
+                **kwargs)
 
     # ***************
     # PYTHON STR/REPR
