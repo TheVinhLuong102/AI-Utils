@@ -367,6 +367,7 @@ class _ArrowADF__gen:
             self, args,
             piecePaths,
             aws_access_key_id, aws_secret_access_key,
+            partitionKVs,
             iCol, tCol,
             possibleFeatureTAuxCols, contentCols,
             pandasDFTransforms,
@@ -390,6 +391,8 @@ class _ArrowADF__gen:
                         else (x[:-2], secondLastItem, lastItem)
 
         self.piecePaths = list(piecePaths)
+
+        self.partitionKVs = partitionKVs
 
         self.n_threads = n_threads
 
@@ -478,6 +481,9 @@ class _ArrowADF__gen:
                         .to_batches(chunksize=self.sampleN)) \
                     .to_pandas(
                         nthreads=self.n_threads)
+
+            for k, v in self.partitionKVs[piecePath].items():
+                chunkPandasDF[k] = v
 
             if self.tCol:
                 chunkPandasDF = \
@@ -3277,10 +3283,14 @@ class ArrowADF(_ArrowADFABC):
         else:
             aws_access_key_id = aws_secret_access_key = None
 
+        piecePaths = kwargs.get('piecePaths', self.piecePaths)
+
         return _ArrowADF__gen(
                 args=args,
-                piecePaths=kwargs.get('piecePaths', self.piecePaths),
+                piecePaths=piecePaths,
                 aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
+                partitionKVs={piecePath: self._PIECE_CACHES[piecePath].partitionKVs
+                              for piecePath in piecePaths},
                 iCol=self._iCol, tCol=self._tCol,
                 possibleFeatureTAuxCols=self.possibleFeatureTAuxCols,
                 contentCols=self.contentCols,

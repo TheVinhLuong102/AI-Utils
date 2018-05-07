@@ -947,6 +947,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 args=args,
                 piecePaths=kwargs.get('piecePaths', self.piecePaths),
                 aws_access_key_id=self._srcArrowDS.fs.fs.key, aws_secret_access_key=self._srcArrowDS.fs.fs.secret,
+                partitionKVs={},   # *** TODO ***
                 iCol=self._iCol, tCol=self._tCol,
                 possibleFeatureTAuxCols=self.possibleFeatureTAuxCols,
                 contentCols=self.contentCols,
