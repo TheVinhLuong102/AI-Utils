@@ -3349,7 +3349,7 @@ class SparkADF(_ADFABC):
                         quantilesOfInterest[0] = sampleMin
                         toCacheSampleMin = False
                     else:
-                        quantileProbsToQuery += [0.]
+                        quantileProbsToQuery.append(0)
                         toCacheSampleMin = True
 
                     outlierRstMin = self._cache.outlierRstMin.get(col)
@@ -3357,7 +3357,7 @@ class SparkADF(_ADFABC):
                         quantilesOfInterest[outlierTailProportion] = outlierRstMin
                         toCacheOutlierRstMin = False
                     else:
-                        quantileProbsToQuery += [outlierTailProportion]
+                        quantileProbsToQuery.append(outlierTailProportion)
                         toCacheOutlierRstMin = True
 
                     sampleMedian = self._cache.sampleMedian.get(col)
@@ -3365,7 +3365,7 @@ class SparkADF(_ADFABC):
                         quantilesOfInterest[.5] = sampleMedian
                         toCacheSampleMedian = False
                     else:
-                        quantileProbsToQuery += [.5]
+                        quantileProbsToQuery.append(.5)
                         toCacheSampleMedian = True
 
                     outlierRstMax = self._cache.outlierRstMax.get(col)
@@ -3373,7 +3373,7 @@ class SparkADF(_ADFABC):
                         quantilesOfInterest[1 - outlierTailProportion] = outlierRstMax
                         toCacheOutlierRstMax = False
                     else:
-                        quantileProbsToQuery += [1 - outlierTailProportion]
+                        quantileProbsToQuery.append(1 - outlierTailProportion)
                         toCacheOutlierRstMax = True
 
                     sampleMax = self._cache.sampleMax.get(col)
@@ -3381,7 +3381,7 @@ class SparkADF(_ADFABC):
                         quantilesOfInterest[1] = sampleMax
                         toCacheSampleMax = False
                     else:
-                        quantileProbsToQuery += [1.]
+                        quantileProbsToQuery.append(1.)
                         toCacheSampleMax = True
 
                     if quantileProbsToQuery:
@@ -3389,7 +3389,7 @@ class SparkADF(_ADFABC):
                             self.reprSample \
                                 .quantile(
                                     col,
-                                    q=quantileProbsToQuery,
+                                    q=tuple(quantileProbsToQuery),
                                     relativeError=0)
 
                     sampleMin, outlierRstMin, sampleMedian, outlierRstMax, sampleMax = quantilesOfInterest
