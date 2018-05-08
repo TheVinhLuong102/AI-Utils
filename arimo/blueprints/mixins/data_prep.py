@@ -24,7 +24,7 @@ from arimo.df.spark_from_files import ArrowSparkADF
 import arimo.eval.metrics
 from arimo.util import clean_uuid, Namespace
 from arimo.util.iterables import to_iterable
-from arimo.util.types.arrow import is_boolean, is_float, is_num, is_string, string
+from arimo.util.types.arrow import is_boolean, is_float, is_integer, is_num, is_string, string
 from arimo.util.types.spark_sql import _BOOL_TYPE, _FLOAT_TYPES, _INT_TYPES, _NUM_TYPES, _STR_TYPE
 import arimo.debug
 
@@ -120,170 +120,164 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                         path=df, **kwargs)
 
         if __train__:
-            assert isinstance(adf, ArrowADF) \
-               and (self._INT_LABEL_COL not in adf.columns)
+            assert self._INT_LABEL_COL not in adf.columns
 
-            # then convert target variable column if necessary
             label_col_type = adf.type(self.params.data.label.var)
 
-            sample_label_series = None
+            if isinstance(adf, ArrowADF):
+                sample_label_series = None
 
-            if is_float(label_col_type) and isinstance(self, ClassifEvalMixIn):
-                adf.map(
-                    mapper=_ArrowADF__castType__pandasDFTransform(
-                            col=self.params.data.label.var,
-                            asType=str,
-                            asCol=None),
-                    inheritNRows=True,
-                    inplace=True)
+                if is_float(label_col_type) and isinstance(self, ClassifEvalMixIn):
+                    adf.map(
+                        mapper=_ArrowADF__castType__pandasDFTransform(
+                                col=self.params.data.label.var,
+                                asType=str,
+                                asCol=None),
+                        inheritNRows=True,
+                        inplace=True)
 
-                label_col_type = string()
+                    label_col_type = string()
 
-            if is_boolean(label_col_type):
-                if __first_train__:
-                    self.params.data.label._int_var = self._INT_LABEL_COL
+                if is_boolean(label_col_type):
+                    if __first_train__:
+                        self.params.data.label._int_var = self._INT_LABEL_COL
 
-                adf.map(
-                    mapper=_ArrowADF__castType__pandasDFTransform(
-                            col=self.params.data.label.var,
-                            asType=int,
-                            asCol=self.params.data.label._int_var),
-                    inheritNRows=True,
-                    inplace=True)
+                    adf.map(
+                        mapper=_ArrowADF__castType__pandasDFTransform(
+                                col=self.params.data.label.var,
+                                asType=int,
+                                asCol=self.params.data.label._int_var),
+                        inheritNRows=True,
+                        inplace=True)
 
-            elif is_string(label_col_type):
-                if __first_train__:
-                    self.params.data.label._int_var = self._INT_LABEL_COL
+                elif is_string(label_col_type):
+                    if __first_train__:
+                        self.params.data.label._int_var = self._INT_LABEL_COL
 
-                    if sample_label_series is None:
-                        sample_label_series = \
-                            adf.copy(resetMappers=True) \
-                                .sample(
-                                    self.params.data.label.var,
-                                    n=10 ** 8,   # 1mil = 68MB
-                                )[self.params.data.label.var]
-
-                        sample_label_series = \
-                            sample_label_series.loc[
-                                pandas.notnull(sample_label_series)]
-
-                    self.params.data.label._strings = \
-                        LabelEncoder() \
-                        .fit(sample_label_series) \
-                        .classes_.tolist()
-
-                adf.map(
-                    mapper=_ArrowADF__encodeStr__pandasDFTransform(
-                            col=self.params.data.label.var,
-                            strs=self.params.data.label._strings,
-                            asCol=self.params.data.label._int_var),
-                    inheritNRows=True,
-                    inplace=True)
-
-            if is_num(label_col_type) and isinstance(self, RegrEvalMixIn) and self.params.data.label.excl_outliers:
-                assert self.params.data.label.outlier_tails \
-                   and self.params.data.label.outlier_tail_proportion \
-                   and (self.params.data.label.outlier_tail_proportion < .5)
-
-                if __first_train__:
-                    self.params.data.label.outlier_tails = \
-                        self.params.data.label.outlier_tails.lower()
-
-                    _calc_lower_outlier_threshold = \
-                        (self.params.data.label.outlier_tails in ('both', 'lower')) and \
-                        pandas.isnull(self.params.data.label.lower_outlier_threshold)
-
-                    _calc_upper_outlier_threshold = \
-                        (self.params.data.label.outlier_tails in ('both', 'upper')) and \
-                        pandas.isnull(self.params.data.label.upper_outlier_threshold)
-
-                    if _calc_lower_outlier_threshold:
                         if sample_label_series is None:
                             sample_label_series = \
                                 adf.copy(resetMappers=True) \
                                     .sample(
-                                    self.params.data.label.var,
-                                    n=10 ** 8,   # 1mil = 68MB
-                                )[self.params.data.label.var]
+                                        self.params.data.label.var,
+                                        n=10 ** 8,   # 1mil = 68MB
+                                    )[self.params.data.label.var]
 
                             sample_label_series = \
                                 sample_label_series.loc[
                                     pandas.notnull(sample_label_series)]
 
-                        if _calc_upper_outlier_threshold:
-                            self.params.data.label.lower_outlier_threshold, \
+                        self.params.data.label._strings = \
+                            LabelEncoder() \
+                            .fit(sample_label_series) \
+                            .classes_.tolist()
+
+                    adf.map(
+                        mapper=_ArrowADF__encodeStr__pandasDFTransform(
+                                col=self.params.data.label.var,
+                                strs=self.params.data.label._strings,
+                                asCol=self.params.data.label._int_var),
+                        inheritNRows=True,
+                        inplace=True)
+
+                elif is_integer(label_col_type) and __first_train__:
+                    self.params.data.label._int_var = self.params.data.label.var
+
+                if is_num(label_col_type) and isinstance(self, RegrEvalMixIn) and self.params.data.label.excl_outliers:
+                    assert self.params.data.label.outlier_tails \
+                       and self.params.data.label.outlier_tail_proportion \
+                       and (self.params.data.label.outlier_tail_proportion < .5)
+
+                    if __first_train__:
+                        self.params.data.label.outlier_tails = \
+                            self.params.data.label.outlier_tails.lower()
+
+                        _calc_lower_outlier_threshold = \
+                            (self.params.data.label.outlier_tails in ('both', 'lower')) and \
+                            pandas.isnull(self.params.data.label.lower_outlier_threshold)
+
+                        _calc_upper_outlier_threshold = \
+                            (self.params.data.label.outlier_tails in ('both', 'upper')) and \
+                            pandas.isnull(self.params.data.label.upper_outlier_threshold)
+
+                        if _calc_lower_outlier_threshold:
+                            if sample_label_series is None:
+                                sample_label_series = \
+                                    adf.copy(resetMappers=True) \
+                                        .sample(
+                                        self.params.data.label.var,
+                                        n=10 ** 8,   # 1mil = 68MB
+                                    )[self.params.data.label.var]
+
+                                sample_label_series = \
+                                    sample_label_series.loc[
+                                        pandas.notnull(sample_label_series)]
+
+                            if _calc_upper_outlier_threshold:
+                                self.params.data.label.lower_outlier_threshold, \
+                                self.params.data.label.upper_outlier_threshold = \
+                                    sample_label_series.quantile(
+                                        q=(self.params.data.label.outlier_tail_proportion,
+                                           1 - self.params.data.label.outlier_tail_proportion),
+                                        interpolation='linear')
+
+                            else:
+                                self.params.data.label.lower_outlier_threshold = \
+                                    sample_label_series.quantile(
+                                        q=self.params.data.label.outlier_tail_proportion,
+                                        interpolation='linear')
+
+                        elif _calc_upper_outlier_threshold:
+                            if sample_label_series is None:
+                                sample_label_series = \
+                                    adf.copy(resetMappers=True) \
+                                        .sample(
+                                        self.params.data.label.var,
+                                        n=10 ** 8,   # 1mil = 68MB
+                                    )[self.params.data.label.var]
+
+                                sample_label_series = \
+                                    sample_label_series.loc[
+                                        pandas.notnull(sample_label_series)]
+
                             self.params.data.label.upper_outlier_threshold = \
                                 sample_label_series.quantile(
-                                    q=(self.params.data.label.outlier_tail_proportion,
-                                       1 - self.params.data.label.outlier_tail_proportion),
+                                    q=1 - self.params.data.label.outlier_tail_proportion,
                                     interpolation='linear')
 
-                        else:
-                            self.params.data.label.lower_outlier_threshold = \
-                                sample_label_series.quantile(
-                                    q=self.params.data.label.outlier_tail_proportion,
-                                    interpolation='linear')
+                    _lower_outlier_threshold_applicable = \
+                        pandas.notnull(self.params.data.label.lower_outlier_threshold)
 
-                    elif _calc_upper_outlier_threshold:
-                        if sample_label_series is None:
-                            sample_label_series = \
-                                adf.copy(resetMappers=True) \
-                                    .sample(
-                                    self.params.data.label.var,
-                                    n=10 ** 8,   # 1mil = 68MB
-                                )[self.params.data.label.var]
+                    _upper_outlier_threshold_applicable = \
+                        pandas.notnull(self.params.data.label.upper_outlier_threshold)
 
-                            sample_label_series = \
-                                sample_label_series.loc[
-                                    pandas.notnull(sample_label_series)]
+                    if _lower_outlier_threshold_applicable or _upper_outlier_threshold_applicable:
+                        _outlier_robust_condition = \
+                            ('BETWEEN {} AND {}'
+                                .format(
+                                    self.params.data.label.lower_outlier_threshold,
+                                    self.params.data.label.upper_outlier_threshold)
+                             if _upper_outlier_threshold_applicable
+                             else '>= {}'.format(self.params.data.label.lower_outlier_threshold)) \
+                            if _lower_outlier_threshold_applicable \
+                            else '<= {}'.format(self.params.data.label.upper_outlier_threshold)
 
-                        self.params.data.label.upper_outlier_threshold = \
-                            sample_label_series.quantile(
-                                q=1 - self.params.data.label.outlier_tail_proportion,
-                                interpolation='linear')
-
-                _lower_outlier_threshold_applicable = \
-                    pandas.notnull(self.params.data.label.lower_outlier_threshold)
-
-                _upper_outlier_threshold_applicable = \
-                    pandas.notnull(self.params.data.label.upper_outlier_threshold)
-
-                if _lower_outlier_threshold_applicable or _upper_outlier_threshold_applicable:
-                    _outlier_robust_condition = \
-                        ('BETWEEN {} AND {}'
-                            .format(
-                                self.params.data.label.lower_outlier_threshold,
-                                self.params.data.label.upper_outlier_threshold)
-                         if _upper_outlier_threshold_applicable
-                         else '>= {}'.format(self.params.data.label.lower_outlier_threshold)) \
-                        if _lower_outlier_threshold_applicable \
-                        else '<= {}'.format(self.params.data.label.upper_outlier_threshold)
-
-                    if arimo.debug.ON:
-                        self.stdout_logger.debug(
-                            msg='*** DATA PREP FOR TRAIN: CONDITION ROBUST TO LABEL OUTLIERS: {} {}... ***\n'
-                                .format(self.params.data.label.var, _outlier_robust_condition))
-
-        else:
-            assert isinstance(adf, SparkADF)
-
-            if __from_ensemble__ or __from_ppp__:
-                assert adf.alias
+                        if arimo.debug.ON:
+                            self.stdout_logger.debug(
+                                msg='*** DATA PREP FOR TRAIN: CONDITION ROBUST TO LABEL OUTLIERS: {} {}... ***\n'
+                                    .format(self.params.data.label.var, _outlier_robust_condition))
 
             else:
-                adf_uuid = clean_uuid(uuid.uuid4())
+                if __from_ppp__:
+                    assert adf.alias
 
-                adf.alias = \
-                    '{}__{}__{}'.format(
-                        self.params._uuid,
-                        __mode__,
-                        adf_uuid)
+                else:
+                    adf_uuid = clean_uuid(uuid.uuid4())
 
-            if __eval__:
-                assert self._INT_LABEL_COL not in adf.columns
-
-                # then convert target variable column if necessary
-                label_col_type = adf.type(self.params.data.label.var)
+                    adf.alias = \
+                        '{}__{}__{}'.format(
+                            self.params._uuid,
+                            __mode__,
+                            adf_uuid)
 
                 if (label_col_type.startswith('decimal') or (label_col_type in _FLOAT_TYPES)) \
                         and isinstance(self, ClassifEvalMixIn):
@@ -309,6 +303,20 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                         inplace=True)
 
                 elif label_col_type == _STR_TYPE:
+                    if __first_train__:
+                        self.params.data.label._int_var = self._INT_LABEL_COL
+
+                        self.params.data.label._strings = \
+                            [s for s in
+                                StringIndexer(
+                                    inputCol=self.params.data.label.var,
+                                    outputCol=self.params.data.label._int_var,
+                                    handleInvalid='skip'   # filter out rows with invalid data (just in case there are NULL labels)
+                                        #  'error': throw an error
+                                        #  'keep': put invalid data in a special additional bucket, at index numLabels
+                                ).fit(dataset=adf).labels
+                             if pandas.notnull(s)]
+
                     adf('*',
                         '(CASE {} ELSE NULL END) AS {}'.format(
                             ' '.join(
@@ -320,7 +328,112 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                         inheritNRows=True,
                         inplace=True)
 
-                adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
+                elif (label_col_type in _INT_TYPES) and __first_train__:
+                    self.params.data.label._int_var = self.params.data.label.var
+
+                if __train__ and (label_col_type.startswith('decimal') or (label_col_type in _NUM_TYPES)) \
+                        and isinstance(self, RegrEvalMixIn) and self.params.data.label.excl_outliers:
+                    assert self.params.data.label.outlier_tails \
+                       and self.params.data.label.outlier_tail_proportion \
+                       and (self.params.data.label.outlier_tail_proportion < .5)
+
+                    if __first_train__:
+                        self.params.data.label.outlier_tails = \
+                            self.params.data.label.outlier_tails.lower()
+
+                        _calc_lower_outlier_threshold = \
+                            (self.params.data.label.outlier_tails in ('both', 'lower')) and \
+                            pandas.isnull(self.params.data.label.lower_outlier_threshold)
+
+                        _calc_upper_outlier_threshold = \
+                            (self.params.data.label.outlier_tails in ('both', 'upper')) and \
+                            pandas.isnull(self.params.data.label.upper_outlier_threshold)
+
+                        if _calc_lower_outlier_threshold:
+                            if _calc_upper_outlier_threshold:
+                                self.params.data.label.lower_outlier_threshold, \
+                                self.params.data.label.upper_outlier_threshold = \
+                                    adf.quantile(
+                                        q=(self.params.data.label.outlier_tail_proportion,
+                                           1 - self.params.data.label.outlier_tail_proportion),
+                                        relativeError=self.params.data.label.outlier_tail_proportion / 3)
+
+                            else:
+                                self.params.data.label.lower_outlier_threshold = \
+                                    adf.quantile(
+                                        q=self.params.data.label.outlier_tail_proportion,
+                                        relativeError=self.params.data.label.outlier_tail_proportion / 3)
+
+                        elif _calc_upper_outlier_threshold:
+                            self.params.data.label.upper_outlier_threshold = \
+                                adf.quantile(
+                                    q=1 - self.params.data.label.outlier_tail_proportion,
+                                    relativeError=self.params.data.label.outlier_tail_proportion / 3)
+
+                    _lower_outlier_threshold_applicable = \
+                        pandas.notnull(self.params.data.label.lower_outlier_threshold)
+
+                    _upper_outlier_threshold_applicable = \
+                        pandas.notnull(self.params.data.label.upper_outlier_threshold)
+
+                    if _lower_outlier_threshold_applicable or _upper_outlier_threshold_applicable:
+                        _outlier_robust_condition = \
+                            ('BETWEEN {} AND {}'
+                             .format(
+                                self.params.data.label.lower_outlier_threshold,
+                                self.params.data.label.upper_outlier_threshold)
+                             if _upper_outlier_threshold_applicable
+                             else '>= {}'.format(self.params.data.label.lower_outlier_threshold)) \
+                                if _lower_outlier_threshold_applicable \
+                                else '<= {}'.format(self.params.data.label.upper_outlier_threshold)
+
+                        if arimo.debug.ON:
+                            self.stdout_logger.debug(
+                                msg='*** DATA PREP FOR TRAIN: CONDITION ROBUST TO LABEL OUTLIERS: {} {}... ***\n'
+                                    .format(self.params.data.label.var, _outlier_robust_condition))
+
+        elif __eval__:
+            assert self._INT_LABEL_COL not in adf.columns
+
+            # then convert target variable column if necessary
+            label_col_type = adf.type(self.params.data.label.var)
+
+            if (label_col_type.startswith('decimal') or (label_col_type in _FLOAT_TYPES)) \
+                    and isinstance(self, ClassifEvalMixIn):
+                adf('STRING({0}) AS {0}'.format(self.params.data.label.var),
+                    *(col for col in adf.columns
+                          if col != self.params.data.label.var),
+                    inheritCache=True,
+                    inheritNRows=True,
+                    inplace=True)
+
+                label_col_type = _STR_TYPE
+
+            if label_col_type == _BOOL_TYPE:
+                if __first_train__:
+                    self.params.data.label._int_var = self._INT_LABEL_COL
+
+                adf('*',
+                    'INT({}) AS {}'.format(
+                        self.params.data.label.var,
+                        self.params.data.label._int_var),
+                    inheritCache=True,
+                    inheritNRows=True,
+                    inplace=True)
+
+            elif label_col_type == _STR_TYPE:
+                adf('*',
+                    '(CASE {} ELSE NULL END) AS {}'.format(
+                        ' '.join(
+                            "WHEN {} = '{}' THEN {}".format(
+                                self.params.data.label.var, label, i)
+                            for i, label in enumerate(self.params.data.label._strings)),
+                        self.params.data.label._int_var),
+                    inheritCache=True,
+                    inheritNRows=True,
+                    inplace=True)
+
+            adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
 
         if not __from_ppp__:
             # Prepare data into model-able vectors
