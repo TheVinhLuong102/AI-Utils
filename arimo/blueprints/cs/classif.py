@@ -11,6 +11,7 @@ from arimo.blueprints.base import _docstr_blueprint
 from arimo.blueprints.cs import _DLCrossSectSupervisedBlueprintABC
 from arimo.blueprints.mixins.eval import ClassifEvalMixIn
 from arimo.df.from_files import ArrowADF
+from arimo.df.spark_from_files import ArrowSparkADF
 from arimo.util import fs, Namespace
 from arimo.util.decor import _docstr_verbose
 from arimo.util.pkl import pickle_able
@@ -68,6 +69,8 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                 verbose=verbose,
                 *args, **kwargs)
 
+        assert isinstance(adf, (ArrowADF, ArrowSparkADF))
+
         model = self.model(ver=self.params.model.ver)
 
         self.params.data.label._n_classes = \
@@ -107,7 +110,9 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
 
         self._derive_model_train_params(
             data_size=
-                adf.approxNRows
+                (adf.approxNRows
+                 if isinstance(adf, ArrowADF)
+                 else adf.nRows)
                 if self.params.model.train.n_samples_max_multiple_of_data_size
                 else None)
 
@@ -144,7 +149,6 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                 self.params.model._persist.struct_file), 'w') \
             .write(model.to_json())
 
-        assert isinstance(adf, ArrowADF)
         piece_paths = list(adf.piecePaths)
         random.shuffle(piece_paths)
         split_idx = int(math.ceil(self.params.model.train.train_proportion * adf.nPieces))

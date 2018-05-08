@@ -12,6 +12,7 @@ from arimo.blueprints.base import _docstr_blueprint
 from arimo.blueprints.mixins.eval import RegrEvalMixIn
 from arimo.blueprints.ts import _TimeSerDLSupervisedBlueprintABC
 from arimo.df.from_files import ArrowADF
+from arimo.df.spark_from_files import ArrowSparkADF
 from arimo.util import fs, Namespace
 from arimo.util.decor import _docstr_verbose
 from arimo.util.dl import MASK_VAL
@@ -96,6 +97,8 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                 verbose=verbose,
                 **kwargs)
 
+        assert isinstance(adf, (ArrowADF, ArrowSparkADF))
+
         model = self.model(ver=self.params.model.ver)
 
         _lower_outlier_threshold_applicable = \
@@ -129,7 +132,9 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
 
         self._derive_model_train_params(
             data_size=
-                adf.approxNRows
+                (adf.approxNRows
+                 if isinstance(adf, ArrowADF)
+                 else adf.nRows)
                 if self.params.model.train.n_samples_max_multiple_of_data_size
                 else None)
 
@@ -165,7 +170,6 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
 
         assert adf.alias
 
-        assert isinstance(adf, ArrowADF)
         piece_paths = list(adf.piecePaths)
         random.shuffle(piece_paths)
         split_idx = int(math.ceil(self.params.model.train.train_proportion * adf.nPieces))
