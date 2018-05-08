@@ -160,7 +160,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                             adf.copy(resetMappers=True) \
                                 .sample(
                                     self.params.data.label.var,
-                                    n=10 ** 8,   # 1mil = 68MB
+                                    n=10 ** 9,   # 1mil = 68MB
                                 )[self.params.data.label.var]
 
                         sample_label_series = \
@@ -203,7 +203,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                                 adf.copy(resetMappers=True) \
                                     .sample(
                                     self.params.data.label.var,
-                                    n=10 ** 8,   # 1mil = 68MB
+                                    n=10 ** 9,   # 1mil = 68MB
                                 )[self.params.data.label.var]
 
                             sample_label_series = \
@@ -230,7 +230,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                                 adf.copy(resetMappers=True) \
                                     .sample(
                                     self.params.data.label.var,
-                                    n=10 ** 8,   # 1mil = 68MB
+                                    n=10 ** 9,   # 1mil = 68MB
                                 )[self.params.data.label.var]
 
                             sample_label_series = \
