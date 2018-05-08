@@ -107,12 +107,12 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
 
         if arimo.debug.ON:
             model.stdout_logger.debug(
-                '*** TRAINING ON {} ({} ROWS) ***\n'
-                    .format(adf, adf.nRows))
+                '*** TRAINING ON {} (APPROX. {:,} ROWS) ***\n'
+                    .format(adf, adf.approxNRows))
 
         self._derive_model_train_params(
             data_size=
-                adf.nRows
+                adf.approxNRows
                 if self.params.model.train.n_samples_max_multiple_of_data_size
                 else None)
 

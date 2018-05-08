@@ -129,7 +129,7 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
 
         self._derive_model_train_params(
             data_size=
-                adf.nRows
+                adf.approxNRows
                 if self.params.model.train.n_samples_max_multiple_of_data_size
                 else None)
 

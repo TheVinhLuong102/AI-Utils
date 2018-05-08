@@ -68,8 +68,8 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
 
         if arimo.debug.ON:
             model.stdout_logger.debug(
-                '*** TRAINING ON {} ({} ROWS) ***'
-                    .format(adf, adf.nRows))
+                '*** TRAINING ON {} (APPROX. {:,} ROWS) ***'
+                    .format(adf, adf.approxNRows))
 
         # whether to exclude outlying labels
         _lower_outlier_threshold_applicable = \
@@ -103,7 +103,7 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
 
         self._derive_model_train_params(
             data_size=
-                adf.nRows
+                adf.approxNRows
                 if self.params.model.train.n_samples_max_multiple_of_data_size
                 else None)
 
