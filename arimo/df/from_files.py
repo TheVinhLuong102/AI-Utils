@@ -198,15 +198,15 @@ class _ArrowADF__fillna__pandasDFTransform:
                 if upperNull is not None:
                     chks &= (series < upperNull)
 
-                # nullFillValue = \
-                #     series.loc[chks] \
-                #         .median(
-                #             axis='index',
-                #             skipna=True,
-                #             level=None)
+                nullFillValue = \
+                    series.loc[chks] \
+                        .median(
+                            axis='index',
+                            skipna=True,
+                            level=None)
 
-                # if pandas.isnull(nullFillValue):
-                nullFillValue = nullFill['NullFillValue']
+                if pandas.isnull(nullFillValue):
+                    nullFillValue = nullFill['NullFillValue']
 
                 pandasDF[_ADFABC._NULL_FILL_PREFIX + col + _ADFABC._PREP_SUFFIX] = \
                     series.where(
