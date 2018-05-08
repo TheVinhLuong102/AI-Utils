@@ -714,6 +714,14 @@ class _BlueprintABC(object):
             blueprint=self,
             ver=ver)
 
+    def model_train_history(self, ver='latest'):
+        model = self.model(ver=ver)
+
+        return joblib.load(
+            os.path.join(
+                model.dir,
+                self.params.model._persist.train_history_file))
+
 
 # utility to create Blueprint from its params
 def _blueprint_from_params(
