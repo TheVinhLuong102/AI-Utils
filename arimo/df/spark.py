@@ -3946,14 +3946,24 @@ class SparkADF(_ADFABC):
             if loadPath in self._PREP_CACHE:
                 prepCache = self._PREP_CACHE[loadPath]
 
-                sqlTransformer = prepCache.sqlTransformer
-                catOHETransformer = prepCache.catOHETransformer
-                pipelineModelWithoutVectors = prepCache.pipelineModelWithoutVectors
-
                 catOrigToPrepColMap = prepCache.catOrigToPrepColMap
                 numOrigToPrepColMap = prepCache.numOrigToPrepColMap
 
                 defaultVecCols = prepCache.defaultVecCols
+
+                sqlStatement = prepCache.sqlStatement
+                assert sqlStatement
+
+                if prepCache.sqlTransformer is None:
+                    prepCache.pipelineModelWithoutVectors = pipelineModelWithoutVectors = \
+                        prepCache.sqlTransformer = sqlTransformer = SQLTransformer(statement=sqlStatement)
+
+                    prepCache.catOHETransformer = catOHETransformer = None
+
+                else:
+                    sqlTransformer = prepCache.sqlTransformer
+                    catOHETransformer = prepCache.catOHETransformer
+                    pipelineModelWithoutVectors = prepCache.pipelineModelWithoutVectors
 
             else:
                 if fs._ON_LINUX_CLUSTER_WITH_HDFS:
@@ -3998,49 +4008,66 @@ class SparkADF(_ADFABC):
                 try:
                     pipelineModelWithoutVectors = sqlTransformer = SQLTransformer.load(path=loadPath)
 
+                    sqlStatement = sqlTransformer.getStatement()
+
                     catOHETransformer = None
 
                 except:
-                    pipelineModel = PipelineModel.load(path=loadPath)
+                    sqlStatementFilePath = \
+                        os.path.join(loadPath, self._PREP_SQL_STATEMENT_FILE_NAME)
 
-                    nPipelineModelStages = len(pipelineModel.stages)
+                    if os.path.isfile(sqlStatementFilePath):
+                        sqlStatement = json.load(open(sqlStatementFilePath, 'r'))
 
-                    if nPipelineModelStages == 2:
-                        sqlTransformer, secondTransformer = pipelineModel.stages
+                        pipelineModelWithoutVectors = sqlTransformer = SQLTransformer(statement=sqlStatement)
 
-                        assert isinstance(sqlTransformer, SQLTransformer), \
-                            '*** {} ***'.format(sqlTransformer)
-
-                        if isinstance(secondTransformer, OneHotEncoderModel):
-                            catOHETransformer = secondTransformer
-                            vectorAssembler = None
-                            pipelineModelWithoutVectors = pipelineModel
-
-                        elif isinstance(secondTransformer, VectorAssembler):
-                            catOHETransformer = None
-                            vectorAssembler = secondTransformer
-                            pipelineModelWithoutVectors = sqlTransformer
-
-                        else:
-                            raise ValueError('*** {} ***'.format(secondTransformer))
-
-                    elif nPipelineModelStages == 3:
-                        sqlTransformer, catOHETransformer, vectorAssembler = pipelineModel.stages
-
-                        assert isinstance(sqlTransformer, SQLTransformer), \
-                            '*** {} ***'.format(sqlTransformer)
-
-                        assert isinstance(catOHETransformer, OneHotEncoderModel), \
-                            '*** {} ***'.format(catOHETransformer)
-
-                        assert isinstance(vectorAssembler, VectorAssembler), \
-                            '*** {} ***'.format(vectorAssembler)
-
-                        pipelineModelWithoutVectors = \
-                            PipelineModel(stages=[sqlTransformer, catOHETransformer])
+                        catOHETransformer = None
 
                     else:
-                        raise ValueError('*** {} ***'.format(pipelineModel.stages))
+                        pipelineModel = PipelineModel.load(path=loadPath)
+
+                        nPipelineModelStages = len(pipelineModel.stages)
+
+                        if nPipelineModelStages == 2:
+                            sqlTransformer, secondTransformer = pipelineModel.stages
+
+                            assert isinstance(sqlTransformer, SQLTransformer), \
+                                '*** {} ***'.format(sqlTransformer)
+
+                            sqlStatement = sqlTransformer.getStatement()
+
+                            if isinstance(secondTransformer, OneHotEncoderModel):
+                                catOHETransformer = secondTransformer
+                                vectorAssembler = None
+                                pipelineModelWithoutVectors = pipelineModel
+
+                            elif isinstance(secondTransformer, VectorAssembler):
+                                catOHETransformer = None
+                                vectorAssembler = secondTransformer
+                                pipelineModelWithoutVectors = sqlTransformer
+
+                            else:
+                                raise ValueError('*** {} ***'.format(secondTransformer))
+
+                        elif nPipelineModelStages == 3:
+                            sqlTransformer, catOHETransformer, vectorAssembler = pipelineModel.stages
+
+                            assert isinstance(sqlTransformer, SQLTransformer), \
+                                '*** {} ***'.format(sqlTransformer)
+
+                            sqlStatement = sqlTransformer.getStatement()
+
+                            assert isinstance(catOHETransformer, OneHotEncoderModel), \
+                                '*** {} ***'.format(catOHETransformer)
+
+                            assert isinstance(vectorAssembler, VectorAssembler), \
+                                '*** {} ***'.format(vectorAssembler)
+
+                            pipelineModelWithoutVectors = \
+                                PipelineModel(stages=[sqlTransformer, catOHETransformer])
+
+                        else:
+                            raise ValueError('*** {} ***'.format(pipelineModel.stages))
 
                     if vectorAssembler:
                         vecInputCols = vectorAssembler.getInputCols()
@@ -4055,7 +4082,7 @@ class SparkADF(_ADFABC):
                         numOrigToPrepColMap=numOrigToPrepColMap,
                         defaultVecCols=defaultVecCols,
 
-                        sqlStatement=None,
+                        sqlStatement=sqlStatement,
                         sqlTransformer=sqlTransformer,
 
                         catOHETransformer=catOHETransformer,
@@ -4367,13 +4394,13 @@ class SparkADF(_ADFABC):
                  for numCol in sorted(set(numOrigToPrepColMap)
                                       .difference(('__TS_WINDOW_CLAUSE__', '__SCALER__')))]
 
-            sqlTransformer = \
-                SQLTransformer(
-                    statement=
-                        'SELECT *, {} FROM __THIS__ {}'.format(
-                            ', '.join('{} AS {}'.format(sqlItem, prepCol)
-                                      for prepCol, sqlItem in prepSqlItems.items()),
-                            numNullFillDetails.get('__TS_WINDOW_CLAUSE__', '')))
+            sqlStatement = \
+                'SELECT *, {} FROM __THIS__ {}'.format(
+                    ', '.join('{} AS {}'.format(sqlItem, prepCol)
+                              for prepCol, sqlItem in prepSqlItems.items()),
+                    numNullFillDetails.get('__TS_WINDOW_CLAUSE__', ''))
+
+            sqlTransformer = SQLTransformer(statement=sqlStatement)
 
             pipelineModelWithoutVectors = \
                 PipelineModel(stages=[sqlTransformer, catOHETransformer]) \
@@ -4412,20 +4439,27 @@ class SparkADF(_ADFABC):
                 open(os.path.join(savePath, self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME), 'w'),
                 indent=2)
 
+            json.dump(
+                sqlStatement,
+                open(os.path.join(savePath, self._PREP_SQL_STATEMENT_FILE_NAME), 'w'),
+                indent=2)
+
             if verbose:
                 _toc = time.time()
                 self.stdout_logger.info(msg + ' done!   <{:,.1f} s>'.format(_toc - _tic))
 
             self._PREP_CACHE[savePath] = \
                 Namespace(
-                    sqlTransformer=sqlTransformer,
-                    catOHETransformer=catOHETransformer,
-                    pipelineModelWithoutVectors=pipelineModelWithoutVectors,
-
                     catOrigToPrepColMap=catOrigToPrepColMap,
                     numOrigToPrepColMap=numOrigToPrepColMap,
 
-                    defaultVecCols=defaultVecCols)
+                    defaultVecCols=defaultVecCols,
+
+                    sqlStatement=sqlStatement,
+                    sqlTransformer=sqlTransformer,
+
+                    catOHETransformer=catOHETransformer,
+                    pipelineModelWithoutVectors=pipelineModelWithoutVectors)
 
         if self._detPrePartitioned and self.hasTS:
             _partitionBy_str = 'PARTITION BY {}, {}'.format(self._iCol, self._T_CHUNK_COL)
