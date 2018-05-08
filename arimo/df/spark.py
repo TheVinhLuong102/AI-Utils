@@ -4069,12 +4069,12 @@ class SparkADF(_ADFABC):
                         else:
                             raise ValueError('*** {} ***'.format(pipelineModel.stages))
 
-                    if vectorAssembler:
-                        vecInputCols = vectorAssembler.getInputCols()
+                        if vectorAssembler:
+                            vecInputCols = vectorAssembler.getInputCols()
 
-                        assert set(defaultVecCols) == set(vecInputCols)
+                            assert set(defaultVecCols) == set(vecInputCols)
 
-                        defaultVecCols = vecInputCols
+                            defaultVecCols = vecInputCols
 
                 self._PREP_CACHE[loadPath] = \
                     Namespace(
