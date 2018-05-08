@@ -1505,6 +1505,9 @@ class ArrowADF(_ArrowADFABC):
     @property
     def nRows(self):
         if self._cache.nRows is None:
+            if arimo.debug.ON:
+                self.stdout_logger.debug('*** COUNTING NO. OF ROWS ***')
+
             self._cache.nRows = \
                 sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
                     for piecePath in tqdm.tqdm(self.piecePaths))
@@ -1514,6 +1517,9 @@ class ArrowADF(_ArrowADFABC):
     @property
     def approxNRows(self):
         if self._cache.approxNRows is None:
+            if arimo.debug.ON:
+                self.stdout_logger.debug('*** COUNTING APPROX. NO. OF ROWS ***')
+
             self._cache.approxNRows = \
                 self.nPieces \
                 * sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
