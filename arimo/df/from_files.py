@@ -482,8 +482,19 @@ class _ArrowADF__gen:
                     .to_pandas(
                         nthreads=self.n_threads)
 
-            for k, v in self.partitionKVs[piecePath].items():
-                chunkPandasDF[k] = v
+            if self.partitionKVs:
+                for k, v in self.partitionKVs[piecePath].items():
+                    chunkPandasDF[k] = v
+
+            else:
+                for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
+                    k, v = partitionKV.split('=')
+                    k = str(k)   # ensure not Unicode
+
+                    chunkPandasDF[k] = \
+                        datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \\
+                        if k == DATE_COL \
+                        else v[:-1]
 
             if self.tCol:
                 chunkPandasDF = \
