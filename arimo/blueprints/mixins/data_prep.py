@@ -354,6 +354,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                                 self.params.data.label.lower_outlier_threshold, \
                                 self.params.data.label.upper_outlier_threshold = \
                                     adf.quantile(
+                                        self.params.data.label.var,
                                         q=(self.params.data.label.outlier_tail_proportion,
                                            1 - self.params.data.label.outlier_tail_proportion),
                                         relativeError=self.params.data.label.outlier_tail_proportion / 3)
@@ -361,12 +362,14 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                             else:
                                 self.params.data.label.lower_outlier_threshold = \
                                     adf.quantile(
+                                        self.params.data.label.var,
                                         q=self.params.data.label.outlier_tail_proportion,
                                         relativeError=self.params.data.label.outlier_tail_proportion / 3)
 
                         elif _calc_upper_outlier_threshold:
                             self.params.data.label.upper_outlier_threshold = \
                                 adf.quantile(
+                                    self.params.data.label.var,
                                     q=1 - self.params.data.label.outlier_tail_proportion,
                                     relativeError=self.params.data.label.outlier_tail_proportion / 3)
 
