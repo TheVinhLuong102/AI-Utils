@@ -1847,7 +1847,9 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                                     "'{}'".format(id))
                                         if id_col_type_is_str
                                         else id) \
-                        .drop(id_col)
+                        .drop(
+                            id_col,
+                            alias=_per_label_adf.alias + '__' + clean_uuid(id))
 
                 # cache to calculate multiple metrics quickly
                 _per_label_per_id_adf.cache(

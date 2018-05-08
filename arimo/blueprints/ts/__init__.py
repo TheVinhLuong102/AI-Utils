@@ -17,7 +17,7 @@ import arimo.backend
 from arimo.blueprints.base import _docstr_blueprint, _DLSupervisedBlueprintABC
 from arimo.df.spark import SparkADF
 import arimo.eval.metrics
-from arimo.util import fs, Namespace
+from arimo.util import clean_uuid, fs, Namespace
 from arimo.util.decor import _docstr_verbose
 from arimo.util.dl import MASK_VAL
 from arimo.util.log import STDOUT_HANDLER
@@ -476,8 +476,8 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
                     score_col=raw_score_col,
                     n_classes=self.params.data.label._n_classes,
                     labels=self.params.data.label.get('_strings'))) \
-                    if n_classes \
-                    else metric_class(
+                if n_classes \
+                else metric_class(
                     label_col=label_var,
                     score_col=raw_score_col)
 
@@ -485,21 +485,20 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
 
             metrics[evaluator.name] = \
                 evaluator(adf, *__class_thresholds__) \
-                    if n_classes and (metric_name != 'Prevalence') \
-                    else evaluator(adf)
+                if n_classes and (metric_name != 'Prevalence') \
+                else evaluator(adf)
 
         id_col = self.params.data.id_col
 
         if id_col in adf.columns:
             id_col_type_is_str = (adf.type(id_col) == _STR_TYPE)
 
-            ids = adf(
-                "SELECT \
-                    DISTINCT({}) \
-                FROM \
-                    this".format(id_col),
-                inheritCache=False,
-                inheritNRows=False) \
+            ids = adf("SELECT \
+                        DISTINCT({}) \
+                      FROM \
+                        this".format(id_col),
+                      inheritCache=False,
+                      inheritNRows=False) \
                 .toPandas()[id_col]
 
             for id in tqdm.tqdm(ids):
@@ -511,7 +510,9 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
                                 "'{}'".format(id))
                                     if id_col_type_is_str
                                     else id) \
-                        .drop(id_col)
+                    .drop(
+                        id_col,
+                        alias=adf.alias + '__' + clean_uuid(id))
 
                 # cache to calculate multiple metrics quickly
                 _per_id_adf.cache(

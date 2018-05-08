@@ -17,7 +17,7 @@ import arimo.backend
 from arimo.blueprints.base import _docstr_blueprint, _SupervisedBlueprintABC, _DLSupervisedBlueprintABC
 from arimo.df.spark import SparkADF
 import arimo.eval.metrics
-from arimo.util import fs
+from arimo.util import clean_uuid, fs
 from arimo.util.log import STDOUT_HANDLER
 from arimo.util.types.spark_sql import _NUM_TYPES, _STR_TYPE, _VECTOR_TYPE
 import arimo.debug
@@ -180,13 +180,12 @@ class _CrossSectSupervisedBlueprintABC(LabeledDataPrepMixIn, _SupervisedBlueprin
         if id_col in adf.columns:
             id_col_type_is_str = (adf.type(id_col) == _STR_TYPE)
 
-            ids = adf(
-                "SELECT \
-                    DISTINCT({}) \
-                FROM \
-                    this".format(id_col),
-                inheritCache=False,
-                inheritNRows=False) \
+            ids = adf("SELECT \
+                        DISTINCT({}) \
+                      FROM \
+                        this".format(id_col),
+                      inheritCache=False,
+                      inheritNRows=False) \
                 .toPandas()[id_col]
 
             for id in tqdm.tqdm(ids):
@@ -198,7 +197,9 @@ class _CrossSectSupervisedBlueprintABC(LabeledDataPrepMixIn, _SupervisedBlueprin
                                 "'{}'".format(id))
                                     if id_col_type_is_str
                                     else id) \
-                        .drop(id_col)
+                    .drop(
+                        id_col,
+                        alias=adf.alias + '__' + clean_uuid(id))
 
                 # cache to calculate multiple metrics quickly
                 _per_id_adf.cache(
