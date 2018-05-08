@@ -492,7 +492,7 @@ class _ArrowADF__gen:
                     k = str(k)   # ensure not Unicode
 
                     chunkPandasDF[k] = \
-                        datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \\
+                        datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
                         if k == DATE_COL \
                         else v[:-1]
 
