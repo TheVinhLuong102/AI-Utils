@@ -177,8 +177,9 @@ class _ArrowADF__encodeStr__pandasDFTransform:
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowADF__fillna__pandasDFTransform:
-    def __init__(self, nullFillDetails):
+    def __init__(self, nullFillDetails, _medianFill=False):
         self.nullFillDetails = nullFillDetails
+        self._medianFill = _medianFill
 
     def __call__(self, pandasDF):
         for col, nullFillColNameNDetails in self.nullFillDetails.items():
@@ -203,7 +204,9 @@ class _ArrowADF__fillna__pandasDFTransform:
                         .median(
                             axis='index',
                             skipna=True,
-                            level=None)
+                            level=None) \
+                    if self._medianFill \
+                    else None
 
                 if pandas.isnull(nullFillValue):
                     nullFillValue = nullFill['NullFillValue']
