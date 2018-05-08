@@ -395,6 +395,18 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                                 msg='*** DATA PREP FOR TRAIN: CONDITION ROBUST TO LABEL OUTLIERS: {} {}... ***\n'
                                     .format(self.params.data.label.var, _outlier_robust_condition))
 
+                        adf('IF({0} {1}, {0}, NULL) AS {0}'
+                                .format(
+                                    self.params.data.label.var,
+                                    _outlier_robust_condition),
+                            *(col for col in adf.columns
+                                  if col != self.params.data.label.var),
+                            inheritCache=True,
+                            inheritNRows=True,
+                            inplace=True)
+
+                adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
+                
         elif __eval__:
             assert self._INT_LABEL_COL not in adf.columns
 
