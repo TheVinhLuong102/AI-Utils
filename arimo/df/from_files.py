@@ -1740,7 +1740,7 @@ class ArrowADF(_ArrowADFABC):
 
         if arimo.debug.ON:
             self.stdout_logger.debug(
-                '*** SAMPLING {:,} OF COLS {} FROM {:,} PIECES ***'
+                '*** SAMPLING {:,} ROWS OF COLUMNS {} FROM {:,} PIECES ***'
                 .format(n, cols, nSamplePieces))
 
         return self.reduce(
