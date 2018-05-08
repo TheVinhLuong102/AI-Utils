@@ -527,7 +527,17 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
            and (self.params.data.time_col in adf.columns)
         
         if __train__:
-            assert isinstance(adf, ArrowADF)
+            if isinstance(adf, SparkADF):
+                adf_uuid = clean_uuid(uuid.uuid4())
+
+                adf.alias = \
+                    '{}__{}__{}'.format(
+                        self.params._uuid,
+                        __mode__,
+                        adf_uuid)
+
+            else:
+                assert isinstance(adf, ArrowADF)
 
             if __first_train__:
                 adf._reprSampleSize = self.params.data.repr_sample_size
@@ -624,6 +634,14 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                 verbose=verbose)
 
         if __train__:
+            if isinstance(adf, SparkADF):
+                adf.alias = \
+                    '{}__{}__{}{}'.format(
+                        self.params._uuid,
+                        __mode__,
+                        adf_uuid,
+                        self._PREP_ADF_ALIAS_SUFFIX)
+
             component_labeled_adfs = Namespace()
 
             for label_var_name in set(self.params.model.component_blueprints).intersection(adf.contentCols):
@@ -664,10 +682,31 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                              else len(component_blueprint_params.data._cat_prep_cols))
 
                     component_labeled_adfs[label_var_name] = \
-                        adf[[label_var_name] +
-                            list(adf.indexCols + adf.tAuxCols +
-                                 component_blueprint_params.data._cat_prep_cols +
-                                 component_blueprint_params.data._num_prep_cols)]
+                        (adf(VectorAssembler(
+                                inputCols=component_blueprint_params.data._cat_prep_cols +
+                                          component_blueprint_params.data._num_prep_cols,
+                                outputCol=component_blueprint_params.data._prep_vec_col).transform,
+                             inheritCache=True,
+                             inheritNRows=True)(
+                             label_var_name,
+                             component_blueprint_params.data._prep_vec_col,
+                             *(adf.indexCols + adf.tAuxCols),
+                             alias=adf.alias + '__LABEL__' + label_var_name,
+                             inheritCache=True,
+                             inheritNRows=True)
+                         if (__vectorize__ is None) or __vectorize__
+                         else adf(label_var_name,
+                                  *(adf.indexCols + adf.tAuxCols +
+                                    component_blueprint_params.data._cat_prep_cols +
+                                    component_blueprint_params.data._num_prep_cols),
+                                  alias=adf.alias + '__LABEL__' + label_var_name,
+                                  inheritCache=True,
+                                  inheritNRows=True)) \
+                        if isinstance(adf, SparkADF) \
+                        else adf[[label_var_name] +
+                                 list(adf.indexCols + adf.tAuxCols +
+                                      component_blueprint_params.data._cat_prep_cols +
+                                      component_blueprint_params.data._num_prep_cols)]
 
             # save Blueprint & data transforms
             self.save()
