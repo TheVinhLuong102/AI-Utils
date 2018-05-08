@@ -1732,6 +1732,11 @@ class ArrowADF(_ArrowADFABC):
                 nSamplePieces = self.nPieces
                 piecePaths = self.piecePaths
 
+        if arimo.debug.ON:
+            self.stdout_logger.debug(
+                '*** SAMPLING {:,} OF COLS {} FROM {:,} PIECES ***'
+                .format(n, cols, nSamplePieces))
+
         return self.reduce(
                 *piecePaths,
                 cols=cols,
