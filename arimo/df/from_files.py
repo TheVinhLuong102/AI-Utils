@@ -179,7 +179,10 @@ class _ArrowADF__encodeStr__pandasDFTransform:
 class _ArrowADF__fillna__pandasDFTransform:
     def __init__(self, nullFillDetails, _medianFill=False):
         self.nullFillDetails = nullFillDetails
+
         self._medianFill = _medianFill
+        if _medianFill and arimo.debug.ON:
+            print('*** Median-NULL-Filling ACTIVATED ***')
 
     def __call__(self, pandasDF):
         for col, nullFillColNameNDetails in self.nullFillDetails.items():
@@ -227,7 +230,7 @@ class _ArrowADF__fillna__pandasDFTransform:
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowADF__prep__pandasDFTransform:
-    def __init__(self, addCols, typeStrs, catOrigToPrepColMap, numOrigToPrepColMap):
+    def __init__(self, addCols, typeStrs, catOrigToPrepColMap, numOrigToPrepColMap, _medianFill=False):
         self.addCols = addCols
 
         self.typeStrs = typeStrs
@@ -239,6 +242,10 @@ class _ArrowADF__prep__pandasDFTransform:
         self.numOrigToPrepColMap = numOrigToPrepColMap
         self.numScaler = numOrigToPrepColMap['__SCALER__']
         assert self.numScaler in ('standard', 'maxabs', 'minmax', None)
+
+        self._medianFill = _medianFill
+        if _medianFill and arimo.debug.ON:
+            print('*** Median-NULL-Filling ACTIVATED ***')
 
     def __call__(self, pandasDF):
         _FLOAT_ABS_TOL = 1e-6
@@ -275,7 +282,11 @@ class _ArrowADF__prep__pandasDFTransform:
                     assert minMaxScaledIdxSeries.between(left=-1, right=1, inclusive=True).all(), \
                         '*** "{}" CERTAIN MIN-MAX SCALED INT INDICES NOT BETWEEN -1 AND 1 ***'
 
-        pandasDF = _ArrowADF__fillna__pandasDFTransform(nullFillDetails=self.numOrigToPrepColMap)(pandasDF=pandasDF)
+        pandasDF = \
+            _ArrowADF__fillna__pandasDFTransform(
+                nullFillDetails=self.numOrigToPrepColMap,
+                _medianFill=self._medianFill)(
+                pandasDF=pandasDF)
 
         for numCol, prepNumColNameNDetails in self.numOrigToPrepColMap.items():
             if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and \
@@ -2471,6 +2482,8 @@ class ArrowADF(_ArrowADFABC):
         if arimo.debug.ON:
             verbose = True
 
+        _medianFill = kwargs.pop('_medianFill', False)
+
         if loadPath:
             if verbose:
                 message = 'Loading NULL-Filling SQL Statement from Path "{}"...'.format(loadPath)
@@ -2713,7 +2726,9 @@ class ArrowADF(_ArrowADFABC):
 
         arrowADF = \
             self.map(
-                mapper=_ArrowADF__fillna__pandasDFTransform(nullFillDetails=details),
+                mapper=_ArrowADF__fillna__pandasDFTransform(
+                        nullFillDetails=details,
+                        _medianFill=_medianFill),
                 inheritNRows=True,
                 **kwargs)
 
@@ -2845,6 +2860,8 @@ class ArrowADF(_ArrowADFABC):
         verbose = kwargs.pop('verbose', False)
         if arimo.debug.ON:
             verbose = True
+
+        _medianFill = kwargs.pop('_medianFill', False)
 
         if loadPath:
             if verbose:
@@ -3080,7 +3097,8 @@ class ArrowADF(_ArrowADFABC):
                         outlierTails=outlierTails,
                         fillOutliers=fill.get('fillOutliers', False),
                         returnDetails=True,
-                        verbose=verbose > 1)
+                        verbose=verbose > 1,
+                        _medianFill=_medianFill)
 
                 for numCol in numCols:
                     colOutlierTails = outlierTails.get(numCol, 'both')
@@ -3311,7 +3329,8 @@ class ArrowADF(_ArrowADFABC):
                         {catCol: str(self.type(catCol))
                          for catCol in set(catOrigToPrepColMap).difference(('__OHE__', '__SCALE__'))},
                     catOrigToPrepColMap=catOrigToPrepColMap,
-                    numOrigToPrepColMap=numOrigToPrepColMap),
+                    numOrigToPrepColMap=numOrigToPrepColMap,
+                    _medianFill=_medianFill),
                 inheritNRows=True,
                 **kwargs)[colsToKeep]
 

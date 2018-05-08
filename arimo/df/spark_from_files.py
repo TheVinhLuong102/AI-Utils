@@ -564,6 +564,8 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
 
         returnDetails = kwargs.pop('returnDetails', False)
 
+        _medianFill = kwargs.pop('_medianFill', False)
+
         kwargs['returnDetails'] = \
             kwargs['returnSQLTransformer'] = True
 
@@ -572,7 +574,10 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
 
         adf = self.transform(
             sparkDFTransform=sqlTransformer,
-            pandasDFTransform=_ArrowADF__fillna__pandasDFTransform(nullFillDetails=nullFillDetails),
+            pandasDFTransform=
+                _ArrowADF__fillna__pandasDFTransform(
+                    nullFillDetails=nullFillDetails,
+                    _medianFill=_medianFill),
             _sparkDF=adf._sparkDF,
             inheritCache=True,
             inheritNRows=True,
@@ -594,6 +599,8 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
         returnOrigToPrepColMaps = \
             kwargs.pop('returnOrigToPrepColMaps', False)
 
+        _medianFill = kwargs.pop('_medianFill', False)
+
         kwargs['returnOrigToPrepColMaps'] = \
             kwargs['returnPipeline'] = True
 
@@ -614,7 +621,8 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                         {catCol: self._initSparkDF._schema[str(catCol)].dataType.simpleString()
                          for catCol in set(catOrigToPrepColMap).difference(('__OHE__', '__SCALE__'))},
                     catOrigToPrepColMap=catOrigToPrepColMap,
-                    numOrigToPrepColMap=numOrigToPrepColMap),
+                    numOrigToPrepColMap=numOrigToPrepColMap,
+                    _medianFill=_medianFill),
             _sparkDF=adf._sparkDF,
             inheritCache=True,
             inheritNRows=True,
