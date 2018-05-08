@@ -178,8 +178,8 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
             hdfs=False)
 
         open(os.path.join(
-            model.dir,
-            self.params.model._persist.struct_file), 'w') \
+                model.dir,
+                self.params.model._persist.struct_file), 'w') \
             .write(model.to_json())
 
         piece_paths = list(adf.piecePaths)
