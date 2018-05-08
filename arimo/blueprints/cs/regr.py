@@ -66,11 +66,6 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
 
         model = self.model(ver=self.params.model.ver)
 
-        if arimo.debug.ON:
-            model.stdout_logger.debug(
-                '*** TRAINING ON {} (APPROX. {:,} ROWS) ***'
-                    .format(adf, adf.approxNRows))
-
         # whether to exclude outlying labels
         _lower_outlier_threshold_applicable = \
             pandas.notnull(self.params.data.label.lower_outlier_threshold)
