@@ -1640,6 +1640,8 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
         # verbosity
         verbose = kwargs.pop('verbose', True)
 
+        _medianFill = kwargs.pop('_medianFill', False)
+
         component_labeled_adfs = \
             self.prep_data(
                 __mode__=self._TRAIN_MODE,
@@ -1687,7 +1689,8 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                         __gen_queue_size__=__gen_queue_size__,
                         __multiproc__=__multiproc__,
                         __n_workers__=__n_workers__,
-                        verbose=verbose)
+                        verbose=verbose,
+                        _medianFill=_medianFill)
 
                 blueprint_params.model.ver = \
                     blueprint.params.model.ver = \
