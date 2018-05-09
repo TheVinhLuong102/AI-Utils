@@ -1646,6 +1646,7 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
             self.prep_data(
                 __mode__=self._TRAIN_MODE,
                 verbose=verbose,
+                _medianFill=_medianFill,
                 *args, **kwargs)
 
         models = Namespace()
