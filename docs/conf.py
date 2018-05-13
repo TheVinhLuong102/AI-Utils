@@ -203,13 +203,66 @@ texinfo_documents = [
 # -- Extension configuration -------------------------------------------------
 
 
-# -- Options for intersphinx extension ---------------------------------------
+# -- Options for AutoDoc extension ----------------------------------------------
+
+autoclass_content = 'both'
+
+autodoc_default_flags = [
+    'members',
+    # 'undoc-members',   # methods with empty docstrings
+    # 'private-members',   # _private / __private
+    # 'special-members',   # __special__
+    # 'inherited-members',   # *** BUG: enabling this makes private members appear!!! ***
+    # 'show-inheritance'
+]
+
+autodoc_docstring_signature = True
+
+autodoc_member_order = 'bysource'   # alternative: 'groupwise'
+
+
+def autodoc_skip_member(app, what, name, obj, skip, options):
+    return False if name in ('__call__', '__len__') else skip
+
+
+# app setup hook
+def setup(app):
+    app.add_config_value(
+        'recommonmark_config',
+        dict(auto_toc_tree_section='Contents',
+             enable_auto_toc_tree=False),
+        True)
+
+    app.add_stylesheet('arimo.css')
+
+    app.add_transform(AutoStructify)
+
+    app.connect("autodoc-skip-member", autodoc_skip_member)
+
+
+# -- Options for InterSphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/': None}
 
 
-# -- Options for todo extension ----------------------------------------------
+# -- Options for Napoleon extension ----------------------------------------------
+
+napoleon_google_docstring = True
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = True
+napoleon_include_private_with_doc = False
+napoleon_include_special_with_doc = True   # enable this so that __call__ and __len__ docs are shown
+napoleon_use_admonition_for_examples = False
+napoleon_use_admonition_for_notes = False
+napoleon_use_admonition_for_references = False
+napoleon_use_ivar = False
+napoleon_use_param = True
+napoleon_use_rtype = True
+napoleon_use_keyword = True
+
+
+# -- Options for ToDo extension ----------------------------------------------
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
