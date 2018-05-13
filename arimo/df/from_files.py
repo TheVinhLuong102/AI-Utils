@@ -566,17 +566,6 @@ class _ArrowADF__gen:
 
 @enable_inplace
 class ArrowADF(_ArrowADFABC):
-    # "inplace-able" methods
-    _INPLACE_ABLE = \
-        'filter', \
-        'map', \
-        'rename', \
-        '_subset', \
-        'drop', \
-        'fillna', \
-        'filterByPartitionKeys', \
-        'prep',
-
     _CACHE = {}
     
     _PIECE_CACHES = {}
@@ -610,12 +599,10 @@ class ArrowADF(_ArrowADFABC):
         _ArrowADFABC._T_PoD_COL: _ARROW_DOUBLE_TYPE   # Part/Proportion/Fraction of Day
     }
 
-    def __init__(
-            self, path=None, reCache=False,
-            aws_access_key_id=None, aws_secret_access_key=None,
-
-            iCol=None, tCol=None,
-            _mappers=[],
+    # default arguments dict
+    _DEFAULT_KWARGS = \
+        dict(
+            iCol=_ArrowADFABC._DEFAULT_I_COL, tCol=None,
 
             reprSampleMinNPieces=_ArrowADFABC._REPR_SAMPLE_MIN_N_PIECES,
             reprSampleSize=_ArrowADFABC._DEFAULT_REPR_SAMPLE_SIZE,
@@ -623,9 +610,34 @@ class ArrowADF(_ArrowADFABC):
             minNonNullProportion=DefaultDict(_ArrowADFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
             outlierTailProportion=DefaultDict(_ArrowADFABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
             maxNCats=DefaultDict(_ArrowADFABC._DEFAULT_MAX_N_CATS),
-            minProportionByMaxNCats=DefaultDict(_ArrowADFABC._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS),
+            minProportionByMaxNCats=DefaultDict(_ArrowADFABC._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
 
-            verbose=True):
+    # "inplace-able" methods
+    _INPLACE_ABLE = \
+        'filter', \
+        'map', \
+        'rename', \
+        '_subset', \
+        'drop', \
+        'fillna', \
+        'filterByPartitionKeys', \
+        'prep'
+
+    # ********************************
+    # "INTERNAL / DON'T TOUCH" METHODS
+    # __init__
+    # _extractStdKwArgs
+    # _organizeTimeSeries
+    # _emptyCache
+    # _inheritCache
+    # _inplace
+
+    def __init__(
+            self, path=None, reCache=False,
+            aws_access_key_id=None, aws_secret_access_key=None,
+            _mappers=[],
+            verbose=True,
+            **kwargs):
         if verbose or arimo.debug.ON:
             logger = self.class_stdout_logger()
 
@@ -791,26 +803,132 @@ class ArrowADF(_ArrowADFABC):
 
         self.__dict__.update(_cache)
 
-        self._iCol = iCol
-        self._tCol = tCol
+        self._mappers = _mappers
 
-        self.hasTS = iCol and tCol
+        # extract standard keyword arguments
+        self._extractStdKwArgs(kwargs, resetToClassDefaults=True, inplace=True)
 
+        # organize time series if applicable
+        self._organizeTimeSeries()
+
+        # set profiling settings and create empty profiling cache
+        self._emptyCache()
+
+    def _extractStdKwArgs(self, kwargs, resetToClassDefaults=False, inplace=False):
+        nameSpace = self \
+            if inplace \
+            else _Namespace()
+
+        for k, classDefaultV in self._DEFAULT_KWARGS.items():
+            _privateK = '_{}'.format(k)
+
+            if not resetToClassDefaults:
+                existingInstanceV = getattr(self, _privateK, None)
+
+            v = kwargs.pop(
+                k,
+                existingInstanceV
+                    if (not resetToClassDefaults) and existingInstanceV
+                    else classDefaultV)
+
+            if (k == 'reprSampleMinNPieces') and (v > self.nPieces):
+                v = self.nPieces
+
+            setattr(
+                nameSpace,
+                _privateK   # *** USE _k TO NOT INVOKE @k.setter RIGHT AWAY ***
+                    if inplace
+                    else k,
+                v)
+
+        if inplace:
+            cols = self.srcColsInclPartitionKVs
+
+            if self._iCol not in cols:
+                self._iCol = None
+
+            if self._tCol not in cols:
+                self._tCol = None
+
+        else:
+            return nameSpace
+
+    def _organizeTimeSeries(self):
         self._dCol = DATE_COL \
             if DATE_COL in self.srcColsInclPartitionKVs \
             else None
 
-        self._mappers = _mappers
+        self.hasTS = self._iCol and self._tCol
 
-        self._reprSampleMinNPieces = min(reprSampleMinNPieces, self.nPieces)
-        self._reprSampleSize = reprSampleSize
+    def _emptyCache(self):
+        self._cache = \
+            _Namespace(
+                reprSamplePiecePaths=None,
+                reprSample=None,
 
-        self._minNonNullProportion = minNonNullProportion
-        self._outlierTailProportion = outlierTailProportion
-        self._maxNCats = maxNCats
-        self._minProportionByMaxNCats = minProportionByMaxNCats
+                nRows=None,
+                approxNRows=None,
 
-        self._emptyCache()
+                count={}, distinct={},   # approx.
+
+                nonNullProportion={},   # approx.
+                suffNonNullProportionThreshold={},
+                suffNonNull={},
+
+                sampleMin={}, sampleMax={}, sampleMean={}, sampleMedian={},
+                outlierRstMin={}, outlierRstMax={}, outlierRstMean={}, outlierRstMedian={},
+
+                colWidth={})
+
+    def _inheritCache(self, arrowDF, *sameCols, **newColToOldColMappings):
+        if arrowDF._cache.nRows:
+            if self._cache.nRows is None:
+                self._cache.nRows = arrowDF._cache.nRows
+            else:
+                assert self._cache.nRows == arrowDF._cache.nRows
+
+        if arrowDF._cache.approxNRows and (self._cache.approxNRows is None):
+            self._cache.approxNRows = arrowDF._cache.approxNRows
+
+        commonCols = set(self.columns).intersection(arrowDF.columns)
+
+        if sameCols or newColToOldColMappings:
+            for newCol, oldCol in newColToOldColMappings.items():
+                assert newCol in self.columns
+                assert oldCol in arrowDF.columns
+
+            for sameCol in commonCols.difference(newColToOldColMappings).intersection(sameCols):
+                newColToOldColMappings[sameCol] = sameCol
+
+        else:
+            newColToOldColMappings = \
+                {col: col
+                 for col in commonCols}
+
+        for cacheCategory in \
+                ('count', 'distinct',
+                 'nonNullProportion', 'suffNonNullProportionThreshold', 'suffNonNull',
+                 'sampleMin', 'sampleMax', 'sampleMean', 'sampleMedian',
+                 'outlierRstMin', 'outlierRstMax', 'outlierRstMean', 'outlierRstMedian',
+                 'colWidth'):
+            for newCol, oldCol in newColToOldColMappings.items():
+                if oldCol in arrowDF._cache.__dict__[cacheCategory]:
+                    self._cache.__dict__[cacheCategory][newCol] = \
+                        arrowDF._cache.__dict__[cacheCategory][oldCol]
+
+    def _inplace(self, arrowADF):
+        if isinstance(arrowADF, (tuple, list)):   # just in case we're taking in multiple inputs
+            arrowADF = arrowADF[0]
+
+        assert isinstance(arrowADF, ArrowADF)
+
+        self.path = arrowADF.path
+
+        self.__dict__.update(self._CACHE[arrowADF.path])
+
+        self._mappers = arrowADF._mappers
+
+        self._cache = arrowADF._cache
 
     # **********
     # IO METHODS
@@ -831,20 +949,6 @@ class ArrowADF(_ArrowADFABC):
     # ********************************
     # "INTERNAL / DON'T TOUCH" METHODS
     # _inplace
-
-    def _inplace(self, arrowADF):
-        if isinstance(arrowADF, (tuple, list)):   # just in case we're taking in multiple inputs
-            arrowADF = arrowADF[0]
-
-        assert isinstance(arrowADF, ArrowADF)
-
-        self.path = arrowADF.path
-
-        self.__dict__.update(self._CACHE[arrowADF.path])
-
-        self._mappers = arrowADF._mappers
-
-        self._cache = arrowADF._cache
 
     def copy(self, **kwargs):
         resetMappers = kwargs.pop('resetMappers')
@@ -944,65 +1048,7 @@ class ArrowADF(_ArrowADFABC):
 
     # ***************
     # CACHING METHODS
-    # _emptyCache
-    # _inheritCache
     # pieceLocalOrHDFSPath
-
-    def _emptyCache(self):
-        self._cache = \
-            _Namespace(
-                reprSamplePiecePaths=None,
-                reprSample=None,
-
-                nRows=None,
-                approxNRows=None,
-
-                count={}, distinct={},   # approx.
-
-                nonNullProportion={},   # approx.
-                suffNonNullProportionThreshold={},
-                suffNonNull={},
-
-                sampleMin={}, sampleMax={}, sampleMean={}, sampleMedian={},
-                outlierRstMin={}, outlierRstMax={}, outlierRstMean={}, outlierRstMedian={},
-
-                colWidth={})
-
-    def _inheritCache(self, arrowDF, *sameCols, **newColToOldColMappings):
-        if arrowDF._cache.nRows:
-            if self._cache.nRows is None:
-                self._cache.nRows = arrowDF._cache.nRows
-            else:
-                assert self._cache.nRows == arrowDF._cache.nRows
-
-        if arrowDF._cache.approxNRows and (self._cache.approxNRows is None):
-            self._cache.approxNRows = arrowDF._cache.approxNRows
-
-        commonCols = set(self.columns).intersection(arrowDF.columns)
-
-        if sameCols or newColToOldColMappings:
-            for newCol, oldCol in newColToOldColMappings.items():
-                assert newCol in self.columns
-                assert oldCol in arrowDF.columns
-
-            for sameCol in commonCols.difference(newColToOldColMappings).intersection(sameCols):
-                newColToOldColMappings[sameCol] = sameCol
-
-        else:
-            newColToOldColMappings = \
-                {col: col
-                 for col in commonCols}
-
-        for cacheCategory in \
-                ('count', 'distinct',
-                 'nonNullProportion', 'suffNonNullProportionThreshold', 'suffNonNull',
-                 'sampleMin', 'sampleMax', 'sampleMean', 'sampleMedian',
-                 'outlierRstMin', 'outlierRstMax', 'outlierRstMean', 'outlierRstMedian',
-                 'colWidth'):
-            for newCol, oldCol in newColToOldColMappings.items():
-                if oldCol in arrowDF._cache.__dict__[cacheCategory]:
-                    self._cache.__dict__[cacheCategory][newCol] = \
-                        arrowDF._cache.__dict__[cacheCategory][oldCol]
 
     def pieceLocalOrHDFSPath(self, piecePath):
         if (piecePath in self._PIECE_CACHES) and self._PIECE_CACHES[piecePath].localOrHDFSPath:
