@@ -143,10 +143,14 @@ class SparkADF(_ADFABC):
     _DEFAULT_KWARGS = \
         dict(
             alias=None,
+
             detPrePartitioned=False, nDetPrePartitions=None,
+
             iCol=_ADFABC._DEFAULT_I_COL, tCol=None,
             tChunkLen=_DEFAULT_T_CHUNK_LEN,
+
             reprSampleSize=_ADFABC._DEFAULT_REPR_SAMPLE_SIZE,
+
             minNonNullProportion=DefaultDict(_ADFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
             outlierTailProportion=DefaultDict(_ADFABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
             maxNCats=DefaultDict(_ADFABC._DEFAULT_MAX_N_CATS),
@@ -1117,9 +1121,7 @@ class SparkADF(_ADFABC):
                 nPartitions=self._cache.nPartitions,
                 nRows=self._cache.nRows,
 
-                type=Namespace(**
-                    {col: type
-                     for col, type in self.dtypes}),
+                type=Namespace(**dict(self.dtypes)),
 
                 firstRow=None, aRow=None,
 
