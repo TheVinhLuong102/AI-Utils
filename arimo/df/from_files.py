@@ -623,14 +623,10 @@ class ArrowADF(_ArrowADFABC):
         'filterByPartitionKeys', \
         'prep'
 
-    # ********************************
-    # "INTERNAL / DON'T TOUCH" METHODS
+    # *****************
+    # METHODS TO CREATE
     # __init__
-    # _extractStdKwArgs
-    # _organizeTimeSeries
-    # _emptyCache
-    # _inheritCache
-    # _inplace
+    # load
 
     def __init__(
             self, path=None, reCache=False,
@@ -814,6 +810,18 @@ class ArrowADF(_ArrowADFABC):
         # set profiling settings and create empty profiling cache
         self._emptyCache()
 
+    @classmethod
+    def load(cls, path, **kwargs):
+        return cls(path=path, **kwargs)
+
+    # ********************************
+    # "INTERNAL / DON'T TOUCH" METHODS
+    # _extractStdKwArgs
+    # _organizeTimeSeries
+    # _emptyCache
+    # _inheritCache
+    # _inplace
+
     def _extractStdKwArgs(self, kwargs, resetToClassDefaults=False, inplace=False):
         nameSpace = self \
             if inplace \
@@ -932,23 +940,10 @@ class ArrowADF(_ArrowADFABC):
 
     # **********
     # IO METHODS
-    # load / read
     # save
-
-    @classmethod
-    def load(cls, path, **kwargs):
-        return cls(path=path, **kwargs)
-
-    @classmethod
-    def read(cls, path, **kwargs):
-        return cls(path=path, **kwargs)
 
     def save(self, *args, **kwargs):
         return NotImplemented
-
-    # ********************************
-    # "INTERNAL / DON'T TOUCH" METHODS
-    # _inplace
 
     def copy(self, **kwargs):
         resetMappers = kwargs.pop('resetMappers')

@@ -62,7 +62,6 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
     # METHODS TO CREATE
     # __init__
     # load
-    # read
 
     def __init__(
             self, path, aws_access_key_id=None, aws_secret_access_key=None, reCache=False,
