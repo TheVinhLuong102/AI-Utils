@@ -258,6 +258,7 @@ todo_include_todos = True
 def setup(app):
     app.add_config_value(
         'recommonmark_config',
+
         dict(enable_auto_toc_tree=True,   # 'enable the Auto Toc Tree feature.
              auto_toc_tree_section='Contents',   # when True, Auto Toc Tree will only be enabled on section that matches the title.
 
@@ -267,6 +268,7 @@ def setup(app):
              enable_eval_rst=True,   # enable the evaluate embedded reStructuredText feature.
              url_resolver=None,   # a function that maps a existing relative position in the document to a http link
              ),
+
         True)
 
     app.add_transform(AutoStructify)
