@@ -6,7 +6,7 @@
 # generate .rst files from module code & docstrings
 # any pathnames given at the end are paths to be excluded ignored during generation.
 # ref: http://www.sphinx-doc.org/en/master/man/sphinx-apidoc.html
-sphinx-apidoc arimo --output-dir docs --force --module-first --maxdepth 4
+sphinx-apidoc --force --maxdepth 4 --module-first --output-dir docs --separate arimo
 
 # get rid of undocumented members
 # grep -C2 ":undoc-members:" docs/arimo*.rst

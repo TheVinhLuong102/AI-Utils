@@ -2,8 +2,7 @@
 
 
 DOCS_BUILD_DIR=docs/_build
+PUBLICATION_DIR=ubuntu@doc.arimo.com:/var/www/html/BAI-dev
 
 
-cd $DOCS_BUILD_DIR
-
-tar cz * | ssh ubuntu@doc.arimo.com "cd /var/www/html/BAI-dev; tar zxvf -;"
+rsync -avr $DOCS_BUILD_DIR/ $PUBLICATION_DIR/ --delete
