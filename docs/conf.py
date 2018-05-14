@@ -266,8 +266,8 @@ def setup(app):
              enable_math=True,   # enable the Math Formula feature.
              enable_inline_math=True,   # enable the Inline Math feature.
              enable_eval_rst=True,   # enable the evaluate embedded reStructuredText feature.
-             url_resolver=None,   # a function that maps a existing relative position in the document to a http link
-             ),
+             # url_resolver=None,   # a function that maps a existing relative position in the document to a http link
+        ),
 
         True)
 
