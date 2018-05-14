@@ -269,8 +269,6 @@ def setup(app):
              ),
         True)
 
-    app.add_stylesheet('arimo.css')
-
     app.add_transform(AutoStructify)
 
     app.connect("autodoc-skip-member", autodoc_skip_member)
