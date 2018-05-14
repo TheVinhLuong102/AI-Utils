@@ -2,9 +2,9 @@
 
 [__Arimo LLC's__](http://arimo.com) BAI SDK components under development:
 
-1. __Arimo Blueprints__ (__`blueprints`__ module)
+1. __Arimo Blueprints__ (__`arimo.blueprints`__ module)
 
-2. __Arimo Data Feeders / Data Frames__ (__`df`__ module)
+2. __Arimo Data Feeders / Data Frames__ (__`arimo.df`__ module)
 
 
 ## Contents
