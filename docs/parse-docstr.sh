@@ -10,5 +10,5 @@ sphinx-apidoc arimo --output-dir docs --force --module-first --maxdepth 4
 
 # get rid of undocumented members
 # grep -C2 ":undoc-members:" docs/arimo*.rst
-sed -e /:undoc-members:/d -i .orig docs/arimo*.rst
-rm docs/*.orig
+# sed -e /:undoc-members:/d -i .orig docs/arimo*.rst
+# rm docs/*.orig
