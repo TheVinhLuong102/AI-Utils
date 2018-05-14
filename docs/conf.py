@@ -225,28 +225,6 @@ def autodoc_skip_member(app, what, name, obj, skip, options):
     return False if name in ('__call__', '__len__') else skip
 
 
-# app setup hook
-def setup(app):
-    app.add_config_value(
-        'recommonmark_config',
-        dict(enable_auto_toc_tree=True,   # 'enable the Auto Toc Tree feature.
-             auto_toc_tree_section='Contents',   # when True, Auto Toc Tree will only be enabled on section that matches the title.
-
-             enable_auto_doc_ref=True,   # enable the Auto Doc Ref feature.
-             enable_math=True,   # enable the Math Formula feature.
-             enable_inline_math=True,   # enable the Inline Math feature.
-             enable_eval_rst=True,   # enable the evaluate embedded reStructuredText feature.
-             url_resolver=None,   # a function that maps a existing relative position in the document to a http link
-        ),
-        True)
-
-    app.add_stylesheet('arimo.css')
-
-    app.add_transform(AutoStructify)
-
-    app.connect("autodoc-skip-member", autodoc_skip_member)
-
-
 # -- Options for InterSphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
@@ -273,3 +251,26 @@ napoleon_use_keyword = True
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
+
+
+# -- App Setup Hook ----------------------------------------------
+# ref: http://recommonmark.readthedocs.io/en/latest
+def setup(app):
+    app.add_config_value(
+        'recommonmark_config',
+        dict(enable_auto_toc_tree=True,   # 'enable the Auto Toc Tree feature.
+             auto_toc_tree_section='Contents',   # when True, Auto Toc Tree will only be enabled on section that matches the title.
+
+             enable_auto_doc_ref=True,   # enable the Auto Doc Ref feature.
+             enable_math=True,   # enable the Math Formula feature.
+             enable_inline_math=True,   # enable the Inline Math feature.
+             enable_eval_rst=True,   # enable the evaluate embedded reStructuredText feature.
+             url_resolver=None,   # a function that maps a existing relative position in the document to a http link
+             ),
+        True)
+
+    app.add_stylesheet('arimo.css')
+
+    app.add_transform(AutoStructify)
+
+    app.connect("autodoc-skip-member", autodoc_skip_member)
