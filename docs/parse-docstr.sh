@@ -10,7 +10,10 @@ DOCS_DIR=docs
 # generate .rst files from module code & docstrings
 # any pathnames given at the end are paths to be excluded ignored during generation.
 # ref: http://www.sphinx-doc.org/en/master/man/sphinx-apidoc.html
-sphinx-apidoc --force --maxdepth 4 --module-first --output-dir $DOCS_DIR --separate $MODULE
+sphinx-apidoc --force --maxdepth 4 --module-first --output-dir $DOCS_DIR --separate $MODULE \
+    $MODULE/df/dask.py \
+    $MODULE/df/dask_from_files.py
+
 
 # get rid of undocumented members
 # grep -C2 ":undoc-members:" $DOCS_DIR/$MODULE*.rst
