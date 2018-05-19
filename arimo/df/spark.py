@@ -1690,6 +1690,8 @@ class SparkADF(_ADFABC):
                     path = _path
 
             elif format == 'jdbc':
+                assert path[:5] == 'jdbc:'
+
                 options['url'] = path
 
                 if path[5:13] == 'postgres':
