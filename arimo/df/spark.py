@@ -1653,10 +1653,13 @@ class SparkADF(_ADFABC):
         if verbose:
             logger = cls.class_stdout_logger()
 
-            msg = 'Loading by {} Format from {}...'.format(
+            msg = 'Loading by {} Format from {}{}...'.format(
                     format.upper(),
                     path if isinstance(path, _STR_CLASSES)
-                         else '{} Paths e.g. {}'.format(len(path), path[:3]))
+                         else '{} Paths e.g. {}'.format(len(path), path[:3]),
+                    ' (DB Table "{}")'.format(options['dbtable'])
+                        if 'dbtable' in options
+                        else '')
             logger.info(msg)
             tic = time.time()
 
