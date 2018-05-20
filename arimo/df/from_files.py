@@ -42,7 +42,7 @@ from arimo.util.iterables import to_iterable
 from arimo.util.types.arrow import \
     _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE, \
     is_boolean, is_complex, is_float, is_integer, is_num, is_possible_cat, is_string
-from arimo.util.types.numpy_pandas import NUM_TYPES
+from arimo.util.types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY_NUM_TYPES
 from arimo.util.types.spark_sql import _STR_TYPE
 import arimo.debug
 
@@ -1952,7 +1952,7 @@ class ArrowADF(_ArrowADFABC):
 
                 assert isinstance(series, pandas.Series)
 
-                if (series.dtype in NUM_TYPES) or not count:
+                if (series.dtype in PY_NUM_TYPES) or (not count):
                     return series
 
             self._cache.distinct[col] = \
@@ -2034,13 +2034,19 @@ class ArrowADF(_ArrowADFABC):
                         if verbose:
                             tic = time.time()
 
-                        cache[col] = result = \
+                        result = \
                             getattr(self.reprSample[col], stat)(
                                 axis='index',
                                 skipna=True,
                                 level=None)
 
-                        assert isinstance(result, NUM_TYPES), \
+                        if isinstance(result, NUMPY_FLOAT_TYPES):
+                            result = float(result)
+
+                        elif isinstance(result, NUMPY_INT_TYPES):
+                            result = int(result)
+
+                        assert isinstance(result, PY_NUM_TYPES), \
                             '*** "{}" SAMPLE {} = {} ({}) ***'.format(
                                 col, capitalizedStatName.upper(), result, type(result))
 
@@ -2049,6 +2055,8 @@ class ArrowADF(_ArrowADFABC):
                             self.stdout_logger.info(
                                 msg='Sample {} for Column "{}" = {:,.3g}   <{:,.1f} s>'
                                     .format(capitalizedStatName, col, result, toc - tic))
+
+                        cache[col] = result
 
                     return cache[col]
 
@@ -2107,7 +2115,7 @@ class ArrowADF(_ArrowADFABC):
                         elif outlierTails == 'upper':
                             series = series.loc[series <= self.outlierRstMax(col)]
 
-                        cache[col] = result = \
+                        result = \
                             getattr(series, stat)(
                                 axis='index',
                                 skipna=True,
@@ -2119,7 +2127,13 @@ class ArrowADF(_ArrowADFABC):
 
                             result = self.outlierRstMin(col)
 
-                        assert isinstance(result, NUM_TYPES), \
+                        if isinstance(result, NUMPY_FLOAT_TYPES):
+                            result = float(result)
+
+                        elif isinstance(result, NUMPY_INT_TYPES):
+                            result = int(result)
+
+                        assert isinstance(result, PY_NUM_TYPES), \
                             '*** "{}" OUTLIER-RESISTANT {} = {} ({}) ***'.format(
                                 col, capitalizedStatName.upper(), result, type(result))
 
@@ -2128,6 +2142,8 @@ class ArrowADF(_ArrowADFABC):
                             self.stdout_logger.info(
                                 msg='Outlier-Resistant {} for Column "{}" = {:,.3g}   <{:,.1f} s>'
                                     .format(capitalizedStatName, col, result, toc - tic))
+
+                        cache[col] = result
 
                     return cache[col]
 
@@ -2170,7 +2186,7 @@ class ArrowADF(_ArrowADFABC):
                     sampleMin = self.sampleStat(col, stat='min')
                     sampleMedian = self.sampleStat(col, stat='median')
 
-                    self._cache.outlierRstMin[col] = result = \
+                    result = \
                         series.loc[series > sampleMin] \
                             .min(axis='index',
                                  skipna=True,
@@ -2178,7 +2194,13 @@ class ArrowADF(_ArrowADFABC):
                         if (outlierRstMin == sampleMin) and (outlierRstMin < sampleMedian) \
                         else outlierRstMin
 
-                    assert isinstance(result, NUM_TYPES), \
+                    if isinstance(result, NUMPY_FLOAT_TYPES):
+                        result = float(result)
+
+                    elif isinstance(result, NUMPY_INT_TYPES):
+                        result = int(result)
+
+                    assert isinstance(result, PY_NUM_TYPES), \
                         '*** "{}" OUTLIER-RESISTANT MIN = {} ({}) ***'.format(col, result, type(result))
 
                     if verbose:
@@ -2186,6 +2208,8 @@ class ArrowADF(_ArrowADFABC):
                         self.stdout_logger.info(
                             msg='Outlier-Resistant Min of Column "{}" = {:,.3g}   <{:,.1f} s>'
                                 .format(col, result, toc - tic))
+
+                    self._cache.outlierRstMin[col] = result
 
                 return self._cache.outlierRstMin[col]
 
@@ -2228,7 +2252,7 @@ class ArrowADF(_ArrowADFABC):
                     sampleMax = self.sampleStat(col, stat='max')
                     sampleMedian = self.sampleStat(col, stat='median')
 
-                    self._cache.outlierRstMax[col] = result = \
+                    result = \
                         series.loc[series < sampleMax] \
                             .max(axis='index',
                                  skipna=True,
@@ -2236,7 +2260,13 @@ class ArrowADF(_ArrowADFABC):
                         if (outlierRstMax == sampleMax) and (outlierRstMax > sampleMedian) \
                         else outlierRstMax
 
-                    assert isinstance(result, NUM_TYPES), \
+                    if isinstance(result, NUMPY_FLOAT_TYPES):
+                        result = float(result)
+
+                    elif isinstance(result, NUMPY_INT_TYPES):
+                        result = int(result)
+
+                    assert isinstance(result, PY_NUM_TYPES), \
                         '*** "{}" OUTLIER-RESISTANT MAX = {} ({}) ***'.format(col, result, type(result))
 
                     if verbose:
@@ -2244,6 +2274,8 @@ class ArrowADF(_ArrowADFABC):
                         self.stdout_logger.info(
                             msg='Outlier-Resistant Max of Column "{}" = {:,.3g}   <{:,.1f} s>'
                                 .format(col, result, toc - tic))
+
+                    self._cache.outlierRstMax[col] = result
 
                 return self._cache.outlierRstMax[col]
 
@@ -2571,8 +2603,8 @@ class ArrowADF(_ArrowADFABC):
                     colNulls = nulls[col]
 
                     assert isinstance(colNulls, (list, tuple)) and (len(colNulls) == 2) \
-                       and ((colNulls[0] is None) or isinstance(colNulls[0], NUM_TYPES)) \
-                       and ((colNulls[1] is None) or isinstance(colNulls[1], NUM_TYPES))
+                       and ((colNulls[0] is None) or isinstance(colNulls[0], PY_NUM_TYPES)) \
+                       and ((colNulls[1] is None) or isinstance(colNulls[1], PY_NUM_TYPES))
 
                 else:
                     nulls[col] = (None, None)
