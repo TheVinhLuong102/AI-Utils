@@ -1883,7 +1883,7 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
 
         return eval_metrics
 
-    def set_benchmark_metrics(self, *args, **kwargs):
+    def save_benchmark_metrics(self, *args, **kwargs):
         self.params.benchmark_metrics = \
             self.eval(
                 __excl_outliers__=True,
