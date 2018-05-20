@@ -2975,7 +2975,8 @@ class SparkADF(_ADFABC):
                                 .first()[0]
 
                         assert isinstance(result, (float, int)), \
-                            '*** "{}" SAMPLE {} = {} ***'.format(col, capitalizedStatName.upper(), result)
+                            '*** "{}" SAMPLE {} = {} ({}) ***'.format(
+                                col, capitalizedStatName.upper(), result, type(result))
 
                         if verbose:
                             toc = time.time()
@@ -3022,7 +3023,7 @@ class SparkADF(_ADFABC):
                                 relativeError=0.)
 
                     assert isinstance(result, (float, int)), \
-                        '*** "{}" SAMPLE MEDIAN = {} ***'.format(col, result)
+                        '*** "{}" SAMPLE MEDIAN = {} ({}) ***'.format(col, result, type(result))
 
                     if verbose:
                         toc = time.time()
@@ -3094,7 +3095,9 @@ class SparkADF(_ADFABC):
                             
                             result = self.outlierRstMin(col)
 
-                        assert isinstance(result, (float, int))
+                        assert isinstance(result, (float, int)), \
+                                '*** "{}" OUTLIER-RESISTANT {} = {} ({}) ***'.format(
+                                    col, capitalizedStatName.upper(), result, type(result))
 
                         if verbose:
                             toc = time.time()
@@ -3155,7 +3158,7 @@ class SparkADF(_ADFABC):
                         else outlierRstMin
 
                     assert isinstance(result, (float, int)), \
-                        '*** "{}" OUTLIER-RESISTANT MIN = {} ***'.format(col, result)
+                        '*** "{}" OUTLIER-RESISTANT MIN = {} ({}) ***'.format(col, result, type(result))
 
                     if verbose:
                         toc = time.time()
@@ -3216,7 +3219,7 @@ class SparkADF(_ADFABC):
                         else outlierRstMax
 
                     assert isinstance(result, (float, int)), \
-                        '*** "{}" OUTLIER-RESISTANT MAX = {} ***'.format(col, result)
+                        '*** "{}" OUTLIER-RESISTANT MAX = {} ({}) ***'.format(col, result, type(result))
 
                     if verbose:
                         toc = time.time()
@@ -3265,7 +3268,7 @@ class SparkADF(_ADFABC):
                                 relativeError=0.)[0]
 
                     assert isinstance(result, (float, int)), \
-                        '*** "{}" OUTLIER-RESISTANT MEDIAN = {} ***'.format(col, result)
+                        '*** "{}" OUTLIER-RESISTANT MEDIAN = {} ({}) ***'.format(col, result, type(result))
 
                     if verbose:
                         toc = time.time()
