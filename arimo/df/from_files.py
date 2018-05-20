@@ -3441,8 +3441,7 @@ class ArrowADF(_ArrowADFABC):
         else:
             aws_access_key_id = aws_secret_access_key = None
 
-        piecePaths = kwargs.get('piecePaths')   # , self.piecePaths
-        assert piecePaths
+        piecePaths = kwargs.get('piecePaths', self.piecePaths)
 
         return _ArrowADF__gen(
                 args=args,
