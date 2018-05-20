@@ -72,6 +72,7 @@ from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import rds, s3
 from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
 from arimo.util.iterables import flatten, to_iterable
+from arimo.util.types.numpy_pandas import NUM_TYPES
 from arimo.util.types.spark_sql import \
     _INT_TYPE, _BIGINT_TYPE, _INT_TYPES, _DOUBLE_TYPE, _FLOAT_TYPES, _NUM_TYPES, \
     _BOOL_TYPE, _STR_TYPE, _POSSIBLE_CAT_TYPES, _DATE_TYPE, _TIMESTAMP_TYPE, \
@@ -2783,7 +2784,7 @@ class SparkADF(_ADFABC):
 
                 assert isinstance(series, pandas.Series)
 
-                if (series.dtype in (float, int)) or not count:
+                if (series.dtype in NUM_TYPES) or not count:
                     return series
 
             verbose = True \
@@ -2974,7 +2975,7 @@ class SparkADF(_ADFABC):
                                 .select(getattr(sparkSQLFuncs, stat)(col)) \
                                 .first()[0]
 
-                        assert isinstance(result, (float, int)), \
+                        assert isinstance(result, NUM_TYPES), \
                             '*** "{}" SAMPLE {} = {} ({}) ***'.format(
                                 col, capitalizedStatName.upper(), result, type(result))
 
@@ -3022,7 +3023,7 @@ class SparkADF(_ADFABC):
                                 q=.5,
                                 relativeError=0.)
 
-                    assert isinstance(result, (float, int)), \
+                    assert isinstance(result, NUM_TYPES), \
                         '*** "{}" SAMPLE MEDIAN = {} ({}) ***'.format(col, result, type(result))
 
                     if verbose:
@@ -3095,7 +3096,7 @@ class SparkADF(_ADFABC):
                             
                             result = self.outlierRstMin(col)
 
-                        assert isinstance(result, (float, int)), \
+                        assert isinstance(result, NUM_TYPES), \
                                 '*** "{}" OUTLIER-RESISTANT {} = {} ({}) ***'.format(
                                     col, capitalizedStatName.upper(), result, type(result))
 
@@ -3157,7 +3158,7 @@ class SparkADF(_ADFABC):
                         if (outlierRstMin == sampleMin) and (outlierRstMin < sampleMedian) \
                         else outlierRstMin
 
-                    assert isinstance(result, (float, int)), \
+                    assert isinstance(result, NUM_TYPES), \
                         '*** "{}" OUTLIER-RESISTANT MIN = {} ({}) ***'.format(col, result, type(result))
 
                     if verbose:
@@ -3218,7 +3219,7 @@ class SparkADF(_ADFABC):
                         if (outlierRstMax == sampleMax) and (outlierRstMax > sampleMedian) \
                         else outlierRstMax
 
-                    assert isinstance(result, (float, int)), \
+                    assert isinstance(result, NUM_TYPES), \
                         '*** "{}" OUTLIER-RESISTANT MAX = {} ({}) ***'.format(col, result, type(result))
 
                     if verbose:
@@ -3267,7 +3268,7 @@ class SparkADF(_ADFABC):
                                 probabilities=(.5,),
                                 relativeError=0.)[0]
 
-                    assert isinstance(result, (float, int)), \
+                    assert isinstance(result, NUM_TYPES), \
                         '*** "{}" OUTLIER-RESISTANT MEDIAN = {} ({}) ***'.format(col, result, type(result))
 
                     if verbose:
@@ -3603,8 +3604,8 @@ class SparkADF(_ADFABC):
                 if col in nulls:
                     colNulls = nulls[col]
                     assert isinstance(colNulls, (list, tuple)) and (len(colNulls) == 2) \
-                       and ((colNulls[0] is None) or isinstance(colNulls[0], (float, int))) \
-                       and ((colNulls[1] is None) or isinstance(colNulls[1], (float, int)))
+                       and ((colNulls[0] is None) or isinstance(colNulls[0], NUM_TYPES)) \
+                       and ((colNulls[1] is None) or isinstance(colNulls[1], NUM_TYPES))
 
                 else:
                     nulls[col] = (None, None)

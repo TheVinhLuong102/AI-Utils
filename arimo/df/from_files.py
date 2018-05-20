@@ -42,6 +42,7 @@ from arimo.util.iterables import to_iterable
 from arimo.util.types.arrow import \
     _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE, \
     is_boolean, is_complex, is_float, is_integer, is_num, is_possible_cat, is_string
+from arimo.util.types.numpy_pandas import NUM_TYPES
 from arimo.util.types.spark_sql import _STR_TYPE
 import arimo.debug
 
@@ -1951,7 +1952,7 @@ class ArrowADF(_ArrowADFABC):
 
                 assert isinstance(series, pandas.Series)
 
-                if (series.dtype in (float, int)) or not count:
+                if (series.dtype in NUM_TYPES) or not count:
                     return series
 
             self._cache.distinct[col] = \
@@ -2039,7 +2040,7 @@ class ArrowADF(_ArrowADFABC):
                                 skipna=True,
                                 level=None)
 
-                        assert isinstance(result, (float, int)), \
+                        assert isinstance(result, NUM_TYPES), \
                             '*** "{}" SAMPLE {} = {} ({}) ***'.format(
                                 col, capitalizedStatName.upper(), result, type(result))
 
@@ -2118,7 +2119,7 @@ class ArrowADF(_ArrowADFABC):
 
                             result = self.outlierRstMin(col)
 
-                        assert isinstance(result, (float, int)), \
+                        assert isinstance(result, NUM_TYPES), \
                             '*** "{}" OUTLIER-RESISTANT {} = {} ({}) ***'.format(
                                 col, capitalizedStatName.upper(), result, type(result))
 
@@ -2177,7 +2178,7 @@ class ArrowADF(_ArrowADFABC):
                         if (outlierRstMin == sampleMin) and (outlierRstMin < sampleMedian) \
                         else outlierRstMin
 
-                    assert isinstance(result, (float, int)), \
+                    assert isinstance(result, NUM_TYPES), \
                         '*** "{}" OUTLIER-RESISTANT MIN = {} ({}) ***'.format(col, result, type(result))
 
                     if verbose:
@@ -2235,7 +2236,7 @@ class ArrowADF(_ArrowADFABC):
                         if (outlierRstMax == sampleMax) and (outlierRstMax > sampleMedian) \
                         else outlierRstMax
 
-                    assert isinstance(result, (float, int)), \
+                    assert isinstance(result, NUM_TYPES), \
                         '*** "{}" OUTLIER-RESISTANT MAX = {} ({}) ***'.format(col, result, type(result))
 
                     if verbose:
@@ -2570,8 +2571,8 @@ class ArrowADF(_ArrowADFABC):
                     colNulls = nulls[col]
 
                     assert isinstance(colNulls, (list, tuple)) and (len(colNulls) == 2) \
-                       and ((colNulls[0] is None) or isinstance(colNulls[0], (float, int))) \
-                       and ((colNulls[1] is None) or isinstance(colNulls[1], (float, int)))
+                       and ((colNulls[0] is None) or isinstance(colNulls[0], NUM_TYPES)) \
+                       and ((colNulls[1] is None) or isinstance(colNulls[1], NUM_TYPES))
 
                 else:
                     nulls[col] = (None, None)
