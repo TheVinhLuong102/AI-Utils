@@ -554,7 +554,7 @@ class _ArrowADF__gen:
             for i in range(n_batches):
                 rowIndicesSubset = rowIndices[(i * self.n):((i + 1) * self.n)]
 
-                yield [(numpy.vstack(
+                arrays = [(numpy.vstack(
                             numpy.expand_dims(
                                 chunkPandasDF.loc[(rowIdx + rowFrom_n_rowTo[0]):(rowIdx + rowFrom_n_rowTo[1] + 1), cols].values,
                                 axis=0)
@@ -563,6 +563,11 @@ class _ArrowADF__gen:
                         else chunkPandasDF.loc[rowIndicesSubset, cols].values)
                        for cols, overTime, rowFrom_n_rowTo in
                         zip(self.colsLists, self.colsOverTime, self.rowFrom_n_rowTo_tups)]
+
+                if arimo.debug.ON:
+                    print([a.shape for a in arrays])
+
+                yield arrays
 
 
 @enable_inplace
