@@ -3214,16 +3214,18 @@ class ArrowADF(_ArrowADFABC):
                                 elif colOutlierTails == 'upper':
                                     series = series.loc[series < colMax]
 
-                                mean = series.mean(
-                                    axis='index',
-                                    skipna=True,
-                                    level=None)
+                                mean = float(
+                                    series.mean(
+                                        axis='index',
+                                        skipna=True,
+                                        level=None))
 
-                                stdDev = series.std(
-                                    axis='index',
-                                    skipna=True,
-                                    level=None,
-                                    ddof=1)
+                                stdDev = float(
+                                    series.std(
+                                        axis='index',
+                                        skipna=True,
+                                        level=None,
+                                        ddof=1))
 
                                 prepSqlItems[scaledCol] = \
                                     sqlStdScl(
@@ -3242,7 +3244,7 @@ class ArrowADF(_ArrowADFABC):
                             elif scaler == 'maxabs':
                                 scaledCol = self._MAX_ABS_SCL_PREFIX + numCol + self._PREP_SUFFIX
 
-                                maxAbs = max(abs(colMin), abs(colMax))
+                                maxAbs = float(max(abs(colMin), abs(colMax)))
 
                                 prepSqlItems[scaledCol] = \
                                     sqlMaxAbsScl(
