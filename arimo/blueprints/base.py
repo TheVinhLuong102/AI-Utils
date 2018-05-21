@@ -1727,7 +1727,12 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
 
     def eval(self, *args, **kwargs):
         # whether to exclude outlying labels from eval
-        __excl_outliers__ = kwargs.pop('__excl_outliers__', False)
+        __excl_outliers__ = kwargs.pop('__excl_outliers__', True)
+
+        # whether to save
+        save = kwargs.pop('save', False)
+        if save:
+            assert __excl_outliers__
 
         # whether to cache data at certain stages
         __cache_vector_data__ = kwargs.pop('__cache_vector_data__', False)
@@ -1881,12 +1886,12 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
 
         adf.unpersist()
 
+        if save:
+            self.params.benchmark_metrics = \
+                self.eval(
+                    __excl_outliers__=True,
+                    *args, **kwargs)
+
+            self.save()
+
         return eval_metrics
-
-    def save_benchmark_metrics(self, *args, **kwargs):
-        self.params.benchmark_metrics = \
-            self.eval(
-                __excl_outliers__=True,
-                *args, **kwargs)
-
-        self.save()
