@@ -16,7 +16,7 @@ import uuid
 
 import arimo.backend
 import arimo.eval.metrics
-from arimo.util import clean_uuid, date_time, fs, import_obj, Namespace
+from arimo.util import clean_str, clean_uuid, date_time, fs, import_obj, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import _PRED_VARS_INCL_T_AUX_COLS, _PRED_VARS_INCL_T_CAT_AUX_COLS, _PRED_VARS_INCL_T_NUM_AUX_COLS
 from arimo.util.log import STDOUT_HANDLER
@@ -1861,7 +1861,7 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                                         else id) \
                         .drop(
                             id_col,
-                            alias=_per_label_adf.alias + '__' + clean_uuid(id))
+                            alias=_per_label_adf.alias + '__' + clean_str(id))
 
                 # cache to calculate multiple metrics quickly
                 _per_label_per_id_adf.cache(
