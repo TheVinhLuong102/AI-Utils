@@ -566,7 +566,9 @@ class _ArrowADF__gen:
                         zip(self.colsLists, self.colsOverTime, self.rowFrom_n_rowTo_tups)]
 
                 if arimo.debug.ON:
-                    assert not any(numpy.isnan(array).sum() for array in arrays)
+                    for array in arrays:
+                        nNaNs = numpy.isnan(array).sum()
+                        assert not nNaNs, '*** {}: {} NaNs ***'.format(array.shape, nNaNs)
 
                 yield arrays
 
