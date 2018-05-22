@@ -1403,7 +1403,7 @@ class _DLSupervisedBlueprintABC(_SupervisedBlueprintABC):
     _DEFAULT_PARAMS.update(
         model=Namespace(
             train=Namespace(
-                n_samples_max_multiple_of_data_size=9,
+                n_samples_max_multiple_of_data_size=3 ** 3,
                 n_train_samples_per_epoch=1000000,
                 min_n_val_samples_per_epoch=100000,   # 'all'
                 batch_size=500,
