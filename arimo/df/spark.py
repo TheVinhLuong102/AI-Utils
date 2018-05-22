@@ -2632,32 +2632,27 @@ class SparkADF(_ADFABC):
                 (pandas.notnull(lower) or pandas.notnull(upper)):
             _debugLogCondition = False
 
-            if colType.startswith(_DECIMAL_TYPE_PREFIX) or (colType in _FLOAT_TYPES):
-                numStrFormatter = '%.9f'
+            if (colType.startswith(_DECIMAL_TYPE_PREFIX) or (colType in _FLOAT_TYPES)) and \
+                    pandas.notnull(lower) and pandas.notnull(upper) and (lower + 1e-6 > upper):
+                self.stdout_logger.warning(
+                    msg='*** LOWER {} >= UPPER {} ***'
+                        .format(lower, upper))
 
-                if pandas.notnull(lower) and pandas.notnull(upper) and (lower + 1e-6 > upper):
-                    self.stdout_logger.warning(
-                        msg='*** LOWER {} >= UPPER {} ***'
-                            .format(lower, upper))
+                upper = lower + 1e-6
 
-                    upper = lower + 1e-6
-
-                    _debugLogCondition = True
-
-            else:
-                numStrFormatter = '%i'
+                _debugLogCondition = True
 
             equalSignStr = '' if strict else '='
 
             condition += ' AND {}{}{}'.format(
                 '' if pandas.isnull(lower)
-                   else '({} >{} {})'.format(col, equalSignStr, numStrFormatter % lower),
+                   else '({} >{} {})'.format(col, equalSignStr, lower),
 
                 '' if pandas.isnull(lower) or pandas.isnull(upper)
                    else ' AND ',
 
                 '' if pandas.isnull(upper)
-                   else '({} <{} {})'.format(col, equalSignStr, numStrFormatter % upper))
+                   else '({} <{} {})'.format(col, equalSignStr, upper))
 
             if _debugLogCondition:
                 self.stdout_logger.debug(
@@ -3692,57 +3687,55 @@ class SparkADF(_ADFABC):
                         colFallBackVal = value
 
                 if pandas.notnull(colFallBackVal):
-                    valFormatter = \
-                        '%f' if colType.startswith(_DECIMAL_TYPE_PREFIX) or (colType in _FLOAT_TYPES) \
-                             else ('%i' if colType in _INT_TYPES
-                                        else ("'%s'" if (colType == _STR_TYPE) and
-                                                        isinstance(colFallBackVal, _STR_CLASSES)
-                                                     else '%s'))
-
-                    fallbackStrs = [valFormatter % colFallBackVal]
+                    fallbackStrs = \
+                        ["'{}'".format(colFallBackVal)
+                         if (colType == _STR_TYPE) and isinstance(colFallBackVal, _STR_CLASSES)
+                         else repr(colFallBackVal)]
 
                     lowerNull, upperNull = colNulls = nulls[col]
 
                     if isNum and self.hasTS and window:
                         partitionFallBackStrTemplate = \
-                            "%s(CASE WHEN (STRING(%s) = 'NaN')%s%s%s%s THEN NULL ELSE %s END) OVER %s"
+                            "{}(CASE WHEN (STRING({}) = 'NaN'){}{}{}{} THEN NULL ELSE {} END) OVER {}"
 
-                        fallbackStrs.insert(0,
-                            partitionFallBackStrTemplate
-                                % (methodForCol,
-                                   col,
-                                   '' if lowerNull is None
-                                      else ' OR ({} <= {})'.format(col, lowerNull),
-                                   '' if upperNull is None
-                                      else ' OR ({} >= {})'.format(col, upperNull),
-                                   ' OR (%s < %s)' % (col, valFormatter % self.outlierRstMin(col))
-                                        if fixLowerTail
-                                        else '',
-                                   ' OR (%s > %s)' % (col, valFormatter % self.outlierRstMax(col))
-                                        if fixUpperTail
-                                        else '',
-                                   col,
-                                   _TS_WINDOW_NAMES[window]))
+                        fallbackStrs.insert(
+                            0,
+                            partitionFallBackStrTemplate.format(
+                                methodForCol,
+                                col,
+                                '' if lowerNull is None
+                                   else ' OR ({} <= {})'.format(col, lowerNull),
+                                '' if upperNull is None
+                                   else ' OR ({} >= {})'.format(col, upperNull),
+                                ' OR ({} < {})'.format(col, self.outlierRstMin(col))
+                                    if fixLowerTail
+                                    else '',
+                                ' OR ({} > {})'.format(col, self.outlierRstMax(col))
+                                    if fixUpperTail
+                                    else '',
+                                col,
+                                _TS_WINDOW_NAMES[window]))
                         tsWindowDefs.add(_TS_WINDOW_DEFS[window])
 
                         if window != 'partition':
                             oppositeWindow = _TS_OPPOSITE_WINDOW_NAMES[window]
-                            fallbackStrs.insert(1,
-                                partitionFallBackStrTemplate
-                                    % (_TS_OPPOSITE_METHODS[methodForCol],
-                                       col,
-                                       '' if lowerNull is None
-                                          else ' OR ({} <= {})'.format(col, lowerNull),
-                                       '' if upperNull is None
-                                          else ' OR ({} >= {})'.format(col, upperNull),
-                                       ' OR (%s < %s)' % (col, valFormatter % self.outlierRstMin(col))
-                                            if fixLowerTail
-                                            else '',
-                                       ' OR (%s > %s)' % (col, valFormatter % self.outlierRstMax(col))
-                                            if fixUpperTail
-                                            else '',
-                                       col,
-                                       _TS_WINDOW_NAMES[oppositeWindow]))
+                            fallbackStrs.insert(
+                                1,
+                                partitionFallBackStrTemplate.format(
+                                    _TS_OPPOSITE_METHODS[methodForCol],
+                                    col,
+                                    '' if lowerNull is None
+                                       else ' OR ({} <= {})'.format(col, lowerNull),
+                                    '' if upperNull is None
+                                       else ' OR ({} >= {})'.format(col, upperNull),
+                                    ' OR ({} < {})'.format(col, self.outlierRstMin(col))
+                                        if fixLowerTail
+                                        else '',
+                                    ' OR ({} > {})'.format(col, self.outlierRstMax(col))
+                                        if fixUpperTail
+                                        else '',
+                                    col,
+                                    _TS_WINDOW_NAMES[oppositeWindow]))
                             tsWindowDefs.add(_TS_WINDOW_DEFS[oppositeWindow])
 
                     details[col] = \
@@ -3755,10 +3748,10 @@ class SparkADF(_ADFABC):
                                        else ' OR ({} <= {})'.format(col, lowerNull),
                                     '' if upperNull is None
                                        else ' OR ({} >= {})'.format(col, upperNull),
-                                   ' OR ({} < {})'.format(col, valFormatter % self.outlierRstMin(col))
+                                   ' OR ({} < {})'.format(col, self.outlierRstMin(col))
                                         if isNum and (col in fillOutliers) and fixLowerTail
                                         else '',
-                                   ' OR ({} > {})'.format(col, valFormatter % self.outlierRstMax(col))
+                                   ' OR ({} > {})'.format(col, self.outlierRstMax(col))
                                         if isNum and (col in fillOutliers) and fixUpperTail
                                         else '',
                                    ', '.join(fallbackStrs)),

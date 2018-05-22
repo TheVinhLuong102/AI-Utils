@@ -2700,58 +2700,55 @@ class ArrowADF(_ArrowADFABC):
                         colFallBackVal = value
 
                 if pandas.notnull(colFallBackVal):
-                    valFormatter = \
-                        '%f' if is_float(colType) \
-                             else ('%i' if is_integer(colType)
-                                   else ("'%s'" if is_string(colType) and isinstance(colFallBackVal, _STR_CLASSES)
-                                         else '%s'))
-
-                    fallbackStrs = [valFormatter % colFallBackVal]
+                    fallbackStrs = \
+                        ["'{}'".format(colFallBackVal)
+                         if is_string(colType) and isinstance(colFallBackVal, _STR_CLASSES)
+                         else repr(colFallBackVal)]
 
                     lowerNull, upperNull = colNulls = nulls[col]
 
                     if isNum and self.hasTS and window:
                         partitionFallBackStrTemplate = \
-                            "%s(CASE WHEN (STRING(%s) = 'NaN')%s%s%s%s THEN NULL ELSE %s END) OVER %s"
+                            "{}(CASE WHEN (STRING({}) = 'NaN'){}{}{}{} THEN NULL ELSE {} END) OVER {}"
 
                         fallbackStrs.insert(
                             0,
-                            partitionFallBackStrTemplate
-                                % (methodForCol,
-                                   col,
-                                   '' if lowerNull is None
-                                      else ' OR ({} <= {})'.format(col, lowerNull),
-                                   '' if upperNull is None
-                                      else ' OR ({} >= {})'.format(col, upperNull),
-                                   ' OR (%s < %s)' % (col, valFormatter % self.outlierRstMin(col))
-                                        if fixLowerTail
-                                        else '',
-                                   ' OR (%s > %s)' % (col, valFormatter % self.outlierRstMax(col))
-                                        if fixUpperTail
-                                        else '',
-                                   col,
-                                   _TS_WINDOW_NAMES[window]))
+                            partitionFallBackStrTemplate.format(
+                                methodForCol,
+                                col,
+                                '' if lowerNull is None
+                                   else ' OR ({} <= {})'.format(col, lowerNull),
+                                '' if upperNull is None
+                                   else ' OR ({} >= {})'.format(col, upperNull),
+                                ' OR ({} < {})'.format(col, self.outlierRstMin(col))
+                                    if fixLowerTail
+                                    else '',
+                                ' OR ({} > {})'.format(col, self.outlierRstMax(col))
+                                    if fixUpperTail
+                                    else '',
+                                col,
+                                _TS_WINDOW_NAMES[window]))
                         tsWindowDefs.add(_TS_WINDOW_DEFS[window])
 
                         if window != 'partition':
                             oppositeWindow = _TS_OPPOSITE_WINDOW_NAMES[window]
                             fallbackStrs.insert(
                                 1,
-                                partitionFallBackStrTemplate
-                                    % (_TS_OPPOSITE_METHODS[methodForCol],
-                                       col,
-                                       '' if lowerNull is None
-                                          else ' OR ({} <= {})'.format(col, lowerNull),
-                                       '' if upperNull is None
-                                          else ' OR ({} >= {})'.format(col, upperNull),
-                                       ' OR (%s < %s)' % (col, valFormatter % self.outlierRstMin(col))
-                                            if fixLowerTail
-                                            else '',
-                                       ' OR (%s > %s)' % (col, valFormatter % self.outlierRstMax(col))
-                                            if fixUpperTail
-                                            else '',
-                                       col,
-                                       _TS_WINDOW_NAMES[oppositeWindow]))
+                                partitionFallBackStrTemplate.format(
+                                    _TS_OPPOSITE_METHODS[methodForCol],
+                                    col,
+                                    '' if lowerNull is None
+                                       else ' OR ({} <= {})'.format(col, lowerNull),
+                                    '' if upperNull is None
+                                       else ' OR ({} >= {})'.format(col, upperNull),
+                                    ' OR ({} < {})'.format(col, self.outlierRstMin(col))
+                                        if fixLowerTail
+                                        else '',
+                                    ' OR ({} > {})'.format(col, self.outlierRstMax(col))
+                                        if fixUpperTail
+                                        else '',
+                                    col,
+                                    _TS_WINDOW_NAMES[oppositeWindow]))
                             tsWindowDefs.add(_TS_WINDOW_DEFS[oppositeWindow])
 
                     details[col] = \
@@ -2764,10 +2761,10 @@ class ArrowADF(_ArrowADFABC):
                                    else ' OR ({} <= {})'.format(col, lowerNull),
                                 '' if upperNull is None
                                    else ' OR ({} >= {})'.format(col, upperNull),
-                                ' OR ({} < {})'.format(col, valFormatter % self.outlierRstMin(col))
+                                ' OR ({} < {})'.format(col, self.outlierRstMin(col))
                                     if isNum and (col in fillOutliers) and fixLowerTail
                                     else '',
-                                ' OR ({} > {})'.format(col, valFormatter % self.outlierRstMax(col))
+                                ' OR ({} > {})'.format(col, self.outlierRstMax(col))
                                     if isNum and (col in fillOutliers) and fixUpperTail
                                     else '',
                                 ', '.join(fallbackStrs)),
