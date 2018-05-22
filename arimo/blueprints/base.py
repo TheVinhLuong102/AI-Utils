@@ -1887,11 +1887,7 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
         adf.unpersist()
 
         if save:
-            self.params.benchmark_metrics = \
-                self.eval(
-                    __excl_outliers__=True,
-                    *args, **kwargs)
-
+            self.params.benchmark_metrics = eval_metrics
             self.save()
 
         return eval_metrics
