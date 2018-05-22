@@ -2309,7 +2309,7 @@ class ArrowADF(_ArrowADFABC):
 
                 - **profileNum** *(bool, default = True)*: whether to profile numerical columns
 
-                - **skipIfInvalid** *(bool, default = False)*: whether to skip profiling if column does not have enough non-NULLs
+                - **skipIfInsuffNonNull** *(bool, default = False)*: whether to skip profiling if column does not have enough non-NULLs
         """
         if not cols:
             cols = self.contentCols
@@ -2342,7 +2342,7 @@ class ArrowADF(_ArrowADFABC):
                     col,
                     verbose=verbose > 1)
 
-            if self.suffNonNull(col) or (not kwargs.get('skipIfInvalid', False)):
+            if self.suffNonNull(col) or (not kwargs.get('skipIfInsuffNonNull', False)):
                 # profile categorical column
                 if kwargs.get('profileCat', True) and is_possible_cat(colType):
                     profile.distinctProportions = \
@@ -3040,7 +3040,7 @@ class ArrowADF(_ArrowADFABC):
                         *cols,
                         profileCat=True,
                         profileNum=False,   # or bool(fill) or bool(scaler)?
-                        skipIfInvalid=True,
+                        skipIfInsuffNonNull=True,
                         asDict=True,
                         verbose=verbose)
 

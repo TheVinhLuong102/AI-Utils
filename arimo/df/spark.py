@@ -3294,7 +3294,7 @@ class SparkADF(_ADFABC):
 
                 - **profileNum** *(bool, default = True)*: whether to profile numerical columns
 
-                - **skipIfInvalid** *(bool, default = False)*: whether to skip profiling if column does not have enough non-NULLs
+                - **skipIfInsuffNonNull** *(bool, default = False)*: whether to skip profiling if column does not have enough non-NULLs
         """
         if not cols:
             cols = self.contentCols
@@ -3327,7 +3327,7 @@ class SparkADF(_ADFABC):
                     col,
                     verbose=verbose > 1)
 
-            if self.suffNonNull(col) or (not kwargs.get('skipIfInvalid', False)):
+            if self.suffNonNull(col) or (not kwargs.get('skipIfInsuffNonNull', False)):
                 # profile categorical column
                 if kwargs.get('profileCat', True) and (colType.startswith(_DECIMAL_TYPE_PREFIX) or (colType in _POSSIBLE_CAT_TYPES)):
                     profile.distinctProportions = \
@@ -4111,7 +4111,7 @@ class SparkADF(_ADFABC):
                         *cols,
                         profileCat=True,
                         profileNum=False,   # or bool(fill) or bool(scaler)?
-                        skipIfInvalid=True,
+                        skipIfInsuffNonNull=True,
                         asDict=True,
                         verbose=verbose)
 
