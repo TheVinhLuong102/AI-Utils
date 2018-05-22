@@ -4304,13 +4304,13 @@ class SparkADF(_ADFABC):
 
                         numColSqlItem = numColNullFillDetails['SQL']
                         numColNulls = numColNullFillDetails['Nulls']
-                        nulColNullFillValue = numColNullFillDetails['NullFillValue']
+
+                        numColNullFillValue = numColNullFillDetails['NullFillValue']
+                        assert numpy.allclose(numColNullFillValue, self.outlierRstStat(numCol))
 
                         if scaler:
                             if scaler == 'standard':
                                 scaledCol = self._STD_SCL_PREFIX + numCol + self._PREP_SUFFIX
-
-                                mean = self.outlierRstStat(numCol)
 
                                 stdDev = \
                                     self.reprSample \
@@ -4325,15 +4325,15 @@ class SparkADF(_ADFABC):
                                 prepSqlItems[scaledCol] = \
                                     sqlStdScl(
                                         sqlItem=numColSqlItem,
-                                        mean=mean,
+                                        mean=numColNullFillValue,
                                         std=stdDev)
 
                                 numOrigToPrepColMap[numCol] = \
                                     [scaledCol,
 
                                      dict(Nulls=numColNulls,
-                                          NullFillValue=nulColNullFillValue,
-                                          Mean=mean,
+                                          NullFillValue=numColNullFillValue,
+                                          Mean=numColNullFillValue,
                                           StdDev=stdDev)]
 
                             elif scaler == 'maxabs':
@@ -4350,7 +4350,7 @@ class SparkADF(_ADFABC):
                                     [scaledCol,
 
                                      dict(Nulls=numColNulls,
-                                          NullFillValue=nulColNullFillValue,
+                                          NullFillValue=numColNullFillValue,
                                           MaxAbs=maxAbs)]
 
                             elif scaler == 'minmax':
@@ -4366,7 +4366,7 @@ class SparkADF(_ADFABC):
                                     [scaledCol,
 
                                      dict(Nulls=numColNulls,
-                                          NullFillValue=nulColNullFillValue,
+                                          NullFillValue=numColNullFillValue,
                                           OrigMin=colMin, OrigMax=colMax,
                                           TargetMin=-1, TargetMax=1)]
 
@@ -4382,7 +4382,7 @@ class SparkADF(_ADFABC):
                                 [scaledCol,
 
                                  dict(Nulls=numColNulls,
-                                      NullFillValue=nulColNullFillValue)]
+                                      NullFillValue=numColNullFillValue)]
 
                         numScaledCols.append(scaledCol)
 

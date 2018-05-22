@@ -3201,7 +3201,9 @@ class ArrowADF(_ArrowADFABC):
 
                         numColSqlItem = numColNullFillDetails['SQL']
                         numColNulls = numColNullFillDetails['Nulls']
-                        nulColNullFillValue = numColNullFillDetails['NullFillValue']
+
+                        numColNullFillValue = numColNullFillDetails['NullFillValue']
+                        assert numpy.allclose(numColNullFillValue, self.outlierRstStat(numCol))
 
                         if scaler:
                             if scaler == 'standard':
@@ -3221,12 +3223,6 @@ class ArrowADF(_ArrowADFABC):
                                 elif colOutlierTails == 'upper':
                                     series = series.loc[series < colMax]
 
-                                mean = float(
-                                    series.mean(
-                                        axis='index',
-                                        skipna=True,
-                                        level=None))
-
                                 stdDev = float(
                                     series.std(
                                         axis='index',
@@ -3237,15 +3233,15 @@ class ArrowADF(_ArrowADFABC):
                                 prepSqlItems[scaledCol] = \
                                     sqlStdScl(
                                         sqlItem=numColSqlItem,
-                                        mean=mean,
+                                        mean=numColNullFillValue,
                                         std=stdDev)
 
                                 numOrigToPrepColMap[numCol] = \
                                     [scaledCol,
 
                                      dict(Nulls=numColNulls,
-                                          NullFillValue=nulColNullFillValue,
-                                          Mean=mean,
+                                          NullFillValue=numColNullFillValue,
+                                          Mean=numColNullFillValue,
                                           StdDev=stdDev)]
 
                             elif scaler == 'maxabs':
@@ -3262,7 +3258,7 @@ class ArrowADF(_ArrowADFABC):
                                     [scaledCol,
 
                                      dict(Nulls=numColNulls,
-                                          NullFillValue=nulColNullFillValue,
+                                          NullFillValue=numColNullFillValue,
                                           MaxAbs=maxAbs)]
 
                             elif scaler == 'minmax':
@@ -3278,7 +3274,7 @@ class ArrowADF(_ArrowADFABC):
                                     [scaledCol,
 
                                      dict(Nulls=numColNulls,
-                                          NullFillValue=nulColNullFillValue,
+                                          NullFillValue=numColNullFillValue,
                                           OrigMin=colMin, OrigMax=colMax,
                                           TargetMin=-1, TargetMax=1)]
 
@@ -3294,7 +3290,7 @@ class ArrowADF(_ArrowADFABC):
                                 [scaledCol,
 
                                  dict(Nulls=numColNulls,
-                                      NullFillValue=nulColNullFillValue)]
+                                      NullFillValue=numColNullFillValue)]
 
                         numScaledCols.append(scaledCol)
 
