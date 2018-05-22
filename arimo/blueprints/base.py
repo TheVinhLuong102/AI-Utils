@@ -1748,14 +1748,13 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
             verbose=verbose,
             *args, **kwargs)
 
-        label_var_names = []
-
-        for label_var_name, blueprint_params in self.params.model.component_blueprints.items():
-            if (label_var_name in adf.columns) and blueprint_params.model.ver:
-                label_var_names.append(label_var_name)
+        label_var_names_n_blueprint_params = \
+            {label_var_name: blueprint_params
+             for label_var_name, blueprint_params in self.params.model.component_blueprints.items()
+             if (label_var_name in adf.columns) and blueprint_params.model.ver}
 
         # cache to calculate multiple metrics quickly
-        if len(label_var_names) > 1:
+        if len(label_var_names_n_blueprint_params) > 1:
             adf.cache(
                 eager=True,
                 verbose=verbose)
@@ -1765,7 +1764,7 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
         id_col = self.params.data.id_col
         id_col_type_is_str = (adf.type(id_col) == _STR_TYPE)
 
-        for label_var_name in label_var_names:
+        for label_var_name, blueprint_params in label_var_names_n_blueprint_params.items():
             score_col_name = blueprint_params.model.score.raw_score_col_prefix + label_var_name
 
             _per_label_adf = \
