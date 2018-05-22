@@ -2113,10 +2113,11 @@ class ArrowADF(_ArrowADFABC):
                         outlierTails = kwargs.pop('outlierTails', 'both')
 
                         if outlierTails == 'both':
-                            series = series.between(
-                                left=self.outlierRstMin(col),
-                                right=self.outlierRstMax(col),
-                                inclusive=True)
+                            series = series.loc[
+                                series.between(
+                                    left=self.outlierRstMin(col),
+                                    right=self.outlierRstMax(col),
+                                    inclusive=True)]
 
                         elif outlierTails == 'lower':
                             series = series.loc[series >= self.outlierRstMin(col)]
@@ -3212,10 +3213,11 @@ class ArrowADF(_ArrowADFABC):
                                 series = self.reprSample[numCol]
 
                                 if colOutlierTails == 'both':
-                                    series = series.between(
-                                        left=colMin,
-                                        right=colMax,
-                                        inclusive=True)
+                                    series = series.loc[
+                                        series.between(
+                                            left=colMin,
+                                            right=colMax,
+                                            inclusive=True)]
 
                                 elif colOutlierTails == 'lower':
                                     series = series.loc[series > colMin]
