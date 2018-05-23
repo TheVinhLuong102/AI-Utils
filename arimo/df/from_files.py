@@ -880,6 +880,7 @@ class ArrowADF(_ArrowADFABC):
     def _emptyCache(self):
         self._cache = \
             _Namespace(
+                prelimReprSamplePiecePaths=None,
                 reprSamplePiecePaths=None,
                 reprSample=None,
 
@@ -1544,8 +1545,19 @@ class ArrowADF(_ArrowADFABC):
 
     # ***********
     # REPR SAMPLE
+    # prelimReprSamplePiecePaths
     # reprSamplePiecePaths
     # _assignReprSample
+
+    @property
+    def prelimReprSamplePiecePaths(self):
+        if self._cache.prelimReprSamplePiecePaths is None:
+            self._cache.prelimReprSamplePiecePaths = \
+                random.sample(
+                    population=self.piecePaths,
+                    k=self._reprSampleMinNPieces)
+
+        return self._cache.prelimReprSamplePiecePaths
 
     @property
     def reprSamplePiecePaths(self):
@@ -1598,7 +1610,7 @@ class ArrowADF(_ArrowADFABC):
             self._cache.approxNRows = \
                 self.nPieces \
                 * sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
-                      for piecePath in tqdm.tqdm(self.reprSamplePiecePaths)) \
+                      for piecePath in tqdm.tqdm(self.prelimReprSamplePiecePaths)) \
                 / self._reprSampleMinNPieces
 
         return self._cache.approxNRows
