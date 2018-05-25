@@ -11,8 +11,8 @@ from arimo.IoT.DataAdmin import project
 
 P = project('PanaAP-CC')
 
-_AWS_SECRET_ACCESS_KEY = P.params.s3.access_key_id
-_AWS_ACCESS_KEY_ID = P.params.s3.secret_access_key
+_AWS_ACCESS_KEY_ID = P.params.s3.access_key_id
+_AWS_SECRET_ACCESS_KEY =P.params.s3.secret_access_key
 
 
 REFRIG_EQ_GEN_TYPE_NAME = 'refrig'
