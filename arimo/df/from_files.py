@@ -693,7 +693,7 @@ class ArrowADF(_ArrowADFABC):
                 _cache.tmpDirPath = self._TMP_DIR_PATH
 
             if verbose:
-                msg = 'Loading Arrow Dataset from "{}"...'.format(self._pathRepr)
+                msg = 'Loading Arrow Dataset from {}...'.format(self._pathRepr)
                 logger.info(msg)
                 tic = time.time()
 
