@@ -3485,6 +3485,7 @@ class ArrowADF(_ArrowADFABC):
     # ****
     # MISC
     # split
+    # copyToPath
 
     def split(self, *weights, **kwargs):
         if (not weights) or weights == (1,):
@@ -3506,6 +3507,17 @@ class ArrowADF(_ArrowADFABC):
 
             return [self._subset(*piecePaths[cumuIndices[i]:cumuIndices[i + 1]], **kwargs)
                     for i in range(nWeights)]
+
+    def copyToPath(self, path, verbose=True):
+        assert path.startswith('s3://')
+
+        s3.sync(
+            from_dir_path=self.path,
+            to_dir_path=path,
+            access_key_id=self._srcArrowDS.fs.fs.key,
+            secret_access_key=self._srcArrowDS.fs.fs.secret,
+            delete=True, quiet=True,
+            verbose=verbose)
 
 
 class AthenaADF(_ADFABC):
