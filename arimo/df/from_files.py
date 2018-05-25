@@ -646,11 +646,16 @@ class ArrowADF(_ArrowADFABC):
         if verbose or arimo.debug.ON:
             logger = self.class_stdout_logger()
 
-        self.path = path
+        if isinstance(path, _STR_CLASSES):
+            _aPath = path
 
-        _aPath = path \
-            if isinstance(path, _STR_CLASSES) \
-            else path[0]
+        else:
+            if isinstance(path, list):
+                path = tuple(path)
+
+            _aPath = path[0]
+
+        self.path = path
 
         self.fromS3 = _aPath.startswith('s3://')
         self.fromHDFS = _aPath.startswith('hdfs:')
@@ -694,7 +699,9 @@ class ArrowADF(_ArrowADFABC):
 
             _cache._srcArrowDS = \
                 ParquetDataset(
-                    path_or_paths=path,
+                    path_or_paths=list(path)
+                        if isinstance(path, tuple)
+                        else path,
                     filesystem=
                         self._s3FS(
                             key=aws_access_key_id,
