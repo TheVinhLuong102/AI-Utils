@@ -14,6 +14,7 @@ import random
 import re
 import time
 import tqdm
+import uuid
 
 import six
 
@@ -658,6 +659,9 @@ class ArrowADF(_ArrowADFABC):
         self.path = path
 
         self.fromS3 = _aPath.startswith('s3://')
+        if self.fromS3:
+            assert isinstance(path, _STR_CLASSES)
+
         self.fromHDFS = _aPath.startswith('hdfs:')
 
         if (not reCache) and (path in self._CACHE):
@@ -1707,32 +1711,70 @@ class ArrowADF(_ArrowADFABC):
                 return self
 
             else:
+                verbose = kwargs.pop('verbose', True)
+
                 if self.fromS3:
-                    aws_access_key_id = self._srcArrowDS.fs.fs.key
-                    aws_secret_access_key = self._srcArrowDS.fs.fs.secret
+                    subsetDirS3Key = \
+                        os.path.join(
+                            self.tmpDirS3Key,
+                            str(uuid.uuid4()))
+
+                    _pathPlusSepLen = len(self.path) + 1
+
+                    for piecePath in \
+                            (tqdm.tqdm(piecePaths)
+                            if verbose
+                            else piecePaths):
+                        pieceSubPath = piecePath[_pathPlusSepLen:]
+
+                        self.s3Client.copy(
+                            CopySource=dict(
+                                Bucket=self.s3Bucket,
+                                Key=os.path.join(self.pathS3Key, pieceSubPath)),
+                            Bucket=self.s3Bucket,
+                            Key=os.path.join(subsetDirS3Key, pieceSubPath))
+
+                    return ArrowADF(
+                            path=os.path.join(
+                                's3://{}'.format(self.s3Bucket),
+                                subsetDirS3Key),
+
+                            aws_access_key_id=self._srcArrowDS.fs.fs.key,
+                            aws_secret_access_key=self._srcArrowDS.fs.fs.secret,
+
+                            iCol=self._iCol, tCol=self._tCol,
+                            _mappers=self._mappers,
+
+                            reprSampleMinNPieces=self._reprSampleMinNPieces,
+                            reprSampleSize=self._reprSampleSize,
+
+                            minNonNullProportion=self._minNonNullProportion,
+                            outlierTailProportion=self._outlierTailProportion,
+                            maxNCats=self._maxNCats,
+                            minProportionByMaxNCats=self._minProportionByMaxNCats,
+
+                            **kwargs)
 
                 else:
-                    aws_access_key_id = aws_secret_access_key = None
+                    return ArrowADF(
+                            path=tuple(sorted(piecePaths))
+                                if len(piecePaths) > 1
+                                else piecePaths[0],
 
-                return ArrowADF(
-                    path=tuple(sorted(piecePaths))
-                        if len(piecePaths) > 1
-                        else piecePaths[0],
+                            aws_access_key_id=None, aws_secret_access_key=None,
 
-                    aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
+                            iCol=self._iCol, tCol=self._tCol,
+                            _mappers=self._mappers,
 
-                    iCol=self._iCol, tCol=self._tCol,
-                    _mappers=self._mappers,
+                            reprSampleMinNPieces=self._reprSampleMinNPieces,
+                            reprSampleSize=self._reprSampleSize,
 
-                    reprSampleMinNPieces=self._reprSampleMinNPieces,
-                    reprSampleSize=self._reprSampleSize,
-        
-                    minNonNullProportion=self._minNonNullProportion,
-                    outlierTailProportion=self._outlierTailProportion,
-                    maxNCats=self._maxNCats,
-                    minProportionByMaxNCats=self._minProportionByMaxNCats,
+                            minNonNullProportion=self._minNonNullProportion,
+                            outlierTailProportion=self._outlierTailProportion,
+                            maxNCats=self._maxNCats,
+                            minProportionByMaxNCats=self._minProportionByMaxNCats,
 
-                    **kwargs)
+                            **kwargs)
 
         else:
             return self
