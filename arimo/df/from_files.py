@@ -678,8 +678,9 @@ class ArrowADF(_ArrowADFABC):
                         access_key_id=aws_access_key_id,
                         secret_access_key=aws_secret_access_key)
 
-                _parsedURL = urlparse(url=_aPath, scheme='', allow_fragments=True)
+                _parsedURL = urlparse(url=path, scheme='', allow_fragments=True)
                 _cache.s3Bucket = _parsedURL.netloc
+                _cache.pathS3Key = _parsedURL.path[1:]
 
                 _cache.tmpDirS3Key = self._TMP_DIR_PATH.strip('/')
 
