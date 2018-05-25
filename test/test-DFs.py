@@ -9,13 +9,19 @@ from arimo.util import fs
 from arimo.util.aws import s3
 import arimo.debug
 
-from PanasonicColdChain import _AWS_ACCESS_KEY_ID, _AWS_SECRET_ACCESS_KEY
+from arimo.IoT.DataAdmin import project
+
 from data import \
     SMALL_DATA_LOCAL_PATH, SMALL_DATA_HDFS_PATH, SMALL_DATA_S3_PATH, \
     BIG_DATA_LOCAL_PATH, BIG_DATA_HDFS_PATH, BIG_DATA_S3_PATH
 
-
 arimo.debug.ON = True
+
+
+P = project('PanaAP-CC')
+
+_AWS_ACCESS_KEY_ID = P.params.s3.access_key_id
+_AWS_SECRET_ACCESS_KEY = P.params.s3.secret_access_key
 
 
 EQUIPMENT_INSTANCE_ID_COL_NAME = 'equipment_instance_id'
