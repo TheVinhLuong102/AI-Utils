@@ -6,7 +6,13 @@ from arimo.util import Namespace
 from arimo.util.iterables import to_iterable
 from arimo.util.aws import s3
 
-from PanasonicColdChain import _AWS_SECRET_ACCESS_KEY, _AWS_ACCESS_KEY_ID
+from arimo.IoT.DataAdmin import project
+
+
+P = project('PanaAP-CC')
+
+_AWS_SECRET_ACCESS_KEY = P.params.s3.access_key_id
+_AWS_ACCESS_KEY_ID = P.params.s3.secret_access_key
 
 
 REFRIG_EQ_GEN_TYPE_NAME = 'refrig'
