@@ -168,21 +168,27 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
         if verbose:
             self.stdout_logger.info(
                 'TRAINING:'
-                '\n- Time-Series Predictor Variables Vector Size: {:,}'
-                '\n- No. of Eras: {:,}'
-                '\n- No. of Epochs per Era: {:,}'
-                '\n- No. of Train Samples per Epoch: {:,}'
-                '\n- No. of Validation Samples per Epoch: {:,}'
+                '\n- Pred Vars Vec Size: {:,}'
+                '\n- Train Samples: {:,}'
+                '\n- Val Samples: {:,}'
+                '\n- Epochs: {:,}'
+                '\n- Train Samples/Epoch: {:,}'
+                '\n- Train Batch Size: {:,}'
+                '\n- Val Samples/Epoch: {:,}'
+                '\n- Val Batch Size: {:,}'
                 '\n- Generator Queue Size: {}'
-                '\n- No. of Processes/Threads: {}'
+                '\n- Processes/Threads: {}'
                 '\n- Multi-Processing: {}'
-                '\n- No. of GPUs: {}'
+                '\n- GPUs: {}'
                 .format(
-                    self.params.data._timeserX_vec_size,
-                    self.params.model.train._n_eras,
-                    self.params.model.train._n_epochs_per_era,
+                    self.params.data._prep_vec_size,
+                    self.params.model.train._n_train_samples,
+                    self.params.model.train._n_val_samples,
+                    self.params.model.train._n_epochs,
                     self.params.model.train._n_train_samples_per_epoch,
+                    self.params.model.train.batch_size,
                     self.params.model.train._n_val_samples_per_epoch,
+                    self.params.model.train.val_batch_size,
                     __gen_queue_size__,
                     __n_workers__,
                     __multiproc__,
