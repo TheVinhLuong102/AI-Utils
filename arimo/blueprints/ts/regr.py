@@ -78,15 +78,27 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
             kwargs.pop(
                 '__gen_queue_size__',
                 self.DEFAULT_MODEL_TRAIN_MAX_GEN_QUEUE_SIZE)
+        assert __gen_queue_size__, \
+            '*** __gen_queue_size__ = {} ***'.format(__gen_queue_size__)
 
         __n_workers__ = \
             kwargs.pop(
                 '__n_workers__',
                 self.DEFAULT_MODEL_TRAIN_N_WORKERS)
-
-        assert __n_workers__, '*** __n_workers__ = {} ***'.format(__n_workers__)
+        assert __n_workers__, \
+            '*** __n_workers__ = {} ***'.format(__n_workers__)
 
         __multiproc__ = kwargs.pop('__multiproc__', True)
+
+        __n_gpus__ = \
+            kwargs.pop(
+                '__n_gpus__',
+                self.DEFAULT_MODEL_TRAIN_N_GPUS)
+        assert __n_gpus__, \
+            '*** __n_gpus__ = {} ***'.format(__n_gpus__)
+
+        if __n_gpus__ > 1:
+            self.params.model.factory.n_gpus = __n_gpus__
 
         # verbosity
         verbose = kwargs.pop('verbose', True)
@@ -149,6 +161,7 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                 '\n- Generator Queue Size: {}'
                 '\n- No. of Processes/Threads: {}'
                 '\n- Multi-Processing: {}'
+                '\n- No. of GPUs: {}'
                 .format(
                     self.params.data._timeserX_vec_size,
                     self.params.model.train._n_eras,
@@ -157,7 +170,8 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                     self.params.model.train._n_val_samples_per_epoch,
                     __gen_queue_size__,
                     __n_workers__,
-                    __multiproc__))
+                    __multiproc__,
+                    __n_gpus__))
 
         fs.mkdir(
             dir=model.dir,
@@ -183,7 +197,7 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                      - self.params.pred_horizon_len),
                 self.params.data.label.var,
                 piecePaths=piece_paths[:split_idx],
-                n=self.params.model.train.batch_size,
+                n=__n_gpus__ * self.params.model.train.batch_size,
                 withReplacement=False,
                 seed=None,
                 anon=True,
@@ -204,7 +218,7 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                      - self.params.pred_horizon_len),
                 self.params.data.label.var,
                 piecePaths=piece_paths[split_idx:],
-                n=self.params.model.train.val_batch_size,
+                n=__n_gpus__ * self.params.model.train.val_batch_size,
                 withReplacement=False,
                 seed=None,
                 anon=True,

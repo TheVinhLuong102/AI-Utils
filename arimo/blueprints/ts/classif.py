@@ -84,15 +84,27 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
             kwargs.pop(
                 '__gen_queue_size__',
                 self.DEFAULT_MODEL_TRAIN_MAX_GEN_QUEUE_SIZE)
+        assert __gen_queue_size__, \
+            '*** __gen_queue_size__ = {} ***'.format(__gen_queue_size__)
 
         __n_workers__ = \
             kwargs.pop(
                 '__n_workers__',
                 self.DEFAULT_MODEL_TRAIN_N_WORKERS)
-
-        assert __n_workers__, '*** __n_workers__ = {} ***'.format(__n_workers__)
+        assert __n_workers__, \
+            '*** __n_workers__ = {} ***'.format(__n_workers__)
 
         __multiproc__ = kwargs.pop('__multiproc__', True)
+
+        __n_gpus__ = \
+            kwargs.pop(
+                '__n_gpus__',
+                self.DEFAULT_MODEL_TRAIN_N_GPUS)
+        assert __n_gpus__, \
+            '*** __n_gpus__ = {} ***'.format(__n_gpus__)
+
+        if __n_gpus__ > 1:
+            self.params.model.factory.n_gpus = __n_gpus__
 
         verbose = kwargs.pop('verbose', True)
 
@@ -161,6 +173,7 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
             '\n- Generator Queue Size: {}'
             '\n- No. of Processes/Threads: {}'
             '\n- Multi-Processing: {}'
+            '\n- No. of GPUs: {}'
             .format(
                 self.params.data.label._n_classes,
                 self.params.data._prep_vec_size,
@@ -171,7 +184,8 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                 self.params.model.train._n_val_samples_per_epoch,
                 __gen_queue_size__,
                 __n_workers__,
-                __multiproc__))
+                __multiproc__,
+                __n_gpus__))
 
         fs.mkdir(
             dir=model.dir,
@@ -193,7 +207,7 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                 generator=
                     batch_gen(
                         adf=adf,
-                        batch=self.params.model.train.batch_size,
+                        batch=__n_gpus__ * self.params.model.train.batch_size,
                         piece_paths=train_piece_paths),
                     # a generator.
                     # The output of the generator must be either a tuple(inputs, targets)
@@ -328,7 +342,7 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                 validation_data=
                     batch_gen(
                         adf=adf,
-                        batch=self.params.model.train.val_batch_size,
+                        batch=__n_gpus__ * self.params.model.train.val_batch_size,
                         piece_paths=val_piece_paths),
                     # this can be either:
                     # - a generator for the validation data;

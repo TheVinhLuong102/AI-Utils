@@ -1497,6 +1497,7 @@ class _DLSupervisedBlueprintABC(_SupervisedBlueprintABC):
 
     DEFAULT_MODEL_TRAIN_MAX_GEN_QUEUE_SIZE = 99   # sufficient to keep CPUs busy while feeding into GPU
     DEFAULT_MODEL_TRAIN_N_WORKERS = 9   # 2-3x No. of CPUs
+    DEFAULT_MODEL_TRAIN_N_GPUS = 1
 
     def _derive_model_train_params(self, data_size=None):
         # derive _n_samples
@@ -1624,15 +1625,24 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
             kwargs.pop(
                 '__gen_queue_size__',
                 _DLSupervisedBlueprintABC.DEFAULT_MODEL_TRAIN_MAX_GEN_QUEUE_SIZE)
+        assert __gen_queue_size__, \
+            '*** __gen_queue_size__ = {} ***'.format(__gen_queue_size__)
 
         __n_workers__ = \
             kwargs.pop(
                 '__n_workers__',
                 _DLSupervisedBlueprintABC.DEFAULT_MODEL_TRAIN_N_WORKERS)
-
-        assert __n_workers__, '*** __n_workers__ = {} ***'.format(__n_workers__)
+        assert __n_workers__, \
+            '*** __n_workers__ = {} ***'.format(__n_workers__)
 
         __multiproc__ = kwargs.pop('__multiproc__', True)
+
+        __n_gpus__ = \
+            kwargs.pop(
+                '__n_gpus__',
+                _DLSupervisedBlueprintABC.DEFAULT_MODEL_TRAIN_N_GPUS)
+        assert __n_gpus__, \
+            '*** __n_gpus__ = {} ***'.format(__n_gpus__)
 
         # whether to retrain component Blueprinted models
         __retrain_components__ = kwargs.pop('__retrain_components__', False)
@@ -1690,6 +1700,7 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                         __gen_queue_size__=__gen_queue_size__,
                         __multiproc__=__multiproc__,
                         __n_workers__=__n_workers__,
+                        __n_gpus__=__n_gpus__,
                         verbose=verbose,
                         _medianFill=_medianFill)
 
