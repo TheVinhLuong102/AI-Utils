@@ -113,6 +113,24 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
 
         model = self.model(ver=self.params.model.ver)
 
+        model.summary()
+
+        _model_to_fit = \
+            arimo.backend.keras.utils.multi_gpu_model(
+                model._obj,
+                gpus=__n_gpus__) \
+            if __n_gpus__ > 1 \
+            else model
+
+        _model_to_fit.compile(
+            loss=self.params.model.train.objective
+                if self.params.model.train.objective
+                else 'MAE',   # mae / mean_absolute_error (more resilient to outliers)
+            optimizer=arimo.backend.keras.optimizers.Nadam(),
+            metrics=[# 'MSE',   # mean_squared_error,
+                     # 'MAPE'   # mean_absolute_percentage_error
+            ])
+
         _lower_outlier_threshold_applicable = \
             pandas.notnull(self.params.data.label.lower_outlier_threshold)
 
@@ -233,7 +251,7 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
         assert pickle_able(val_gen)
 
         model.history = \
-            model.fit_generator(
+            _model_to_fit.fit_generator(
                 generator=train_gen(),
                     # a generator.
                     # The output of the generator must be either a tuple(inputs, targets)

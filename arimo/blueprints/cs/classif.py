@@ -83,10 +83,28 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
 
         assert isinstance(adf, (ArrowADF, ArrowSparkADF))
 
-        model = self.model(ver=self.params.model.ver)
-
         self.params.data.label._n_classes = \
             int(adf('MAX({})'.format(self.params.data.label._int_var)).first()[0]) + 1
+
+        model = self.model(ver=self.params.model.ver)
+
+        model.summary()
+
+        _model_to_fit = \
+            arimo.backend.keras.utils.multi_gpu_model(
+                model._obj,
+                gpus=__n_gpus__) \
+            if __n_gpus__ > 1 \
+            else model
+
+        _model_to_fit.compile(
+            loss=self.params.model.train.objective
+                if self.params.model.train.objective
+                else ('binary_crossentropy'
+                      if self.params.data.label._n_classes == 2
+                      else 'categorical_crossentropy'),
+            optimizer=arimo.backend.keras.optimizers.Nadam(),
+            metrics=['accuracy'])
 
         label_var = \
             self.params.data.label.var \
@@ -170,7 +188,7 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
         val_piece_paths = piece_paths[split_idx:]
 
         model.history = \
-            model.fit_generator(
+            _model_to_fit.fit_generator(
                 generator=
                     batch_gen(
                         adf=adf,

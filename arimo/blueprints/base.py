@@ -1125,10 +1125,6 @@ class _BlueprintedModelABC(object):
 
             self.stdout_logger.info(msg + ' done!')
 
-            # if Keras model, then print a summary for ease of review
-            if isinstance(self._obj, arimo.backend.keras.models.Model):
-                self.summary()
-
         return getattr(self._obj, item)
 
     def copy(self):
