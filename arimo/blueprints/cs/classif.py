@@ -70,9 +70,6 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
         assert __n_gpus__, \
             '*** __n_gpus__ = {} ***'.format(__n_gpus__)
 
-        if __n_gpus__ > 1:
-            self.params.model.factory.n_gpus = __n_gpus__
-
         # verbosity
         verbose = kwargs.pop('verbose', True)
 

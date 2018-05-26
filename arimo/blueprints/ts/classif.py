@@ -103,9 +103,6 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
         assert __n_gpus__, \
             '*** __n_gpus__ = {} ***'.format(__n_gpus__)
 
-        if __n_gpus__ > 1:
-            self.params.model.factory.n_gpus = __n_gpus__
-
         verbose = kwargs.pop('verbose', True)
 
         adf = self.prep_data(
