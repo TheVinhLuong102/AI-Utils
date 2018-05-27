@@ -714,7 +714,7 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
             adf_uuid = clean_uuid(uuid.uuid4())
 
             adf.filter(
-                condition="({0} IS NOT NULL) AND (STRING({0}) != 'NaN') AND ({1} IS NOT NULL) AND {STRING({1}) != 'NaN')"
+                condition="({0} IS NOT NULL) AND (STRING({0}) != 'NaN') AND ({1} IS NOT NULL) AND (STRING({1}) != 'NaN')"
                     .format(self.params.data.id_col, self.params.data.time_col),
                 alias='{}__{}__{}'.format(
                     self.params._uuid,
