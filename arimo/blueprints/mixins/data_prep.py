@@ -713,11 +713,14 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
             
             adf_uuid = clean_uuid(uuid.uuid4())
 
-            adf.alias = \
-                '{}__{}__{}'.format(
+            adf.filter(
+                condition="({0} IS NOT NULL) AND (STRING({0}) != 'NaN') AND ({1} IS NOT NULL) AND {STRING({1}) != 'NaN')"
+                    .format(self.params.data.id_col, self.params.data.time_col),
+                alias='{}__{}__{}'.format(
                     self.params._uuid,
                     __mode__,
-                    adf_uuid)
+                    adf_uuid),
+                inplace=True)
 
             data_transforms_load_path = self.data_transforms_dir
             data_transforms_save_path = None
