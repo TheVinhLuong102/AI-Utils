@@ -1872,7 +1872,9 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                                         else id) \
                         .drop(
                             id_col,
-                            alias=None)   # _per_label_adf.alias + '__' + clean_str(id)
+                            alias=(_per_label_adf.alias + '__' + clean_str(id))
+                                if arimo.debug.ON
+                                else None)
 
                 # cache to calculate multiple metrics quickly
                 _per_label_per_id_adf.cache(

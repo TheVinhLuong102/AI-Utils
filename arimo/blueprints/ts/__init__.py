@@ -512,7 +512,9 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
                                     else id) \
                     .drop(
                         id_col,
-                        alias=None)   # adf.alias + '__' + clean_uuid(id)
+                        alias=(adf.alias + '__' + clean_str(id))
+                            if arimo.debug.ON
+                            else None)
 
                 # cache to calculate multiple metrics quickly
                 _per_id_adf.cache(
