@@ -188,7 +188,7 @@ class _CrossSectSupervisedBlueprintABC(LabeledDataPrepMixIn, _SupervisedBlueprin
                       inheritNRows=False) \
                 .toPandas()[id_col]
 
-            for id in tqdm.tqdm(ids):
+            for id in tqdm.tqdm(ids.loc[ids.notnull()]):
                 _per_id_adf = \
                     adf.filter(
                         condition="{} = {}"
