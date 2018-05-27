@@ -550,7 +550,7 @@ class _ArrowADF__gen:
 
             random.shuffle(rowIndices)
 
-            n_batches = len(rowIndices) // self.n
+            n_batches = int(math.ceil(len(rowIndices) / self.n))
 
             for i in range(n_batches):
                 rowIndicesSubset = rowIndices[(i * self.n):((i + 1) * self.n)]
