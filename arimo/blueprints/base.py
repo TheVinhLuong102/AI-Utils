@@ -1778,8 +1778,7 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                 adf[id_col, score_col_name, label_var_name] \
                     .filter(
                         condition='({} IS NOT NULL) AND ({} IS NOT NULL)'
-                            .format(label_var_name, score_col_name),
-                        alias=adf.alias + '__toEval__' + label_var_name)
+                            .format(label_var_name, score_col_name))
 
             blueprint = \
                 _blueprint_from_params(
@@ -1827,6 +1826,13 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                         label_var_name,
                         _outlier_robust_condition),
                     inplace=True)
+
+            # sort by ID to speed up later look-ups
+            _per_label_adf = \
+                _per_label_adf.sort(
+                    id_col,
+                    ascending=True,
+                    alias=adf.alias + '__toEval__' + label_var_name)
 
             # cache to calculate multiple metrics quickly
             _per_label_adf.cache(
