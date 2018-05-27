@@ -17,7 +17,7 @@ import arimo.backend
 from arimo.blueprints.base import _docstr_blueprint, _SupervisedBlueprintABC, _DLSupervisedBlueprintABC
 from arimo.df.spark import SparkADF
 import arimo.eval.metrics
-from arimo.util import clean_str, fs
+from arimo.util import clean_str, clean_uuid, fs
 from arimo.util.log import STDOUT_HANDLER
 from arimo.util.types.spark_sql import _NUM_TYPES, _STR_TYPE, _VECTOR_TYPE
 import arimo.debug
@@ -199,7 +199,7 @@ class _CrossSectSupervisedBlueprintABC(LabeledDataPrepMixIn, _SupervisedBlueprin
                                     else id) \
                     .drop(
                         id_col,
-                        alias=(adf.alias + '__' + clean_str(id))
+                        alias=(adf.alias + '__' + clean_str(clean_uuid(id)))
                             if arimo.debug.ON
                             else None)
 

@@ -1872,7 +1872,7 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                                         else id) \
                         .drop(
                             id_col,
-                            alias=(_per_label_adf.alias + '__' + clean_str(id))
+                            alias=(_per_label_adf.alias + '__' + clean_str(clean_uuid(id)))
                                 if arimo.debug.ON
                                 else None)
 

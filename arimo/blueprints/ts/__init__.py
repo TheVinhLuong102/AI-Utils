@@ -17,7 +17,7 @@ import arimo.backend
 from arimo.blueprints.base import _docstr_blueprint, _DLSupervisedBlueprintABC
 from arimo.df.spark import SparkADF
 import arimo.eval.metrics
-from arimo.util import clean_str, fs, Namespace
+from arimo.util import clean_str, clean_uuid, fs, Namespace
 from arimo.util.decor import _docstr_verbose
 from arimo.util.dl import MASK_VAL
 from arimo.util.log import STDOUT_HANDLER
@@ -512,7 +512,7 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
                                     else id) \
                     .drop(
                         id_col,
-                        alias=(adf.alias + '__' + clean_str(id))
+                        alias=(adf.alias + '__' + clean_str(clean_uuid(id)))
                             if arimo.debug.ON
                             else None)
 
