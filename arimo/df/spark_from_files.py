@@ -297,8 +297,6 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                   if self._alias
                   else adf._alias)
 
-        self._cache = adf._cache
-
     # **********************
     # PYTHON DEFAULT METHODS
     # __dir__
