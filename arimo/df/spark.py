@@ -4507,10 +4507,7 @@ class SparkADF(_ADFABC):
             if len(pipelineModelStages) > 1 \
             else sqlTransformer
         
-        try:   # in case SELF is FilesBasedADF
-            sparkDF = self._initSparkDF
-        except:
-            sparkDF = self._sparkDF
+        sparkDF = self._sparkDF
 
         missingCatCols = \
             set(catOrigToPrepColMap) \
