@@ -1745,6 +1745,10 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
         __cache_vector_data__ = kwargs.pop('__cache_vector_data__', False)
         __cache_tensor_data__ = kwargs.pop('__cache_tensor_data__', False)
 
+        # whether to repartition by ID
+        __partition_by_id__ = kwargs.pop('__partition_by_id__', False)
+        __coalesce__ = kwargs.pop('__coalesce__', False)
+
         # verbosity
         verbose = kwargs.pop('verbose', True)
 
@@ -1827,98 +1831,162 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                         _outlier_robust_condition),
                     inplace=True)
 
-            # partition by ID to speed up later per-ID evals
-            ids = _per_label_adf._sparkDF[[id_col]].distinct().toPandas()[id_col]
+            if __partition_by_id__:
+                ids = _per_label_adf._sparkDF[[id_col]].distinct().toPandas()[id_col]
 
-            n_ids = len(ids)
+                n_ids = len(ids)
 
-            _per_label_adf = \
-                _per_label_adf.repartition(
-                    n_ids,
-                    id_col,
-                    alias=adf.alias + '__toEval__' + label_var_name)
-
-            # cache to calculate multiple metrics quickly
-            _per_label_adf.cache(
-                eager=True,
-                verbose=verbose)
-
-            eval_metrics[label_var_name] = \
-                {self._GLOBAL_EVAL_KEY: dict(n=arimo.eval.metrics.n(_per_label_adf)),
-                 self._BY_ID_EVAL_KEY: {}}
-
-            evaluators = []
-
-            for metric_name in blueprint.eval_metrics:
-                metric_class = getattr(arimo.eval.metrics, metric_name)
-
-                evaluator = metric_class(
-                    label_col=label_var_name,
-                    score_col=score_col_name)
-
-                evaluators.append(evaluator)
-
-                eval_metrics[label_var_name][self._GLOBAL_EVAL_KEY][evaluator.name] = \
-                    evaluator(_per_label_adf)
-
-            for i in tqdm.tqdm(range(n_ids)):
-                _per_label_partitioned_by_id_spark_df = \
-                    arimo.backend.spark.createDataFrame(
-                        data=_per_label_adf.rdd.mapPartitionsWithIndex(
-                            f=lambda splitIndex, iterator:
-                                iterator
-                                if splitIndex == i
-                                else [],
-                            preservesPartitioning=False),
-                        schema=_per_label_adf.schema,
-                        samplingRatio=None,
-                        verifySchema=False) \
-                    .coalesce(
-                        numPartitions=1)
+                _per_label_adf = \
+                    _per_label_adf.repartition(
+                        n_ids,
+                        id_col,
+                        alias=adf.alias + '__toEval__' + label_var_name)
 
                 # cache to calculate multiple metrics quickly
-                _per_label_partitioned_by_id_spark_df.cache()
-                _n_rows = _per_label_partitioned_by_id_spark_df.count()
+                _per_label_adf.cache(
+                    eager=True,
+                    verbose=verbose)
 
-                if _n_rows:
-                    _ids = _per_label_partitioned_by_id_spark_df[[id_col]].distinct().toPandas()[id_col]
+                eval_metrics[label_var_name] = \
+                    {self._GLOBAL_EVAL_KEY: dict(n=arimo.eval.metrics.n(_per_label_adf)),
+                     self._BY_ID_EVAL_KEY: {}}
 
-                    if len(_ids) > 1:
-                        for _id in _ids:
-                            _per_label_per_id_spark_df = \
-                                _per_label_partitioned_by_id_spark_df \
-                                    .filter(
-                                        condition="{} = {}"
-                                            .format(
-                                                id_col,
-                                                "'{}'".format(_id))
-                                                    if id_col_type_is_str
-                                                    else _id) \
-                                    .drop(id_col)
+                evaluators = []
 
-                            _per_label_per_id_spark_df.cache()
-                            _per_label_per_id_spark_df.count()
+                for metric_name in blueprint.eval_metrics:
+                    metric_class = getattr(arimo.eval.metrics, metric_name)
+
+                    evaluator = metric_class(
+                        label_col=label_var_name,
+                        score_col=score_col_name)
+
+                    evaluators.append(evaluator)
+
+                    eval_metrics[label_var_name][self._GLOBAL_EVAL_KEY][evaluator.name] = \
+                        evaluator(_per_label_adf)
+
+                for i in tqdm.tqdm(range(n_ids)):
+                    _per_label_partitioned_by_id_spark_df = \
+                        arimo.backend.spark.createDataFrame(
+                            data=_per_label_adf.rdd.mapPartitionsWithIndex(
+                                f=lambda splitIndex, iterator:
+                                    iterator
+                                    if splitIndex == i
+                                    else [],
+                                preservesPartitioning=False),
+                            schema=_per_label_adf.schema,
+                            samplingRatio=None,
+                            verifySchema=False)
+
+                    if __coalesce__:
+                        _per_label_partitioned_by_id_spark_df = \
+                            _per_label_partitioned_by_id_spark_df.coalesce(numPartitions=1)
+
+                    # cache to calculate multiple metrics quickly
+                    _per_label_partitioned_by_id_spark_df.cache()
+                    _n_rows = _per_label_partitioned_by_id_spark_df.count()
+
+                    if _n_rows:
+                        _ids = _per_label_partitioned_by_id_spark_df[[id_col]].distinct().toPandas()[id_col]
+
+                        if len(_ids) > 1:
+                            for _id in _ids:
+                                _per_label_per_id_spark_df = \
+                                    _per_label_partitioned_by_id_spark_df \
+                                        .filter(
+                                            condition="{} = {}"
+                                                .format(
+                                                    id_col,
+                                                    "'{}'".format(_id))
+                                                        if id_col_type_is_str
+                                                        else _id) \
+                                        .drop(id_col)
+
+                                _per_label_per_id_spark_df.cache()
+                                _per_label_per_id_spark_df.count()
+
+                                eval_metrics[label_var_name][self._BY_ID_EVAL_KEY][_id] = \
+                                    dict(n=arimo.eval.metrics.n(_per_label_per_id_spark_df))
+
+                                for evaluator in evaluators:
+                                    eval_metrics[label_var_name][self._BY_ID_EVAL_KEY][_id][evaluator.name] = \
+                                        evaluator(_per_label_per_id_spark_df)
+
+                                _per_label_per_id_spark_df.unpersist()
+
+                        else:
+                            _id = _ids[0]
 
                             eval_metrics[label_var_name][self._BY_ID_EVAL_KEY][_id] = \
-                                dict(n=arimo.eval.metrics.n(_per_label_per_id_spark_df))
+                                dict(n=arimo.eval.metrics.n(_per_label_partitioned_by_id_spark_df))
 
                             for evaluator in evaluators:
                                 eval_metrics[label_var_name][self._BY_ID_EVAL_KEY][_id][evaluator.name] = \
-                                    evaluator(_per_label_per_id_spark_df)
+                                    evaluator(_per_label_partitioned_by_id_spark_df)
 
-                            _per_label_per_id_spark_df.unpersist()
+                    _per_label_partitioned_by_id_spark_df.unpersist()
 
-                    else:
-                        _id = _ids[0]
+            else:
+                _per_label_adf = \
+                    _per_label_adf.sort(
+                        id_col,
+                        ascending=True,
+                        alias=adf.alias + '__toEval__' + label_var_name)
 
-                        eval_metrics[label_var_name][self._BY_ID_EVAL_KEY][_id] = \
-                            dict(n=arimo.eval.metrics.n(_per_label_partitioned_by_id_spark_df))
+                # cache to calculate multiple metrics quickly
+                _per_label_adf.cache(
+                    eager=True,
+                    verbose=verbose)
 
-                        for evaluator in evaluators:
-                            eval_metrics[label_var_name][self._BY_ID_EVAL_KEY][_id][evaluator.name] = \
-                                evaluator(_per_label_partitioned_by_id_spark_df)
+                eval_metrics[label_var_name] = \
+                    {self._GLOBAL_EVAL_KEY: dict(n=arimo.eval.metrics.n(_per_label_adf)),
+                     self._BY_ID_EVAL_KEY: {}}
 
-                _per_label_partitioned_by_id_spark_df.unpersist()
+                evaluators = []
+
+                for metric_name in blueprint.eval_metrics:
+                    metric_class = getattr(arimo.eval.metrics, metric_name)
+
+                    evaluator = metric_class(
+                        label_col=label_var_name,
+                        score_col=score_col_name)
+
+                    evaluators.append(evaluator)
+
+                    eval_metrics[label_var_name][self._GLOBAL_EVAL_KEY][evaluator.name] = \
+                        evaluator(_per_label_adf)
+
+                ids = _per_label_adf._sparkDF[[id_col]].distinct().toPandas()[id_col]
+
+                for _id in tqdm.tqdm(ids):
+                    _per_label_per_id_adf = \
+                        _per_label_adf \
+                            .filter(
+                                condition="{} = {}"
+                                    .format(
+                                        id_col,
+                                        "'{}'".format(_id))
+                                            if id_col_type_is_str
+                                            else _id) \
+                            .drop(
+                                id_col,
+                                alias=(_per_label_adf.alias + '__' + clean_str(clean_uuid(id)))
+                                    if arimo.debug.ON
+                                    else None)
+
+                    # cache to calculate multiple metrics quickly
+                    _per_label_per_id_adf.cache(
+                        eager=True,
+                        verbose=False)
+
+                    eval_metrics[label_var_name][self._BY_ID_EVAL_KEY][_id] = \
+                        dict(n=arimo.eval.metrics.n(_per_label_per_id_adf))
+
+                    for evaluator in evaluators:
+                        eval_metrics[label_var_name][self._BY_ID_EVAL_KEY][_id][evaluator.name] = \
+                            evaluator(_per_label_per_id_adf)
+
+                    _per_label_per_id_adf.unpersist()
 
             _per_label_adf.unpersist()
 
