@@ -1872,7 +1872,9 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                             preservesPartitioning=False),
                         schema=_per_label_adf.schema,
                         samplingRatio=None,
-                        verifySchema=False)
+                        verifySchema=False) \
+                    .coalesce(
+                        numPartitions=1)
 
                 # cache to calculate multiple metrics quickly
                 _per_label_partitioned_by_id_spark_df.cache()
