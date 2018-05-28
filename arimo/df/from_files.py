@@ -1573,10 +1573,16 @@ class ArrowADF(_ArrowADFABC):
     @property
     def reprSamplePiecePaths(self):
         if self._cache.reprSamplePiecePaths is None:
+            reprSampleNPieces = \
+                int(math.ceil(((min(self._reprSampleSize, self.approxNRows) / self.approxNRows) ** .5) * self.nPieces))
+
             self._cache.reprSamplePiecePaths = \
-                random.sample(
+                self._cache.prelimReprSamplePiecePaths + \
+                (random.sample(
                     population=self.piecePaths,
-                    k=self._reprSampleMinNPieces)
+                    k=reprSampleNPieces - self._reprSampleMinNPieces)
+                 if reprSampleNPieces > self._reprSampleMinNPieces
+                 else [])
 
         return self._cache.reprSamplePiecePaths
 
