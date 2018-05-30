@@ -27,7 +27,7 @@ class PPPAnalysesMixIn(object):
     _GLOBAL_PREFIX = 'global__'
     _INDIV_OR_GLOBAL_PREFIXES = _INDIV_PREFIX, _GLOBAL_PREFIX
 
-    _RAW_METRICS = 'MedAE',   # 'MAE', 'RMSE'
+    _RAW_METRICS = 'MedAE', 'MAE'   #, 'RMSE'
 
     _ERR_MULT_COLS = \
         dict(MedAE='MedAE_Mult',
