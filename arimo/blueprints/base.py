@@ -955,7 +955,8 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
                     verbose=verbose)
 
             # legacy fix
-            component_blueprint.params.uuid = component_blueprint_params.uuid
+            # component_blueprint.params.uuid = component_blueprint_params.uuid
+            component_blueprint.params.uuid = '{}---{}'.format(params.uuid, label_var_name)
 
             # force load to test existence / sync down component blueprints from S3 if necessary
             try:
