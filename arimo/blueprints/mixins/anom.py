@@ -392,6 +392,8 @@ class PPPAnalysesMixIn(object):
         id_col = kwargs.pop('id_col', 'id')
         time_col = kwargs.pop('time_col', 'date_time')
 
+        clip = kwargs.pop('clip', 9)
+
         cols_to_agg = copy.copy(cls._ROW_ERR_MULT_SUMM_COLS)
 
         for label_var_name in label_var_names:
@@ -410,10 +412,10 @@ class PPPAnalysesMixIn(object):
                 assert col_name in df_w_err_mults.columns
 
                 col_strs += \
-                    ['PERCENTILE_APPROX({0}, 0.5) AS {1}{0}'.format(col_name, cls._dailyMed_PREFIX),
-                     'AVG({0}) AS {1}{0}'.format(col_name, cls._dailyMean_PREFIX),
-                     'MAX({0}) AS {1}{0}'.format(col_name, cls._dailyMax_PREFIX),
-                     'MIN({0}) AS {1}{0}'.format(col_name, cls._dailyMin_PREFIX)]
+                    ['PERCENTILE_APPROX(GREATER(LEAST({0}, {1}), -{1}), 0.5) AS {2}{0}'.format(col_name, clip, cls._dailyMed_PREFIX),
+                     'AVG(GREATER(LEAST({0}, {1}), -{1})) AS {2}{0}'.format(col_name, clip, cls._dailyMean_PREFIX),
+                     'MAX(GREATER(LEAST({0}, {1}), -{1})) AS {2}{0}'.format(col_name, clip, cls._dailyMax_PREFIX),
+                     'MIN(GREATER(LEAST({0}, {1}), -{1})) AS {2}{0}'.format(col_name, clip, cls._dailyMin_PREFIX)]
 
             for _indiv_or_global_prefix in cls._INDIV_OR_GLOBAL_PREFIXES:
                 for _raw_metric in cls._RAW_METRICS:
@@ -458,12 +460,12 @@ class PPPAnalysesMixIn(object):
                 df_w_err_mults[time_col] = pandas.DatetimeIndex(df_w_err_mults[time_col])
 
             def f(group_df):
-                cols = [id_col, 'date']
+                cols = [id_col, DATE_COL]
 
                 _first_row = group_df.iloc[0]
 
                 d = {id_col: _first_row[id_col],
-                     'date': _first_row[time_col]}
+                     DATE_COL: _first_row[time_col]}
 
                 for _indiv_or_global_prefix in cls._INDIV_OR_GLOBAL_PREFIXES:
                     for _raw_metric in cls._RAW_METRICS:
@@ -476,17 +478,22 @@ class PPPAnalysesMixIn(object):
                                 cols.append(_metric_col_name)
 
                 for col_to_agg in cols_to_agg:
+                    clipped_series = \
+                        group_df[col_to_agg].clip(
+                            lower=-clip,
+                            upper=clip)
+
                     _dailyMed_agg_col = cls._dailyMed_PREFIX + col_to_agg
-                    d[_dailyMed_agg_col] = group_df[col_to_agg].median(skipna=True)
+                    d[_dailyMed_agg_col] = clipped_series.median(skipna=True)
 
                     _dailyMean_agg_col = cls._dailyMean_PREFIX + col_to_agg
-                    d[_dailyMean_agg_col] = group_df[col_to_agg].mean(skipna=True)
+                    d[_dailyMean_agg_col] = clipped_series.mean(skipna=True)
 
                     _dailyMax_agg_col = cls._dailyMax_PREFIX + col_to_agg
-                    d[_dailyMax_agg_col] = group_df[col_to_agg].max(skipna=True)
+                    d[_dailyMax_agg_col] = clipped_series.max(skipna=True)
 
                     _dailyMin_agg_col = cls._dailyMin_PREFIX + col_to_agg
-                    d[_dailyMin_agg_col] = group_df[col_to_agg].min(skipna=True)
+                    d[_dailyMin_agg_col] = clipped_series.min(skipna=True)
 
                     cols += [_dailyMed_agg_col, _dailyMean_agg_col, _dailyMax_agg_col, _dailyMin_agg_col]
 
@@ -533,8 +540,6 @@ class PPPAnalysesMixIn(object):
                 pass
 
         for _alpha in to_iterable(alpha):
-            clip = 1 / _alpha
-
             _ewma_prefix = cls._EWMA_PREFIX + '{:.3f}'.format(_alpha)[-3:] + '__'
 
             # ref: https://stackoverflow.com/questions/44417010/pandas-groupby-weighted-cumulative-sum
@@ -561,17 +566,15 @@ class PPPAnalysesMixIn(object):
                 )[_daily_err_mult_col_names] \
                 .apply(
                     lambda df:
-                        df.clip(lower=-clip,
-                                upper=clip,
-                                axis=None)
-                        .ewm(com=None,
-                             span=None,
-                             halflife=None,
-                             alpha=_alpha,
-                             min_periods=0,
-                             adjust=False,   # ref: http://pandas.pydata.org/pandas-docs/stable/computation.html#exponentially-weighted-windows
-                             ignore_na=True,
-                             axis='index')
+                        df.ewm(
+                            com=None,
+                            span=None,
+                            halflife=None,
+                            alpha=_alpha,
+                            min_periods=0,
+                            adjust=False,   # ref: http://pandas.pydata.org/pandas-docs/stable/computation.html#exponentially-weighted-windows
+                            ignore_na=True,
+                            axis='index')
                         .mean())
 
         return daily_err_mults_df
