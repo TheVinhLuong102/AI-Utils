@@ -509,12 +509,13 @@ class PPPAnalysesMixIn(object):
                     squeeze=False).apply(f)
 
     @classmethod
-    def ewma_daily_err_mults(cls, daily_err_mults_df, *label_var_names, **kwargs):
+    def ewma_daily_err_mults(cls, daily_err_mults_df, *daily_err_mult_summ_col_names, **kwargs):
         id_col = kwargs.pop('id_col', 'id')
 
         alpha = kwargs.pop('alpha', .168)
 
-        daily_err_mults_df = daily_err_mults_df.toPandas()
+        if not isinstance(daily_err_mults_df, pandas.DataFrame):
+            daily_err_mults_df = daily_err_mults_df.toPandas()
 
         daily_err_mults_df.sort_values(
             by=[id_col, DATE_COL],
@@ -522,22 +523,10 @@ class PPPAnalysesMixIn(object):
             ascending=True,
             inplace=True,
             na_position='last')
-
-        _daily_err_mult_col_names = \
-            copy.copy(cls._DAILY_ERR_MULT_SUMM_COLS)
-
-        for label_var_name in label_var_names:
-            try:
-                next(_col for _col in daily_err_mults_df.columns
-                          if _col.endswith(label_var_name))
-
-                _daily_err_mult_col_names += \
-                    [(_daily_summ + _sgn + _indiv_or_global_prefix + cls._ERR_MULT_PREFIXES[_metric] + label_var_name)
-                     for _metric, _indiv_or_global_prefix, _sgn, _daily_summ in
-                        itertools.product(cls._RAW_METRICS, cls._INDIV_OR_GLOBAL_PREFIXES, cls._SGN_PREFIXES, cls._DAILY_SUMM_PREFIXES)]
-
-            except StopIteration:
-                pass
+        
+        if not daily_err_mult_summ_col_names:
+            daily_err_mult_summ_col_names = \
+                copy.copy(cls._DAILY_ERR_MULT_SUMM_COLS)
 
         for _alpha in to_iterable(alpha):
             _ewma_prefix = cls._EWMA_PREFIX + '{:.3f}'.format(_alpha)[-3:] + '__'
@@ -545,7 +534,7 @@ class PPPAnalysesMixIn(object):
             # ref: https://stackoverflow.com/questions/44417010/pandas-groupby-weighted-cumulative-sum
             daily_err_mults_df[
                     [(_ewma_prefix + col_name)
-                     for col_name in _daily_err_mult_col_names]] = \
+                     for col_name in daily_err_mult_summ_col_names]] = \
                 daily_err_mults_df.groupby(
                     by=id_col,
                         # Used to determine the groups for the groupby
@@ -563,7 +552,7 @@ class PPPAnalysesMixIn(object):
                         # When calling apply, add group keys to index to identify pieces
                     squeeze=False
                         # reduce the dimensionality of the return type if possible, otherwise return a consistent type
-                )[_daily_err_mult_col_names] \
+                )[daily_err_mult_summ_col_names] \
                 .apply(
                     lambda df:
                         df.ewm(
