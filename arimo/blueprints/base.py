@@ -1927,11 +1927,8 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                     _per_label_partitioned_by_id_spark_df.unpersist()
 
             else:
-                _per_label_adf = \
-                    _per_label_adf.sort(
-                        id_col,
-                        ascending=True,
-                        alias=adf.alias + '__toEval__' + label_var_name)
+                _per_label_adf.alias = \
+                    adf.alias + '__toEval__' + label_var_name
 
                 # cache to calculate multiple metrics quickly
                 _per_label_adf.cache(
