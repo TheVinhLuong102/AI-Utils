@@ -44,6 +44,9 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
             if (label_var_name in adf.columns) and blueprint_params.model.ver:
                 label_var_names.append(label_var_name)
 
+                blueprint_params.uuid = \
+                    '{}---{}'.format(self.params.uuid, label_var_name)
+
                 model_file_path = \
                     os.path.join(
                         _blueprint_from_params(
