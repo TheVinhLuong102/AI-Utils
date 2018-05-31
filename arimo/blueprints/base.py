@@ -492,6 +492,7 @@ class _BlueprintABC(object):
 
             if os.path.isfile(local_file_path):
                 existing_params = joblib.load(filename=local_file_path)
+                existing_params.pop(_UUID_ARG_NAME, None)
                 self.params.update(existing_params)
 
                 create_blueprint = False
