@@ -514,6 +514,16 @@ class PPPAnalysesMixIn(object):
 
         alpha = kwargs.pop('alpha', .168)
 
+        daily_err_mult_summ_col_names = \
+            list(daily_err_mult_summ_col_names) \
+            if daily_err_mult_summ_col_names \
+            else copy.copy(cls._DAILY_ERR_MULT_SUMM_COLS)
+
+        daily_err_mults_df = \
+            daily_err_mults_df[
+                [id_col, DATE_COL] +
+                daily_err_mult_summ_col_names]
+
         if not isinstance(daily_err_mults_df, pandas.DataFrame):
             daily_err_mults_df = daily_err_mults_df.toPandas()
 
@@ -523,10 +533,6 @@ class PPPAnalysesMixIn(object):
             ascending=True,
             inplace=True,
             na_position='last')
-        
-        if not daily_err_mult_summ_col_names:
-            daily_err_mult_summ_col_names = \
-                copy.copy(cls._DAILY_ERR_MULT_SUMM_COLS)
 
         for _alpha in to_iterable(alpha):
             _ewma_prefix = cls._EWMA_PREFIX + '{:.3f}'.format(_alpha)[-3:] + '__'
@@ -566,4 +572,8 @@ class PPPAnalysesMixIn(object):
                             axis='index')
                         .mean())
 
-        return daily_err_mults_df
+        return daily_err_mults_df.drop(
+                columns=daily_err_mult_summ_col_names,
+                level=None,
+                inplace=False,
+                errors='raise')
