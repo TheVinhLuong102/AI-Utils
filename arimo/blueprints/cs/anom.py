@@ -47,14 +47,19 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
                 blueprint_params.uuid = \
                     '{}---{}'.format(self.params.uuid, label_var_name)
 
+                component_blueprint = \
+                    _blueprint_from_params(
+                        blueprint_params=blueprint_params,
+                        aws_access_key_id=self.auth.aws.access_key_id,
+                        aws_secret_access_key=self.auth.aws.secret_access_key,
+                        verbose=False)
+
+                assert component_blueprint.params.uuid == blueprint_params.uuid, \
+                    '*** {} ***'.format(component_blueprint.params.uuid)
+
                 model_file_path = \
                     os.path.join(
-                        _blueprint_from_params(
-                            blueprint_params=blueprint_params,
-                            aws_access_key_id=self.auth.aws.access_key_id,
-                            aws_secret_access_key=self.auth.aws.secret_access_key,
-                            verbose=False)
-                            .model(ver=blueprint_params.model.ver).dir,
+                        component_blueprint.model(ver=blueprint_params.model.ver).dir,
                         blueprint_params.model._persist.file)
 
                 assert os.path.isfile(model_file_path), \
