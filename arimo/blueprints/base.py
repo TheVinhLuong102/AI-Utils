@@ -839,6 +839,8 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
 
         params = joblib.load(filename=_tmp_file_path)
 
+        params.uuid = os.path.basename(s3_dir_prefix)
+
         blueprint = \
             _blueprint_from_params(
                 blueprint_params=params,
@@ -936,6 +938,8 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
             logger.info(msg)
 
         params = joblib.load(filename=local_file_path)
+
+        params.uuid = os.path.basename(dir_path)
         
         blueprint = \
             _blueprint_from_params(
