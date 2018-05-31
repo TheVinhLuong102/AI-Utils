@@ -949,14 +949,14 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
 
     if 'component_blueprints' in blueprint.params.model:
         for label_var_name, component_blueprint_params in blueprint.params.model.component_blueprints.items():
+            # legacy fix
+            component_blueprint_params.uuid = \
+                '{}---{}'.format(params.uuid, label_var_name)
+
             component_blueprint = \
                 _blueprint_from_params(
                     blueprint_params=component_blueprint_params,
                     verbose=verbose)
-
-            # legacy fix
-            # component_blueprint.params.uuid = component_blueprint_params.uuid
-            component_blueprint.params.uuid = '{}---{}'.format(params.uuid, label_var_name)
 
             # force load to test existence / sync down component blueprints from S3 if necessary
             try:
