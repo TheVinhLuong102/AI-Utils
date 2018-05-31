@@ -69,6 +69,9 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
                             .model(ver=blueprint_params.model.ver).dir,
                         blueprint_params.model._persist.file)
 
+                assert os.path.isfile(model_file_path), \
+                    '*** {} DOES NOT EXIST ***'.format(model_file_path)
+
                 if fs._ON_LINUX_CLUSTER_WITH_HDFS:
                     if model_file_path not in self._MODEL_PATHS_ON_SPARK_WORKER_NODES:
                         _tmp_local_file_name = \
