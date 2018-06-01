@@ -56,8 +56,12 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
             if (label_var_name in adf.columns) and blueprint_params.model.ver:
                 label_var_names.append(label_var_name)
 
-                blueprint_params.uuid = \
+                # legacy fix
+                _component_blueprint_uuid_prefix = \
                     '{}---{}'.format(self.params.uuid, label_var_name)
+
+                if not blueprint_params.uuid.startswith(_component_blueprint_uuid_prefix):
+                    blueprint_params.uuid = _component_blueprint_uuid_prefix
 
                 component_blueprint = \
                     _blueprint_from_params(

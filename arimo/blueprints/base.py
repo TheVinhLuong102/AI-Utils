@@ -955,8 +955,11 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
     if 'component_blueprints' in blueprint.params.model:
         for label_var_name, component_blueprint_params in blueprint.params.model.component_blueprints.items():
             # legacy fix
-            component_blueprint_params.uuid = \
+            _component_blueprint_uuid_prefix = \
                 '{}---{}'.format(params.uuid, label_var_name)
+
+            if not component_blueprint_params.uuid.startswith(_component_blueprint_uuid_prefix)
+                component_blueprint_params.uuid = _component_blueprint_uuid_prefix
 
             component_blueprint = \
                 _blueprint_from_params(
