@@ -958,7 +958,7 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
             _component_blueprint_uuid_prefix = \
                 '{}---{}'.format(params.uuid, label_var_name)
 
-            if not component_blueprint_params.uuid.startswith(_component_blueprint_uuid_prefix)
+            if not component_blueprint_params.uuid.startswith(_component_blueprint_uuid_prefix):
                 component_blueprint_params.uuid = _component_blueprint_uuid_prefix
 
             component_blueprint = \
