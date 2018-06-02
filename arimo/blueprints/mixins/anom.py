@@ -206,10 +206,10 @@ class PPPAnalysesMixIn(object):
                              functions.abs(_sgn_err_mult_col_expr)
                                 .alias(err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name][self._ABS_PREFIX]),
         
-                             functions.when(df[label_var_name] < df[score_col_name], _sgn_err_mult_col_expr).otherwise(None)
+                             functions.when(df[label_var_name] < df[score_col_name], _sgn_err_mult_col_expr)
                                 .alias(err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name][self._NEG_PREFIX]),
         
-                             functions.when(df[label_var_name] > df[score_col_name], _sgn_err_mult_col_expr).otherwise(None)
+                             functions.when(df[label_var_name] > df[score_col_name], _sgn_err_mult_col_expr)
                                 .alias(err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name][self._POS_PREFIX])]
 
             df = df.select('*', *col_exprs)
