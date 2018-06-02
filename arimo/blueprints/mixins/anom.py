@@ -418,10 +418,14 @@ class PPPAnalysesMixIn(object):
                 assert col_name in df_w_err_mults.columns
 
                 col_strs += \
-                    ['PERCENTILE_APPROX(GREATEST(LEAST({0}, {1}), -{1}), 0.5) AS {2}{0}'.format(col_name, clip, cls._dailyMed_PREFIX),
-                     'AVG(GREATEST(LEAST({0}, {1}), -{1})) AS {2}{0}'.format(col_name, clip, cls._dailyMean_PREFIX),
-                     'MAX(GREATEST(LEAST({0}, {1}), -{1})) AS {2}{0}'.format(col_name, clip, cls._dailyMax_PREFIX),
-                     'MIN(GREATEST(LEAST({0}, {1}), -{1})) AS {2}{0}'.format(col_name, clip, cls._dailyMin_PREFIX)]
+                    ['PERCENTILE_APPROX(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1})), 0.5) AS {2}{0}'
+                        .format(col_name, clip, cls._dailyMed_PREFIX),
+                     'AVG(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1}))) AS {2}{0}'
+                        .format(col_name, clip, cls._dailyMean_PREFIX),
+                     'MAX(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1}))) AS {2}{0}'
+                        .format(col_name, clip, cls._dailyMax_PREFIX),
+                     'MIN(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1}))) AS {2}{0}'
+                        .format(col_name, clip, cls._dailyMin_PREFIX)]
 
             for _indiv_or_global_prefix in cls._INDIV_OR_GLOBAL_PREFIXES:
                 for _raw_metric in cls._RAW_METRICS:
