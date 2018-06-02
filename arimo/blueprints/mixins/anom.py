@@ -82,7 +82,10 @@ class PPPAnalysesMixIn(object):
                     component_blueprint_params.model.score.raw_score_col_prefix + label_var_name
 
         benchmark_metric_col_names = {}
-        benchmark_metric_col_names_list = []
+        
+        benchmark_metric_col_names_list = \
+            ['pop__'.format(label_var_name)
+             for label_var_name in label_var_names]
 
         for _indiv_or_global_prefix in self._INDIV_OR_GLOBAL_PREFIXES:
             benchmark_metric_col_names[_indiv_or_global_prefix] = {}
