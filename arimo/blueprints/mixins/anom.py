@@ -87,7 +87,7 @@ class PPPAnalysesMixIn(object):
         for _indiv_or_global_prefix in self._INDIV_OR_GLOBAL_PREFIXES:
             benchmark_metric_col_names[_indiv_or_global_prefix] = {}
 
-            for _raw_metric in self._RAW_METRICS:
+            for _raw_metric in (('n',) + self._RAW_METRICS):
                 benchmark_metric_col_names[_indiv_or_global_prefix][_raw_metric] = {}
 
                 for label_var_name in label_var_names:
@@ -134,12 +134,15 @@ class PPPAnalysesMixIn(object):
                 .toPandas()
 
             for label_var_name in label_var_names:
-                for _raw_metric in self._RAW_METRICS:
+                benchmark_metrics_df['pop__' + label_var_name] = \
+                    len(self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY])
+
+                for _raw_metric in (('n',) + self._RAW_METRICS):
                     benchmark_metrics_df[benchmark_metric_col_names[self._INDIV_PREFIX][_raw_metric][label_var_name]] = \
                         benchmark_metrics_df[id_col].map(
-                            lambda id:
+                            lambda _id:
                                 self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY]
-                                    .get(id, {})
+                                    .get(_id, {})
                                     .get(_raw_metric))
 
                     benchmark_metrics_df[benchmark_metric_col_names[self._GLOBAL_PREFIX][_raw_metric][label_var_name]] = \
