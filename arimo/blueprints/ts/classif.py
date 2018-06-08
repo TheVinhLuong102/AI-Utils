@@ -120,14 +120,16 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
 
         model = self.model(ver=self.params.model.ver)
 
-        if __n_gpus__ > 1:
-            model = arimo.backend.keras.utils.multi_gpu_model(
+        _model_to_fit = \
+            arimo.backend.keras.utils.multi_gpu_model(
                 model._obj,
                 gpus=__n_gpus__,
                 cpu_merge=__cpu_merge__,
-                cpu_relocation=__cpu_reloc__)
+                cpu_relocation=__cpu_reloc__) \
+            if __n_gpus__ > 1 \
+            else model
 
-        model.compile(
+        _model_to_fit.compile(
             loss=self.params.model.train.objective
                 if self.params.model.train.objective
                 else ('binary_crossentropy'
@@ -223,7 +225,7 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
         val_piece_paths = piece_paths[split_idx:]
 
         model.history = \
-            model.fit_generator(
+            _model_to_fit.fit_generator(
                 generator=
                     batch_gen(
                         adf=adf,
