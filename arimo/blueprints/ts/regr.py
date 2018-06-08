@@ -116,12 +116,11 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
         model.summary()
 
         if __n_gpus__ > 1:
-            model._obj = \
-                arimo.backend.keras.utils.multi_gpu_model(
-                    model._obj,
-                    gpus=__n_gpus__,
-                    cpu_merge=__cpu_merge__,
-                    cpu_relocation=__cpu_reloc__)
+            model = arimo.backend.keras.utils.multi_gpu_model(
+                model._obj,
+                gpus=__n_gpus__,
+                cpu_merge=__cpu_merge__,
+                cpu_relocation=__cpu_reloc__)
 
         model.compile(
             loss=self.params.model.train.objective
