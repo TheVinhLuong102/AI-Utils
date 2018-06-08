@@ -353,11 +353,15 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                         verbose=int(verbose),
                             # verbosity mode.
 
-                        mode=self.params.model.train.val_metric.mode
+                        mode=self.params.model.train.val_metric.mode,
                             # one of {auto, min, max}.
                             # In min mode, training will stop when the quantity monitored has stopped decreasing;
                             # In max mode it will stop when the quantity monitored has stopped increasing;
                             # In auto mode, the direction is automatically inferred from the name of the monitored quantity.
+
+                        baseline=None
+                            # Baseline value for the monitored quantity to reach.
+                            # Training will stop if the model doesn't show improvement over the baseline.
                         )],
 
                 validation_data=
