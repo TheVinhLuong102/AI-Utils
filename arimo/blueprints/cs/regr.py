@@ -315,7 +315,7 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                             # In max mode it will be reduced when the quantity monitored has stopped increasing;
                             # In auto mode, the direction is automatically inferred from the name of the monitored quantity.
 
-                        epsilon=self.params.model.train.val_metric.significance,
+                        min_delta=self.params.model.train.val_metric.significance,
                             # threshold for measuring the new optimum, to only focus on significant changes.
 
                         cooldown=0,
