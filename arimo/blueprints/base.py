@@ -1652,6 +1652,9 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
         assert __n_gpus__, \
             '*** __n_gpus__ = {} ***'.format(__n_gpus__)
 
+        __cpu_merge__ = kwargs.pop('__cpu_merge__', True)
+        __cpu_reloc__ = kwargs.pop('__cpu_reloc__', __cpu_merge__)
+
         # whether to retrain component Blueprinted models
         __retrain_components__ = kwargs.pop('__retrain_components__', False)
 
@@ -1709,6 +1712,8 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                         __multiproc__=__multiproc__,
                         __n_workers__=__n_workers__,
                         __n_gpus__=__n_gpus__,
+                        __cpu_merge__=__cpu_merge__,
+                        __cpu_reloc__=__cpu_reloc__,
                         verbose=verbose,
                         _medianFill=_medianFill)
 

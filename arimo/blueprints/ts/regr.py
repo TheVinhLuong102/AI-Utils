@@ -97,6 +97,9 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
         assert __n_gpus__, \
             '*** __n_gpus__ = {} ***'.format(__n_gpus__)
 
+        __cpu_merge__ = kwargs.pop('__cpu_merge__', True)
+        __cpu_reloc__ = kwargs.pop('__cpu_reloc__', __cpu_merge__)
+
         # verbosity
         verbose = kwargs.pop('verbose', True)
 
@@ -115,7 +118,9 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
         _model_to_fit = \
             arimo.backend.keras.utils.multi_gpu_model(
                 model._obj,
-                gpus=__n_gpus__) \
+                gpus=__n_gpus__,
+                cpu_merge=__cpu_merge__,
+                cpu_relocation=__cpu_reloc__) \
             if __n_gpus__ > 1 \
             else model
 
