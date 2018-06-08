@@ -97,8 +97,8 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
         assert __n_gpus__, \
             '*** __n_gpus__ = {} ***'.format(__n_gpus__)
 
-        __cpu_merge__ = kwargs.pop('__cpu_merge__', True)
-        __cpu_reloc__ = kwargs.pop('__cpu_reloc__', __cpu_merge__)
+        __cpu_merge__ = bool(kwargs.pop('__cpu_merge__', True))
+        __cpu_reloc__ = bool(kwargs.pop('__cpu_reloc__', __cpu_merge__))
 
         # verbosity
         verbose = kwargs.pop('verbose', True)
@@ -184,7 +184,7 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                 '\n- Generator Queue Size: {}'
                 '\n- Processes/Threads: {}'
                 '\n- Multi-Processing: {}'
-                '\n- GPUs: {}'
+                '\n- GPUs: {}; CPU Merge: {}; CPU Reloc: {}'
                 .format(
                     self.params.data._prep_vec_size,
                     self.params.model.train._n_train_samples,
@@ -197,7 +197,7 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                     __gen_queue_size__,
                     __n_workers__,
                     __multiproc__,
-                    __n_gpus__))
+                    __n_gpus__, __cpu_merge__, __cpu_reloc__))
 
         fs.mkdir(
             dir=model.dir,
