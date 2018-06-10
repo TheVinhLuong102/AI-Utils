@@ -208,8 +208,6 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                 self.params.model._persist.struct_file), 'w') \
             .write(model.to_json())
 
-        assert adf.alias
-
         piece_paths = list(adf.piecePaths)
         random.shuffle(piece_paths)
         split_idx = int(math.ceil(self.params.model.train.train_proportion * adf.nPieces))
