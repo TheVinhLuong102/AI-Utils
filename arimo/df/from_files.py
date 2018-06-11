@@ -388,7 +388,7 @@ class _ArrowADF__gen:
             possibleFeatureTAuxCols, contentCols,
             pandasDFTransforms,
             filterConditions,
-            n, sampleN,
+            n, sampleN, pad,
             anon,
             n_threads):
         def cols_rowFrom_rowTo(x):
@@ -425,6 +425,8 @@ class _ArrowADF__gen:
 
         self.n = n
         self.sampleN = sampleN
+
+        self.pad = pad
 
         self.anon = anon
 
@@ -483,6 +485,8 @@ class _ArrowADF__gen:
             self.colsLists.insert(0, ([self.iCol] if self.iCol else []) + ([self.tCol] if self.tCol else []))
             self.colsOverTime.insert(0, False)
             self.rowFrom_n_rowTo_tups.insert(0, None)
+
+        self.nColsList = [len(cols) for cols in self.colsLists]
 
     def __call__(self):
         if arimo.debug.ON:
@@ -558,14 +562,22 @@ class _ArrowADF__gen:
                 arrays = \
                     [(numpy.vstack(
                         numpy.expand_dims(
-                            chunkPandasDF.loc[(rowIdx + rowFrom_n_rowTo[0]):(rowIdx + rowFrom_n_rowTo[1]), cols].values,
-                                # *** NOTE: pandas.DataFrame.loc[i:j, ...] is INCLUSIVE OF j ***
+                            numpy.vstack(
+                                (numpy.full(
+                                    shape=(max((rowTo - rowFrom + 1)
+                                               - max(rowIdx + rowTo + 1, 0),
+                                               0),
+                                           nCols),
+                                    fill_value=self.pad),
+                                 chunkPandasDF.loc[(rowIdx + rowFrom):(rowIdx + rowTo), cols].values
+                                    # *** NOTE: pandas.DataFrame.loc[i:j, ...] is INCLUSIVE OF j ***
+                                )),
                             axis=0)
                         for rowIdx in rowIndicesSubset)
                       if overTime
                       else chunkPandasDF.loc[rowIndicesSubset, cols].values)
-                     for cols, overTime, rowFrom_n_rowTo in
-                        zip(self.colsLists, self.colsOverTime, self.rowFrom_n_rowTo_tups)]
+                     for cols, nCols, overTime, (rowFrom, rowTo) in
+                        zip(self.colsLists, self.nColsList, self.colsOverTime, self.rowFrom_n_rowTo_tups)]
 
                 if arimo.debug.ON:
                     for array in arrays:
@@ -3529,6 +3541,7 @@ class ArrowADF(_ArrowADFABC):
                 filterConditions=kwargs.get('filter', {}),
                 n=kwargs.get('n', 512),
                 sampleN=kwargs.get('sampleN', 10 ** 5),
+                pad=kwargs.get('pad', numpy.nan),
                 anon=kwargs.get('anon', True),
                 n_threads=kwargs.get('n_threads', 1))
 
