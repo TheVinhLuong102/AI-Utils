@@ -4,7 +4,7 @@ from arimo.df.spark_from_files import ArrowSparkADF
 from arimo.IoT.PredMaint import project
 
 
-PROJECT = project('PanaCC')
+PROJECT = project('PanaAP-CC')
 
 
 EQUIPMENT_GENERAL_TYPE = 'refrig'
