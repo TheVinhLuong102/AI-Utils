@@ -564,19 +564,19 @@ class _ArrowADF__gen:
                         numpy.expand_dims(
                             numpy.vstack(
                                 (numpy.full(
-                                    shape=(max((rowTo - rowFrom + 1)
-                                               - max(rowIdx + rowTo + 1, 0),
+                                    shape=(max((rowFrom_n_rowTo[1] - rowFrom_n_rowTo[0] + 1)
+                                               - max(rowIdx + rowFrom_n_rowTo[1] + 1, 0),
                                                0),
                                            nCols),
                                     fill_value=self.pad),
-                                 chunkPandasDF.loc[(rowIdx + rowFrom):(rowIdx + rowTo), cols].values
+                                 chunkPandasDF.loc[(rowIdx + rowFrom_n_rowTo[0]):(rowIdx + rowFrom_n_rowTo[1]), cols].values
                                     # *** NOTE: pandas.DataFrame.loc[i:j, ...] is INCLUSIVE OF j ***
                                 )),
                             axis=0)
                         for rowIdx in rowIndicesSubset)
                       if overTime
                       else chunkPandasDF.loc[rowIndicesSubset, cols].values)
-                     for cols, nCols, overTime, (rowFrom, rowTo) in
+                     for cols, nCols, overTime, rowFrom_n_rowTo in
                         zip(self.colsLists, self.nColsList, self.colsOverTime, self.rowFrom_n_rowTo_tups)]
 
                 if arimo.debug.ON:
