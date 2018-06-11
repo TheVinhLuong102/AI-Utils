@@ -557,13 +557,14 @@ class _ArrowADF__gen:
 
                 arrays = \
                     [(numpy.vstack(
-                            numpy.expand_dims(
-                                chunkPandasDF.loc[(rowIdx + rowFrom_n_rowTo[0]):(rowIdx + rowFrom_n_rowTo[1] + 1), cols].values,
-                                axis=0)
-                            for rowIdx in rowIndicesSubset)
-                        if overTime
-                        else chunkPandasDF.loc[rowIndicesSubset, cols].values)
-                       for cols, overTime, rowFrom_n_rowTo in
+                        numpy.expand_dims(
+                            chunkPandasDF.loc[(rowIdx + rowFrom_n_rowTo[0]):(rowIdx + rowFrom_n_rowTo[1]), cols].values,
+                                # *** NOTE: pandas.DataFrame.loc[i:j, ...] is INCLUSIVE OF j ***
+                            axis=0)
+                        for rowIdx in rowIndicesSubset)
+                      if overTime
+                      else chunkPandasDF.loc[rowIndicesSubset, cols].values)
+                     for cols, overTime, rowFrom_n_rowTo in
                         zip(self.colsLists, self.colsOverTime, self.rowFrom_n_rowTo_tups)]
 
                 if arimo.debug.ON:
