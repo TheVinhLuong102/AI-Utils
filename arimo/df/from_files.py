@@ -3540,7 +3540,7 @@ class ArrowADF(_ArrowADFABC):
                 pandasDFTransforms=self._mappers,
                 filterConditions=kwargs.get('filter', {}),
                 n=kwargs.get('n', 512),
-                sampleN=kwargs.get('sampleN', 10 ** 5),
+                sampleN=kwargs.get('sampleN', 10 ** (4 if self.hasTS else 5)),
                 pad=kwargs.get('pad', numpy.nan),
                 anon=kwargs.get('anon', True),
                 n_threads=kwargs.get('n_threads', 1))
