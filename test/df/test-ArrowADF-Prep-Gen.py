@@ -45,6 +45,7 @@ g = prep_arrow_adf.gen(
      else ()),
     component_bp_params.data.label.var,
     n=BATCH_SIZE,
+    sampleN=10 ** (4 if SEQ_LEN > 1 else 5),
     withReplacement=False,
     seed=None,
     anon=True,
