@@ -143,8 +143,7 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
                 anon=False,
                 collect=False,
                 pad=MASK_VAL,
-                filter='({} >= {}) {}'.format(
-                    adf._T_ORD_IN_CHUNK_COL, min_input_ser_len),
+                filter='({} >= {})'.format(adf._T_ORD_IN_CHUNK_COL, min_input_ser_len),
                 keepOrigRows=False) \
             .adf   # TODO: keepOrigRows should ideally = True, but set to False here
 
