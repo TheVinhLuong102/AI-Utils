@@ -2543,6 +2543,7 @@ class SparkADF(_ADFABC):
     # FIRST / REPR ROW
     # first / firstRow
     # aRow
+    # head
     # _colWidth
 
     @property
@@ -2576,6 +2577,9 @@ class SparkADF(_ADFABC):
                 else self._cache.firstRow
 
         return self._cache.aRow
+
+    def head(self, n=1):
+        return self._sparkDF.head(n=n)
 
     def _colWidth(self, *cols, **kwargs):   # *** NOT APPLICABLE TO COLUMNS PRODUCED BY COLLECT_LIST OVER WINDOW ***
         asDict = kwargs.pop('asDict', False)
