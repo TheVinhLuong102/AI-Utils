@@ -251,7 +251,7 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                     # Note that in conjunction with initial_epoch, the parameter epochs is to be understood as "final epoch".
                     # The model is not trained for n steps given by epochs, but until the epoch epochs is reached.
 
-                verbose=2,
+                verbose=1,   # progress bar, because TS data feeding may be slow
                     # Integer. 0, 1, or 2. Verbosity mode. 0 = silent, 1 = progress bar, 2 = one line per epoch.
 
                 callbacks=[   # list of callbacks to be called during training.
