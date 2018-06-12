@@ -62,7 +62,7 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
                 default=0,
                 tags=[])})
 
-    _EVAL_SCORE_ADF_ALIAS = '__EvalScore__'
+    _EVAL_SCORE_ADF_ALIAS = '__EvalScored__'
 
     @_docstr_verbose
     def score(self, *args, **kwargs):

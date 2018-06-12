@@ -20,6 +20,8 @@ from ..mixins.data_prep import PPPDataPrepMixIn
 
 @_docstr_blueprint
 class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
+    _SCORE_ADF_ALIAS = '__Scored__'
+
     def score(self, *args, **kwargs):
         # scoring batch size
         __batch_size__ = kwargs.pop('__batch_size__', 500)
