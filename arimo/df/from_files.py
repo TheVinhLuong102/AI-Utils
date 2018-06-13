@@ -3596,7 +3596,8 @@ class ArrowADF(_ArrowADFABC):
                 feature_cols=feature_cols,
                 target_col=target_col,
                 num_targets=1,
-                embedding_col=None, normalization=None)
+                embedding_col=None,
+                normalization=None)
 
         dldf = S3ParquetDatasetQueueReader(
                 filepaths=piecePaths,
@@ -3618,9 +3619,6 @@ class ArrowADF(_ArrowADFABC):
                 with_replacement=False,
                 process_chunk_fn=process_chunk_fn,
                 preprocessor=preprocessor)
-
-        dldf._num_features = len(feature_cols)
-        dldf._num_targets = 1
 
         dldf.config(
             batch_size=n,
