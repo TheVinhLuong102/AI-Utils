@@ -3543,7 +3543,8 @@ class ArrowADF(_ArrowADFABC):
                 sampleN=kwargs.get('sampleN', 10 ** (4 if self.hasTS else 5)),
                 pad=kwargs.get('pad', numpy.nan),
                 anon=kwargs.get('anon', True),
-                n_threads=kwargs.get('n_threads', 1))
+                nThreads=kwargs.get('nThreads', 1))
+
 
     # ****
     # MISC
