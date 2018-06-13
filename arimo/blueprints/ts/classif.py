@@ -157,7 +157,7 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                 collect='numpy',
                 pad=MASK_VAL,
                 filter={},
-                n_threads=int(math.ceil(psutil.cpu_count(logical=True) / __n_workers__)))
+                nThreads=int(math.ceil(psutil.cpu_count(logical=True) / __n_workers__)))
 
             assert pickle_able(gen)
 

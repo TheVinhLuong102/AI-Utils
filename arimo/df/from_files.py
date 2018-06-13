@@ -327,11 +327,11 @@ _PIECE_LOCAL_CACHE_PATHS = {}
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowADF__pieceArrowTableFunc:
-    def __init__(self, aws_access_key_id=None, aws_secret_access_key=None, n_threads=1):
+    def __init__(self, aws_access_key_id=None, aws_secret_access_key=None, nThreads=1):
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
 
-        self.n_threads = n_threads
+        self.nThreads = nThreads
 
     def __call__(self, piecePath):
         if piecePath.startswith('s3'):
@@ -371,7 +371,7 @@ class _ArrowADF__pieceArrowTableFunc:
         return read_table(
                 source=path,
                 columns=None,
-                nthreads=self.n_threads,
+                nthreads=self.nThreads,
                 metadata=None,
                 use_pandas_metadata=False)
 
@@ -390,7 +390,7 @@ class _ArrowADF__gen:
             filterConditions,
             n, sampleN, pad,
             anon,
-            n_threads):
+            nThreads):
         def cols_rowFrom_rowTo(x):
             if isinstance(x, _STR_CLASSES):
                 return [x], None, None
@@ -410,13 +410,13 @@ class _ArrowADF__gen:
 
         self.partitionKVs = partitionKVs
 
-        self.n_threads = n_threads
+        self.nThreads = nThreads
 
         self.pieceArrowTableFunc = \
             _ArrowADF__pieceArrowTableFunc(
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
-                n_threads=n_threads)
+                nThreads=nThreads)
 
         self.filterConditions = filterConditions
 
@@ -500,7 +500,7 @@ class _ArrowADF__gen:
                     self.pieceArrowTableFunc(piecePath=piecePath)
                         .to_batches(chunksize=self.sampleN)) \
                     .to_pandas(
-                        nthreads=self.n_threads)
+                        nthreads=self.nThreads)
 
             if self.partitionKVs:
                 for k, v in self.partitionKVs[piecePath].items():

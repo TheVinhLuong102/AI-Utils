@@ -198,7 +198,7 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                                                      self.params.data.label.upper_outlier_threshold)}
                     if __excl_outliers__
                     else {},
-                n_threads=n_threads)
+                nThreads=n_threads)
 
         assert pickle_able(train_gen)
 
@@ -218,7 +218,7 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                                                      self.params.data.label.upper_outlier_threshold)}
                     if __excl_outliers__
                     else {},
-                n_threads=n_threads)
+                nThreads=n_threads)
 
         assert pickle_able(val_gen)
 

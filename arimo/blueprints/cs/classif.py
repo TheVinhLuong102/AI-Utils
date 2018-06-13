@@ -126,7 +126,7 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                 pad=None,
                 cache=False,
                 filter={},
-                n_threads=int(math.ceil(psutil.cpu_count(logical=True) / __n_workers__)))
+                nThreads=int(math.ceil(psutil.cpu_count(logical=True) / __n_workers__)))
 
             assert pickle_able(gen)
 
