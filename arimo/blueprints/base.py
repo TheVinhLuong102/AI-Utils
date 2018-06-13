@@ -1776,8 +1776,6 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
             verbose=verbose,
             *args, **kwargs)
 
-        print(adf)
-
         label_var_names_n_blueprint_params = \
             {label_var_name: blueprint_params
              for label_var_name, blueprint_params in self.params.model.component_blueprints.items()
