@@ -1888,6 +1888,8 @@ class ArrowADF(_ArrowADFABC):
 
         piecePaths = kwargs.pop('piecePaths', None)
 
+        verbose = kwargs.pop('verbose', True)
+
         if piecePaths:
             nSamplePieces = len(piecePaths)
 
@@ -1913,8 +1915,8 @@ class ArrowADF(_ArrowADFABC):
                 nSamplePieces = self.nPieces
                 piecePaths = self.piecePaths
 
-        if arimo.debug.ON:
-            self.stdout_logger.debug(
+        if verbose or arimo.debug.ON:
+            self.stdout_logger.info(
                 '*** SAMPLING {:,} ROWS OF COLUMNS {} FROM {:,} PIECES ***'
                 .format(n, cols, nSamplePieces))
 
@@ -1922,6 +1924,7 @@ class ArrowADF(_ArrowADFABC):
                 *piecePaths,
                 cols=cols,
                 nSamplesPerPiece=int(math.ceil(n / nSamplePieces)),
+                verbose=verbose,
                 **kwargs)
 
     # ****************
