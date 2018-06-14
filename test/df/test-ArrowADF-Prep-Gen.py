@@ -18,6 +18,8 @@ else:
 
 SEQ_LEN = 1   # 9
 
+CHUNK_SIZE = 10 ** 4
+
 BATCH_SIZE = 10 ** 3
 
 N_BATCHES = 10 ** 3
@@ -55,7 +57,7 @@ gen_instance = \
          else ()),
         component_bp_params.data.label.var,
         n=BATCH_SIZE,
-        sampleN=10 ** (4 if SEQ_LEN > 1 else 5),
+        sampleN=CHUNK_SIZE,
         withReplacement=False,
         seed=None,
         anon=True,
@@ -80,6 +82,7 @@ cross_sect_dldf = \
         feature_cols=feature_cols,
         target_col=component_bp_params.data.label.var,
         n=BATCH_SIZE,
+        sampleN=CHUNK_SIZE,
         filter={component_bp_params.data.label.var: (-100, 100)},
         nThreads=N_THREADS)
 
@@ -88,5 +91,5 @@ print(cross_sect_dldf)
 
 g1 = cross_sect_dldf.generate_chunk()
 
-for _ in tqdm.tqdm(range(N_BATCHES * BATCH_SIZE / (10 ** 4))):
+for _ in tqdm.tqdm(range(N_BATCHES * BATCH_SIZE // CHUNK_SIZE)):
     chunk_df = next(g1)
