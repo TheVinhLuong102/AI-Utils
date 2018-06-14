@@ -68,7 +68,7 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                 '*** __n_gpus__ = {} ***'.format(__n_gpus__)
 
             __cpu_merge__ = bool(kwargs.pop('__cpu_merge__', True))
-            __cpu_reloc__ = bool(kwargs.pop('__cpu_reloc__', __cpu_merge__))
+            __cpu_reloc__ = bool(kwargs.pop('__cpu_reloc__', False))   # *** cpu_relocation MAKES TEMPLATE MODEL WEIGHTS FAIL TO UPDATE ***
 
             # verbosity
             verbose = kwargs.pop('verbose', True)
