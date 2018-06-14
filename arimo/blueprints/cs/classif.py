@@ -163,7 +163,7 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                 '\n- Generator Queue Size: {:,}'
                 '\n- Processes/Threads: {:,}'
                 '\n- Multi-Processing: {}'
-                '\n- GPUs: {}; CPU Merge: {}; CPU Reloc: {}'
+                '\n- GPUs: {}{}'
                 .format(
                     self.params.data.label._n_classes,
                     self.params.data._prep_vec_size,
@@ -177,7 +177,10 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                     __gen_queue_size__,
                     __n_workers__,
                     __multiproc__,
-                    __n_gpus__, __cpu_merge__, __cpu_reloc__))
+                    __n_gpus__,
+                    ' (CPU Merge: {}; CPU Reloc: {})'.format(__cpu_merge__, __cpu_reloc__)
+                        if __n_gpus__ > 1
+                        else ''))
 
             fs.mkdir(
                 dir=model.dir,
