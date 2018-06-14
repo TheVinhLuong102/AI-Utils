@@ -1,7 +1,8 @@
 import numpy
 import tqdm
+import yaml
 
-from arimo.IoT.PredMaint import project
+from arimo.IoT.DataAdmin import project
 
 
 PROJECT = project('PanaAP-CC')
@@ -16,9 +17,13 @@ else:
     EQ_UNQ_TP_GRP = 'inverter_4_multi_comp_refrigerator'
     LABEL_VAR = 'suction_temperature'
 
+
+SER_DIR_PATH = '/tmp/ADF.prep'
+
+
 SEQ_LEN = 1   # 9
 
-CHUNK_SIZE = 10 ** 4
+CHUNK_SIZE = 10 ** 5
 
 BATCH_SIZE = 10 ** 3
 
@@ -27,35 +32,64 @@ N_BATCHES = 10 ** 3
 N_THREADS = 4
 
 
-ppp_bp = PROJECT._ppp_blueprint(
-    equipment_general_type_name=EQ_GEN_TP,
-    equipment_unique_type_group_name=EQ_UNQ_TP_GRP,
-    incl_time_features=True,
-    timeser_input_len=SEQ_LEN)
-
-
+# Load ArrowADF
 arrow_adf = PROJECT.load_equipment_data(
     '{}---{}'.format(EQ_GEN_TP.upper(), EQ_UNQ_TP_GRP),
-    _on_files=True, _spark=False,
     set_i_col=SEQ_LEN > 1)
 
+print(arrow_adf)
 
-prep_arrow_adf = ppp_bp.prep_data(df=arrow_adf, __mode__='train')[LABEL_VAR]
 
-component_bp_params = ppp_bp.params.model.component_blueprints[LABEL_VAR]
+# Auto Profile & Prep ArrowADF
+# and Serializing the Cat & Num Transform Pipelines to Files
+prep_arrow_adf, cat_orig_to_prep_col_map, num_orig_to_prep_col_map = \
+    arrow_adf.prep(
+        scaleCat=False,
+        savePath=SER_DIR_PATH,
+        returnOrigToPrepColMaps=True,
+        verbose=True)
 
-feature_cols = component_bp_params.data._cat_prep_cols + component_bp_params.data._num_prep_cols
+print(prep_arrow_adf)
+
+
+## show Profiled & Prep'ed Cat Cols
+cat_cols, cat_prep_cols = \
+    zip(*((cat_col, cat_orig_to_prep_col_map[cat_col][0])
+          for cat_col in set(cat_orig_to_prep_col_map).difference(('__OHE__', '__SCALE__'))))
+
+print('PROFILED CAT COLS: {}\n'.format(cat_cols))
+print("PREP'ED CAT COLS: {}\n".format(cat_prep_cols))
+print(yaml.safe_dump(cat_orig_to_prep_col_map))
+
+
+## show Profiled & Prep'ed Num Cols
+num_cols, num_prep_cols = \
+    zip(*((num_col, num_orig_to_prep_col_map[num_col][0])
+          for num_col in set(num_orig_to_prep_col_map).difference(('__SCALER__',))))
+
+print('PROFILED NUM COLS: {}\n'.format(num_cols))
+print("PREP'ED NUM COLS: {}\n".format(num_prep_cols))
+print(yaml.safe_dump(num_orig_to_prep_col_map))
+
+
+# Deserialize & Apply Prep Transforms from Files
+loaded_prep_arrow_adf, loaded_cat_orig_to_prep_col_map, loaded_num_orig_to_prep_col_map = \
+    arrow_adf.prep(
+        loadPath=SER_DIR_PATH,
+        returnOrigToPrepColMaps=True,
+        verbose=True)
+
+print(loaded_prep_arrow_adf)
 
 
 # *** ArrowADF.gen(...) ***
 gen_instance = \
     prep_arrow_adf.gen(
-        feature_cols +
-        ((- component_bp_params.pred_horizon_len - component_bp_params.max_input_ser_len + 1,
-          - component_bp_params.pred_horizon_len)
+        cat_prep_cols + num_prep_cols +
+        ((- SEQ_LEN + 1, 0)
          if SEQ_LEN > 1
          else ()),
-        component_bp_params.data.label.var,
+        LABEL_VAR,
         n=BATCH_SIZE,
         sampleN=CHUNK_SIZE,
         withReplacement=False,
@@ -63,14 +97,17 @@ gen_instance = \
         anon=True,
         collect='numpy',
         pad=numpy.nan,
-        filter={component_bp_params.data.label.var: (-100, 100)},
+        filter={LABEL_VAR: (-100, 100)},
         nThreads=N_THREADS)
 
 print(gen_instance)
-print(gen_instance.colsLists)
 
 
 g0 = gen_instance()
+
+x, y = next(g0)
+print(gen_instance.colsLists)
+print(x.shape, y.shape)
 
 for _ in tqdm.tqdm(range(N_BATCHES)):
     x, y = next(g0)
@@ -79,17 +116,20 @@ for _ in tqdm.tqdm(range(N_BATCHES)):
 # *** S3ParquetDataset(Queue)Reader.generate_chunk(...) ***
 cross_sect_dldf = \
     prep_arrow_adf._CrossSectDLDF(
-        feature_cols=feature_cols,
-        target_col=component_bp_params.data.label.var,
+        feature_cols=cat_prep_cols + num_prep_cols,
+        target_col=LABEL_VAR,
         n=BATCH_SIZE,
         sampleN=CHUNK_SIZE,
-        filter={component_bp_params.data.label.var: (-100, 100)},
+        filter={LABEL_VAR: (-100, 100)},
         nThreads=N_THREADS)
 
 print(cross_sect_dldf)
 
 
 g1 = cross_sect_dldf.generate_chunk()
+
+chunk_df = next(g1)
+print(chunk_df.columns.tolist(), chunk_df.shape)
 
 for _ in tqdm.tqdm(range(N_BATCHES * BATCH_SIZE // CHUNK_SIZE)):
     chunk_df = next(g1)
