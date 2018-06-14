@@ -1,4 +1,5 @@
 import numpy
+from pprint import pprint
 import tqdm
 import yaml
 
@@ -52,7 +53,7 @@ prep_arrow_adf, cat_orig_to_prep_col_map, num_orig_to_prep_col_map = \
 print(prep_arrow_adf)
 
 
-## show Profiled & Prep'ed Cat Cols
+# show Profiled & Prep'ed Cat Cols
 cat_cols, cat_prep_cols = \
     zip(*((cat_col, cat_orig_to_prep_col_map[cat_col][0])
           for cat_col in set(cat_orig_to_prep_col_map).difference(('__OHE__', '__SCALE__'))))
@@ -62,7 +63,7 @@ print("PREP'ED CAT COLS: {}\n".format(cat_prep_cols))
 print(yaml.safe_dump(cat_orig_to_prep_col_map))
 
 
-## show Profiled & Prep'ed Num Cols
+# show Profiled & Prep'ed Num Cols
 num_cols, num_prep_cols = \
     zip(*((num_col, num_orig_to_prep_col_map[num_col][0])
           for num_col in set(num_orig_to_prep_col_map).difference(('__SCALER__',))))
@@ -82,7 +83,7 @@ loaded_prep_arrow_adf, loaded_cat_orig_to_prep_col_map, loaded_num_orig_to_prep_
 print(loaded_prep_arrow_adf)
 
 
-# *** ArrowADF.gen(...) ***
+# ArrowADF.gen(...): Generating Batches for DL Training
 gen_instance = \
     prep_arrow_adf.gen(
         cat_prep_cols + num_prep_cols +
@@ -106,14 +107,15 @@ print(gen_instance)
 g0 = gen_instance()
 
 x, y = next(g0)
-print(gen_instance.colsLists)
+pprint(gen_instance.colsLists)
 print(x.shape, y.shape)
 
+# Single-Process Multi-Threaded Throughput
 for _ in tqdm.tqdm(range(N_BATCHES)):
     x, y = next(g0)
 
 
-# *** S3ParquetDataset(Queue)Reader.generate_chunk(...) ***
+# ArrowADF.CrossSectDLDF(...) = instance of arimo.dl.reader.S3ParquetDatasetQueueReader
 cross_sect_dldf = \
     prep_arrow_adf._CrossSectDLDF(
         feature_cols=cat_prep_cols + num_prep_cols,
@@ -129,7 +131,9 @@ print(cross_sect_dldf)
 g1 = cross_sect_dldf.generate_chunk()
 
 chunk_df = next(g1)
-print(chunk_df.columns.tolist(), chunk_df.shape)
+pprint(chunk_df.columns.tolist())
+print(chunk_df.shape)
 
+# Single-Process Multi-Threaded Throughput
 for _ in tqdm.tqdm(range(N_BATCHES * BATCH_SIZE // CHUNK_SIZE)):
     chunk_df = next(g1)
