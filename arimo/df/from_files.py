@@ -218,7 +218,7 @@ class _ArrowADF__fillna__pandasDFTransform:
                 if pandas.isnull(nullFillValue):
                     nullFillValue = nullFill['NullFillValue']
 
-                pandasDF[_ADFABC._NULL_FILL_PREFIX + col + _ADFABC._PREP_SUFFIX] = \
+                pandasDF.loc[:, _ADFABC._NULL_FILL_PREFIX + col + _ADFABC._PREP_SUFFIX] = \
                     series.where(
                         cond=chks,
                         other=nullFillValue,
@@ -227,6 +227,9 @@ class _ArrowADF__fillna__pandasDFTransform:
                         level=None,
                         errors='raise',
                         try_cast=False)
+                # ^^^ SettingWithCopyWarning (?)
+                # A value is trying to be set on a copy of a slice from a DataFrame.
+                # Try using .loc[row_indexer,col_indexer] = value instead
 
         return pandasDF
 
@@ -267,7 +270,7 @@ class _ArrowADF__prep__pandasDFTransform:
 
                 s = pandasDF[catCol]
 
-                pandasDF[prepCatCol] = \
+                pandasDF.loc[:, prepCatCol] = \
                     (sum(((s == cat) * i)
                          for i, cat in enumerate(cats)) +
                      ((~s.isin(cats)) * nCats)) \
@@ -278,10 +281,16 @@ class _ArrowADF__prep__pandasDFTransform:
                             sum(((s - cat).abs() < _FLOAT_ABS_TOL)
                                 for cat in cats)) *
                            nCats))
+                # ^^^ SettingWithCopyWarning (?)
+                # A value is trying to be set on a copy of a slice from a DataFrame.
+                # Try using .loc[row_indexer,col_indexer] = value instead
 
                 if self.scaleCat:
-                    pandasDF[prepCatCol] = minMaxScaledIdxSeries = \
+                    pandasDF.loc[:, prepCatCol] = minMaxScaledIdxSeries = \
                         2 * pandasDF[prepCatCol] / nCats - 1
+                    # ^^^ SettingWithCopyWarning (?)
+                    # A value is trying to be set on a copy of a slice from a DataFrame.
+                    # Try using .loc[row_indexer,col_indexer] = value instead
 
                     assert minMaxScaledIdxSeries.between(left=-1, right=1, inclusive=True).all(), \
                         '*** "{}" CERTAIN MIN-MAX SCALED INT INDICES NOT BETWEEN -1 AND 1 ***'
@@ -301,12 +310,18 @@ class _ArrowADF__prep__pandasDFTransform:
                     pandasDF[_ADFABC._NULL_FILL_PREFIX + numCol + _ADFABC._PREP_SUFFIX]
 
                 if self.numScaler == 'standard':
-                    pandasDF[prepNumCol] = \
+                    pandasDF.loc[:, prepNumCol] = \
                         (nullFillColSeries - numColDetails['Mean']) / numColDetails['StdDev']
+                    # ^^^ SettingWithCopyWarning (?)
+                    # A value is trying to be set on a copy of a slice from a DataFrame.
+                    # Try using .loc[row_indexer,col_indexer] = value instead
 
                 elif self.numScaler == 'maxabs':
-                    pandasDF[prepNumCol] = \
+                    pandasDF.loc[:, prepNumCol] = \
                         nullFillColSeries / numColDetails['MaxAbs']
+                    # ^^^ SettingWithCopyWarning (?)
+                    # A value is trying to be set on a copy of a slice from a DataFrame.
+                    # Try using .loc[row_indexer,col_indexer] = value instead
 
                 elif self.numScaler == 'minmax':
                     origMin = numColDetails['OrigMin']
@@ -317,8 +332,11 @@ class _ArrowADF__prep__pandasDFTransform:
                     targetMax = numColDetails['TargetMax']
                     targetRange = targetMax - targetMin
 
-                    pandasDF[prepNumCol] = \
+                    pandasDF.loc[:, prepNumCol] = \
                         targetRange * (nullFillColSeries - origMin) / origRange + targetMin
+                    # ^^^ SettingWithCopyWarning (?)
+                    # A value is trying to be set on a copy of a slice from a DataFrame.
+                    # Try using .loc[row_indexer,col_indexer] = value instead
 
         return pandasDF
 
