@@ -1915,8 +1915,12 @@ class ArrowADF(_ArrowADFABC):
 
         if verbose or arimo.debug.ON:
             self.stdout_logger.info(
-                'Sampling {:,} Rows of Columns {} from {:,} Pieces...'
-                .format(n, cols, nSamplePieces))
+                'Sampling {:,} Rows{} from {:,} Pieces...'.format(
+                    n,
+                    ' of Columns {}'.format(cols)
+                        if cols
+                        else '',
+                    nSamplePieces))
 
         return self.reduce(
                 *piecePaths,
