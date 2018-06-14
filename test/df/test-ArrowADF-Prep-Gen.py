@@ -110,12 +110,12 @@ x, y = next(g0)
 pprint(gen_instance.colsLists)
 print(x.shape, y.shape)
 
-# Single-Process Multi-Threaded Throughput
+# single-process multi-threaded throughput
 for _ in tqdm.tqdm(range(N_BATCHES)):
     x, y = next(g0)
 
 
-# ArrowADF.CrossSectDLDF(...) = instance of arimo.dl.reader.S3ParquetDatasetQueueReader
+# ArrowADF._CrossSectDLDF(...) = instance of arimo.dl.reader.S3ParquetDatasetQueueReader
 cross_sect_dldf = \
     prep_arrow_adf._CrossSectDLDF(
         feature_cols=cat_prep_cols + num_prep_cols,
@@ -134,6 +134,6 @@ chunk_df = next(g1)
 pprint(chunk_df.columns.tolist())
 print(chunk_df.shape)
 
-# Single-Process Multi-Threaded Throughput
+# single-process multi-threaded throughput
 for _ in tqdm.tqdm(range(N_BATCHES * BATCH_SIZE // CHUNK_SIZE)):
     chunk_df = next(g1)
