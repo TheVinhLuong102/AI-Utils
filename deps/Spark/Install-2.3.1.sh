@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 
-DOWNLOAD_URL=http://mirrors.ocf.berkeley.edu/apache/spark/spark-2.3.1/spark-2.3.1-bin-hadoop2.7.tgz
-DOWNLOAD_COMPRESSED_FILE_NAME=spark-2.3.1-bin-hadoop2.7.tgz
-DOWNLOAD_DIR_NAME=spark-2.3.1-bin-hadoop2.7
+DOWNLOAD_URL=http://mirrors.ocf.berkeley.edu/apache/spark/spark-2.3.0/spark-2.3.0-bin-hadoop2.7.tgz
+DOWNLOAD_COMPRESSED_FILE_NAME=spark-2.3.0-bin-hadoop2.7.tgz
+DOWNLOAD_DIR_NAME=spark-2.3.0-bin-hadoop2.7
 
 OPT_DIR_PATH=/opt
 TARGET_SPARK_DIR_NAME=spark
