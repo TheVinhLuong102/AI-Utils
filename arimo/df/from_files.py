@@ -3605,7 +3605,7 @@ class ArrowADF(_ArrowADFABC):
                 columns=None,
                 num_read_threads=nThreads,
                 chunksize=sampleN,
-                sampling_rate=.32,
+                sampling_rate=1,
                 with_replacement=False,
                 process_chunk_fn=process_chunk_fn,
                 preprocessor=preprocessor) \
@@ -3616,7 +3616,7 @@ class ArrowADF(_ArrowADFABC):
                 num_inmemory_files=2,
                 chunksize=sampleN,
                 # epoch_len=sys.maxint,
-                sampling_rate=.32,
+                sampling_rate=1,
                 with_replacement=False,
                 process_chunk_fn=process_chunk_fn,
                 preprocessor=preprocessor)
