@@ -3555,6 +3555,7 @@ class ArrowADF(_ArrowADFABC):
             nThreads=1,
             filter={},
             n=512,
+            sampleN=10 ** 4,
             isRegression=False):
         os.environ['AWS_ACCESS_KEY_ID'] = self._srcArrowDS.fs.fs.key
         os.environ['AWS_SECRET_ACCESS_KEY'] = self._srcArrowDS.fs.fs.secret
@@ -3603,7 +3604,7 @@ class ArrowADF(_ArrowADFABC):
                 filepaths=piecePaths,
                 columns=None,
                 num_read_threads=nThreads,
-                chunksize=10 ** 4,
+                chunksize=sampleN,
                 sampling_rate=.32,
                 with_replacement=False,
                 process_chunk_fn=process_chunk_fn,
@@ -3613,7 +3614,7 @@ class ArrowADF(_ArrowADFABC):
                 filepaths=piecePaths,
                 columns=None,
                 num_inmemory_files=2,
-                chunksize=10 ** 4,
+                chunksize=sampleN,
                 # epoch_len=sys.maxint,
                 sampling_rate=.32,
                 with_replacement=False,
