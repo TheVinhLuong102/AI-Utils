@@ -3578,7 +3578,7 @@ class ArrowADF(_ArrowADFABC):
             nThreads=1,
             filter={},
             n=512,
-            sampleN=10 ** 4,
+            sampleN=10 ** 5,
             isRegression=False):
         os.environ['AWS_ACCESS_KEY_ID'] = self._srcArrowDS.fs.fs.key
         os.environ['AWS_SECRET_ACCESS_KEY'] = self._srcArrowDS.fs.fs.secret
