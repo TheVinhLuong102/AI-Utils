@@ -1001,7 +1001,8 @@ class _BlueprintedModelABC(object):
         return '{}.{}'.format(cls.__module__, cls.__name__)
 
     def __repr__(self):
-        return '{} Model v{}'.format(self.blueprint, self.ver)
+        return '{} Model ({}) v{}'.format(
+            self.blueprint, self.__qual_name__(), self.ver)
 
     def __str__(self):
         return repr(self)
@@ -1099,10 +1100,10 @@ class _BlueprintedModelABC(object):
 
             model_factory = import_obj(model_factory_name)
 
-            self._obj = \
-                model_factory(
-                    params=self.blueprint.params,
-                    **model_factory_params)
+            if model_factory_name.startswith('arimo.dl.experimental.keras'):
+                model_factory_params['params'] = self.blueprint.params
+
+            self._obj = model_factory(**model_factory_params)
 
             self.stdout_logger.info(msg + ' done!')
 
