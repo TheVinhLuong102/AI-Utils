@@ -2209,11 +2209,13 @@ class SparkADF(_ADFABC):
 
     def _assignReprSample(self):
         adf = self.sample(
-            n=self._reprSampleSize,
-            anon=True,
-            alias=(self.alias + self._REPR_SAMPLE_ALIAS_SUFFIX)
-                if self.alias
-                else None)
+                n=self._reprSampleSize,
+                anon=True) \
+            .repartition(
+                1,
+                alias=(self.alias + self._REPR_SAMPLE_ALIAS_SUFFIX)
+                    if self.alias
+                    else None)
 
         adf.cache(
             eager=True,
