@@ -15,7 +15,7 @@ import tqdm
 import uuid
 
 import arimo.backend
-from arimo.dl.base import ModelServingPersistence
+from arimo.dl.base import DataFramePreprocessor, ModelServingPersistence
 import arimo.eval.metrics
 from arimo.util import clean_str, clean_uuid, date_time, fs, import_obj, Namespace
 from arimo.util.aws import s3
@@ -1157,7 +1157,13 @@ class BlueprintedArimoDLModel(_BlueprintedModelABC):
 
         ModelServingPersistence(
             model=self._obj,
-            preprocessor=None,
+            preprocessor=
+                DataFramePreprocessor(
+                    feature_cols=self.blueprint.params.data._cat_prep_cols + self.blueprint.params.data._num_prep_cols,
+                    target_col=self.blueprint.params.data.label.var,
+                    num_targets=1,
+                    embedding_col=None,
+                    normalization=None),
             extra_artifacts=None) \
         .save(path=self.blueprint.models_dir)
 
