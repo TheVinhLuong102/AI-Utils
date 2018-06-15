@@ -3583,6 +3583,8 @@ class ArrowADF(_ArrowADFABC):
         os.environ['AWS_ACCESS_KEY_ID'] = self._srcArrowDS.fs.fs.key
         os.environ['AWS_SECRET_ACCESS_KEY'] = self._srcArrowDS.fs.fs.secret
 
+        feature_cols = to_iterable(feature_cols, iterable_type=list)
+
         if piecePaths is None:
             piecePaths = self.piecePaths
 
@@ -3597,7 +3599,7 @@ class ArrowADF(_ArrowADFABC):
             for pandasDFTransform in self._mappers:
                 chunkPandasDF = pandasDFTransform(chunkPandasDF)
 
-            cols = list(feature_cols) + [target_col]
+            cols = feature_cols + [target_col]
 
             return chunkPandasDF.loc[
                     sum((chunkPandasDF[filterCol]
