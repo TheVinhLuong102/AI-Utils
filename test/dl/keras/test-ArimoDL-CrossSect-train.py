@@ -1,6 +1,8 @@
+from __future__ import print_function
+
 import yaml
 
-from arimo.dl.base import LossPlateauLrDecay, ModelServingPersistence
+from arimo.dl.base import DataFramePreprocessor, LossPlateauLrDecay, ModelServingPersistence
 from arimo.dl.cross_sectional import FfnResnetRegressor
 
 from arimo.IoT.DataAdmin import project
@@ -65,10 +67,13 @@ print("PREP'ED NUM COLS: {}\n".format(num_prep_cols))
 print(yaml.safe_dump(num_orig_to_prep_col_map))
 
 
+feature_cols = cat_prep_cols + num_prep_cols
+
+
 # ArrowADF._CrossSectDLDF(...) = instance of arimo.dl.reader.S3ParquetDatasetQueueReader
 cross_sect_dldf = \
     prep_arrow_adf._CrossSectDLDF(
-        feature_cols=cat_prep_cols + num_prep_cols,
+        feature_cols=feature_cols,
         target_col=LABEL_VAR,
         n=BATCH_SIZE,
         sampleN=CHUNK_SIZE,
@@ -108,6 +113,15 @@ print(model)
 
 
 # Save & Load
-ModelServingPersistence(model=model, preprocessor=None).save(path=PERSIST_DIR_PATH)
+ModelServingPersistence(
+    model=model,
+    preprocessor=
+        DataFramePreprocessor(
+            feature_cols=feature_cols,
+            target_col=LABEL_VAR,
+            num_targets=1,
+            embedding_col=None,
+            normalization=None)) \
+.save(path=PERSIST_DIR_PATH)
 
 print(ModelServingPersistence.load(path=PERSIST_DIR_PATH))
