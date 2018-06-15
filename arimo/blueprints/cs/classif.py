@@ -144,6 +144,8 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
         if isinstance(model, BlueprintedArimoDLModel):
             assert isinstance(adf, ArrowADF)
 
+            model.stdout_logger.info(model.config)
+
             n_threads = psutil.cpu_count(logical=True) - 2
 
             model.train_with_queue_reader_inputs(

@@ -149,7 +149,7 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                 if self.params.model.train.n_samples_max_multiple_of_data_size
                 else None)
 
-        self.stdout_logger.info(
+        model.stdout_logger.info(
             'TRAINING:'
             '\n- Pred Vars Vec Size: {:,}'
             '\n- Train Samples: {:,}'
@@ -197,6 +197,8 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
 
         if isinstance(model, BlueprintedArimoDLModel):
             assert isinstance(adf, ArrowADF)
+
+            model.stdout_logger.info(model.config)
 
             n_threads = psutil.cpu_count(logical=True) - 2
 
