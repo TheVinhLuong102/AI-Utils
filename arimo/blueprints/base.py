@@ -1001,8 +1001,8 @@ class _BlueprintedModelABC(object):
         return '{}.{}'.format(cls.__module__, cls.__name__)
 
     def __repr__(self):
-        return '{} Model ({}) v{}'.format(
-            self.blueprint, self.__qual_name__(), self.ver)
+        return '{} {} v{}'.format(
+            self.blueprint, type(self).__name__, self.ver)
 
     def __str__(self):
         return repr(self)
