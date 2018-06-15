@@ -3585,8 +3585,10 @@ class ArrowADF(_ArrowADFABC):
 
         feature_cols = to_iterable(feature_cols, iterable_type=list)
 
-        if piecePaths is None:
-            piecePaths = self.piecePaths
+        piecePaths = \
+            to_iterable(piecePathsiterable_type=list) \
+            if piecePaths \
+            else list(self.piecePaths)
 
         def process_chunk_fn(chunkPandasDF):
             if self.tCol:
