@@ -3245,6 +3245,8 @@ class ArrowADF(_ArrowADFABC):
                                 targetMin=-1, targetMax=1)
 
                     else:
+                        catIdxCols.append(catIdxCol)
+
                         prepSqlItems[catIdxCol] = catIdxSqlItem
 
                         catPrepCol = catIdxCol
