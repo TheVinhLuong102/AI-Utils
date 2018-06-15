@@ -2639,8 +2639,8 @@ class SparkADF(_ADFABC):
             if (colType.startswith(_DECIMAL_TYPE_PREFIX) or (colType in _FLOAT_TYPES)) and \
                     pandas.notnull(lower) and pandas.notnull(upper) and (lower + 1e-6 > upper):
                 self.stdout_logger.warning(
-                    msg='*** LOWER {} >= UPPER {} ***'
-                        .format(lower, upper))
+                    msg='*** {}: LOWER {} >= UPPER {} ***'
+                        .format(col, lower, upper))
 
                 upper = lower + 1e-6
 
