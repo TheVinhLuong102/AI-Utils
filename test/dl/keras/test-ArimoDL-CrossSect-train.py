@@ -1,6 +1,6 @@
 import yaml
 
-from arimo.dl.base import LossPlateauLrDecay
+from arimo.dl.base import LossPlateauLrDecay, ModelServingPersistence
 from arimo.dl.cross_sectional import FfnResnetRegressor
 
 from arimo.IoT.DataAdmin import project
@@ -21,6 +21,9 @@ BATCH_SIZE = 10 ** 3
 N_BATCHES = 10 ** 3
 
 N_THREADS = 4
+
+
+PERSIST_DIR_PATH = '/tmp/.arimo.dl.model'
 
 
 # Load ArrowADF
@@ -100,3 +103,11 @@ model.train_with_queue_reader_inputs(
     early_stopping_patience=1,
     num_train_batches_per_epoch=N_BATCHES,
     num_test_batches_per_epoch=None)
+
+print(model)
+
+
+# Save & Load
+ModelServingPersistence(model=model, preprocessor=None).save(path=PERSIST_DIR_PATH)
+
+print(ModelServingPersistence.load(path=PERSIST_DIR_PATH))
