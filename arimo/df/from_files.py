@@ -3588,7 +3588,7 @@ class ArrowADF(_ArrowADFABC):
         feature_cols = to_iterable(feature_cols, iterable_type=list)
 
         piecePaths = \
-            to_iterable(piecePathsiterable_type=list) \
+            to_iterable(piecePaths, iterable_type=list) \
             if piecePaths \
             else list(self.piecePaths)
 
