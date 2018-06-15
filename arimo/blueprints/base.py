@@ -1002,7 +1002,7 @@ class _BlueprintedModelABC(object):
         return '{}.{}'.format(cls.__module__, cls.__name__)
 
     def __repr__(self):
-        return '{} {} () v{}'.format(
+        return '{} {} ({}) v{}'.format(
             self.blueprint,
             type(self).__name__,
             self.blueprint.params.model.factory.name,
