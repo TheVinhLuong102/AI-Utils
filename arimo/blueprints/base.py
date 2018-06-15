@@ -539,24 +539,6 @@ class _BlueprintABC(object):
                 self.dir,
                 self.params.data._transform_pipeline_dir)
 
-        # set local dir storing all models for Blueprint
-        if self.params.persist._models_dir != self._DEFAULT_PARAMS.persist._models_dir:
-            self.params.persist._models_dir = self._DEFAULT_PARAMS.persist._models_dir
-
-        self.models_dir = \
-            os.path.join(
-                self.dir,
-                self.params.persist._models_dir)
-
-        # set BlueprintedModelClass
-        self.__BlueprintedModelClass__ = \
-            import_obj(
-                self.params.get('__BlueprintedModelClass__',
-                                'arimo.blueprints.base.BlueprintedKerasModel'))
-
-        self.params.__BlueprintedModelClass__ = \
-            self.__BlueprintedModelClass__.__qual_name__()
-
         # print Blueprint params if in verbose mode
         if verbose:
             self.stdout_logger.info('\n{}'.format(self.params))
@@ -709,19 +691,6 @@ class _BlueprintABC(object):
         blueprint.save(verbose=verbose)
 
         return blueprint
-
-    def model(self, ver='latest'):
-        return self.__BlueprintedModelClass__(
-            blueprint=self,
-            ver=ver)
-
-    def model_train_history(self, ver='latest'):
-        model = self.model(ver=ver)
-
-        return joblib.load(
-            os.path.join(
-                model.dir,
-                self.params.model._persist.train_history_file))
 
 
 # utility to create Blueprint from its params
@@ -1154,6 +1123,64 @@ class _BlueprintedModelABC(object):
         return model
 
 
+class BlueprintedArimoDLModel(_BlueprintedModelABC):
+    _LOADED_MODELS = {}
+
+    def load(self, verbose=True):
+        local_file_path = \
+            os.path.join(
+                self.dir,
+                self.blueprint.params.model._persist.file)
+
+        if local_file_path in self._LOADED_MODELS:
+            self._obj = self._LOADED_MODELS[local_file_path]
+
+        elif os.path.isfile(local_file_path):
+            if verbose:
+                msg = 'Loading Model from Local Directory {}...'.format(self.dir)
+                self.stdout_logger.info(msg)
+
+            # TODO
+            self._obj = None
+
+            if verbose:
+                self.stdout_logger.info(msg + ' done!')
+
+        elif verbose:
+            self.stdout_logger.info(
+                'No Existing Model Object to Load at "{}"'
+                    .format(local_file_path))
+
+    def save(self, verbose=True):
+        # save Blueprint
+        self.blueprint.save(verbose=verbose)
+
+        if verbose:
+            message = 'Saving Model to Local Directory {}...'.format(self.dir)
+            self.stdout_logger.info(message + '\n')
+
+        # TODO
+        # self._obj.save(...)
+
+        if self.blueprint._persist_on_s3:
+            if verbose:
+                msg = 'Uploading All Trained Models to S3 Path "{}"...'.format(self.blueprint.params.persist.s3._models_dir_path)
+                self.blueprint.stdout_logger.info(msg)
+
+            s3.sync(
+                from_dir_path=self.blueprint.models_dir,
+                to_dir_path=self.blueprint.params.persist.s3._models_dir_path,
+                access_key_id=self.blueprint.auth.aws.access_key_id,
+                secret_access_key=self.blueprint.auth.aws.secret_access_key,
+                delete=True, quiet=False)
+
+            if verbose:
+                self.blueprint.stdout_logger.info(msg + ' done!')
+
+        if verbose:
+            self.stdout_logger.info(message + ' done!')
+
+
 class BlueprintedKerasModel(_BlueprintedModelABC):
     _LOADED_MODELS = {}
 
@@ -1393,11 +1420,47 @@ class _SupervisedBlueprintABC(_BlueprintABC):
 
             'model.score.raw_score_col_prefix': Namespace()})
 
+    def __init__(self, *args, **kwargs):
+        super(_SupervisedBlueprintABC, self).__init__(*args, **kwargs)
+
+        # set local dir storing all models for Blueprint
+        if self.params.persist._models_dir != self._DEFAULT_PARAMS.persist._models_dir:
+            self.params.persist._models_dir = self._DEFAULT_PARAMS.persist._models_dir
+
+        self.models_dir = \
+            os.path.join(
+                self.dir,
+                self.params.persist._models_dir)
+
+        # set __BlueprintedModelClass__
+        from arimo.blueprints.base import BlueprintedArimoDLModel, BlueprintedKerasModel
+
+        self.__BlueprintedModelClass__ = \
+            BlueprintedKerasModel \
+            if self.params.model.factory.name.startswith('arimo.dl.experimental.keras') \
+            else BlueprintedArimoDLModel
+
+        self.params.__BlueprintedModelClass__ = \
+            self.__BlueprintedModelClass__.__qual_name__()
+
     def __repr__(self):
         return '{} Instance "{}" (Label: "{}")'.format(
             self.__qual_name__(),
             self.params.uuid,
             self.params.data.label.var)
+
+    def model(self, ver='latest'):
+        return self.__BlueprintedModelClass__(
+            blueprint=self,
+            ver=ver)
+
+    def model_train_history(self, ver='latest'):
+        model = self.model(ver=ver)
+
+        return joblib.load(
+            os.path.join(
+                model.dir,
+                self.params.model._persist.train_history_file))
 
 
 @_docstr_blueprint
