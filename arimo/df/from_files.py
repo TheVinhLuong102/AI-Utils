@@ -3638,17 +3638,6 @@ class ArrowADF(_ArrowADFABC):
                 sampling_rate=1,
                 with_replacement=False,
                 process_chunk_fn=process_chunk_fn,
-                preprocessor=preprocessor) \
-            if nThreads > 1 \
-          else S3ParquetDatasetReader(
-                filepaths=piecePaths,
-                columns=None,
-                num_inmemory_files=2,
-                chunksize=sampleN,
-                # epoch_len=sys.maxint,
-                sampling_rate=1,
-                with_replacement=False,
-                process_chunk_fn=process_chunk_fn,
                 preprocessor=preprocessor)
 
         dldf.config(
