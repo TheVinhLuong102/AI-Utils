@@ -8,11 +8,12 @@ import psutil
 import random
 
 import arimo.backend
-from arimo.blueprints.base import _docstr_blueprint
+from arimo.blueprints.base import BlueprintedArimoDLModel, BlueprintedKerasModel, _docstr_blueprint
 from arimo.blueprints.mixins.eval import RegrEvalMixIn
 from arimo.blueprints.ts import _TimeSerDLSupervisedBlueprintABC
 from arimo.df.from_files import ArrowADF
 from arimo.df.spark_from_files import ArrowSparkADF
+from arimo.dl.base import LossPlateauLrDecay
 from arimo.util import fs, Namespace
 from arimo.util.decor import _docstr_verbose
 from arimo.util.dl import MASK_VAL
@@ -74,45 +75,172 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
 
     @_docstr_verbose
     def train(self, df, **kwargs):
-        if self.params.model.factory.name.startswith('arimo.dl.experimental.keras'):
-            __gen_queue_size__ = \
-                kwargs.pop(
-                    '__gen_queue_size__',
-                    self.DEFAULT_MODEL_TRAIN_MAX_GEN_QUEUE_SIZE)
-            assert __gen_queue_size__, \
-                '*** __gen_queue_size__ = {} ***'.format(__gen_queue_size__)
+        __gen_queue_size__ = \
+            kwargs.pop(
+                '__gen_queue_size__',
+                self.DEFAULT_MODEL_TRAIN_MAX_GEN_QUEUE_SIZE)
+        assert __gen_queue_size__, \
+            '*** __gen_queue_size__ = {} ***'.format(__gen_queue_size__)
 
-            __n_workers__ = \
-                kwargs.pop(
-                    '__n_workers__',
-                    self.DEFAULT_MODEL_TRAIN_N_WORKERS)
-            assert __n_workers__, \
-                '*** __n_workers__ = {} ***'.format(__n_workers__)
+        __n_workers__ = \
+            kwargs.pop(
+                '__n_workers__',
+                self.DEFAULT_MODEL_TRAIN_N_WORKERS)
+        assert __n_workers__, \
+            '*** __n_workers__ = {} ***'.format(__n_workers__)
 
-            __multiproc__ = kwargs.pop('__multiproc__', True)
+        __multiproc__ = kwargs.pop('__multiproc__', True)
 
-            __n_gpus__ = \
-                kwargs.pop(
-                    '__n_gpus__',
-                    self.DEFAULT_MODEL_TRAIN_N_GPUS)
-            assert __n_gpus__, \
-                '*** __n_gpus__ = {} ***'.format(__n_gpus__)
+        __n_gpus__ = \
+            kwargs.pop(
+                '__n_gpus__',
+                self.DEFAULT_MODEL_TRAIN_N_GPUS)
+        assert __n_gpus__, \
+            '*** __n_gpus__ = {} ***'.format(__n_gpus__)
 
-            __cpu_merge__ = bool(kwargs.pop('__cpu_merge__', True))
-            __cpu_reloc__ = bool(kwargs.pop('__cpu_reloc__', False))   # *** cpu_relocation MAKES TEMPLATE MODEL WEIGHTS FAIL TO UPDATE ***
+        __cpu_merge__ = bool(kwargs.pop('__cpu_merge__', True))
+        __cpu_reloc__ = bool(kwargs.pop('__cpu_reloc__', False))   # *** cpu_relocation MAKES TEMPLATE MODEL WEIGHTS FAIL TO UPDATE ***
 
-            # verbosity
-            verbose = kwargs.pop('verbose', True)
+        # verbosity
+        verbose = kwargs.pop('verbose', True)
 
-            adf = self.prep_data(
-                    df=df,
-                    __mode__=self._TRAIN_MODE,
-                    verbose=verbose,
-                    **kwargs)
+        model = self.model(ver=self.params.model.ver)
+
+        _lower_outlier_threshold_applicable = \
+            pandas.notnull(self.params.data.label.lower_outlier_threshold)
+
+        _upper_outlier_threshold_applicable = \
+            pandas.notnull(self.params.data.label.upper_outlier_threshold)
+
+        __excl_outliers__ = \
+            self.params.data.label.excl_outliers and \
+            self.params.data.label.outlier_tails and \
+            self.params.data.label.outlier_tail_proportion and \
+            (self.params.data.label.outlier_tail_proportion < .5) and \
+            (_lower_outlier_threshold_applicable or _upper_outlier_threshold_applicable)
+
+        if __excl_outliers__:
+            _outlier_robust_condition = \
+                ('BETWEEN {} AND {}'
+                 .format(
+                    self.params.data.label.lower_outlier_threshold,
+                    self.params.data.label.upper_outlier_threshold)
+                 if _upper_outlier_threshold_applicable
+                 else '>= {}'.format(self.params.data.label.lower_outlier_threshold)) \
+                    if _lower_outlier_threshold_applicable \
+                    else '<= {}'.format(self.params.data.label.upper_outlier_threshold)
+
+            if arimo.debug.ON:
+                model.stdout_logger.debug(
+                    msg='*** TRAIN: CONDITION ROBUST TO OUTLIER LABELS: {} {} ***\n'
+                        .format(self.params.data.label.var, _outlier_robust_condition))
+
+        adf = self.prep_data(
+                df=df,
+                __mode__=self._TRAIN_MODE,
+                verbose=verbose,
+                **kwargs)
+
+        self._derive_model_train_params(
+            data_size=
+                (adf.approxNRows
+                 if isinstance(adf, ArrowADF)
+                 else adf.nRows)
+                if self.params.model.train.n_samples_max_multiple_of_data_size
+                else None)
+
+        self.stdout_logger.info(
+            'TRAINING:'
+            '\n- Pred Vars Vec Size: {:,}'
+            '\n- Train Samples: {:,}'
+            '\n- Val Samples: {:,}'
+            '\n- Epochs: {:,}'
+            '\n- Train Samples/Epoch: {:,}'
+            '\n- Train Batch Size: {:,}'
+            '\n- Val Samples/Epoch: {:,}'
+            '\n- Val Batch Size: {:,}'
+            '\n- Generator Queue Size: {}'
+            '\n- Processes/Threads: {}'
+            '\n- Multi-Processing: {}'
+            '\n- GPUs: {}{}'
+            .format(
+                self.params.data._prep_vec_size,
+                self.params.model.train._n_train_samples,
+                self.params.model.train._n_val_samples,
+                self.params.model.train._n_epochs,
+                self.params.model.train._n_train_samples_per_epoch,
+                self.params.model.train.batch_size,
+                self.params.model.train._n_val_samples_per_epoch,
+                self.params.model.train.val_batch_size,
+                __gen_queue_size__,
+                __n_workers__,
+                __multiproc__,
+                __n_gpus__,
+                ' (CPU Merge: {}; CPU Reloc: {})'.format(__cpu_merge__, __cpu_reloc__)
+                    if __n_gpus__ > 1
+                    else ''))
+
+        feature_cols = self.params.data._cat_prep_cols + self.params.data._num_prep_cols
+
+        filter = \
+            {self.params.data.label.var:
+                (self.params.data.label.lower_outlier_threshold,
+                 self.params.data.label.upper_outlier_threshold)} \
+            if __excl_outliers__ \
+            else {}
+
+        piece_paths = list(adf.piecePaths)
+        random.shuffle(piece_paths)
+        split_idx = int(math.ceil(self.params.model.train.train_proportion * adf.nPieces))
+        train_piece_paths = piece_paths[:split_idx]
+        val_piece_paths = piece_paths[split_idx:]
+
+        if isinstance(model, BlueprintedArimoDLModel):
+            assert isinstance(adf, ArrowADF)
+
+            n_threads = psutil.cpu_count(logical=True) - 2
+
+            # TODO: TimeSer DataFeeder
+            model.train_with_queue_reader_inputs(
+                train_input=
+                    adf._CrossSectDLDF(
+                        feature_cols,
+                        self.params.data.label.var,
+                        piecePaths=train_piece_paths,
+                        n=self.params.model.train.batch_size,
+                        filter=filter,
+                        nThreads=n_threads),
+
+                val_input=
+                    adf._CrossSectDLDF(
+                        feature_cols,
+                        self.params.data.label.var,
+                        piecePaths=val_piece_paths,
+                        n=self.params.model.train.val_batch_size,
+                        filter=filter,
+                        nThreads=n_threads),
+
+                lr_scheduler=
+                    LossPlateauLrDecay(
+                        learning_rate=model.config.learning_rate,
+                        decay_rate=model.config.lr_decay,
+                        patience=self.params.model.train.reduce_lr_on_plateau.patience_n_epochs),
+
+                max_epoch=self.params.model.train._n_epochs,
+
+                early_stopping_patience=
+                    max(self.params.model.train.early_stop.patience_min_n_epochs,
+                        int(math.ceil(self.params.model.train.early_stop.patience_proportion_total_n_epochs *
+                                      self.params.model.train._n_epochs))),
+
+                num_train_batches_per_epoch=self.params.model.train._n_train_batches_per_epoch,
+
+                num_test_batches_per_epoch=self.params.model.train._n_val_batches_per_epoch)
+
+        else:
+            assert isinstance(model, BlueprintedKerasModel)
 
             assert isinstance(adf, (ArrowADF, ArrowSparkADF))
-
-            model = self.model(ver=self.params.model.ver)
 
             model.summary()
 
@@ -134,75 +262,6 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                          # 'MAPE'   # mean_absolute_percentage_error
                 ])
 
-            _lower_outlier_threshold_applicable = \
-                pandas.notnull(self.params.data.label.lower_outlier_threshold)
-
-            _upper_outlier_threshold_applicable = \
-                pandas.notnull(self.params.data.label.upper_outlier_threshold)
-
-            __excl_outliers__ = \
-                self.params.data.label.excl_outliers and \
-                self.params.data.label.outlier_tails and \
-                self.params.data.label.outlier_tail_proportion and \
-                (self.params.data.label.outlier_tail_proportion < .5) and \
-                (_lower_outlier_threshold_applicable or _upper_outlier_threshold_applicable)
-
-            if __excl_outliers__:
-                _outlier_robust_condition = \
-                    ('BETWEEN {} AND {}'
-                        .format(
-                            self.params.data.label.lower_outlier_threshold,
-                            self.params.data.label.upper_outlier_threshold)
-                     if _upper_outlier_threshold_applicable
-                     else '>= {}'.format(self.params.data.label.lower_outlier_threshold)) \
-                    if _lower_outlier_threshold_applicable \
-                    else '<= {}'.format(self.params.data.label.upper_outlier_threshold)
-
-                if arimo.debug.ON:
-                    model.stdout_logger.debug(
-                        msg='*** TRAIN: CONDITION ROBUST TO OUTLIER LABELS: {} {} ***\n'
-                            .format(self.params.data.label.var, _outlier_robust_condition))
-
-            self._derive_model_train_params(
-                data_size=
-                    (adf.approxNRows
-                     if isinstance(adf, ArrowADF)
-                     else adf.nRows)
-                    if self.params.model.train.n_samples_max_multiple_of_data_size
-                    else None)
-
-            if verbose:
-                self.stdout_logger.info(
-                    'TRAINING:'
-                    '\n- Pred Vars Vec Size: {:,}'
-                    '\n- Train Samples: {:,}'
-                    '\n- Val Samples: {:,}'
-                    '\n- Epochs: {:,}'
-                    '\n- Train Samples/Epoch: {:,}'
-                    '\n- Train Batch Size: {:,}'
-                    '\n- Val Samples/Epoch: {:,}'
-                    '\n- Val Batch Size: {:,}'
-                    '\n- Generator Queue Size: {}'
-                    '\n- Processes/Threads: {}'
-                    '\n- Multi-Processing: {}'
-                    '\n- GPUs: {}{}'
-                    .format(
-                        self.params.data._prep_vec_size,
-                        self.params.model.train._n_train_samples,
-                        self.params.model.train._n_val_samples,
-                        self.params.model.train._n_epochs,
-                        self.params.model.train._n_train_samples_per_epoch,
-                        self.params.model.train.batch_size,
-                        self.params.model.train._n_val_samples_per_epoch,
-                        self.params.model.train.val_batch_size,
-                        __gen_queue_size__,
-                        __n_workers__,
-                        __multiproc__,
-                        __n_gpus__,
-                        ' (CPU Merge: {}; CPU Reloc: {})'.format(__cpu_merge__, __cpu_reloc__)
-                            if __n_gpus__ > 1
-                            else ''))
-
             fs.mkdir(
                 dir=model.dir,
                 hdfs=False)
@@ -212,50 +271,40 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                     self.params.model._persist.struct_file), 'w') \
                 .write(model.to_json())
 
-            piece_paths = list(adf.piecePaths)
-            random.shuffle(piece_paths)
-            split_idx = int(math.ceil(self.params.model.train.train_proportion * adf.nPieces))
-
             n_threads = int(math.ceil(psutil.cpu_count(logical=True) / __n_workers__))
 
             train_gen = \
                 adf.gen(
-                    self.params.data._cat_prep_cols + self.params.data._num_prep_cols +
+                    feature_cols +
                         (- self.params.pred_horizon_len - self.params.max_input_ser_len + 1,
                          - self.params.pred_horizon_len),
                     self.params.data.label.var,
-                    piecePaths=piece_paths[:split_idx],
+                    piecePaths=train_piece_paths,
                     n=__n_gpus__ * self.params.model.train.batch_size,
                     withReplacement=False,
                     seed=None,
                     anon=True,
                     collect='numpy',
                     pad=MASK_VAL,
-                    filter={self.params.data.label.var: (self.params.data.label.lower_outlier_threshold,
-                                                         self.params.data.label.upper_outlier_threshold)}
-                        if __excl_outliers__
-                        else {},
+                    filter=filter,
                     nThreads=n_threads)
 
             assert pickle_able(train_gen)
 
             val_gen = \
                 adf.gen(
-                    self.params.data._cat_prep_cols + self.params.data._num_prep_cols +
+                    feature_cols +
                         (- self.params.pred_horizon_len - self.params.max_input_ser_len + 1,
                          - self.params.pred_horizon_len),
                     self.params.data.label.var,
-                    piecePaths=piece_paths[split_idx:],
+                    piecePaths=val_piece_paths,
                     n=__n_gpus__ * self.params.model.train.val_batch_size,
                     withReplacement=False,
                     seed=None,
                     anon=True,
                     collect='numpy',
                     pad=MASK_VAL,
-                    filter={self.params.data.label.var: (self.params.data.label.lower_outlier_threshold,
-                                                         self.params.data.label.upper_outlier_threshold)}
-                        if __excl_outliers__
-                        else {},
+                    filter=filter,
                     nThreads=n_threads)
 
             assert pickle_able(val_gen)
@@ -438,10 +487,6 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                         # epoch at which to start training (useful for resuming a previous training run)
                     ) \
                 .history
-
-        else:
-            # TODO for arimo.dl
-            model = None
 
         model.save()
 

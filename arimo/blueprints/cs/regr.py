@@ -29,7 +29,7 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
     _DEFAULT_PARAMS.update(
         model=Namespace(
             factory=Namespace(
-                name='arimo.dl.experimental.keras.simple_crosssect_fdfwd_regressor'),
+                name='arimo.dl.cross_sectional.FfnResnetRegressor'),
 
             train=Namespace(
                 objective=None   # *** DON'T IMPOSE MSE UP-FRONT AS IT'S OVER-SENSITIVE TO LARGE OUTLIERS ***
@@ -149,49 +149,60 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                     if __n_gpus__ > 1
                     else ''))
 
+        feature_cols = self.params.data._cat_prep_cols + self.params.data._num_prep_cols
+
+        filter = \
+            {self.params.data.label.var:
+                (self.params.data.label.lower_outlier_threshold,
+                 self.params.data.label.upper_outlier_threshold)} \
+            if __excl_outliers__ \
+            else {}
+
         piece_paths = list(adf.piecePaths)
         random.shuffle(piece_paths)
         split_idx = int(math.ceil(self.params.model.train.train_proportion * adf.nPieces))
-
-        n_threads = int(math.ceil(psutil.cpu_count(logical=True) / __n_workers__))
+        train_piece_paths = piece_paths[:split_idx]
+        val_piece_paths = piece_paths[split_idx:]
 
         if isinstance(model, BlueprintedArimoDLModel):
             assert isinstance(adf, ArrowADF)
 
+            n_threads = psutil.cpu_count(logical=True) - 2
+
             model.train_with_queue_reader_inputs(
                 train_input=
                     adf._CrossSectDLDF(
-                        self.params.data._cat_prep_cols + self.params.data._num_prep_cols,
+                        feature_cols,
                         self.params.data.label.var,
-                        piecePaths=piece_paths[:split_idx],
+                        piecePaths=train_piece_paths,
                         n=self.params.model.train.batch_size,
-                        filter={self.params.data.label.var: (self.params.data.label.lower_outlier_threshold,
-                                                             self.params.data.label.upper_outlier_threshold)}
-                            if __excl_outliers__
-                            else {},
+                        filter=filter,
                         nThreads=n_threads),
+
                 val_input=
                     adf._CrossSectDLDF(
-                        self.params.data._cat_prep_cols + self.params.data._num_prep_cols,
+                        feature_cols,
                         self.params.data.label.var,
-                        piecePaths=piece_paths[split_idx:],
+                        piecePaths=val_piece_paths,
                         n=self.params.model.train.val_batch_size,
-                        filter={self.params.data.label.var: (self.params.data.label.lower_outlier_threshold,
-                                                             self.params.data.label.upper_outlier_threshold)}
-                            if __excl_outliers__
-                            else {},
+                        filter=filter,
                         nThreads=n_threads),
+
                 lr_scheduler=
                     LossPlateauLrDecay(
                         learning_rate=model.config.learning_rate,
                         decay_rate=model.config.lr_decay,
                         patience=self.params.model.train.reduce_lr_on_plateau.patience_n_epochs),
+
                 max_epoch=self.params.model.train._n_epochs,
+
                 early_stopping_patience=
                     max(self.params.model.train.early_stop.patience_min_n_epochs,
                         int(math.ceil(self.params.model.train.early_stop.patience_proportion_total_n_epochs *
                                       self.params.model.train._n_epochs))),
+
                 num_train_batches_per_epoch=self.params.model.train._n_train_batches_per_epoch,
+
                 num_test_batches_per_epoch=self.params.model.train._n_val_batches_per_epoch)
 
         else:
@@ -228,11 +239,13 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                     self.params.model._persist.struct_file), 'w') \
                 .write(model.to_json())
 
+            n_threads = int(math.ceil(psutil.cpu_count(logical=True) / __n_workers__))
+
             train_gen = \
                 adf.gen(
-                    self.params.data._cat_prep_cols + self.params.data._num_prep_cols,
+                    feature_cols,
                     self.params.data.label.var,
-                    piecePaths=piece_paths[:split_idx],
+                    piecePaths=train_piece_paths,
                     n=__n_gpus__ * self.params.model.train.batch_size,
                     withReplacement=False,
                     seed=None,
@@ -240,19 +253,16 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                     collect='numpy',
                     pad=None,
                     cache=False,
-                    filter={self.params.data.label.var: (self.params.data.label.lower_outlier_threshold,
-                                                         self.params.data.label.upper_outlier_threshold)}
-                        if __excl_outliers__
-                        else {},
+                    filter=filter,
                     nThreads=n_threads)
 
             assert pickle_able(train_gen)
 
             val_gen = \
                 adf.gen(
-                    self.params.data._cat_prep_cols + self.params.data._num_prep_cols,
+                    feature_cols,
                     self.params.data.label.var,
-                    piecePaths=piece_paths[split_idx:],
+                    piecePaths=val_piece_paths,
                     n=__n_gpus__ * self.params.model.train.val_batch_size,
                     withReplacement=False,
                     seed=None,
@@ -260,10 +270,7 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                     collect='numpy',
                     pad=None,
                     cache=False,
-                    filter={self.params.data.label.var: (self.params.data.label.lower_outlier_threshold,
-                                                         self.params.data.label.upper_outlier_threshold)}
-                        if __excl_outliers__
-                        else {},
+                    filter=filter,
                     nThreads=n_threads)
 
             assert pickle_able(val_gen)

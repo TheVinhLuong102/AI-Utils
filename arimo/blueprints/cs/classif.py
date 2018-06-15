@@ -7,11 +7,12 @@ import psutil
 import random
 
 import arimo.backend
-from arimo.blueprints.base import _docstr_blueprint
+from arimo.blueprints.base import BlueprintedArimoDLModel, BlueprintedKerasModel, _docstr_blueprint
 from arimo.blueprints.cs import _DLCrossSectSupervisedBlueprintABC
 from arimo.blueprints.mixins.eval import ClassifEvalMixIn
 from arimo.df.from_files import ArrowADF
 from arimo.df.spark_from_files import ArrowSparkADF
+from arimo.dl.base import LossPlateauLrDecay
 from arimo.util import fs, Namespace
 from arimo.util.decor import _docstr_verbose
 from arimo.util.pkl import pickle_able
@@ -27,7 +28,7 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
     _DEFAULT_PARAMS.update(
         model=Namespace(
             factory=Namespace(
-                name='arimo.dl.experimental.keras.simple_crosssect_fdfwd_classifier'),
+                name='arimo.dl.cross_sectional.FfnResnetClassifier'),
             train=Namespace(
                 objective=None,
                 bal_classes=True)),
@@ -47,47 +48,144 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
 
     @_docstr_verbose
     def train(self, *args, **kwargs):
-        if self.params.model.factory.name.startswith('arimo.dl.experimental.keras'):
-            __gen_queue_size__ = \
-                kwargs.pop(
-                    '__gen_queue_size__',
-                    self.DEFAULT_MODEL_TRAIN_MAX_GEN_QUEUE_SIZE)
-            assert __gen_queue_size__, \
-                '*** __gen_queue_size__ = {} ***'.format(__gen_queue_size__)
+        __gen_queue_size__ = \
+            kwargs.pop(
+                '__gen_queue_size__',
+                self.DEFAULT_MODEL_TRAIN_MAX_GEN_QUEUE_SIZE)
+        assert __gen_queue_size__, \
+            '*** __gen_queue_size__ = {} ***'.format(__gen_queue_size__)
 
-            __n_workers__ = \
-                kwargs.pop(
-                    '__n_workers__',
-                    self.DEFAULT_MODEL_TRAIN_N_WORKERS)
-            assert __n_workers__, \
-                '*** __n_workers__ = {} ***'.format(__n_workers__)
+        __n_workers__ = \
+            kwargs.pop(
+                '__n_workers__',
+                self.DEFAULT_MODEL_TRAIN_N_WORKERS)
+        assert __n_workers__, \
+            '*** __n_workers__ = {} ***'.format(__n_workers__)
 
-            __multiproc__ = kwargs.pop('__multiproc__', True)
+        __multiproc__ = kwargs.pop('__multiproc__', True)
 
-            __n_gpus__ = \
-                kwargs.pop(
-                    '__n_gpus__',
-                    self.DEFAULT_MODEL_TRAIN_N_GPUS)
-            assert __n_gpus__, \
-                '*** __n_gpus__ = {} ***'.format(__n_gpus__)
+        __n_gpus__ = \
+            kwargs.pop(
+                '__n_gpus__',
+                self.DEFAULT_MODEL_TRAIN_N_GPUS)
+        assert __n_gpus__, \
+            '*** __n_gpus__ = {} ***'.format(__n_gpus__)
 
-            __cpu_merge__ = bool(kwargs.pop('__cpu_merge__', True))
-            __cpu_reloc__ = bool(kwargs.pop('__cpu_reloc__', False))   # *** cpu_relocation MAKES TEMPLATE MODEL WEIGHTS FAIL TO UPDATE ***
+        __cpu_merge__ = bool(kwargs.pop('__cpu_merge__', True))
+        __cpu_reloc__ = bool(kwargs.pop('__cpu_reloc__', False))   # *** cpu_relocation MAKES TEMPLATE MODEL WEIGHTS FAIL TO UPDATE ***
 
-            # verbosity
-            verbose = kwargs.pop('verbose', True)
+        # verbosity
+        verbose = kwargs.pop('verbose', True)
 
-            adf = self.prep_data(
-                    __mode__=self._TRAIN_MODE,
-                    verbose=verbose,
-                    *args, **kwargs)
+        adf = self.prep_data(
+            __mode__=self._TRAIN_MODE,
+            verbose=verbose,
+            *args, **kwargs)
+
+        self.params.data.label._n_classes = \
+            int(adf('MAX({})'.format(self.params.data.label._int_var)).first()[0]) + 1
+
+        self._derive_model_train_params(
+            data_size=
+                (adf.approxNRows
+                 if isinstance(adf, ArrowADF)
+                 else adf.nRows)
+                if self.params.model.train.n_samples_max_multiple_of_data_size
+                else None)
+
+        model = self.model(ver=self.params.model.ver)
+
+        model.stdout_logger.info(
+            'TRAINING:'
+            '\n- Classes: {:,}'
+            '\n- Pred Vars Vec Size: {:,}'
+            '\n- Train Samples: {:,}'
+            '\n- Val Samples: {:,}'
+            '\n- Epochs: {:,}'
+            '\n- Train Samples/Epoch: {:,}'
+            '\n- Train Batch Size: {:,}'
+            '\n- Val Samples/Epoch: {:,}'
+            '\n- Val Batch Size: {:,}'
+            '\n- Generator Queue Size: {:,}'
+            '\n- Processes/Threads: {:,}'
+            '\n- Multi-Processing: {}'
+            '\n- GPUs: {}{}'
+            .format(
+                self.params.data.label._n_classes,
+                self.params.data._prep_vec_size,
+                self.params.model.train._n_train_samples,
+                self.params.model.train._n_val_samples,
+                self.params.model.train._n_epochs,
+                self.params.model.train._n_train_samples_per_epoch,
+                self.params.model.train.batch_size,
+                self.params.model.train._n_val_samples_per_epoch,
+                self.params.model.train.val_batch_size,
+                __gen_queue_size__,
+                __n_workers__,
+                __multiproc__,
+                __n_gpus__,
+                ' (CPU Merge: {}; CPU Reloc: {})'.format(__cpu_merge__, __cpu_reloc__)
+                    if __n_gpus__ > 1
+                    else ''))
+
+        label_var = \
+            self.params.data.label.var \
+            if self.params.data.label._int_var is None \
+            else self.params.data.label._int_var
+
+        feature_cols = self.params.data._cat_prep_cols + self.params.data._num_prep_cols
+
+        piece_paths = list(adf.piecePaths)
+        random.shuffle(piece_paths)
+        split_idx = int(math.ceil(self.params.model.train.train_proportion * adf.nPieces))
+        train_piece_paths = piece_paths[:split_idx]
+        val_piece_paths = piece_paths[split_idx:]
+
+        if isinstance(model, BlueprintedArimoDLModel):
+            assert isinstance(adf, ArrowADF)
+
+            n_threads = psutil.cpu_count(logical=True) - 2
+
+            model.train_with_queue_reader_inputs(
+                train_input=
+                    adf._CrossSectDLDF(
+                        feature_cols,
+                        self.params.data.label.var,
+                        piecePaths=train_piece_paths,
+                        n=self.params.model.train.batch_size,
+                        filter={},
+                        nThreads=n_threads),
+
+                val_input=
+                    adf._CrossSectDLDF(
+                        feature_cols,
+                        self.params.data.label.var,
+                        piecePaths=val_piece_paths,
+                        n=self.params.model.train.val_batch_size,
+                        filter={},
+                        nThreads=n_threads),
+
+                lr_scheduler=
+                    LossPlateauLrDecay(
+                        learning_rate=model.config.learning_rate,
+                        decay_rate=model.config.lr_decay,
+                        patience=self.params.model.train.reduce_lr_on_plateau.patience_n_epochs),
+
+                max_epoch=self.params.model.train._n_epochs,
+
+                early_stopping_patience=
+                    max(self.params.model.train.early_stop.patience_min_n_epochs,
+                        int(math.ceil(self.params.model.train.early_stop.patience_proportion_total_n_epochs *
+                                      self.params.model.train._n_epochs))),
+
+                num_train_batches_per_epoch=self.params.model.train._n_train_batches_per_epoch,
+                
+                num_test_batches_per_epoch=self.params.model.train._n_val_batches_per_epoch)
+
+        else:
+            assert isinstance(model, BlueprintedKerasModel)
 
             assert isinstance(adf, (ArrowADF, ArrowSparkADF))
-
-            self.params.data.label._n_classes = \
-                int(adf('MAX({})'.format(self.params.data.label._int_var)).first()[0]) + 1
-
-            model = self.model(ver=self.params.model.ver)
 
             model.summary()
 
@@ -108,11 +206,6 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                           else 'categorical_crossentropy'),
                 optimizer=arimo.backend.keras.optimizers.Nadam(),
                 metrics=['accuracy'])
-
-            label_var = \
-                self.params.data.label.var \
-                if self.params.data.label._int_var is None \
-                else self.params.data.label._int_var
 
             def batch_gen(adf, batch, piece_paths):
                 gen = adf.gen(
@@ -141,47 +234,6 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
 
                     yield x, y
 
-            self._derive_model_train_params(
-                data_size=
-                    (adf.approxNRows
-                     if isinstance(adf, ArrowADF)
-                     else adf.nRows)
-                    if self.params.model.train.n_samples_max_multiple_of_data_size
-                    else None)
-
-            model.stdout_logger.info(
-                'TRAINING:'
-                '\n- Classes: {:,}'
-                '\n- Pred Vars Vec Size: {:,}'
-                '\n- Train Samples: {:,}'
-                '\n- Val Samples: {:,}'
-                '\n- Epochs: {:,}'
-                '\n- Train Samples/Epoch: {:,}'
-                '\n- Train Batch Size: {:,}'
-                '\n- Val Samples/Epoch: {:,}'
-                '\n- Val Batch Size: {:,}'
-                '\n- Generator Queue Size: {:,}'
-                '\n- Processes/Threads: {:,}'
-                '\n- Multi-Processing: {}'
-                '\n- GPUs: {}{}'
-                .format(
-                    self.params.data.label._n_classes,
-                    self.params.data._prep_vec_size,
-                    self.params.model.train._n_train_samples,
-                    self.params.model.train._n_val_samples,
-                    self.params.model.train._n_epochs,
-                    self.params.model.train._n_train_samples_per_epoch,
-                    self.params.model.train.batch_size,
-                    self.params.model.train._n_val_samples_per_epoch,
-                    self.params.model.train.val_batch_size,
-                    __gen_queue_size__,
-                    __n_workers__,
-                    __multiproc__,
-                    __n_gpus__,
-                    ' (CPU Merge: {}; CPU Reloc: {})'.format(__cpu_merge__, __cpu_reloc__)
-                        if __n_gpus__ > 1
-                        else ''))
-
             fs.mkdir(
                 dir=model.dir,
                 hdfs=False)
@@ -190,12 +242,6 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                     model.dir,
                     self.params.model._persist.struct_file), 'w') \
                 .write(model.to_json())
-
-            piece_paths = list(adf.piecePaths)
-            random.shuffle(piece_paths)
-            split_idx = int(math.ceil(self.params.model.train.train_proportion * adf.nPieces))
-            train_piece_paths = piece_paths[:split_idx]
-            val_piece_paths = piece_paths[split_idx:]
 
             model.history = \
                 _model_to_fit.fit_generator(
@@ -383,10 +429,6 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                         # epoch at which to start training (useful for resuming a previous training run)
                     ) \
                 .history
-
-        else:
-            # TODO for arimo.dl
-            model = None
 
         model.save()
 
