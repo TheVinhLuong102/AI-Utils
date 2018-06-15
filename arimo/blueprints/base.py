@@ -15,6 +15,7 @@ import tqdm
 import uuid
 
 import arimo.backend
+from arimo.dl.base import ModelServingPersistence
 import arimo.eval.metrics
 from arimo.util import clean_str, clean_uuid, date_time, fs, import_obj, Namespace
 from arimo.util.aws import s3
@@ -1128,21 +1129,15 @@ class BlueprintedArimoDLModel(_BlueprintedModelABC):
     _LOADED_MODELS = {}
 
     def load(self, verbose=True):
-        local_file_path = \
-            os.path.join(
-                self.dir,
-                self.blueprint.params.model._persist.file)
+        if self.dir in self._LOADED_MODELS:
+            self._obj = self._LOADED_MODELS[self.dir]
 
-        if local_file_path in self._LOADED_MODELS:
-            self._obj = self._LOADED_MODELS[local_file_path]
-
-        elif os.path.isfile(local_file_path):
+        elif os.path.isdir(self.dir):
             if verbose:
                 msg = 'Loading Model from Local Directory {}...'.format(self.dir)
                 self.stdout_logger.info(msg)
 
-            # TODO
-            self._obj = None
+            self._obj = ModelServingPersistence.load(path=self.dir).model
 
             if verbose:
                 self.stdout_logger.info(msg + ' done!')
@@ -1150,7 +1145,7 @@ class BlueprintedArimoDLModel(_BlueprintedModelABC):
         elif verbose:
             self.stdout_logger.info(
                 'No Existing Model Object to Load at "{}"'
-                    .format(local_file_path))
+                    .format(self.dir))
 
     def save(self, verbose=True):
         # save Blueprint
@@ -1160,8 +1155,11 @@ class BlueprintedArimoDLModel(_BlueprintedModelABC):
             message = 'Saving Model to Local Directory {}...'.format(self.dir)
             self.stdout_logger.info(message + '\n')
 
-        # TODO
-        # self._obj.save(...)
+        ModelServingPersistence(
+            model=self._obj,
+            preprocessor=None,
+            extra_artifacts=None) \
+        .save(path=self.blueprint.models_dir)
 
         if self.blueprint._persist_on_s3:
             if verbose:
