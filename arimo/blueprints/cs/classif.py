@@ -156,7 +156,8 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                         piecePaths=train_piece_paths,
                         n=self.params.model.train.batch_size,
                         filter={},
-                        nThreads=n_threads),
+                        nThreads=n_threads,
+                        isRegression=False),
 
                 val_input=
                     adf._CrossSectDLDF(
@@ -165,7 +166,8 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                         piecePaths=val_piece_paths,
                         n=self.params.model.train.val_batch_size,
                         filter={},
-                        nThreads=n_threads),
+                        nThreads=n_threads,
+                        isRegression=False),
 
                 lr_scheduler=
                     LossPlateauLrDecay(
