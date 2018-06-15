@@ -969,12 +969,14 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
 
     def _assignReprSample(self):
         adf = self.sample(
-            n=self._reprSampleSize,
-            minNPieces=self._reprSampleMinNPieces,
-            anon=True,
-            alias=(self.alias + self._REPR_SAMPLE_ALIAS_SUFFIX)
-                if self.alias
-                else None)
+                n=self._reprSampleSize,
+                minNPieces=self._reprSampleMinNPieces,
+                anon=True) \
+            .repartition(
+                1,
+                alias=(self.alias + self._REPR_SAMPLE_ALIAS_SUFFIX)
+                    if self.alias
+                    else None)
 
         adf.cache(
             eager=True,
