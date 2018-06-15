@@ -3628,7 +3628,6 @@ class ArrowADF(_ArrowADFABC):
                 num_targets=1,
                 embedding_col=None,
                 normalization=None)
-        preprocessor.normalization=None   # *** TODO: fix this DataFramePreprocessor bug ***
 
         dldf = S3ParquetDatasetQueueReader(
                 filepaths=piecePaths,
