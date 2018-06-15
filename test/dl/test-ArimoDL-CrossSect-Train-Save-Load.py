@@ -124,4 +124,4 @@ ModelServingPersistence(
             normalization=None)) \
 .save(path=PERSIST_DIR_PATH)
 
-print(ModelServingPersistence.load(path=PERSIST_DIR_PATH))
+print(ModelServingPersistence.load(path=PERSIST_DIR_PATH).model)
