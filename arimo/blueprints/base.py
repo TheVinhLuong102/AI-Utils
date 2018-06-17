@@ -1732,13 +1732,10 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
         # verbosity
         verbose = kwargs.pop('verbose', True)
 
-        _medianFill = kwargs.pop('_medianFill', False)
-
         component_labeled_adfs = \
             self.prep_data(
                 __mode__=self._TRAIN_MODE,
                 verbose=verbose,
-                _medianFill=_medianFill,
                 *args, **kwargs)
 
         models = Namespace()
@@ -1785,8 +1782,7 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                         __n_gpus__=__n_gpus__,
                         __cpu_merge__=__cpu_merge__,
                         __cpu_reloc__=__cpu_reloc__,
-                        verbose=verbose,
-                        _medianFill=_medianFill)
+                        verbose=verbose)
 
                 blueprint_params.model.ver = \
                     blueprint.params.model.ver = \

@@ -57,7 +57,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
             self, df, __mode__='score',
             __from_ensemble__=False, __from_ppp__=False,
             __ohe_cat__=False, __scale_cat__=True, __vectorize__=True,
-            verbose=True, _medianFill=False, **kwargs):
+            verbose=True, **kwargs):
         # check if training, re-training, scoring or evaluating
         if __mode__ == self._TRAIN_MODE:
             __train__ = True
@@ -526,9 +526,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                         self.params._uuid,
                         __mode__,
                         adf_uuid,
-                        self._PREP_ADF_ALIAS_SUFFIX),
-
-                    _medianFill=_medianFill)
+                        self._PREP_ADF_ALIAS_SUFFIX))
 
             if __train__:
                 if __first_train__:
@@ -594,7 +592,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
 class PPPDataPrepMixIn(_DataPrepMixInABC):
     _TO_SCORE_ALL_VARS_ADF_ALIAS_SUFFIX = '__toScoreAllVars'
 
-    def prep_data(self, df, __mode__='score', __vectorize__=True, verbose=True, _medianFill=False, **kwargs):
+    def prep_data(self, df, __mode__='score', __vectorize__=True, verbose=True, **kwargs):
         # check if training, re-training, scoring or evaluating
         if __mode__ == self._TRAIN_MODE:
             __train__ = True
@@ -764,9 +762,7 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
 
                 inplace=False,
 
-                verbose=verbose,
-
-                _medianFill=_medianFill)
+                verbose=verbose)
 
         if __train__:
             if isinstance(adf, SparkADF):

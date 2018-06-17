@@ -181,12 +181,8 @@ class _ArrowADF__encodeStr__pandasDFTransform:
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowADF__fillna__pandasDFTransform:
-    def __init__(self, nullFillDetails, _medianFill=False):
+    def __init__(self, nullFillDetails):
         self.nullFillDetails = nullFillDetails
-
-        self._medianFill = _medianFill
-        if _medianFill and arimo.debug.ON:
-            print('*** Median-NULL-Filling ACTIVATED ***')
 
     def __call__(self, pandasDF):
         for col, nullFillColNameNDetails in self.nullFillDetails.items():
@@ -206,22 +202,10 @@ class _ArrowADF__fillna__pandasDFTransform:
                 if upperNull is not None:
                     chks &= (series < upperNull)
 
-                nullFillValue = \
-                    series.loc[chks] \
-                        .median(
-                            axis='index',
-                            skipna=True,
-                            level=None) \
-                    if self._medianFill \
-                    else None
-
-                if pandas.isnull(nullFillValue):
-                    nullFillValue = nullFill['NullFillValue']
-
                 pandasDF.loc[:, _ADFABC._NULL_FILL_PREFIX + col + _ADFABC._PREP_SUFFIX] = \
                     series.where(
                         cond=chks,
-                        other=nullFillValue,
+                        other=nullFill['NullFillValue'],
                         inplace=False,
                         axis=None,
                         level=None,
@@ -237,7 +221,7 @@ class _ArrowADF__fillna__pandasDFTransform:
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowADF__prep__pandasDFTransform:
-    def __init__(self, addCols, typeStrs, catOrigToPrepColMap, numOrigToPrepColMap, _medianFill=False):
+    def __init__(self, addCols, typeStrs, catOrigToPrepColMap, numOrigToPrepColMap):
         self.addCols = addCols
 
         self.typeStrs = typeStrs
@@ -250,9 +234,6 @@ class _ArrowADF__prep__pandasDFTransform:
         self.numScaler = numOrigToPrepColMap['__SCALER__']
         assert self.numScaler in ('standard', 'maxabs', 'minmax', None)
 
-        self._medianFill = _medianFill
-        if _medianFill and arimo.debug.ON:
-            print('*** Median-NULL-Filling ACTIVATED ***')
 
     def __call__(self, pandasDF):
         _FLOAT_ABS_TOL = 1e-6
@@ -297,8 +278,7 @@ class _ArrowADF__prep__pandasDFTransform:
 
         pandasDF = \
             _ArrowADF__fillna__pandasDFTransform(
-                nullFillDetails=self.numOrigToPrepColMap,
-                _medianFill=self._medianFill)(
+                nullFillDetails=self.numOrigToPrepColMap)(
                 pandasDF=pandasDF)
 
         for numCol, prepNumColNameNDetails in self.numOrigToPrepColMap.items():
@@ -2674,8 +2654,6 @@ class ArrowADF(_ArrowADFABC):
         if arimo.debug.ON:
             verbose = True
 
-        _medianFill = kwargs.pop('_medianFill', False)
-
         if loadPath:
             if verbose:
                 message = 'Loading NULL-Filling SQL Statement from Path "{}"...'.format(loadPath)
@@ -2915,9 +2893,7 @@ class ArrowADF(_ArrowADFABC):
 
         arrowADF = \
             self.map(
-                mapper=_ArrowADF__fillna__pandasDFTransform(
-                        nullFillDetails=details,
-                        _medianFill=_medianFill),
+                mapper=_ArrowADF__fillna__pandasDFTransform(nullFillDetails=details),
                 inheritNRows=True,
                 **kwargs)
 
@@ -3049,8 +3025,6 @@ class ArrowADF(_ArrowADFABC):
         verbose = kwargs.pop('verbose', False)
         if arimo.debug.ON:
             verbose = True
-
-        _medianFill = kwargs.pop('_medianFill', False)
 
         if loadPath:
             if verbose:
@@ -3288,8 +3262,7 @@ class ArrowADF(_ArrowADFABC):
                         outlierTails=outlierTails,
                         fillOutliers=fill.get('fillOutliers', False),
                         returnDetails=True,
-                        verbose=verbose > 1,
-                        _medianFill=_medianFill)
+                        verbose=verbose > 1)
 
                 for numCol in numCols:
                     colOutlierTails = outlierTails.get(numCol, 'both')
@@ -3520,8 +3493,7 @@ class ArrowADF(_ArrowADFABC):
                         {catCol: str(self.type(catCol))
                          for catCol in set(catOrigToPrepColMap).difference(('__OHE__', '__SCALE__'))},
                     catOrigToPrepColMap=catOrigToPrepColMap,
-                    numOrigToPrepColMap=numOrigToPrepColMap,
-                    _medianFill=_medianFill),
+                    numOrigToPrepColMap=numOrigToPrepColMap),
                 inheritNRows=True,
                 **kwargs)[colsToKeep]
 
