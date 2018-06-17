@@ -1168,7 +1168,7 @@ class BlueprintedArimoDLModel(_BlueprintedModelABC):
                     embedding_col=None,
                     normalization=None),
             extra_artifacts=None) \
-        .save(path=self.blueprint.models_dir)
+        .save(path=self.dir)
 
         if self.blueprint._persist_on_s3:
             if verbose:
