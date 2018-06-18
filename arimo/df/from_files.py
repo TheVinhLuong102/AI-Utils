@@ -359,7 +359,7 @@ class _ArrowADF__prep__pandasDFTransform:
         if self.numScaler:
             pandasDF.loc[:, self.numPrepCols] = \
                 self.numScaler.transform(
-                    X=pandasDF[self.numNullFillCols])
+                    X=pandasDF[self.numNullFillCols].values)
             # ^^^ SettingWithCopyWarning (?)
             # A value is trying to be set on a copy of a slice from a DataFrame.
             # Try using .loc[row_indexer,col_indexer] = value instead
