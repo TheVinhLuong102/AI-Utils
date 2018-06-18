@@ -531,9 +531,9 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
             if __train__:
                 if __first_train__:
                     self.params.data.pred_vars = \
-                        tuple(self.params.data.pred_vars
-                              .intersection(set(cat_orig_to_prep_col_map)
-                                            .union(num_orig_to_prep_col_map)))
+                        tuple(sorted(self.params.data.pred_vars
+                                     .intersection(set(cat_orig_to_prep_col_map)
+                                                   .union(num_orig_to_prep_col_map))))
 
                     self.params.data.pred_vars_incl = \
                         self.params.data.pred_vars_excl = None
@@ -544,7 +544,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                              if cat_orig_col in self.params.data.pred_vars)
 
                     self.params.data._cat_prep_cols = \
-                        tuple(self.params.data._cat_prep_cols_metadata)
+                        tuple(sorted(self.params.data._cat_prep_cols_metadata))
 
                     self.params.data._num_prep_cols_metadata = \
                         dict(num_prep_col_n_metadata
@@ -552,7 +552,7 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                              if num_orig_col in self.params.data.pred_vars)
 
                     self.params.data._num_prep_cols = \
-                        tuple(self.params.data._num_prep_cols_metadata)
+                        tuple(sorted(self.params.data._num_prep_cols_metadata))
 
                     self.params.data._prep_vec_size = \
                         adf._colWidth(self.params.data._prep_vec_col) \
@@ -782,9 +782,9 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
 
                     if __first_train__:
                         component_blueprint_params.data.pred_vars = \
-                            tuple(component_blueprint_params.data.pred_vars
-                                  .intersection(set(cat_orig_to_prep_col_map)
-                                                .union(num_orig_to_prep_col_map)))
+                            tuple(sorted(component_blueprint_params.data.pred_vars
+                                         .intersection(set(cat_orig_to_prep_col_map)
+                                                       .union(num_orig_to_prep_col_map))))
 
                         component_blueprint_params.data.pred_vars_incl = \
                             component_blueprint_params.data.pred_vars_excl = None
@@ -795,7 +795,7 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                                  if cat_orig_col in component_blueprint_params.data.pred_vars)
 
                         component_blueprint_params.data._cat_prep_cols = \
-                            tuple(component_blueprint_params.data._cat_prep_cols_metadata)
+                            tuple(sorted(component_blueprint_params.data._cat_prep_cols_metadata))
 
                         component_blueprint_params.data._num_prep_cols_metadata = \
                             dict(num_prep_col_n_metadata
@@ -803,7 +803,7 @@ class PPPDataPrepMixIn(_DataPrepMixInABC):
                                  if num_orig_col in component_blueprint_params.data.pred_vars)
 
                         component_blueprint_params.data._num_prep_cols = \
-                            tuple(component_blueprint_params.data._num_prep_cols_metadata)
+                            tuple(sorted(component_blueprint_params.data._num_prep_cols_metadata))
 
                         component_blueprint_params.data._prep_vec_size = \
                             len(component_blueprint_params.data._num_prep_cols) + \
