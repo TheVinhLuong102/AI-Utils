@@ -3101,6 +3101,7 @@ class ArrowADF(_ArrowADFABC):
 
         kwargs.pop('assembleVec', None)   # *** NOT USED ***
 
+        returnNumPy = kwargs.pop('returnNumPy', False)
         returnOrigToPrepColMaps = kwargs.pop('returnOrigToPrepColMaps', False)
         returnSQLStatement = kwargs.pop('returnSQLStatement', False)
 
@@ -3520,25 +3521,37 @@ class ArrowADF(_ArrowADFABC):
                     catOHETransformer=None,
                     pipelineModelWithoutVectors=None)
 
-        colsToKeep = \
-            self.columns + \
-            (([catPrepColDetails[0]
-               for catCol, catPrepColDetails in catOrigToPrepColMap.items()
-               if (catCol not in ('__OHE__', '__SCALE__')) and
-                    isinstance(catPrepColDetails, list) and (len(catPrepColDetails) == 2)] +
-              [numPrepColDetails[0]
-               for numCol, numPrepColDetails in numOrigToPrepColMap.items()
-               if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and
-                    isinstance(numPrepColDetails, list) and (len(numPrepColDetails) == 2)])
-             if loadPath
-             else (((catScaledIdxCols
-                     if scaleCat
-                     else catIdxCols)
-                    if catCols
-                    else []) +
-                   (numScaledCols
-                    if numCols
-                    else [])))
+        if returnNumPy:
+            returnNumPyForCols = \
+                sorted(catPrepColDetails[0]
+                       for catCol, catPrepColDetails in catOrigToPrepColMap.items()
+                       if (catCol not in ('__OHE__', '__SCALE__')) and
+                            isinstance(catPrepColDetails, list) and (len(catPrepColDetails) == 2)) + \
+                sorted(numPrepColDetails[0]
+                       for numCol, numPrepColDetails in numOrigToPrepColMap.items()
+                       if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and
+                            isinstance(numPrepColDetails, list) and (len(numPrepColDetails) == 2))
+
+        else:
+            colsToKeep = \
+                self.columns + \
+                (([catPrepColDetails[0]
+                   for catCol, catPrepColDetails in catOrigToPrepColMap.items()
+                   if (catCol not in ('__OHE__', '__SCALE__')) and
+                        isinstance(catPrepColDetails, list) and (len(catPrepColDetails) == 2)] +
+                  [numPrepColDetails[0]
+                   for numCol, numPrepColDetails in numOrigToPrepColMap.items()
+                   if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and
+                        isinstance(numPrepColDetails, list) and (len(numPrepColDetails) == 2)])
+                 if loadPath
+                 else (((catScaledIdxCols
+                         if scaleCat
+                         else catIdxCols)
+                        if catCols
+                        else []) +
+                       (numScaledCols
+                        if numCols
+                        else [])))
 
         missingCatCols = \
             set(catOrigToPrepColMap) \
@@ -3568,7 +3581,8 @@ class ArrowADF(_ArrowADFABC):
                     if missingCol in missingCatCols \
                     else numOrigToPrepColMap[missingCol][1]['NullFillValue']
 
-                colsToKeep.append(missingCol)
+                if not returnNumPy:
+                    colsToKeep.append(missingCol)
 
         arrowADF = \
             self.map(
@@ -3578,16 +3592,23 @@ class ArrowADF(_ArrowADFABC):
                         {catCol: str(self.type(catCol))
                          for catCol in set(catOrigToPrepColMap).difference(('__OHE__', '__SCALE__'))},
                     catOrigToPrepColMap=catOrigToPrepColMap,
-                    numOrigToPrepColMap=numOrigToPrepColMap),
+                    numOrigToPrepColMap=numOrigToPrepColMap,
+                    returnNumPyForCols=
+                        returnNumPyForCols
+                        if returnNumPy
+                        else None),
                 inheritNRows=True,
-                **kwargs)[colsToKeep]
+                **kwargs)
 
-        arrowADF._inheritCache(
-            self,
-            *(() if loadPath
-                 else colsToKeep))
+        if not returnNumPy:
+            arrowADF = arrowADF[colsToKeep]
 
-        arrowADF._cache.reprSample = self._cache.reprSample
+            arrowADF._inheritCache(
+                self,
+                *(() if loadPath
+                     else colsToKeep))
+
+            arrowADF._cache.reprSample = self._cache.reprSample
 
         if verbose:
             toc = time.time()
