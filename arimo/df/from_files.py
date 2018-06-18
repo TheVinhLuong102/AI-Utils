@@ -259,14 +259,16 @@ class _ArrowADF__prep__pandasDFTransform:
             # mean value for each feature in the training set
             self.numScaler.mean_ = \
                 numpy.array(
-                    numPrepDetails['Mean']
-                    for numPrepDetails in self.numPrepDetails)
+                    (numPrepDetails['Mean']
+                     for numPrepDetails in self.numPrepDetails),
+                    dtype=float)
 
             # per-feature relative scaling of the data
             self.numScaler.scale_ = \
                 numpy.array(
-                    numPrepDetails['StdDev']
-                    for numPrepDetails in self.numPrepDetails)
+                    (numPrepDetails['StdDev']
+                     for numPrepDetails in self.numPrepDetails),
+                    dtype=float)
 
         elif self.numScaler == 'maxabs':
             self.numScaler = \
@@ -278,8 +280,9 @@ class _ArrowADF__prep__pandasDFTransform:
             self.numScaler.max_abs_ = \
                 self.numScaler.scale_ = \
                 numpy.array(
-                    numPrepDetails['MaxAbs']
-                    for numPrepDetails in self.numPrepDetails)
+                    (numPrepDetails['MaxAbs']
+                     for numPrepDetails in self.numPrepDetails),
+                    dtype=float)
 
         elif self.numScaler == 'minmax':
             self.numScaler = \
@@ -290,23 +293,28 @@ class _ArrowADF__prep__pandasDFTransform:
             # per-feature minimum seen in the data
             self.numScaler.data_min_ = \
                 numpy.array(
-                    numPrepDetails['OrigMin']
-                    for numPrepDetails in self.numPrepDetails)
+                    (numPrepDetails['OrigMin']
+                     for numPrepDetails in self.numPrepDetails),
+                    dtype=float)
 
             # per-feature maximum seen in the data
             self.numScaler.data_max_ = \
                 numpy.array(
-                    numPrepDetails['OrigMax']
-                    for numPrepDetails in self.numPrepDetails)
+                    (numPrepDetails['OrigMax']
+                     for numPrepDetails in self.numPrepDetails),
+                    dtype=float)
 
             # per-feature range (data_max_ - data_min_) seen in the data
-            self.numScaler.data_range_ = self.numScaler.data_max_ - self.numScaler.data_min_
+            self.numScaler.data_range_ = \
+                self.numScaler.data_max_ - self.numScaler.data_min_
 
             # per-feature relative scaling of the data
-            self.numScaler.scale_ = 2 / self.numScaler.data_range_
+            self.numScaler.scale_ = \
+                2 / self.numScaler.data_range_
 
             # per-feature adjustment for minimum
-            self.numScaler.min_ = -1 - (self.numScaler.scale_ * self.numScaler.data_min_)
+            self.numScaler.min_ = \
+                -1 - (self.numScaler.scale_ * self.numScaler.data_min_)
 
         else:
             assert self.numScaler is None
