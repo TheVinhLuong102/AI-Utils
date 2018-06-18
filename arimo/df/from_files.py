@@ -1226,7 +1226,9 @@ class ArrowADF(_ArrowADFABC):
             kwargs.get(
                 'reducer',
                 lambda results:
-                    pandas.concat(
+                    numpy.vstack(results)
+                    if isinstance(results[0], numpy.ndarray)
+                    else pandas.concat(
                         objs=results,
                         axis='index',
                         join='outer',
