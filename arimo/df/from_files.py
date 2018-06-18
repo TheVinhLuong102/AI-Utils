@@ -3101,7 +3101,7 @@ class ArrowADF(_ArrowADFABC):
 
         kwargs.pop('assembleVec', None)   # *** NOT USED ***
 
-        returnNumPy = kwargs.pop('returnNumPy', False)
+        returnNumPy = kwargs.pop('returnNumPy', True)
         returnOrigToPrepColMaps = kwargs.pop('returnOrigToPrepColMaps', False)
         returnSQLStatement = kwargs.pop('returnSQLStatement', False)
 
