@@ -991,8 +991,8 @@ class ArrowADF(_ArrowADFABC):
                 reprSamplePiecePaths=None,
                 reprSample=None,
 
-                nRows=None,
                 approxNRows=None,
+                nRows=None,
 
                 count={}, distinct={},   # approx.
 
@@ -1245,6 +1245,10 @@ class ArrowADF(_ArrowADFABC):
 
         if inheritCache:
             arrowADF._inheritCache(self)
+
+        if inheritNRows:
+            arrowADF._cache.approxNRows = self._cache.approxNRows
+            arrowADF._cache.nRows = self._cache.nRows
 
         return arrowADF
 
@@ -1557,15 +1561,18 @@ class ArrowADF(_ArrowADFABC):
         assert col in self.columns
 
         return self.map(
-                mapper=_ArrowADF__getattr__pandasDFTransform(col=col))
+                mapper=_ArrowADF__getattr__pandasDFTransform(col=col),
+                inheritNRows=True)
 
     def __getitem__(self, item):
         return self.map(
-                mapper=_ArrowADF__getitem__pandasDFTransform(item=item))
+                mapper=_ArrowADF__getitem__pandasDFTransform(item=item),
+                inheritNRows=True)
 
     def drop(self, *cols, **kwargs):
         return self.map(
                 mapper=_ArrowADF__drop__pandasDFTransform(cols=cols),
+               inheritNRows=True,
                 **kwargs)
 
     def rename(self, **kwargs):
@@ -1596,6 +1603,7 @@ class ArrowADF(_ArrowADFABC):
                         copy=False,
                         inplace=False,
                         level=None),
+                inheritNRows=True,
                 **remainingKwargs)
 
     def filter(self, *conditions, **kwargs):
