@@ -360,7 +360,7 @@ class _ArrowADF__prep__pandasDFTransform:
                 pandasDF=pandasDF)
 
         if self.numScaler:
-            pandasDF[self.numPrepCols] = \
+            pandasDF.loc[:, self.numPrepCols] = \
                 self.numScaler.transform(
                     X=pandasDF[self.numNullFillCols])
             # ^^^ SettingWithCopyWarning (?)
