@@ -5,13 +5,13 @@ from argparse import Namespace as _Namespace
 import datetime
 import json
 import math
-import multiprocessing
 import numpy
 import os
 import pandas
 import psutil
 import random
 import re
+from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, RobustScaler, StandardScaler
 import time
 import tqdm
 import uuid
@@ -230,10 +230,86 @@ class _ArrowADF__prep__pandasDFTransform:
         self.catOrigToPrepColMap = catOrigToPrepColMap
         self.scaleCat = catOrigToPrepColMap['__SCALE__']
 
-        self.numOrigToPrepColMap = numOrigToPrepColMap
-        self.numScaler = numOrigToPrepColMap['__SCALER__']
-        assert self.numScaler in ('standard', 'maxabs', 'minmax', None)
+        self.numNullFillPandasDFTransform = \
+            _ArrowADF__fillna__pandasDFTransform(
+                nullFillDetails=numOrigToPrepColMap)
 
+        self.numNullFillCols = []
+        self.numPrepCols = []
+        self.numPrepDetails = []
+
+        for numCol, numPrepColNDetails in numOrigToPrepColMap.items():
+            if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and \
+                    isinstance(numPrepColNDetails, list) and (len(numPrepColNDetails) == 2):
+                self.numNullFillCols.append(_ADFABC._NULL_FILL_PREFIX + numCol + _ADFABC._PREP_SUFFIX)
+
+                numPrepCol, numPrepDetails = numPrepColNDetails
+                self.numPrepCols.append(numPrepCol)
+                self.numPrepDetails.append(numPrepDetails)
+
+        self.numScaler = numOrigToPrepColMap['__SCALER__']
+
+        if self.numScaler == 'standard':
+            self.numScaler = \
+                StandardScaler(
+                    copy=True,
+                    with_mean=True,
+                    with_std=True)
+
+            # mean value for each feature in the training set
+            self.numScaler.mean_ = \
+                numpy.array(
+                    numPrepDetails['Mean']
+                    for numPrepDetails in self.numPrepDetails)
+
+            # per-feature relative scaling of the data
+            self.numScaler.scale_ = \
+                numpy.array(
+                    numPrepDetails['StdDev']
+                    for numPrepDetails in self.numPrepDetails)
+
+        elif self.numScaler == 'maxabs':
+            self.numScaler = \
+                MaxAbsScaler(
+                    copy=True)
+
+            # per-feature maximum absolute value /
+            # per-feature relative scaling of the data
+            self.numScaler.max_abs_ = \
+                self.numScaler.scale_ = \
+                numpy.array(
+                    numPrepDetails['MaxAbs']
+                    for numPrepDetails in self.numPrepDetails)
+
+        elif self.numScaler == 'minmax':
+            self.numScaler = \
+                MinMaxScaler(
+                    feature_range=(-1, 1),
+                    copy=True)
+
+            # per-feature minimum seen in the data
+            self.numScaler.data_min_ = \
+                numpy.array(
+                    numPrepDetails['OrigMin']
+                    for numPrepDetails in self.numPrepDetails)
+
+            # per-feature maximum seen in the data
+            self.numScaler.data_max_ = \
+                numpy.array(
+                    numPrepDetails['OrigMax']
+                    for numPrepDetails in self.numPrepDetails)
+
+            # per-feature range (data_max_ - data_min_) seen in the data
+            self.numScaler.data_range_ = self.numScaler.data_max_ - self.numScaler.data_min_
+
+            # per-feature relative scaling of the data
+            self.numScaler.scale_ = 2 / self.numScaler.data_range_
+
+            # per-feature adjustment for minimum
+            self.numScaler.min_ = -1 - (self.numScaler.scale_ * self.numScaler.data_min_)
+
+        else:
+            assert self.numScaler is None
 
     def __call__(self, pandasDF):
         _FLOAT_ABS_TOL = 1e-6
@@ -277,46 +353,16 @@ class _ArrowADF__prep__pandasDFTransform:
                         '*** "{}" CERTAIN MIN-MAX SCALED INT INDICES NOT BETWEEN -1 AND 1 ***'
 
         pandasDF = \
-            _ArrowADF__fillna__pandasDFTransform(
-                nullFillDetails=self.numOrigToPrepColMap)(
+            self.numNullFillPandasDFTransform(
                 pandasDF=pandasDF)
 
-        for numCol, prepNumColNameNDetails in self.numOrigToPrepColMap.items():
-            if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and \
-                    isinstance(prepNumColNameNDetails, list) and (len(prepNumColNameNDetails) == 2):
-                prepNumCol, numColDetails = prepNumColNameNDetails
-
-                nullFillColSeries = \
-                    pandasDF[_ADFABC._NULL_FILL_PREFIX + numCol + _ADFABC._PREP_SUFFIX]
-
-                if self.numScaler == 'standard':
-                    pandasDF.loc[:, prepNumCol] = \
-                        (nullFillColSeries - numColDetails['Mean']) / numColDetails['StdDev']
-                    # ^^^ SettingWithCopyWarning (?)
-                    # A value is trying to be set on a copy of a slice from a DataFrame.
-                    # Try using .loc[row_indexer,col_indexer] = value instead
-
-                elif self.numScaler == 'maxabs':
-                    pandasDF.loc[:, prepNumCol] = \
-                        nullFillColSeries / numColDetails['MaxAbs']
-                    # ^^^ SettingWithCopyWarning (?)
-                    # A value is trying to be set on a copy of a slice from a DataFrame.
-                    # Try using .loc[row_indexer,col_indexer] = value instead
-
-                elif self.numScaler == 'minmax':
-                    origMin = numColDetails['OrigMin']
-                    origMax = numColDetails['OrigMax']
-                    origRange = origMax - origMin
-
-                    targetMin = numColDetails['TargetMin']
-                    targetMax = numColDetails['TargetMax']
-                    targetRange = targetMax - targetMin
-
-                    pandasDF.loc[:, prepNumCol] = \
-                        targetRange * (nullFillColSeries - origMin) / origRange + targetMin
-                    # ^^^ SettingWithCopyWarning (?)
-                    # A value is trying to be set on a copy of a slice from a DataFrame.
-                    # Try using .loc[row_indexer,col_indexer] = value instead
+        if self.numScaler:
+            pandasDF.loc[:, self.numPrepCols] = \
+                self.numScaler.transform(
+                    X=pandas[self.numNullFillCols])
+            # ^^^ SettingWithCopyWarning (?)
+            # A value is trying to be set on a copy of a slice from a DataFrame.
+            # Try using .loc[row_indexer,col_indexer] = value instead
 
         return pandasDF
 
