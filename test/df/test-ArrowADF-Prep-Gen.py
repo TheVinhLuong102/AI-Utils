@@ -30,7 +30,7 @@ BATCH_SIZE = 10 ** 3
 
 N_BATCHES = 10 ** 3
 
-N_THREADS = 4
+N_THREADS = 32
 
 
 # Load ArrowADF
