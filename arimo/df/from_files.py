@@ -257,6 +257,8 @@ class _ArrowADF__prep__pandasDFTransform:
                     with_std=True)
 
             # mean value for each feature in the training set
+            print([numPrepDetails['Mean']
+                   for numPrepDetails in self.numPrepDetails])
             self.numScaler.mean_ = \
                 numpy.array(
                     (numPrepDetails['Mean']
