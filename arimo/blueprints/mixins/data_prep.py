@@ -156,11 +156,14 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
 
                         if sample_label_series is None:
                             sample_label_series = \
-                                adf.copy(resetMappers=True) \
-                                    .sample(
-                                        self.params.data.label.var,
-                                        n=10 ** 8,   # 1mil = 68MB
-                                    )[self.params.data.label.var]
+                                adf.copy(
+                                    resetMappers=True,
+                                    inheritCache=True,
+                                    inheritNRows=True
+                                ).sample(
+                                    self.params.data.label.var,
+                                    n=10 ** 8,   # 1mil = 68MB
+                                )[self.params.data.label.var]
 
                             sample_label_series = \
                                 sample_label_series.loc[
@@ -202,8 +205,11 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                         if _calc_lower_outlier_threshold:
                             if sample_label_series is None:
                                 sample_label_series = \
-                                    adf.copy(resetMappers=True) \
-                                        .sample(
+                                    adf.copy(
+                                        resetMappers=True,
+                                        inheritCache=True,
+                                        inheritNRows=True
+                                    ).sample(
                                         self.params.data.label.var,
                                         n=10 ** 8,   # 1mil = 68MB
                                     )[self.params.data.label.var]
@@ -229,8 +235,11 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                         elif _calc_upper_outlier_threshold:
                             if sample_label_series is None:
                                 sample_label_series = \
-                                    adf.copy(resetMappers=True) \
-                                        .sample(
+                                    adf.copy(
+                                        resetMappers=True,
+                                        inheritCache=True,
+                                        inheritNRows=True
+                                    ).sample(
                                         self.params.data.label.var,
                                         n=10 ** 8,   # 1mil = 68MB
                                     )[self.params.data.label.var]

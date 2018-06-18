@@ -1064,6 +1064,8 @@ class ArrowADF(_ArrowADFABC):
 
     def copy(self, **kwargs):
         resetMappers = kwargs.pop('resetMappers')
+        inheritCache = kwargs.pop('inheritCache', not resetMappers)
+        inheritNRows = kwargs.pop('inheritNRows', inheritCache)
 
         if self.fromS3:
             aws_access_key_id = self._srcArrowDS.fs.fs.key
@@ -1072,7 +1074,8 @@ class ArrowADF(_ArrowADFABC):
         else:
             aws_access_key_id = aws_secret_access_key = None
 
-        return ArrowADF(
+        arrowADF = \
+            ArrowADF(
                 path=self.path,
                 aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
 
@@ -1091,6 +1094,15 @@ class ArrowADF(_ArrowADFABC):
                 minProportionByMaxNCats=self._minProportionByMaxNCats,
 
                 **kwargs)
+
+        if inheritCache:
+            arrowADF._inheritCache(self)
+
+        if inheritNRows:
+            arrowADF._cache.approxNRows = self._cache.approxNRows
+            arrowADF._cache.nRows = self._cache.nRows
+
+        return arrowADF
 
     # ***************
     # PYTHON STR/REPR
