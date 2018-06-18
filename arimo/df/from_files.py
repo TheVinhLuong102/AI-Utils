@@ -221,7 +221,7 @@ class _ArrowADF__fillna__pandasDFTransform:
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowADF__prep__pandasDFTransform:
-    def __init__(self, addCols, typeStrs, catOrigToPrepColMap, numOrigToPrepColMap):
+    def __init__(self, addCols, typeStrs, catOrigToPrepColMap, numOrigToPrepColMap, returnNumPyForCols=None):
         self.addCols = addCols
 
         self.typeStrs = typeStrs
@@ -246,6 +246,30 @@ class _ArrowADF__prep__pandasDFTransform:
                 numPrepCol, numPrepDetails = numPrepColNDetails
                 self.numPrepCols.append(numPrepCol)
                 self.numPrepDetails.append(numPrepDetails)
+
+        if returnNumPyForCols:
+            self.returnNumPyForCols = \
+                to_iterable(returnNumPyForCols, iterable_type=list)
+
+            nCatCols = len(catOrigToPrepColMap)
+            self.catPrepCols = returnNumPyForCols[:nCatCols]
+
+            numPrepCols = returnNumPyForCols[nCatCols:]
+            numPrepColListIndices = \
+                [numPrepCols.index(numPrepCol)
+                 for numPrepCol in self.numPrepCols]
+            self.numNullFillCols = \
+                [self.numNullFillCols[i]
+                 for i in numPrepColListIndices]
+            self.numPrepCols = \
+                [self.numPrepCols[i]
+                 for i in numPrepColListIndices]
+            self.numPrepDetails = \
+                [self.numPrepDetails[i]
+                 for i in numPrepColListIndices]
+
+        else:
+            self.returnNumPyForCols = None
 
         self.numScaler = numOrigToPrepColMap['__SCALER__']
 
@@ -359,16 +383,25 @@ class _ArrowADF__prep__pandasDFTransform:
             self.numNullFillPandasDFTransform(
                 pandasDF=pandasDF)
 
-        if self.numScaler:
-            pandasDF[self.numPrepCols] = \
-                pandas.DataFrame(
-                    data=self.numScaler.transform(
-                        X=pandasDF[self.numNullFillCols]))
-            # ^^^ SettingWithCopyWarning (?)
-            # A value is trying to be set on a copy of a slice from a DataFrame.
-            # Try using .loc[row_indexer,col_indexer] = value instead
+        if self.returnNumPyForCols:
+            return numpy.hstack(
+                    (pandasDF[self.catPrepCols].values,
+                     self.numScaler.transform(
+                         X=pandasDF[self.numNullFillCols]))) \
+                if self.numScaler \
+              else pandasDF[self.returnNumPyForCols].values
 
-        return pandasDF
+        else:
+            if self.numScaler:
+                pandasDF[self.numPrepCols] = \
+                    pandas.DataFrame(
+                        data=self.numScaler.transform(
+                            X=pandasDF[self.numNullFillCols]))
+                # ^^^ SettingWithCopyWarning (?)
+                # A value is trying to be set on a copy of a slice from a DataFrame.
+                # Try using .loc[row_indexer,col_indexer] = value instead
+
+            return pandasDF
 
 
 _PIECE_LOCAL_CACHE_PATHS = {}
