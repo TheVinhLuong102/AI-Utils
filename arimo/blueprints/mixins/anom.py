@@ -156,10 +156,11 @@ class PPPAnalysesMixIn(object):
                                     .get(_id, {})
                                     .get(_raw_metric))
 
-                    _global_or_indiv_benchmark_metric_col_name = \
-                        benchmark_metric_col_names[self._GLOBAL_OR_INDIV_PREFIX][_raw_metric][label_var_name]
-                    benchmark_metrics_df.loc[:, _global_or_indiv_benchmark_metric_col_name] = \
-                        benchmark_metrics_df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
+                    if _raw_metric != 'n':
+                        _global_or_indiv_benchmark_metric_col_name = \
+                            benchmark_metric_col_names[self._GLOBAL_OR_INDIV_PREFIX][_raw_metric][label_var_name]
+                        benchmark_metrics_df.loc[:, _global_or_indiv_benchmark_metric_col_name] = \
+                            benchmark_metrics_df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
                             .max(axis='columns',
                                  skipna=True,
                                  level=None,
@@ -238,7 +239,7 @@ class PPPAnalysesMixIn(object):
                 _neg_chk_series = _sgn_err_series < 0
                 _pos_chk_series = _sgn_err_series > 0
 
-                for _raw_metric in self._RAW_METRICS:
+                for _raw_metric in (('n',) + self._RAW_METRICS):
                     _global_benchmark_metric_col_name = \
                         benchmark_metric_col_names[self._GLOBAL_PREFIX][_raw_metric][label_var_name]
                     df.loc[:, _global_benchmark_metric_col_name] = \
@@ -253,31 +254,32 @@ class PPPAnalysesMixIn(object):
                                     .get(id, {})
                                     .get(_raw_metric, numpy.nan))
 
-                    _global_or_indiv_benchmark_metric_col_name = \
-                        benchmark_metric_col_names[self._GLOBAL_OR_INDIV_PREFIX][_raw_metric][label_var_name]
-                    df.loc[:, _global_or_indiv_benchmark_metric_col_name] = \
-                        df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
-                            .max(axis='columns',
-                                 skipna=True,
-                                 level=None,
-                                 numeric_only=True)
+                    if _raw_metric != 'n':
+                        _global_or_indiv_benchmark_metric_col_name = \
+                            benchmark_metric_col_names[self._GLOBAL_OR_INDIV_PREFIX][_raw_metric][label_var_name]
+                        df.loc[:, _global_or_indiv_benchmark_metric_col_name] = \
+                            df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
+                                .max(axis='columns',
+                                     skipna=True,
+                                     level=None,
+                                     numeric_only=True)
 
-                    for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
-                        df[err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._SGN_PREFIX]] = \
-                            _sgn_err_mult_series = \
-                            _sgn_err_series / \
-                            df[benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name]]
+                        for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
+                            df[err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._SGN_PREFIX]] = \
+                                _sgn_err_mult_series = \
+                                _sgn_err_series / \
+                                df[benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name]]
 
-                        df[err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._ABS_PREFIX]] = \
-                            _sgn_err_mult_series.abs()
+                            df[err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._ABS_PREFIX]] = \
+                                _sgn_err_mult_series.abs()
 
-                        df.loc[_neg_chk_series,
-                               err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._NEG_PREFIX]] = \
-                            _sgn_err_mult_series.loc[_neg_chk_series]
+                            df.loc[_neg_chk_series,
+                                   err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._NEG_PREFIX]] = \
+                                _sgn_err_mult_series.loc[_neg_chk_series]
 
-                        df.loc[_pos_chk_series,
-                               err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._POS_PREFIX]] = \
-                            _sgn_err_mult_series.loc[_pos_chk_series]
+                            df.loc[_pos_chk_series,
+                                   err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._POS_PREFIX]] = \
+                                _sgn_err_mult_series.loc[_pos_chk_series]
 
         n_label_vars = len(label_var_names)
 
