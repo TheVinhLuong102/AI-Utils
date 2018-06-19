@@ -23,9 +23,10 @@ class PPPAnalysesMixIn(object):
 
     _BENCHMARK_METRICS_ADF_ALIAS = '__BenchmarkMetrics__'
 
-    _INDIV_PREFIX = 'indiv__'
     _GLOBAL_PREFIX = 'global__'
-    _INDIV_OR_GLOBAL_PREFIXES = _INDIV_PREFIX, _GLOBAL_PREFIX
+    _INDIV_PREFIX = 'indiv__'
+    _GLOBAL_OR_INDIV_PREFIX = ''
+    _GLOBAL_OR_INDIV_PREFIXES = _GLOBAL_PREFIX, _INDIV_PREFIX, _GLOBAL_OR_INDIV_PREFIX
 
     _RAW_METRICS = 'MedAE', 'MAE'   #, 'RMSE'
 
@@ -53,9 +54,9 @@ class PPPAnalysesMixIn(object):
         _rowGMean_PREFIX
 
     _ROW_ERR_MULT_SUMM_COLS = \
-        [(_row_summ_prefix + _ABS_PREFIX + _indiv_or_global_prefix + _ERR_MULT_COLS[_metric])
-         for _metric, _indiv_or_global_prefix, _row_summ_prefix in
-            itertools.product(_RAW_METRICS, _INDIV_OR_GLOBAL_PREFIXES, _ROW_SUMM_PREFIXES)]
+        [(_row_summ_prefix + _ABS_PREFIX + _global_or_indiv_prefix + _ERR_MULT_COLS[_metric])
+         for _metric, _global_or_indiv_prefix, _row_summ_prefix in
+            itertools.product(_RAW_METRICS, _GLOBAL_OR_INDIV_PREFIXES, _ROW_SUMM_PREFIXES)]
 
     _dailyMed_PREFIX = 'dailyMed__'
     _dailyMean_PREFIX = 'dailyMean__'
@@ -87,40 +88,40 @@ class PPPAnalysesMixIn(object):
             ['pop__{}'.format(label_var_name)
              for label_var_name in label_var_names]
 
-        for _indiv_or_global_prefix in self._INDIV_OR_GLOBAL_PREFIXES:
-            benchmark_metric_col_names[_indiv_or_global_prefix] = {}
+        for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
+            benchmark_metric_col_names[_global_or_indiv_prefix] = {}
 
             for _raw_metric in (('n',) + self._RAW_METRICS):
-                benchmark_metric_col_names[_indiv_or_global_prefix][_raw_metric] = {}
+                benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric] = {}
 
                 for label_var_name in label_var_names:
-                    benchmark_metric_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name] = \
+                    benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name] = \
                         benchmark_metric_col_name = \
-                        _indiv_or_global_prefix + _raw_metric + '__' + label_var_name
+                        _global_or_indiv_prefix + _raw_metric + '__' + label_var_name
 
                     benchmark_metric_col_names_list.append(benchmark_metric_col_name)
 
         err_mult_col_names = {}
         abs_err_mult_col_names = {}
 
-        for _indiv_or_global_prefix in self._INDIV_OR_GLOBAL_PREFIXES:
-            err_mult_col_names[_indiv_or_global_prefix] = {}
-            abs_err_mult_col_names[_indiv_or_global_prefix] = {}
+        for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
+            err_mult_col_names[_global_or_indiv_prefix] = {}
+            abs_err_mult_col_names[_global_or_indiv_prefix] = {}
 
             for _raw_metric in self._RAW_METRICS:
-                err_mult_col_names[_indiv_or_global_prefix][_raw_metric] = {}
-                abs_err_mult_col_names[_indiv_or_global_prefix][_raw_metric] = {}
+                err_mult_col_names[_global_or_indiv_prefix][_raw_metric] = {}
+                abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric] = {}
 
                 for label_var_name in label_var_names:
-                    err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name] = {}
+                    err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name] = {}
 
                     for _sgn_prefix in self._SGN_PREFIXES:
-                        err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name][_sgn_prefix] = \
+                        err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][_sgn_prefix] = \
                             err_mult_col = \
-                            _sgn_prefix + _indiv_or_global_prefix + self._ERR_MULT_PREFIXES[_raw_metric] + label_var_name
+                            _sgn_prefix + _global_or_indiv_prefix + self._ERR_MULT_PREFIXES[_raw_metric] + label_var_name
 
                         if _sgn_prefix == self._ABS_PREFIX:
-                            abs_err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name] = err_mult_col
+                            abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name] = err_mult_col
 
         id_col = self.params.data.id_col
 
@@ -141,15 +142,28 @@ class PPPAnalysesMixIn(object):
                     len(self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY])
 
                 for _raw_metric in (('n',) + self._RAW_METRICS):
-                    benchmark_metrics_df[benchmark_metric_col_names[self._INDIV_PREFIX][_raw_metric][label_var_name]] = \
+                    _global_benchmark_metric_col_name = \
+                        benchmark_metric_col_names[self._GLOBAL_PREFIX][_raw_metric][label_var_name]
+                    benchmark_metrics_df.loc[:, _global_benchmark_metric_col_name] = \
+                        self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric]
+
+                    _indiv_benchmark_metric_col_name = \
+                        benchmark_metric_col_names[self._INDIV_PREFIX][_raw_metric][label_var_name]
+                    benchmark_metrics_df.loc[:, _indiv_benchmark_metric_col_name] = \
                         benchmark_metrics_df[id_col].map(
                             lambda _id:
                                 self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY]
                                     .get(_id, {})
                                     .get(_raw_metric))
 
-                    benchmark_metrics_df[benchmark_metric_col_names[self._GLOBAL_PREFIX][_raw_metric][label_var_name]] = \
-                        self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric]
+                    _global_or_indiv_benchmark_metric_col_name = \
+                        benchmark_metric_col_names[self._GLOBAL_OR_INDIV_PREFIX][_raw_metric][label_var_name]
+                    benchmark_metrics_df.loc[:, _global_or_indiv_benchmark_metric_col_name] = \
+                        benchmark_metrics_df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
+                            .max(axis='columns',
+                                 skipna=True,
+                                 level=None,
+                                 numeric_only=True)
 
             SparkADF.create(
                 data=benchmark_metrics_df.where(
@@ -193,24 +207,24 @@ class PPPAnalysesMixIn(object):
 
                 _sgn_err_col_expr = df[label_var_name] - df[score_col_name]
 
-                for _indiv_or_global_prefix in self._INDIV_OR_GLOBAL_PREFIXES:
+                for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
                     for _raw_metric in self._RAW_METRICS:
                         _sgn_err_mult_col_expr = \
                             _sgn_err_col_expr / \
-                            df[benchmark_metric_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name]]
+                            df[benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name]]
         
                         col_exprs += \
                             [_sgn_err_mult_col_expr
-                                .alias(err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name][self._SGN_PREFIX]),
+                                .alias(err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._SGN_PREFIX]),
         
                              functions.abs(_sgn_err_mult_col_expr)
-                                .alias(err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name][self._ABS_PREFIX]),
+                                .alias(err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._ABS_PREFIX]),
         
                              functions.when(df[label_var_name] < df[score_col_name], _sgn_err_mult_col_expr)
-                                .alias(err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name][self._NEG_PREFIX]),
+                                .alias(err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._NEG_PREFIX]),
         
                              functions.when(df[label_var_name] > df[score_col_name], _sgn_err_mult_col_expr)
-                                .alias(err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name][self._POS_PREFIX])]
+                                .alias(err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._POS_PREFIX])]
 
             df = df.select('*', *col_exprs)
 
@@ -225,31 +239,44 @@ class PPPAnalysesMixIn(object):
                 _pos_chk_series = _sgn_err_series > 0
 
                 for _raw_metric in self._RAW_METRICS:
-                    df[benchmark_metric_col_names[self._INDIV_PREFIX][_raw_metric][label_var_name]] = \
+                    _global_benchmark_metric_col_name = \
+                        benchmark_metric_col_names[self._GLOBAL_PREFIX][_raw_metric][label_var_name]
+                    df.loc[:, _global_benchmark_metric_col_name] = \
+                        self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric]
+
+                    _indiv_benchmark_metric_col_name = \
+                        benchmark_metric_col_names[self._INDIV_PREFIX][_raw_metric][label_var_name]
+                    df[_indiv_benchmark_metric_col_name] = \
                         df[id_col].map(
                             lambda id:
                                 self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY]
                                     .get(id, {})
                                     .get(_raw_metric, numpy.nan))
 
-                    df[benchmark_metric_col_names[self._GLOBAL_PREFIX][_raw_metric][label_var_name]] = \
-                        self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric]
+                    _global_or_indiv_benchmark_metric_col_name = \
+                        benchmark_metric_col_names[self._GLOBAL_OR_INDIV_PREFIX][_raw_metric][label_var_name]
+                    df.loc[:, _global_or_indiv_benchmark_metric_col_name] = \
+                        df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
+                            .max(axis='columns',
+                                 skipna=True,
+                                 level=None,
+                                 numeric_only=True)
 
-                    for _indiv_or_global_prefix in self._INDIV_OR_GLOBAL_PREFIXES:
-                        df[err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name][self._SGN_PREFIX]] = \
+                    for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
+                        df[err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._SGN_PREFIX]] = \
                             _sgn_err_mult_series = \
                             _sgn_err_series / \
-                            df[benchmark_metric_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name]]
+                            df[benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name]]
 
-                        df[err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name][self._ABS_PREFIX]] = \
+                        df[err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._ABS_PREFIX]] = \
                             _sgn_err_mult_series.abs()
 
                         df.loc[_neg_chk_series,
-                               err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name][self._NEG_PREFIX]] = \
+                               err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._NEG_PREFIX]] = \
                             _sgn_err_mult_series.loc[_neg_chk_series]
 
                         df.loc[_pos_chk_series,
-                               err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name][self._POS_PREFIX]] = \
+                               err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._POS_PREFIX]] = \
                             _sgn_err_mult_series.loc[_pos_chk_series]
 
         n_label_vars = len(label_var_names)
@@ -258,12 +285,12 @@ class PPPAnalysesMixIn(object):
             _row_summ_col_exprs = []
 
             for _raw_metric in self._RAW_METRICS:
-                for _indiv_or_global_prefix in self._INDIV_OR_GLOBAL_PREFIXES:
+                for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
                     _abs_err_mult_col_names = \
-                        list(abs_err_mult_col_names[_indiv_or_global_prefix][_raw_metric].values())
+                        list(abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric].values())
 
                     _row_summ_col_name_body = \
-                        self._ABS_PREFIX + _indiv_or_global_prefix + self._ERR_MULT_COLS[_raw_metric]
+                        self._ABS_PREFIX + _global_or_indiv_prefix + self._ERR_MULT_COLS[_raw_metric]
 
                     _rowEuclNorm_summ_col_name = self._rowEuclNorm_PREFIX + _row_summ_col_name_body
                     _rowSumOfLog_summ_col_name = self._rowSumOfLog_PREFIX + _row_summ_col_name_body
@@ -320,9 +347,9 @@ class PPPAnalysesMixIn(object):
                 df = df.toPandas()
             
             for _raw_metric in self._RAW_METRICS:
-                for _indiv_or_global_prefix in self._INDIV_OR_GLOBAL_PREFIXES:
+                for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
                     _row_summ_col_name_body = \
-                        self._ABS_PREFIX + _indiv_or_global_prefix + self._ERR_MULT_COLS[_raw_metric]
+                        self._ABS_PREFIX + _global_or_indiv_prefix + self._ERR_MULT_COLS[_raw_metric]
 
                     _rowEuclNorm_summ_col_name = self._rowEuclNorm_PREFIX + _row_summ_col_name_body
                     _rowSumOfLog_summ_col_name = self._rowSumOfLog_PREFIX + _row_summ_col_name_body
@@ -333,7 +360,7 @@ class PPPAnalysesMixIn(object):
 
                     if n_label_vars > 1:
                         abs_err_mults_df = \
-                            df[list(abs_err_mult_col_names[_indiv_or_global_prefix][_raw_metric].values())]
+                            df[list(abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric].values())]
 
                         df[_rowEuclNorm_summ_col_name] = \
                             ((abs_err_mults_df - 1) ** 2).sum(
@@ -379,7 +406,7 @@ class PPPAnalysesMixIn(object):
 
                     else:
                         _abs_err_mult_col_name = \
-                            abs_err_mult_col_names[_indiv_or_global_prefix][_raw_metric][label_var_name]
+                            abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name]
 
                         df[_rowSumOfLog_summ_col_name] = \
                             numpy.log(df[_abs_err_mult_col_name])
@@ -405,9 +432,9 @@ class PPPAnalysesMixIn(object):
         for label_var_name in label_var_names:
             if label_var_name in df_w_err_mults.columns:
                 cols_to_agg += \
-                    [(_sgn + _indiv_or_global_prefix + cls._ERR_MULT_PREFIXES[_metric] + label_var_name)
-                     for _metric, _indiv_or_global_prefix, _sgn in
-                        itertools.product(cls._RAW_METRICS, cls._INDIV_OR_GLOBAL_PREFIXES, cls._SGN_PREFIXES)]
+                    [(_sgn + _global_or_indiv_prefix + cls._ERR_MULT_PREFIXES[_metric] + label_var_name)
+                     for _metric, _global_or_indiv_prefix, _sgn in
+                        itertools.product(cls._RAW_METRICS, cls._GLOBAL_OR_INDIV_PREFIXES, cls._SGN_PREFIXES)]
 
         if isinstance(df_w_err_mults, SparkADF):
             from arimo.blueprints.base import _SupervisedBlueprintABC
@@ -427,11 +454,11 @@ class PPPAnalysesMixIn(object):
                      'MIN(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1}))) AS {2}{0}'
                         .format(col_name, clip, cls._dailyMin_PREFIX)]
 
-            for _indiv_or_global_prefix in cls._INDIV_OR_GLOBAL_PREFIXES:
+            for _global_or_indiv_prefix in cls._GLOBAL_OR_INDIV_PREFIXES:
                 for _raw_metric in cls._RAW_METRICS:
                     for label_var_name in label_var_names:
                         if label_var_name in df_w_err_mults.columns:
-                            _metric_col_name = _indiv_or_global_prefix + _raw_metric + '__' + label_var_name
+                            _metric_col_name = _global_or_indiv_prefix + _raw_metric + '__' + label_var_name
                             cols_to_agg.append(_metric_col_name)
                             col_strs.append('AVG({0}) AS {0}'.format(_metric_col_name))
 
@@ -477,11 +504,11 @@ class PPPAnalysesMixIn(object):
                 d = {id_col: _first_row[id_col],
                      DATE_COL: _first_row[time_col]}
 
-                for _indiv_or_global_prefix in cls._INDIV_OR_GLOBAL_PREFIXES:
+                for _global_or_indiv_prefix in cls._GLOBAL_OR_INDIV_PREFIXES:
                     for _raw_metric in cls._RAW_METRICS:
                         for label_var_name in label_var_names:
                             if label_var_name in df_w_err_mults.columns:
-                                _metric_col_name = _indiv_or_global_prefix + _raw_metric + '__' + label_var_name
+                                _metric_col_name = _global_or_indiv_prefix + _raw_metric + '__' + label_var_name
 
                                 d[_metric_col_name] = _first_row[_metric_col_name]
                                 
