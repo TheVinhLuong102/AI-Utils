@@ -1971,33 +1971,33 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
             if verbose:
                 logger.info(msg + ' done!')
 
-        s3_models_dir_prefix = \
-            os.path.join(
-                s3_dir_prefix,
-                blueprint.params.persist._models_dir)
+        if isinstance(blueprint, _SupervisedBlueprintABC):
+            s3_models_dir_prefix = \
+                os.path.join(
+                    s3_dir_prefix,
+                    blueprint.params.persist._models_dir)
 
-        s3_models_dir_path = \
-            's3://{}/{}'.format(
-                s3_bucket, s3_models_dir_prefix)
+            s3_models_dir_path = \
+                's3://{}/{}'.format(
+                    s3_bucket, s3_models_dir_prefix)
 
-        if isinstance(blueprint, _SupervisedBlueprintABC) and \
-                ('Contents' in
+            if 'Contents' in \
                     s3_client.list_objects_v2(
                         Bucket=s3_bucket,
-                        Prefix=s3_models_dir_prefix)):
-            if verbose:
-                msg = 'Downloading All Models Trained by {} from S3 Path "{}"...'.format(blueprint, s3_models_dir_path)
-                logger.info(msg)
+                        Prefix=s3_models_dir_prefix):
+                if verbose:
+                    msg = 'Downloading All Models Trained by {} from S3 Path "{}"...'.format(blueprint, s3_models_dir_path)
+                    logger.info(msg)
 
-            s3.sync(
-                from_dir_path=s3_models_dir_path,
-                to_dir_path=blueprint.models_dir,
-                access_key_id=aws_access_key_id,
-                secret_access_key=aws_secret_access_key,
-                delete=True, quiet=False)
+                s3.sync(
+                    from_dir_path=s3_models_dir_path,
+                    to_dir_path=blueprint.models_dir,
+                    access_key_id=aws_access_key_id,
+                    secret_access_key=aws_secret_access_key,
+                    delete=True, quiet=False)
 
-            if verbose:
-                logger.info(msg + ' done!')
+                if verbose:
+                    logger.info(msg + ' done!')
 
         if (params.persist.s3.bucket != s3_bucket) or (params.persist.s3.dir_prefix != s3_parent_dir_prefix):
             if verbose:
