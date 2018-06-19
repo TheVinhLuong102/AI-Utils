@@ -88,7 +88,7 @@ class PPPAnalysesMixIn(object):
             ['pop__{}'.format(label_var_name)
              for label_var_name in label_var_names]
 
-        for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
+        for _global_or_indiv_prefix in (self._GLOBAL_PREFIX, self._INDIV_PREFIX, self._GLOBAL_OR_INDIV_PREFIXES):
             benchmark_metric_col_names[_global_or_indiv_prefix] = {}
 
             for _raw_metric in (('n',) + self._RAW_METRICS):
