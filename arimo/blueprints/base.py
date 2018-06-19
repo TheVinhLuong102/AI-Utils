@@ -694,289 +694,6 @@ class _BlueprintABC(object):
         return blueprint
 
 
-# utility to create Blueprint from its params
-def _blueprint_from_params(
-        blueprint_params,
-        aws_access_key_id=None,
-        aws_secret_access_key=None,
-        verbose=False):
-    return import_obj(blueprint_params.__BlueprintClass__)(
-        params=blueprint_params,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-        verbose=verbose)
-
-
-# utility to validate Blueprint params
-def validate_blueprint_params(blueprint_or_blueprint_params):
-    from arimo.blueprints.base import _BlueprintABC, _blueprint_from_params
-
-    if isinstance(blueprint_or_blueprint_params, _BlueprintABC):
-        blueprint = blueprint_or_blueprint_params
-        blueprint_params = blueprint.params
-
-    else:
-        blueprint_params = blueprint_or_blueprint_params
-        blueprint = \
-            _blueprint_from_params(
-                blueprint_params=blueprint_params,
-                verbose=False)
-
-    undeclared_params = \
-        {k for k in blueprint_params.keys(all_nested=True)
-           if not (k.startswith('data._cat_prep_cols_metadata.') or
-                   k.startswith('data._num_prep_cols_metadata.'))} \
-        .difference(_BLUEPRINT_PARAMS_ORDERED_LIST)
-
-    component_blueprints = \
-        blueprint_params.model.get('component_blueprints')
-
-    if component_blueprints:
-        component_blueprint_params = \
-            {k for k in undeclared_params
-               if k.startswith('model.component_blueprints.')}
-
-        undeclared_params.difference_update(component_blueprint_params)
-
-        _chk = all(validate_blueprint_params(component_blueprint)
-                   for component_blueprint in component_blueprints.values())
-
-    if undeclared_params:
-        blueprint.stdout_logger.warning(
-            msg='*** UNDECLARED PARAMS: {} ***'
-                .format(undeclared_params))
-
-        return False
-
-    elif component_blueprints:
-        return _chk
-
-    else:
-        return True
-
-
-_LOADED_BLUEPRINTS = {}
-
-
-# utility to load Blueprint from local or S3 dir path
-def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
-         aws_access_key_id=None, aws_secret_access_key=None, s3_client=None,
-         verbose=True):
-    global _LOADED_BLUEPRINTS
-
-    if dir_path in _LOADED_BLUEPRINTS:
-        return _LOADED_BLUEPRINTS[dir_path]
-
-    if verbose:
-        logger = logging.getLogger(_LOGGER_NAME)
-        logger.setLevel(logging.INFO)
-        logger.addHandler(STDOUT_HANDLER)
-
-    if ((s3_bucket and s3_dir_prefix) or (dir_path.startswith('s3://'))) \
-            and ((aws_access_key_id and aws_secret_access_key) or s3_client):
-        _from_s3 = True
-
-        if s3_client is None:
-            s3_client = \
-                s3.client(
-                    access_key_id=aws_access_key_id,
-                    secret_access_key=aws_secret_access_key)
-
-        if dir_path:
-            s3_bucket, s3_dir_prefix = \
-                dir_path.split('://')[1].split('/', 1)
-
-        s3_parent_dir_prefix = \
-            os.path.dirname(s3_dir_prefix)
-
-        s3_file_key = \
-            os.path.join(
-                s3_dir_prefix,
-                _BlueprintABC._DEFAULT_PARAMS.persist._file)
-
-        if verbose:
-            msg = 'Loading Blueprint Instance from S3 Path "s3://{}/{}..."'.format(s3_bucket, s3_file_key)
-            logger.info(msg)
-
-        _tmp_file_path = \
-            os.path.join(
-                tempfile.mkdtemp(),
-                _TMP_FILE_NAME)
-
-        s3_client.download_file(
-            Bucket=s3_bucket,
-            Key=s3_file_key,
-            Filename=_tmp_file_path)
-
-        params = joblib.load(filename=_tmp_file_path)
-
-        params.uuid = os.path.basename(s3_dir_prefix)
-
-        blueprint = \
-            _blueprint_from_params(
-                blueprint_params=params,
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key,
-                verbose=verbose)
-
-        if verbose:
-            logger.info('{} {}'.format(msg, blueprint))
-
-        fs.mv(from_path=_tmp_file_path,
-              to_path=blueprint.file,
-              is_dir=False,
-              hdfs=False)
-
-        s3_data_transforms_dir_prefix = \
-            os.path.join(
-                s3_dir_prefix,
-                blueprint.params.data._transform_pipeline_dir)
-
-        s3_data_transforms_dir_path = \
-            's3://{}/{}'.format(
-                s3_bucket, s3_data_transforms_dir_prefix)
-
-        if 'Contents' in \
-                s3_client.list_objects_v2(
-                    Bucket=s3_bucket,
-                    Prefix=s3_data_transforms_dir_prefix):
-            if verbose:
-                msg = 'Downloading Data Transforms for {} from S3 Path "{}"...'.format(blueprint, s3_data_transforms_dir_path)
-                logger.info(msg)
-
-            s3.sync(
-                from_dir_path=s3_data_transforms_dir_path,
-                to_dir_path=blueprint.data_transforms_dir,
-                access_key_id=aws_access_key_id,
-                secret_access_key=aws_secret_access_key,
-                delete=True, quiet=False)
-
-            if verbose:
-                logger.info(msg + ' done!')
-
-        s3_models_dir_prefix = \
-            os.path.join(
-                s3_dir_prefix,
-                blueprint.params.persist._models_dir)
-
-        s3_models_dir_path = \
-            's3://{}/{}'.format(
-                s3_bucket, s3_models_dir_prefix)
-
-        if 'Contents' in \
-                s3_client.list_objects_v2(
-                    Bucket=s3_bucket,
-                    Prefix=s3_models_dir_prefix):
-            if verbose:
-                msg = 'Downloading All Models Trained by {} from S3 Path "{}"...'.format(blueprint, s3_models_dir_path)
-                logger.info(msg)
-
-            s3.sync(
-                from_dir_path=s3_models_dir_path,
-                to_dir_path=blueprint.models_dir,
-                access_key_id=aws_access_key_id,
-                secret_access_key=aws_secret_access_key,
-                delete=True, quiet=False)
-
-            if verbose:
-                logger.info(msg + ' done!')
-
-        if (params.persist.s3.bucket != s3_bucket) or (params.persist.s3.dir_prefix != s3_parent_dir_prefix):
-            if verbose:
-                msg = 'Re-Saving {} with Corrected S3 Path "s3://{}/{}"...'.format(blueprint, s3_bucket, s3_parent_dir_prefix)
-                logger.info(msg)
-
-            blueprint.params.persist.s3.bucket = s3_bucket
-            blueprint.params.persist.s3.dir_prefix = s3_parent_dir_prefix
-            blueprint.auth.aws.access_key_id = aws_access_key_id
-            blueprint.auth.aws.secret_access_key = aws_secret_access_key
-
-            blueprint.save()
-
-            if verbose:
-                logger.info(msg + ' done!')
-
-    else:
-        _from_s3 = False
-
-        local_file_path = \
-            os.path.join(
-                dir_path,
-                _BlueprintABC._DEFAULT_PARAMS.persist._file)
-
-        if verbose:
-            msg = 'Loading Blueprint Instance from Local Path "{}"...'.format(local_file_path)
-            logger.info(msg)
-
-        params = joblib.load(filename=local_file_path)
-
-        params.uuid = os.path.basename(dir_path)
-        
-        blueprint = \
-            _blueprint_from_params(
-                blueprint_params=params,
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key,
-                verbose=verbose)
-
-        if verbose:
-            logger.info('{} {}'.format(msg, blueprint))
-
-    if 'component_blueprints' in blueprint.params.model:
-        for label_var_name, component_blueprint_params in blueprint.params.model.component_blueprints.items():
-            # legacy fix
-            _component_blueprint_uuid_prefix = \
-                '{}---{}'.format(params.uuid, label_var_name)
-
-            if not component_blueprint_params.uuid.startswith(_component_blueprint_uuid_prefix):
-                component_blueprint_params.uuid = _component_blueprint_uuid_prefix
-
-            component_blueprint = \
-                _blueprint_from_params(
-                    blueprint_params=component_blueprint_params,
-                    verbose=verbose)
-
-            assert component_blueprint.params.uuid == component_blueprint_params.uuid, \
-                '*** {} ***'.format(component_blueprint.params.uuid)
-
-            # force load to test existence / sync down component blueprints from S3 if necessary
-            try:
-                load(dir_path=component_blueprint.path,
-                     aws_access_key_id=blueprint.auth.aws.access_key_id,
-                     aws_secret_access_key=blueprint.auth.aws.secret_access_key,
-                     verbose=verbose)
-
-            except:
-                if _from_s3:
-                    component_blueprint.params.persist.s3.bucket = s3_bucket
-                    component_blueprint.params.persist.s3.dir_prefix = s3_parent_dir_prefix
-                    component_blueprint.auth.aws.access_key_id = aws_access_key_id
-                    component_blueprint.auth.aws.secret_access_key = aws_secret_access_key
-
-                    try:
-                        load(dir_path=component_blueprint.path,
-                             aws_access_key_id=blueprint.auth.aws.access_key_id,
-                             aws_secret_access_key=blueprint.auth.aws.secret_access_key,
-                             verbose=verbose)
-
-                        component_blueprint.save()
-
-                    except:
-                        blueprint.stdout_logger.warning(
-                            msg='*** COMPONENT BLUEPRINT {} FAILS TO LOAD ***'
-                                .format(component_blueprint))
-
-                else:
-                    blueprint.stdout_logger.warning(
-                        msg='*** COMPONENT BLUEPRINT {} FAILS TO LOAD ***'
-                            .format(component_blueprint))
-
-    if dir_path:
-        _LOADED_BLUEPRINTS[dir_path] = blueprint
-
-    return blueprint
-
-
 class _BlueprintedModelABC(object):
     """
     Blueprinted Model abstract base class
@@ -2092,3 +1809,287 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
             self.save()
 
         return eval_metrics
+
+
+# utility to create Blueprint from its params
+def _blueprint_from_params(
+        blueprint_params,
+        aws_access_key_id=None,
+        aws_secret_access_key=None,
+        verbose=False):
+    return import_obj(blueprint_params.__BlueprintClass__)(
+            params=blueprint_params,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            verbose=verbose)
+
+
+# utility to validate Blueprint params
+def validate_blueprint_params(blueprint_or_blueprint_params):
+    from arimo.blueprints.base import _BlueprintABC, _blueprint_from_params
+
+    if isinstance(blueprint_or_blueprint_params, _BlueprintABC):
+        blueprint = blueprint_or_blueprint_params
+        blueprint_params = blueprint.params
+
+    else:
+        blueprint_params = blueprint_or_blueprint_params
+        blueprint = \
+            _blueprint_from_params(
+                blueprint_params=blueprint_params,
+                verbose=False)
+
+    undeclared_params = \
+        {k for k in blueprint_params.keys(all_nested=True)
+         if not (k.startswith('data._cat_prep_cols_metadata.') or
+                 k.startswith('data._num_prep_cols_metadata.'))} \
+            .difference(_BLUEPRINT_PARAMS_ORDERED_LIST)
+
+    component_blueprints = \
+        blueprint_params.model.get('component_blueprints')
+
+    if component_blueprints:
+        component_blueprint_params = \
+            {k for k in undeclared_params
+             if k.startswith('model.component_blueprints.')}
+
+        undeclared_params.difference_update(component_blueprint_params)
+
+        _chk = all(validate_blueprint_params(component_blueprint)
+                   for component_blueprint in component_blueprints.values())
+
+    if undeclared_params:
+        blueprint.stdout_logger.warning(
+            msg='*** UNDECLARED PARAMS: {} ***'
+                .format(undeclared_params))
+
+        return False
+
+    elif component_blueprints:
+        return _chk
+
+    else:
+        return True
+
+
+_LOADED_BLUEPRINTS = {}
+
+
+# utility to load Blueprint from local or S3 dir path
+def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
+         aws_access_key_id=None, aws_secret_access_key=None, s3_client=None,
+         verbose=True):
+    global _LOADED_BLUEPRINTS
+
+    if dir_path in _LOADED_BLUEPRINTS:
+        return _LOADED_BLUEPRINTS[dir_path]
+
+    if verbose:
+        logger = logging.getLogger(_LOGGER_NAME)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(STDOUT_HANDLER)
+
+    if ((s3_bucket and s3_dir_prefix) or (dir_path.startswith('s3://'))) \
+            and ((aws_access_key_id and aws_secret_access_key) or s3_client):
+        _from_s3 = True
+
+        if s3_client is None:
+            s3_client = \
+                s3.client(
+                    access_key_id=aws_access_key_id,
+                    secret_access_key=aws_secret_access_key)
+
+        if dir_path:
+            s3_bucket, s3_dir_prefix = \
+                dir_path.split('://')[1].split('/', 1)
+
+        s3_parent_dir_prefix = \
+            os.path.dirname(s3_dir_prefix)
+
+        s3_file_key = \
+            os.path.join(
+                s3_dir_prefix,
+                _BlueprintABC._DEFAULT_PARAMS.persist._file)
+
+        if verbose:
+            msg = 'Loading Blueprint Instance from S3 Path "s3://{}/{}..."'.format(s3_bucket, s3_file_key)
+            logger.info(msg)
+
+        _tmp_file_path = \
+            os.path.join(
+                tempfile.mkdtemp(),
+                _TMP_FILE_NAME)
+
+        s3_client.download_file(
+            Bucket=s3_bucket,
+            Key=s3_file_key,
+            Filename=_tmp_file_path)
+
+        params = joblib.load(filename=_tmp_file_path)
+
+        params.uuid = os.path.basename(s3_dir_prefix)
+
+        blueprint = \
+            _blueprint_from_params(
+                blueprint_params=params,
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+                verbose=verbose)
+
+        if verbose:
+            logger.info('{} {}'.format(msg, blueprint))
+
+        fs.mv(from_path=_tmp_file_path,
+              to_path=blueprint.file,
+              is_dir=False,
+              hdfs=False)
+
+        s3_data_transforms_dir_prefix = \
+            os.path.join(
+                s3_dir_prefix,
+                blueprint.params.data._transform_pipeline_dir)
+
+        s3_data_transforms_dir_path = \
+            's3://{}/{}'.format(
+                s3_bucket, s3_data_transforms_dir_prefix)
+
+        if 'Contents' in \
+                s3_client.list_objects_v2(
+                    Bucket=s3_bucket,
+                    Prefix=s3_data_transforms_dir_prefix):
+            if verbose:
+                msg = 'Downloading Data Transforms for {} from S3 Path "{}"...'.format(blueprint, s3_data_transforms_dir_path)
+                logger.info(msg)
+
+            s3.sync(
+                from_dir_path=s3_data_transforms_dir_path,
+                to_dir_path=blueprint.data_transforms_dir,
+                access_key_id=aws_access_key_id,
+                secret_access_key=aws_secret_access_key,
+                delete=True, quiet=False)
+
+            if verbose:
+                logger.info(msg + ' done!')
+
+        s3_models_dir_prefix = \
+            os.path.join(
+                s3_dir_prefix,
+                blueprint.params.persist._models_dir)
+
+        s3_models_dir_path = \
+            's3://{}/{}'.format(
+                s3_bucket, s3_models_dir_prefix)
+
+        if isinstance(blueprint, _SupervisedBlueprintABC) and \
+                ('Contents' in
+                    s3_client.list_objects_v2(
+                        Bucket=s3_bucket,
+                        Prefix=s3_models_dir_prefix)):
+            if verbose:
+                msg = 'Downloading All Models Trained by {} from S3 Path "{}"...'.format(blueprint, s3_models_dir_path)
+                logger.info(msg)
+
+            s3.sync(
+                from_dir_path=s3_models_dir_path,
+                to_dir_path=blueprint.models_dir,
+                access_key_id=aws_access_key_id,
+                secret_access_key=aws_secret_access_key,
+                delete=True, quiet=False)
+
+            if verbose:
+                logger.info(msg + ' done!')
+
+        if (params.persist.s3.bucket != s3_bucket) or (params.persist.s3.dir_prefix != s3_parent_dir_prefix):
+            if verbose:
+                msg = 'Re-Saving {} with Corrected S3 Path "s3://{}/{}"...'.format(blueprint, s3_bucket, s3_parent_dir_prefix)
+                logger.info(msg)
+
+            blueprint.params.persist.s3.bucket = s3_bucket
+            blueprint.params.persist.s3.dir_prefix = s3_parent_dir_prefix
+            blueprint.auth.aws.access_key_id = aws_access_key_id
+            blueprint.auth.aws.secret_access_key = aws_secret_access_key
+
+            blueprint.save()
+
+            if verbose:
+                logger.info(msg + ' done!')
+
+    else:
+        _from_s3 = False
+
+        local_file_path = \
+            os.path.join(
+                dir_path,
+                _BlueprintABC._DEFAULT_PARAMS.persist._file)
+
+        if verbose:
+            msg = 'Loading Blueprint Instance from Local Path "{}"...'.format(local_file_path)
+            logger.info(msg)
+
+        params = joblib.load(filename=local_file_path)
+
+        params.uuid = os.path.basename(dir_path)
+
+        blueprint = \
+            _blueprint_from_params(
+                blueprint_params=params,
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+                verbose=verbose)
+
+        if verbose:
+            logger.info('{} {}'.format(msg, blueprint))
+
+    if 'component_blueprints' in blueprint.params.model:
+        for label_var_name, component_blueprint_params in blueprint.params.model.component_blueprints.items():
+            # legacy fix
+            _component_blueprint_uuid_prefix = \
+                '{}---{}'.format(params.uuid, label_var_name)
+
+            if not component_blueprint_params.uuid.startswith(_component_blueprint_uuid_prefix):
+                component_blueprint_params.uuid = _component_blueprint_uuid_prefix
+
+            component_blueprint = \
+                _blueprint_from_params(
+                    blueprint_params=component_blueprint_params,
+                    verbose=verbose)
+
+            assert component_blueprint.params.uuid == component_blueprint_params.uuid, \
+                '*** {} ***'.format(component_blueprint.params.uuid)
+
+            # force load to test existence / sync down component blueprints from S3 if necessary
+            try:
+                load(dir_path=component_blueprint.path,
+                     aws_access_key_id=blueprint.auth.aws.access_key_id,
+                     aws_secret_access_key=blueprint.auth.aws.secret_access_key,
+                     verbose=verbose)
+
+            except:
+                if _from_s3:
+                    component_blueprint.params.persist.s3.bucket = s3_bucket
+                    component_blueprint.params.persist.s3.dir_prefix = s3_parent_dir_prefix
+                    component_blueprint.auth.aws.access_key_id = aws_access_key_id
+                    component_blueprint.auth.aws.secret_access_key = aws_secret_access_key
+
+                    try:
+                        load(dir_path=component_blueprint.path,
+                             aws_access_key_id=blueprint.auth.aws.access_key_id,
+                             aws_secret_access_key=blueprint.auth.aws.secret_access_key,
+                             verbose=verbose)
+
+                        component_blueprint.save()
+
+                    except:
+                        blueprint.stdout_logger.warning(
+                            msg='*** COMPONENT BLUEPRINT {} FAILS TO LOAD ***'
+                                .format(component_blueprint))
+
+                else:
+                    blueprint.stdout_logger.warning(
+                        msg='*** COMPONENT BLUEPRINT {} FAILS TO LOAD ***'
+                            .format(component_blueprint))
+
+    if dir_path:
+        _LOADED_BLUEPRINTS[dir_path] = blueprint
+
+    return blueprint
