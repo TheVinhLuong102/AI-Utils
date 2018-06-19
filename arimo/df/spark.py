@@ -5355,3 +5355,12 @@ class SparkADF(_ADFABC):
         return Namespace(
             df=df,
             colsWithNaNs=colsWithNaNs)
+
+    def inspectMinMax(self):
+        return self(
+            'SELECT {} FROM this'
+                .format(
+                ', '.join(
+                    "MIN({0}) AS {0}___min, MAX(IF(STRING({0}) = 'NaN', NULL, {0})) AS {0}___max".format(col)
+                    for col in self.columns))) \
+            .toPandas().iloc[0]
