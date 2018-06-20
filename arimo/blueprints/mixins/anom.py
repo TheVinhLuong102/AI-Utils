@@ -92,14 +92,15 @@ class PPPAnalysesMixIn(object):
             benchmark_metric_col_names[_global_or_indiv_prefix] = {}
 
             for _raw_metric in (('n',) + self._RAW_METRICS):
-                benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric] = {}
+                if (_global_or_indiv_prefix, _raw_metric) != (self._GLOBAL_OR_INDIV_PREFIX, 'n'):
+                    benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric] = {}
 
-                for label_var_name in label_var_names:
-                    benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name] = \
-                        benchmark_metric_col_name = \
-                        _global_or_indiv_prefix + _raw_metric + '__' + label_var_name
+                    for label_var_name in label_var_names:
+                        benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name] = \
+                            benchmark_metric_col_name = \
+                            _global_or_indiv_prefix + _raw_metric + '__' + label_var_name
 
-                    benchmark_metric_col_names_list.append(benchmark_metric_col_name)
+                        benchmark_metric_col_names_list.append(benchmark_metric_col_name)
 
         err_mult_col_names = {}
         abs_err_mult_col_names = {}
