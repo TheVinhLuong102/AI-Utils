@@ -29,6 +29,10 @@ _TEST_RESOURCES_S3A_AUTH_DIR_PATH = \
         secret_access_key=_AWS_SECRET_ACCESS_KEY)
 
 
+EQUIPMENT_INSTANCE_ID_COL_NAME = 'equipment_instance_id'
+DATE_TIME_COL_NAME = 'date_time'
+
+
 _TMP_DIR_PATH = '/tmp'
 
 

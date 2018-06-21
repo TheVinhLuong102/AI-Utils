@@ -11,14 +11,10 @@ from arimo.util.aws import s3
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from data import \
+from data import _AWS_ACCESS_KEY_ID, _AWS_SECRET_ACCESS_KEY, \
+    EQUIPMENT_INSTANCE_ID_COL_NAME, DATE_TIME_COL_NAME, \
     SMALL_DATA_LOCAL_PATH, SMALL_DATA_HDFS_PATH, SMALL_DATA_S3_PATH, \
-    BIG_DATA_LOCAL_PATH, BIG_DATA_HDFS_PATH, BIG_DATA_S3_PATH, \
-    _AWS_ACCESS_KEY_ID, _AWS_SECRET_ACCESS_KEY
-
-
-EQUIPMENT_INSTANCE_ID_COL_NAME = 'equipment_instance_id'
-DATE_TIME_COL_NAME = 'date_time'
+    BIG_DATA_LOCAL_PATH, BIG_DATA_HDFS_PATH, BIG_DATA_S3_PATH
 
 
 if not os.path.isdir(SMALL_DATA_LOCAL_PATH):
