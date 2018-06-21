@@ -107,7 +107,7 @@ ADFS_FOR_FORMATS = \
     dict(parquet=TEST_ADF,
          orc=TEST_ADF,
 
-         tfrecords=TEST_ADF.filter('boolX IS NOT NULL').rm(
+         tfrecords=TEST_ADF.filter('boolX IS NOT NULL').drop(
              'boolX',   # Cannot convert field to unsupported data type BooleanType
              'boolA',   # Cannot convert field to unsupported data type ArrayType(BooleanType(...,true),true)
              'boolAA',   # Cannot convert field to unsupported data type ArrayType(ArrayType(...,true),true)
@@ -117,14 +117,14 @@ ADFS_FOR_FORMATS = \
              'vA'   # Cannot convert field to unsupported data type ArrayType(org.apache.spark.ml.linalg.VectorUDT,true)
          ),
 
-         avro=TEST_ADF.rm(
+         avro=TEST_ADF.drop(
              'boolV',   # Unexpected type org.apache.spark.ml.linalg.VectorUDT
              'fltV',   # Unexpected type org.apache.spark.ml.linalg.VectorUDT
              'intV',   # Unexpected type org.apache.spark.ml.linalg.VectorUDT
              'vA'   # Unexpected type org.apache.spark.ml.linalg.VectorUDT
          ),
 
-         csv=TEST_ADF.rm(
+         csv=TEST_ADF.drop(
             'boolA',   # CSV data source does not support array<...> data type
             'fltA',   # CSV data source does not support array<...> data type
             'intA',   # CSV data source does not support array<...> data type
