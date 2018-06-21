@@ -112,7 +112,7 @@ assert (dated_adf_ATI.alias == DATED_TBL_ALIAS_ati) \
    and (dated_adf_ATI.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 print('Time-Series {}:'.format(dated_adf_ATI))
-dated_adf_ATI.show(schema=True, __partitionID__=True)
+dated_adf_ATI.show(schema=True)
 
 print('Time-Series {}:'.format(DATED_TBL_ALIAS_ati))
 arimo.backend.spark.sql('SELECT * FROM {}'.format(DATED_TBL_ALIAS_ati)).show()
@@ -131,7 +131,7 @@ assert (dated_adf_AIT.alias == DATED_TBL_ALIAS_ait) \
    and (dated_adf_AIT.tChunkLen == 3)
 
 print('Time-Series {}:'.format(dated_adf_AIT))
-dated_adf_AIT.show(schema=True, __partitionID__=True)
+dated_adf_AIT.show(schema=True)
 
 print('Time-Series {}:'.format(DATED_TBL_ALIAS_ait))
 arimo.backend.spark.sql('SELECT * FROM {}'.format(DATED_TBL_ALIAS_ait)).show()
@@ -210,7 +210,7 @@ assert (timestamped_adf_ATI.alias == TIMESTAMPED_TBL_ALIAS_ati) \
    and (timestamped_adf_ATI.tChunkLen == SparkADF._DEFAULT_T_CHUNK_LEN)
 
 print('Time-Series {}:'.format(timestamped_adf_ATI))
-timestamped_adf_ATI.show(schema=True, __partitionID__=True)
+timestamped_adf_ATI.show(schema=True)
 
 print('Time-Series {}:'.format(TIMESTAMPED_TBL_ALIAS_ati))
 arimo.backend.spark.sql('SELECT * FROM {}'.format(TIMESTAMPED_TBL_ALIAS_ati)).show()
@@ -229,7 +229,7 @@ assert (timestamped_adf_AIT.alias == TIMESTAMPED_TBL_ALIAS_ait) \
    and (timestamped_adf_AIT.tChunkLen == 3)
 
 print('Time-Series {}:'.format(timestamped_adf_AIT))
-timestamped_adf_AIT.show(schema=True, __partitionID__=True)
+timestamped_adf_AIT.show(schema=True)
 
 print('Time-Series {}:'.format(TIMESTAMPED_TBL_ALIAS_ait))
 arimo.backend.spark.sql('SELECT * FROM {}'.format(TIMESTAMPED_TBL_ALIAS_ait)).show()
