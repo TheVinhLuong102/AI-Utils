@@ -70,7 +70,7 @@ def train(merge=False, reloc=False):
         compile=True)
     y2 = model_2.predict(x)
 
-    print('MERGE= {}, RELOC= {}: {}'.format(
+    print('MERGE= {}, RELOC= {}: Loss={}'.format(
         merge, reloc, hist.history['loss'][-1]))
     return numpy.hstack((y0, y1, y2)) - y
 
