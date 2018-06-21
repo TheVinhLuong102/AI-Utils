@@ -264,10 +264,3 @@ if fs._ON_LINUX_CLUSTER_WITH_HDFS:
     print(bigS3ArrowSparkADF)
 
     print(bigS3ArrowSparkADF.reprSample.shape)
-
-
-import arimo.backend
-print(arimo.backend.spark.conf.get('spark.files.maxPartitionBytes'),
-      arimo.backend.spark.conf.get('spark.sql.files.maxPartitionBytes'),
-      arimo.backend.spark.conf.get('spark.files.openCostInBytes'),
-      arimo.backend.spark.conf.get('spark.sql.files.openCostInBytes'))
