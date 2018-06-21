@@ -35,7 +35,7 @@ if arimo.backend.spark:
     arimo.backend.spark.stop()
 
 if not arimo.backend.chkSpark():
-    arimo.backend.init(sparkConf={'spark.locality.wait': SPARK_LOCALITY_WAIT})
+    arimo.backend.initSpark(sparkConf={'spark.locality.wait': SPARK_LOCALITY_WAIT})
 
 
 adf = SparkADF.load(
