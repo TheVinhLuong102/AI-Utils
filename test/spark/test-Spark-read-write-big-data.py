@@ -123,7 +123,7 @@ spark_conf = {}
 for i in range(0, len(args.spark), 2):
     spark_conf[args.spark[i]] = args.spark[i + 1]
 
-arimo.backend.init(
+arimo.backend.initSpark(
     sparkApp='PanaCC test Spark read/write big data: from {} to {}'
         .format(
             from_path,
