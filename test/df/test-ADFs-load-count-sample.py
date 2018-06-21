@@ -9,7 +9,7 @@ from arimo.df.spark_from_files import ArrowSparkADF
 from arimo.util import fs
 from arimo.util.aws import s3
 
-sys.path.append(os.path.pardir(__file__))
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from data import \
     SMALL_DATA_LOCAL_PATH, SMALL_DATA_HDFS_PATH, SMALL_DATA_S3_PATH, \
