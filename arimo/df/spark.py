@@ -2513,6 +2513,13 @@ class SparkADF(_ADFABC):
 
         print(self)
 
+        if exprs:
+            firstExpr = exprs[0]
+            if isinstance(firstExpr, int):
+                assert 'n' not in kwargs
+                kwargs['n'] = firstExpr
+                exprs = exprs[1:]
+
         adf = self(*exprs) \
             if exprs \
             else self
