@@ -1,6 +1,8 @@
 import arimo.backend
 
-from PanasonicColdChain import _AWS_ACCESS_KEY_ID, _AWS_SECRET_ACCESS_KEY
+from arimo.util.aws import key_pair
+
+key, secret = key_pair('PanaAP-CC')
 
 
 SRC_PTH = 's3a://{}:{}@arimo-panasonic-ap/.arimo/PredMaint/PPP/ErrMults/monthly/DISP_CASE---ex_display_case.parquet'.format(_AWS_ACCESS_KEY_ID, _AWS_SECRET_ACCESS_KEY)
@@ -22,8 +24,8 @@ arimo.backend.init(
 src_spark_df = arimo.backend.spark.read.load(
     path=SRC_PTH,
     format='parquet',
-    aws_access_key_id=_AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=_AWS_SECRET_ACCESS_KEY)
+    aws_access_key_id=key,
+    aws_secret_access_key=secret)
 
 
 src_spark_df.createOrReplaceTempView(name=TBL_NAME)
