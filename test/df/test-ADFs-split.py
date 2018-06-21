@@ -60,7 +60,7 @@ adf_1, adf_2 = adf.split(.5, .5)
 adf_1.tChunkLen = adf_2.tChunkLen = SPLIT_ADF_T_CHUNK_LEN
 
 print('Split SparkADF #1:')
-adf_1.show()
+adf_1.show(N_ROWS // 2)
 
 print('Split SparkADF #2')
-adf_2.show()
+adf_2.show(N_ROWS // 2)
