@@ -38,9 +38,10 @@ def train(merge=False, reloc=False):
         verbose=0)
 
     y1 = model.predict(x)
+    y2 = multi_gpu_model.predict(x)
 
     print(hist.history['loss'][-1])
-    return numpy.hstack((y0, y1)) - y
+    return numpy.hstack((y0, y1, y2)) - y
 
 
 print(train(merge=False, reloc=False))
