@@ -1,20 +1,20 @@
 from __future__ import division, print_function
 
 import os
+import sys
 
 from arimo.df.from_files import ArrowADF
 from arimo.df.spark import SparkADF
 from arimo.df.spark_from_files import ArrowSparkADF
 from arimo.util import fs
 from arimo.util.aws import s3
-import arimo.debug
+
+sys.path.append(os.path.pardir(__file__))
 
 from data import \
     SMALL_DATA_LOCAL_PATH, SMALL_DATA_HDFS_PATH, SMALL_DATA_S3_PATH, \
     BIG_DATA_LOCAL_PATH, BIG_DATA_HDFS_PATH, BIG_DATA_S3_PATH, \
     _AWS_ACCESS_KEY_ID, _AWS_SECRET_ACCESS_KEY
-
-arimo.debug.ON = True
 
 
 EQUIPMENT_INSTANCE_ID_COL_NAME = 'equipment_instance_id'
