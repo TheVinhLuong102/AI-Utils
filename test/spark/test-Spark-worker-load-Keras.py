@@ -20,7 +20,7 @@ arimo.backend.keras.models.Sequential(
                 input_shape=(1,),
                 units=1,
                 activation='linear',
-                use_bias=False)])\
+                use_bias=False)]) \
     .save(
         filepath=dummy_model_file_path,
         overwrite=True,
