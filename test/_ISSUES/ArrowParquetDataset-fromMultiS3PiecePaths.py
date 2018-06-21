@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from data import _AWS_ACCESS_KEY_ID, _AWS_SECRET_ACCESS_KEY, SMALL_DATA_S3_PATH
 
 
-fs = S3FileSystem(key=_AWS_ACCESS_KEY_ID, secret=_AWS_ACCESS_KEY_ID)
+fs = S3FileSystem(key=_AWS_ACCESS_KEY_ID, secret=_AWS_SECRET_ACCESS_KEY)
 
 
 ds0 = ParquetDataset(
