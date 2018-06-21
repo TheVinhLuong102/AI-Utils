@@ -27,6 +27,18 @@ def import_deps(_):
         d['Arrow'] = None
 
     try:
+        import scipy
+        d['SciPy'] = scipy.__version__
+    except ImportError:
+        d['SciPy'] = None
+
+    try:
+        import sklearn
+        d['SKLearn'] = sklearn.__version__
+    except ImportError:
+        d['SKLearn'] = None
+
+    try:
         import tensorflow
         d['TF'] = tensorflow.__version__
     except ImportError:
