@@ -10,16 +10,13 @@ from arimo.util import fs, aws
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from data import \
+from data import _AWS_ACCESS_KEY_ID, _AWS_SECRET_ACCESS_KEY, \
     BIG_DATA_S3_PARQUET_PATH, BIG_DATA_S3A_AUTH_PARQUET_PATH, \
     BIG_DATA_S3_RAND_PARTITIONED_PARQUET_PATH, BIG_DATA_S3A_AUTH_RAND_PARTITIONED_PARQUET_PATH, \
     BIG_DATA_S3_ORC_PATH, BIG_DATA_S3A_AUTH_ORC_PATH, \
     BIG_DATA_S3_RAND_PARTITIONED_ORC_PATH, BIG_DATA_S3A_AUTH_RAND_PARTITIONED_ORC_PATH, \
     BIG_DATA_HDFS_PARQUET_PATH, BIG_DATA_RAND_PARTITIONED_HDFS_PARQUET_PATH, \
     BIG_DATA_HDFS_ORC_PATH, BIG_DATA_RAND_PARTITIONED_HDFS_ORC_PATH
-
-
-key, secret = aws.key_pair('PanaAP-CC')
 
 
 arg_parser = argparse.ArgumentParser()
@@ -170,5 +167,5 @@ if to_s3_path:
         from_dir_path=to_path,
         to_dir_path=to_s3_path,
         delete=True, quiet=True,
-        access_key_id=key, secret_access_key=secret,
+        access_key_id=_AWS_ACCESS_KEY_ID, secret_access_key=_AWS_SECRET_ACCESS_KEY,
         verbose=True)

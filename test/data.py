@@ -4,15 +4,10 @@ import os
 
 from arimo.util import Namespace
 from arimo.util.iterables import to_iterable
-from arimo.util.aws import s3
-
-from arimo.IoT.DataAdmin import project
+from arimo.util.aws import key_pair, s3
 
 
-P = project('PanaAP-CC')
-
-_AWS_ACCESS_KEY_ID = P.params.s3.access_key_id
-_AWS_SECRET_ACCESS_KEY =P.params.s3.secret_access_key
+_AWS_ACCESS_KEY_ID, _AWS_SECRET_ACCESS_KEY = key_pair('PanaAP-CC')
 
 
 REFRIG_EQ_GEN_TYPE_NAME = 'refrig'
