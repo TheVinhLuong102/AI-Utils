@@ -73,3 +73,23 @@ SMALL_DATA_S3_PATH = dataset_path(equipment_general_type_name=REFRIG_EQ_GEN_TYPE
 BIG_DATA_LOCAL_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='local')
 BIG_DATA_HDFS_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='hdfs')
 BIG_DATA_S3_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='s3')
+
+
+BIG_DATA_S3_PARQUET_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='s3', format='parquet')
+BIG_DATA_S3A_AUTH_PARQUET_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='s3a', format='parquet')
+
+BIG_DATA_S3_RAND_PARTITIONED_PARQUET_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='s3', partition='rand', format='parquet')
+BIG_DATA_S3A_AUTH_RAND_PARTITIONED_PARQUET_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='s3a', partition='rand', format='parquet')
+
+BIG_DATA_HDFS_PARQUET_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='hdfs', format='parquet')
+BIG_DATA_RAND_PARTITIONED_HDFS_PARQUET_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='hdfs', partition='rand', format='parquet')
+
+
+BIG_DATA_S3_ORC_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='s3', format='orc')
+BIG_DATA_S3A_AUTH_ORC_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='s3a', format='orc')
+
+BIG_DATA_S3_RAND_PARTITIONED_ORC_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='s3', partition='rand', format='orc')
+BIG_DATA_S3A_AUTH_RAND_PARTITIONED_ORC_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='s3a', partition='rand', format='orc')
+
+BIG_DATA_HDFS_ORC_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='hdfs', format='orc')
+BIG_DATA_RAND_PARTITIONED_HDFS_ORC_PATH = dataset_path(equipment_general_type_name=DISP_CASE_EQ_GEN_TYPE_NAME, fs='hdfs', partition='rand', format='orc')
