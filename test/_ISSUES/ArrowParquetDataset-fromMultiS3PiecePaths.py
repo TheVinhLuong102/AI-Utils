@@ -17,10 +17,22 @@ ds0 = ParquetDataset(
     filesystem=fs,
     schema=None, validate_schema=False, metadata=None,
     split_row_groups=False)
+print(len(ds0.pieces))
+
+
+piece_paths = [piece.path for piece in ds0.pieces]
 
 
 ds1 = ParquetDataset(
-    path_or_paths=list(piece.path for piece in ds0.pieces[:2]),
+    path_or_paths=piece_paths[0],
+    filesystem=fs,
+    schema=None, validate_schema=False, metadata=None,
+    split_row_groups=False)
+print(len(ds1.pieces))
+
+
+ds2 = ParquetDataset(
+    path_or_paths=piece_paths[:2],
     filesystem=fs,
     schema=None, validate_schema=False, metadata=None,
     split_row_groups=False)
