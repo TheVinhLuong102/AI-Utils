@@ -32,6 +32,9 @@ arimo.backend.initSpark(
                'spark.sql.shuffle.partitions': SPARK_SQL_SHUFFLE_PARTITIONS})
 
 
+arimo.backend.setSpark1Partition1File(on=True)
+
+
 S3_DATE_PARTITIONED_PARQUET_SNAPPY_DATA_PATH = \
     dataset_path(
         equipment_general_type_name='disp_case',
