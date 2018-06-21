@@ -5,7 +5,7 @@ import sys
 
 import arimo.backend
 from arimo.df.spark import SparkADF
-from arimo.df.spark_on_files import ArrowSparkADF
+from arimo.df.spark_from_files import ArrowSparkADF
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
