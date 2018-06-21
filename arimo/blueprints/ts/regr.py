@@ -249,20 +249,14 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
             model.summary()
 
             if __n_gpus__ > 1:
-                _model_to_fit = \
+                model._obj = \
                     arimo.backend.keras.utils.multi_gpu_model(
                         model._obj,
                         gpus=__n_gpus__,
                         cpu_merge=__cpu_merge__,
                         cpu_relocation=__cpu_reloc__)
 
-                if arimo.debug.SAVE_MULTI_GPU_MODELS:
-                    model._obj = _model_to_fit
-
-            else:
-                _model_to_fit = model
-
-            _model_to_fit.compile(
+            model.compile(
                 loss=self.params.model.train.objective
                     if self.params.model.train.objective
                     else 'MAE',   # mae / mean_absolute_error (more resilient to outliers)
@@ -319,7 +313,7 @@ class DLBlueprint(RegrEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
             assert pickle_able(val_gen)
 
             model.history = \
-                _model_to_fit.fit_generator(
+                model.fit_generator(
                     generator=train_gen(),
                         # a generator.
                         # The output of the generator must be either a tuple(inputs, targets)
