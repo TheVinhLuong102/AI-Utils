@@ -223,14 +223,19 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
 
             assert isinstance(adf, (ArrowADF, ArrowSparkADF))
 
-            _model_to_fit = \
-                arimo.backend.keras.utils.multi_gpu_model(
-                    model._obj,
-                    gpus=__n_gpus__,
-                    cpu_merge=__cpu_merge__,
-                    cpu_relocation=__cpu_reloc__) \
-                if __n_gpus__ > 1 \
-                else model
+            if __n_gpus__ > 1:
+                _model_to_fit = \
+                    arimo.backend.keras.utils.multi_gpu_model(
+                        model._obj,
+                        gpus=__n_gpus__,
+                        cpu_merge=__cpu_merge__,
+                        cpu_relocation=__cpu_reloc__)
+
+                if arimo.debug.SAVE_MULTI_GPU_MODELS:
+                    model._obj = _model_to_fit
+
+            else:
+                _model_to_fit = model
 
             _model_to_fit.compile(
                 loss=self.params.model.train.objective
