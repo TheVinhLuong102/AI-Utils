@@ -29,8 +29,7 @@ def import_deps(_):
     return d
 
 
-arimo.backend.init(
-    sparkApp='test')
+arimo.backend.initSpark(sparkApp='test')
 
 pprint(
     arimo.backend.spark.sparkContext

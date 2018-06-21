@@ -43,7 +43,7 @@ if fs._ON_LINUX_CLUSTER_WITH_HDFS:
         _mv=True)
 
 
-arimo.backend.init(
+arimo.backend.initSpark(
     sparkApp='test')
 
 
