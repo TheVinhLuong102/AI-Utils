@@ -31,8 +31,7 @@ def import_deps(_):
 
 arimo.backend.initSpark(sparkApp='test')
 
-pprint(
-    arimo.backend.spark.sparkContext
-    .parallelize(range(27))
-    .map(import_deps)
-    .collect())
+pprint(arimo.backend.spark.sparkContext
+        .parallelize(range(27))
+        .map(import_deps)
+        .collect())
