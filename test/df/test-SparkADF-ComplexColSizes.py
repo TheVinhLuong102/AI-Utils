@@ -1,6 +1,6 @@
 import pandas
 
-from pyspark.ml.feature import VectorAssembler, VectorSizeHint
+from pyspark.ml.feature import VectorAssembler
 from pyspark.ml import PipelineModel
 
 from arimo.df.spark import SparkADF
@@ -30,3 +30,8 @@ vadf = adf(
             # VectorAssembler(inputCols=['Sx', 'Syz'], outputCol='VSxSyz'),   # StructType(...) of not supported
             VectorAssembler(inputCols=['Vx', 'Vyz'], outputCol='VVxVyz')
         ]).transform)
+
+
+print(vadf._colWidth('Vx'),
+      vadf._colWidth('Vyz'),
+      vadf._colWidth('VVxVyz'))
