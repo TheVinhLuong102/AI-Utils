@@ -131,7 +131,7 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
             '\n- Generator Queue Size: {:,}'
             '\n- Processes/Threads: {:,}'
             '\n- Multi-Processing: {}'
-            '\n- GPUs: {}{}{}'
+            '\n- GPUs: {}{}'
             .format(
                 self.params.data._prep_vec_size,
                 self.params.model.train._n_train_samples,
@@ -145,8 +145,7 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                 __n_workers__,
                 __multiproc__,
                 __n_gpus__,
-                ' (CPU Merge: {}; CPU Reloc: {}; Save Multi-GPU Model: {})'
-                        .format(__cpu_merge__, __cpu_reloc__, arimo.debug.SAVE_MULTI_GPU_MODELS)
+                ' (CPU Merge: {}; CPU Reloc: {})'.format(__cpu_merge__, __cpu_reloc__)
                     if __n_gpus__ > 1
                     else ''))
 
