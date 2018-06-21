@@ -1793,211 +1793,211 @@ assert numpy.allclose(
     equal_nan=False)
 
 
-print('\n\nAREA UNDER PRECISION-RECALL CURVE:')
+# print('\n\nAREA UNDER PRECISION-RECALL CURVE:')
 
 
-pr_auc___bin_int_labeled = \
-    PR_AuC(
-        label_col=Y_BIN_INT_COL,
-        score_col=SCORE_BIN_COL,
-        n_classes=None,
-        labels=BIN_LABELS)
+# pr_auc___bin_int_labeled = \
+#     PR_AuC(
+#         label_col=Y_BIN_INT_COL,
+#         score_col=SCORE_BIN_COL,
+#         n_classes=None,
+#         labels=BIN_LABELS)
 
-pandas_pr_auc___bin_int_labeled = \
-    pr_auc___bin_int_labeled(
-        _uncache_eval_metrics(df))
+# pandas_pr_auc___bin_int_labeled = \
+#     pr_auc___bin_int_labeled(
+#         _uncache_eval_metrics(df))
 
-adf_pr_auc___bin_int_labeled = \
-    pr_auc___bin_int_labeled(
-        _uncache_eval_metrics(adf))
+# adf_pr_auc___bin_int_labeled = \
+#     pr_auc___bin_int_labeled(
+#         _uncache_eval_metrics(adf))
 
-spark_pr_auc___bin_int_labeled = \
-    pr_auc___bin_int_labeled(
-        _uncache_eval_metrics(sdf))
+# spark_pr_auc___bin_int_labeled = \
+#     pr_auc___bin_int_labeled(
+#         _uncache_eval_metrics(sdf))
 
-print('\n\n1. PR AuC (bin, int, labeled):\n\n',
-      pandas_pr_auc___bin_int_labeled, '\n\n',
-      adf_pr_auc___bin_int_labeled, '\n\n',
-      spark_pr_auc___bin_int_labeled, sep='')
+# print('\n\n1. PR AuC (bin, int, labeled):\n\n',
+#       pandas_pr_auc___bin_int_labeled, '\n\n',
+#       adf_pr_auc___bin_int_labeled, '\n\n',
+#       spark_pr_auc___bin_int_labeled, sep='')
 
-assert numpy.allclose(
-    pandas_pr_auc___bin_int_labeled,
-    adf_pr_auc___bin_int_labeled,
-    equal_nan=True) \
-  and numpy.allclose(
-    pandas_pr_auc___bin_int_labeled,
-    spark_pr_auc___bin_int_labeled,
-    equal_nan=True)
-
-
-pr_auc___bin_int_unlabeled = \
-    PR_AuC(
-        label_col=Y_BIN_INT_COL,
-        score_col=SCORE_BIN_COL,
-        n_classes=2,
-        labels=None)
-
-pandas_pr_auc___bin_int_unlabeled = \
-    pr_auc___bin_int_unlabeled(
-        _uncache_eval_metrics(df))
-
-adf_pr_auc___bin_int_unlabeled = \
-    pr_auc___bin_int_unlabeled(
-        _uncache_eval_metrics(adf))
-
-spark_pr_auc___bin_int_unlabeled = \
-    pr_auc___bin_int_unlabeled(
-        _uncache_eval_metrics(sdf))
-
-print('\n\n2. PR AuC (bin, int, unlabeled):\n\n',
-      pandas_pr_auc___bin_int_unlabeled, '\n\n',
-      adf_pr_auc___bin_int_unlabeled, '\n\n',
-      spark_pr_auc___bin_int_unlabeled, sep='')
-
-assert numpy.allclose(
-    pandas_pr_auc___bin_int_unlabeled,
-    adf_pr_auc___bin_int_unlabeled,
-    equal_nan=True) \
-   and numpy.allclose(
-    pandas_pr_auc___bin_int_unlabeled,
-    spark_pr_auc___bin_int_unlabeled,
-    equal_nan=True)
+# assert numpy.allclose(
+#     pandas_pr_auc___bin_int_labeled,
+#     adf_pr_auc___bin_int_labeled,
+#     equal_nan=True) \
+#   and numpy.allclose(
+#     pandas_pr_auc___bin_int_labeled,
+#     spark_pr_auc___bin_int_labeled,
+#     equal_nan=True)
 
 
-pr_auc___bin_str_labeled = \
-    PR_AuC(
-        label_col=Y_BIN_STR_COL,
-        score_col=SCORE_BIN_COL,
-        n_classes=None,
-        labels=BIN_LABELS)
+# pr_auc___bin_int_unlabeled = \
+#     PR_AuC(
+#         label_col=Y_BIN_INT_COL,
+#         score_col=SCORE_BIN_COL,
+#         n_classes=2,
+#         labels=None)
 
-pandas_pr_auc___bin_str_labeled = \
-    pr_auc___bin_str_labeled(
-        _uncache_eval_metrics(df))
+# pandas_pr_auc___bin_int_unlabeled = \
+#     pr_auc___bin_int_unlabeled(
+#         _uncache_eval_metrics(df))
 
-adf_pr_auc___bin_str_labeled = \
-    pr_auc___bin_str_labeled(
-        _uncache_eval_metrics(adf))
+# adf_pr_auc___bin_int_unlabeled = \
+#     pr_auc___bin_int_unlabeled(
+#         _uncache_eval_metrics(adf))
 
-spark_pr_auc___bin_str_labeled = \
-    pr_auc___bin_str_labeled(
-        _uncache_eval_metrics(sdf))
+# spark_pr_auc___bin_int_unlabeled = \
+#     pr_auc___bin_int_unlabeled(
+#         _uncache_eval_metrics(sdf))
 
-print('\n\n3. PR AuC (bin, str, labeled):\n\n',
-      pandas_pr_auc___bin_str_labeled, '\n\n',
-      adf_pr_auc___bin_str_labeled, '\n\n',
-      spark_pr_auc___bin_str_labeled, sep='')
+# print('\n\n2. PR AuC (bin, int, unlabeled):\n\n',
+#       pandas_pr_auc___bin_int_unlabeled, '\n\n',
+#       adf_pr_auc___bin_int_unlabeled, '\n\n',
+#       spark_pr_auc___bin_int_unlabeled, sep='')
 
-assert numpy.allclose(
-    pandas_pr_auc___bin_str_labeled,
-    adf_pr_auc___bin_str_labeled,
-    equal_nan=True) \
-   and numpy.allclose(
-    pandas_pr_auc___bin_str_labeled,
-    spark_pr_auc___bin_str_labeled,
-    equal_nan=True)
-
-
-pr_auc___multi_int_labeled = \
-    PR_AuC(
-        label_col=Y_MULTI_INT_COL,
-        score_col=SCORE_MULTI_COL,
-        n_classes=None,
-        labels=MULTI_LABELS)
-
-pandas_pr_auc___multi_int_labeled = \
-    pr_auc___multi_int_labeled(
-        _uncache_eval_metrics(df))
-
-adf_pr_auc___multi_int_labeled = \
-    pr_auc___multi_int_labeled(
-        _uncache_eval_metrics(adf))
-
-spark_pr_auc___multi_int_labeled = \
-    pr_auc___multi_int_labeled(
-        _uncache_eval_metrics(sdf))
-
-print('\n\n4. PR AuC (multi, int, labeled):\n\n',
-      pandas_pr_auc___multi_int_labeled, '\n\n',
-      adf_pr_auc___multi_int_labeled, '\n\n',
-      spark_pr_auc___multi_int_labeled, sep='')
-
-assert numpy.allclose(
-    pandas_pr_auc___multi_int_labeled,
-    adf_pr_auc___multi_int_labeled,
-    equal_nan=True) \
-   and numpy.allclose(
-    pandas_pr_auc___multi_int_labeled,
-    spark_pr_auc___multi_int_labeled,
-    equal_nan=True)
+# assert numpy.allclose(
+#     pandas_pr_auc___bin_int_unlabeled,
+#     adf_pr_auc___bin_int_unlabeled,
+#     equal_nan=True) \
+#    and numpy.allclose(
+#     pandas_pr_auc___bin_int_unlabeled,
+#     spark_pr_auc___bin_int_unlabeled,
+#     equal_nan=True)
 
 
-pr_auc___multi_int_unlabeled = \
-    PR_AuC(
-        label_col=Y_MULTI_INT_COL,
-        score_col=SCORE_MULTI_COL,
-        n_classes=N_MULTI_CLASSES,
-        labels=None)
+# pr_auc___bin_str_labeled = \
+#     PR_AuC(
+#         label_col=Y_BIN_STR_COL,
+#         score_col=SCORE_BIN_COL,
+#         n_classes=None,
+#         labels=BIN_LABELS)
 
-pandas_pr_auc___multi_int_unlabeled = \
-    pr_auc___multi_int_unlabeled(
-        _uncache_eval_metrics(df))
+# pandas_pr_auc___bin_str_labeled = \
+#     pr_auc___bin_str_labeled(
+#         _uncache_eval_metrics(df))
 
-adf_pr_auc___multi_int_unlabeled = \
-    pr_auc___multi_int_unlabeled(
-        _uncache_eval_metrics(adf))
+# adf_pr_auc___bin_str_labeled = \
+#     pr_auc___bin_str_labeled(
+#         _uncache_eval_metrics(adf))
 
-spark_pr_auc___multi_int_unlabeled = \
-    pr_auc___multi_int_unlabeled(
-        _uncache_eval_metrics(sdf))
+# spark_pr_auc___bin_str_labeled = \
+#     pr_auc___bin_str_labeled(
+#         _uncache_eval_metrics(sdf))
 
-print('\n\n5. PR AuC (multi, int, unlabeled):\n\n',
-      pandas_pr_auc___multi_int_unlabeled, '\n\n',
-      adf_pr_auc___multi_int_unlabeled, '\n\n',
-      spark_pr_auc___multi_int_unlabeled, sep='')
+# print('\n\n3. PR AuC (bin, str, labeled):\n\n',
+#       pandas_pr_auc___bin_str_labeled, '\n\n',
+#       adf_pr_auc___bin_str_labeled, '\n\n',
+#       spark_pr_auc___bin_str_labeled, sep='')
 
-assert numpy.allclose(
-    pandas_pr_auc___multi_int_unlabeled,
-    adf_pr_auc___multi_int_unlabeled,
-    equal_nan=True) \
-  and numpy.allclose(
-    pandas_pr_auc___multi_int_unlabeled,
-    spark_pr_auc___multi_int_unlabeled,
-    equal_nan=True)
+# assert numpy.allclose(
+#     pandas_pr_auc___bin_str_labeled,
+#     adf_pr_auc___bin_str_labeled,
+#     equal_nan=True) \
+#    and numpy.allclose(
+#     pandas_pr_auc___bin_str_labeled,
+#     spark_pr_auc___bin_str_labeled,
+#     equal_nan=True)
 
 
-pr_auc___multi_str_labeled = \
-    PR_AuC(
-        label_col=Y_MULTI_STR_COL,
-        score_col=SCORE_MULTI_COL,
-        n_classes=None,
-        labels=MULTI_LABELS)
+# pr_auc___multi_int_labeled = \
+#     PR_AuC(
+#         label_col=Y_MULTI_INT_COL,
+#         score_col=SCORE_MULTI_COL,
+#         n_classes=None,
+#         labels=MULTI_LABELS)
 
-pandas_pr_auc___multi_str_labeled = \
-    pr_auc___multi_str_labeled(
-        _uncache_eval_metrics(df))
+# pandas_pr_auc___multi_int_labeled = \
+#     pr_auc___multi_int_labeled(
+#         _uncache_eval_metrics(df))
 
-adf_pr_auc___multi_str_labeled = \
-    pr_auc___multi_str_labeled(
-        _uncache_eval_metrics(adf))
+# adf_pr_auc___multi_int_labeled = \
+#     pr_auc___multi_int_labeled(
+#         _uncache_eval_metrics(adf))
 
-spark_pr_auc___multi_str_labeled = \
-    pr_auc___multi_str_labeled(
-        _uncache_eval_metrics(sdf))
+# spark_pr_auc___multi_int_labeled = \
+#     pr_auc___multi_int_labeled(
+#         _uncache_eval_metrics(sdf))
 
-print('\n6. PR AuC (multi, str, labeled):\n\n',
-      pandas_pr_auc___multi_str_labeled, '\n\n',
-      adf_pr_auc___multi_str_labeled, '\n\n',
-      spark_pr_auc___multi_str_labeled, sep='')
+# print('\n\n4. PR AuC (multi, int, labeled):\n\n',
+#       pandas_pr_auc___multi_int_labeled, '\n\n',
+#       adf_pr_auc___multi_int_labeled, '\n\n',
+#       spark_pr_auc___multi_int_labeled, sep='')
 
-assert numpy.allclose(
-    pandas_pr_auc___multi_str_labeled,
-    adf_pr_auc___multi_str_labeled,
-    equal_nan=True) \
-   and numpy.allclose(
-    pandas_pr_auc___multi_str_labeled,
-    spark_pr_auc___multi_str_labeled,
-    equal_nan=True)
+# assert numpy.allclose(
+#     pandas_pr_auc___multi_int_labeled,
+#     adf_pr_auc___multi_int_labeled,
+#     equal_nan=True) \
+#    and numpy.allclose(
+#     pandas_pr_auc___multi_int_labeled,
+#     spark_pr_auc___multi_int_labeled,
+#     equal_nan=True)
+
+
+# pr_auc___multi_int_unlabeled = \
+#     PR_AuC(
+#         label_col=Y_MULTI_INT_COL,
+#         score_col=SCORE_MULTI_COL,
+#         n_classes=N_MULTI_CLASSES,
+#         labels=None)
+
+# pandas_pr_auc___multi_int_unlabeled = \
+#     pr_auc___multi_int_unlabeled(
+#         _uncache_eval_metrics(df))
+
+# adf_pr_auc___multi_int_unlabeled = \
+#     pr_auc___multi_int_unlabeled(
+#         _uncache_eval_metrics(adf))
+
+# spark_pr_auc___multi_int_unlabeled = \
+#     pr_auc___multi_int_unlabeled(
+#         _uncache_eval_metrics(sdf))
+
+# print('\n\n5. PR AuC (multi, int, unlabeled):\n\n',
+#       pandas_pr_auc___multi_int_unlabeled, '\n\n',
+#       adf_pr_auc___multi_int_unlabeled, '\n\n',
+#       spark_pr_auc___multi_int_unlabeled, sep='')
+
+# assert numpy.allclose(
+#     pandas_pr_auc___multi_int_unlabeled,
+#     adf_pr_auc___multi_int_unlabeled,
+#     equal_nan=True) \
+#   and numpy.allclose(
+#     pandas_pr_auc___multi_int_unlabeled,
+#     spark_pr_auc___multi_int_unlabeled,
+#     equal_nan=True)
+
+
+# pr_auc___multi_str_labeled = \
+#     PR_AuC(
+#         label_col=Y_MULTI_STR_COL,
+#         score_col=SCORE_MULTI_COL,
+#         n_classes=None,
+#         labels=MULTI_LABELS)
+
+# pandas_pr_auc___multi_str_labeled = \
+#     pr_auc___multi_str_labeled(
+#         _uncache_eval_metrics(df))
+
+# adf_pr_auc___multi_str_labeled = \
+#     pr_auc___multi_str_labeled(
+#         _uncache_eval_metrics(adf))
+
+# spark_pr_auc___multi_str_labeled = \
+#     pr_auc___multi_str_labeled(
+#         _uncache_eval_metrics(sdf))
+
+# print('\n6. PR AuC (multi, str, labeled):\n\n',
+#       pandas_pr_auc___multi_str_labeled, '\n\n',
+#       adf_pr_auc___multi_str_labeled, '\n\n',
+#       spark_pr_auc___multi_str_labeled, sep='')
+
+# assert numpy.allclose(
+#     pandas_pr_auc___multi_str_labeled,
+#     adf_pr_auc___multi_str_labeled,
+#     equal_nan=True) \
+#    and numpy.allclose(
+#     pandas_pr_auc___multi_str_labeled,
+#     spark_pr_auc___multi_str_labeled,
+#     equal_nan=True)
 
 
 print('\n\nAREA UNDER ROC CURVE:')
