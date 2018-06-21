@@ -55,7 +55,7 @@ FORMATS_N_COMPRESSION_CODECS = \
 FULL_FORMAT_NAMES = dict(avro='com.databricks.spark.avro')
 
 
-arimo.backend.init(
+arimo.backend.initSpark(
     sparkApp='test SparkADF save/load ({} in-memory partitions)'.format(N_IN_MEMORY_PARTITIONS),
     sparkConf={'spark.default.parallelism': N_IN_MEMORY_PARTITIONS})
 
