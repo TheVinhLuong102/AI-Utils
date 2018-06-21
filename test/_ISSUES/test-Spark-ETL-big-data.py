@@ -5,7 +5,7 @@ from arimo.util.aws import key_pair
 key, secret = key_pair('PanaAP-CC')
 
 
-SRC_PTH = 's3a://{}:{}@arimo-panasonic-ap/.arimo/PredMaint/PPP/ErrMults/monthly/DISP_CASE---ex_display_case.parquet'.format(_AWS_ACCESS_KEY_ID, _AWS_SECRET_ACCESS_KEY)
+SRC_PTH = 's3a://{}:{}@arimo-panasonic-ap/.arimo/PredMaint/PPP/ErrMults/monthly/DISP_CASE---ex_display_case.parquet'.format(key, secret)
 TBL_NAME = 'this_table'
 TGT_PTH = '/tmp/tmp.pqt'
 
