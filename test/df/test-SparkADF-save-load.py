@@ -60,6 +60,9 @@ arimo.backend.initSpark(
     sparkConf={'spark.default.parallelism': N_IN_MEMORY_PARTITIONS})
 
 
+arimo.backend.setSpark1Partition1File(on=True)
+
+
 TEST_ADF = SparkADF.create(
     data=pandas.DataFrame(
         data=dict(
