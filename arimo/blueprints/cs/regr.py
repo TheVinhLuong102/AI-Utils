@@ -131,7 +131,7 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
             '\n- Generator Queue Size: {:,}'
             '\n- Processes/Threads: {:,}'
             '\n- Multi-Processing: {}'
-            '\n- GPUs: {}{}{}'
+            '\n- GPUs: {}{}'
             .format(
                 self.params.data._prep_vec_size,
                 self.params.model.train._n_train_samples,

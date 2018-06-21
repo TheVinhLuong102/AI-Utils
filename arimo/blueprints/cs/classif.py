@@ -109,7 +109,7 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
             '\n- Generator Queue Size: {:,}'
             '\n- Processes/Threads: {:,}'
             '\n- Multi-Processing: {}'
-            '\n- GPUs: {}{}{}'
+            '\n- GPUs: {}{}'
             .format(
                 self.params.data.label._n_classes,
                 self.params.data._prep_vec_size,
