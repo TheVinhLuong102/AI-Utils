@@ -6,7 +6,7 @@ import pyspark.sql
 import arimo.backend
 
 
-arimo.backend.init()
+arimo.backend.initSpark()
 
 
 sdf_0 = arimo.backend.spark.createDataFrame(
