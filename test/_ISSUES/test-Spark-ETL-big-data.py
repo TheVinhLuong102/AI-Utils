@@ -14,7 +14,7 @@ if arimo.backend.spark:
     arimo.backend.spark.stop()
 
 
-arimo.backend.init(
+arimo.backend.initSpark(
     sparkConf={
         'spark.executor.memoryOverhead': '2g'
         # we can put other configs here to test
