@@ -33,17 +33,17 @@ src_spark_df.createOrReplaceTempView(name=TBL_NAME)
 
 cols_to_agg = \
     'inside_temperature', '__RawPred__inside_temperature', \
-    'global__MedAE__inside_temperature', 'indiv__MedAE__inside_temperature', \
-    'neg__global__MedAE_Mult__inside_temperature', 'pos__global__MedAE_Mult__inside_temperature', \
-    'sgn__global__MedAE_Mult__inside_temperature', 'abs__global__MedAE_Mult__inside_temperature', \
-    'neg__indiv__MedAE_Mult__inside_temperature', 'pos__indiv__MedAE_Mult__inside_temperature', \
-    'sgn__indiv__MedAE_Mult__inside_temperature', 'abs__indiv__MedAE_Mult__inside_temperature', \
-    'rowEuclNorm__abs__global__MedAE_Mult', 'rowSumOfLog__abs__global__MedAE_Mult', \
-    'rowHigh__abs__global__MedAE_Mult', 'rowLow__abs__global__MedAE_Mult', \
-    'rowMean__abs__global__MedAE_Mult', 'rowGMean__abs__global__MedAE_Mult', \
-    'rowEuclNorm__abs__indiv__MedAE_Mult', 'rowSumOfLog__abs__indiv__MedAE_Mult', \
-    'rowHigh__abs__indiv__MedAE_Mult', 'rowLow__abs__indiv__MedAE_Mult', \
-    'rowMean__abs__indiv__MedAE_Mult', 'rowGMean__abs__indiv__MedAE_Mult'
+    'MAE__inside_temperature', 'MedAE__inside_temperature', \
+    'neg__MAE_Mult__inside_temperature', 'pos__MAE_Mult__inside_temperature', \
+    'sgn__MAE_Mult__inside_temperature', 'abs__MAE_Mult__inside_temperature', \
+    'neg__MedAE_Mult__inside_temperature', 'pos__MedAE_Mult__inside_temperature', \
+    'sgn__MedAE_Mult__inside_temperature', 'abs__MedAE_Mult__inside_temperature', \
+    'rowEuclNorm__abs__MAE_Mult', 'rowSumOfLog__abs__MAE_Mult', \
+    'rowHigh__abs__MAE_Mult', 'rowLow__abs__MAE_Mult', \
+    'rowMean__abs__MAE_Mult', 'rowGMean__abs__MAE_Mult', \
+    'rowEuclNorm__abs__MedAE_Mult', 'rowSumOfLog__abs__MedAE_Mult', \
+    'rowHigh__abs__MedAE_Mult', 'rowLow__abs__MedAE_Mult', \
+    'rowMean__abs__MedAE_Mult', 'rowGMean__abs__MedAE_Mult'
 
 
 sql_aggs = []
