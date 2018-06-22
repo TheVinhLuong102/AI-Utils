@@ -671,19 +671,6 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
 
             else:
                 if nPieceSubPaths > 1:
-                    subsetPath = \
-                        os.path.join(self.path, pieceSubPaths[0]) \
-                        if self.nPieces > 1 \
-                        else self.path
-
-                    if self.s3Client:
-                        aws_access_key_id = self._srcArrowDS.fs.fs.key
-                        aws_secret_access_key = self._srcArrowDS.fs.fs.secret
-
-                    else:
-                        aws_access_key_id = aws_secret_access_key = None
-
-                else:
                     verbose = kwargs.pop('verbose', True)
 
                     if self.s3Client:
@@ -726,6 +713,19 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                                 to_path=os.path.join(subsetPath, pieceSubPath),
                                 hdfs=fs._ON_LINUX_CLUSTER_WITH_HDFS, is_dir=False)
 
+                        aws_access_key_id = aws_secret_access_key = None
+
+                else:
+                    subsetPath = \
+                        os.path.join(self.path, pieceSubPaths[0]) \
+                            if self.nPieces > 1 \
+                            else self.path
+
+                    if self.s3Client:
+                        aws_access_key_id = self._srcArrowDS.fs.fs.key
+                        aws_secret_access_key = self._srcArrowDS.fs.fs.secret
+
+                    else:
                         aws_access_key_id = aws_secret_access_key = None
 
                 stdKwArgs = self._extractStdKwArgs(kwargs, resetToClassDefaults=False, inplace=False)
