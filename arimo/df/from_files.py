@@ -1833,33 +1833,40 @@ class ArrowADF(_ArrowADFABC):
                 return self
 
             else:
-                verbose = kwargs.pop('verbose', True)
-
                 if self.fromS3:
-                    subsetDirS3Key = \
-                        os.path.join(
-                            self.tmpDirS3Key,
-                            str(uuid.uuid4()))
+                    if nPiecePaths > 1:
+                        verbose = kwargs.pop('verbose', True)
 
-                    _pathPlusSepLen = len(self.path) + 1
+                        subsetDirS3Key = \
+                            os.path.join(
+                                self.tmpDirS3Key,
+                                str(uuid.uuid4()))
 
-                    for piecePath in \
-                            (tqdm.tqdm(piecePaths)
-                            if verbose
-                            else piecePaths):
-                        pieceSubPath = piecePath[_pathPlusSepLen:]
+                        _pathPlusSepLen = len(self.path) + 1
 
-                        self.s3Client.copy(
-                            CopySource=dict(
+                        for piecePath in \
+                                (tqdm.tqdm(piecePaths)
+                                if verbose
+                                else piecePaths):
+                            pieceSubPath = piecePath[_pathPlusSepLen:]
+
+                            self.s3Client.copy(
+                                CopySource=dict(
+                                    Bucket=self.s3Bucket,
+                                    Key=os.path.join(self.pathS3Key, pieceSubPath)),
                                 Bucket=self.s3Bucket,
-                                Key=os.path.join(self.pathS3Key, pieceSubPath)),
-                            Bucket=self.s3Bucket,
-                            Key=os.path.join(subsetDirS3Key, pieceSubPath))
+                                Key=os.path.join(subsetDirS3Key, pieceSubPath))
+
+                        subsetPath = \
+                            os.path.join(
+                                's3://{}'.format(self.s3Bucket),
+                                subsetDirS3Key)
+
+                    else:
+                        subsetPath = piecePaths[0]
 
                     return ArrowADF(
-                            path=os.path.join(
-                                's3://{}'.format(self.s3Bucket),
-                                subsetDirS3Key),
+                            path=subsetPath,
 
                             aws_access_key_id=self._srcArrowDS.fs.fs.key,
                             aws_secret_access_key=self._srcArrowDS.fs.fs.secret,

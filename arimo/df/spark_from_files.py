@@ -670,49 +670,63 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 return self
 
             else:
-                verbose = kwargs.pop('verbose', True)
+                if nPieceSubPaths > 1:
+                    subsetPath = \
+                        os.path.join(self.path, pieceSubPaths[0]) \
+                        if self.nPieces > 1 \
+                        else self.path
 
-                if self.s3Client:
-                    subsetDirS3Key = \
-                        os.path.join(
-                            self.tmpDirS3Key,
-                            str(uuid.uuid4()))
+                    if self.s3Client:
+                        aws_access_key_id = self._srcArrowDS.fs.fs.key
+                        aws_secret_access_key = self._srcArrowDS.fs.fs.secret
 
-                    subsetDirPath = \
-                        os.path.join(
-                            's3://{}'.format(self.s3Bucket),
-                            subsetDirS3Key)
-
-                    for pieceSubPath in \
-                            (tqdm.tqdm(pieceSubPaths)
-                             if verbose
-                             else pieceSubPaths):
-                        self.s3Client.copy(
-                            CopySource=dict(
-                                Bucket=self.s3Bucket,
-                                Key=os.path.join(self.pathS3Key, pieceSubPath)),
-                            Bucket=self.s3Bucket,
-                            Key=os.path.join(subsetDirS3Key, pieceSubPath))
-
-                    aws_access_key_id = self._srcArrowDS.fs.fs.key
-                    aws_secret_access_key = self._srcArrowDS.fs.fs.secret
+                    else:
+                        aws_access_key_id = aws_secret_access_key = None
 
                 else:
-                    subsetDirPath = \
-                        os.path.join(
-                            self.tmpDirPath,
-                            str(uuid.uuid4()))
+                    verbose = kwargs.pop('verbose', True)
 
-                    for pieceSubPath in \
-                            (tqdm.tqdm(pieceSubPaths)
-                             if verbose
-                             else pieceSubPaths):
-                        fs.cp(
-                            from_path=os.path.join(self.path, pieceSubPath),
-                            to_path=os.path.join(subsetDirPath, pieceSubPath),
-                            hdfs=fs._ON_LINUX_CLUSTER_WITH_HDFS, is_dir=False)
+                    if self.s3Client:
+                        subsetDirS3Key = \
+                            os.path.join(
+                                self.tmpDirS3Key,
+                                str(uuid.uuid4()))
 
-                    aws_access_key_id = aws_secret_access_key = None
+                        subsetPath = \
+                            os.path.join(
+                                's3://{}'.format(self.s3Bucket),
+                                subsetDirS3Key)
+
+                        for pieceSubPath in \
+                                (tqdm.tqdm(pieceSubPaths)
+                                 if verbose
+                                 else pieceSubPaths):
+                            self.s3Client.copy(
+                                CopySource=dict(
+                                    Bucket=self.s3Bucket,
+                                    Key=os.path.join(self.pathS3Key, pieceSubPath)),
+                                Bucket=self.s3Bucket,
+                                Key=os.path.join(subsetDirS3Key, pieceSubPath))
+
+                        aws_access_key_id = self._srcArrowDS.fs.fs.key
+                        aws_secret_access_key = self._srcArrowDS.fs.fs.secret
+
+                    else:
+                        subsetPath = \
+                            os.path.join(
+                                self.tmpDirPath,
+                                str(uuid.uuid4()))
+
+                        for pieceSubPath in \
+                                (tqdm.tqdm(pieceSubPaths)
+                                 if verbose
+                                 else pieceSubPaths):
+                            fs.cp(
+                                from_path=os.path.join(self.path, pieceSubPath),
+                                to_path=os.path.join(subsetPath, pieceSubPath),
+                                hdfs=fs._ON_LINUX_CLUSTER_WITH_HDFS, is_dir=False)
+
+                        aws_access_key_id = aws_secret_access_key = None
 
                 stdKwArgs = self._extractStdKwArgs(kwargs, resetToClassDefaults=False, inplace=False)
 
@@ -723,7 +737,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                     stdKwArgs.nDetPrePartitions = nPieceSubPaths
 
                 adf = ArrowSparkADF(
-                    path=subsetDirPath,
+                    path=subsetPath,
                     aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
                     _srcSparkDFSchema=self._srcSparkDFSchema,
                     _sparkDFTransforms=self._sparkDFTransforms,
