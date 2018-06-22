@@ -64,6 +64,7 @@ Xs_from_spark = {}
 for label_var in LABEL_VARS:
     component_bp_data_params = \
         ppp_bp.params.model.component_blueprints[label_var].data
+
     Xs_from_arrow[label_var] = \
         X_from_arrow = \
         prep_arrow_adfs[label_var] \
@@ -71,11 +72,13 @@ for label_var in LABEL_VARS:
             .collect() \
             [list(component_bp_data_params._cat_prep_cols + component_bp_data_params._num_prep_cols)] \
             .values
+
     Xs_from_spark[label_var] = \
         X_from_spark = \
         numpy.vstack(
             v.toArray()
             for v in df_from_spark['__Xvec__' + label_var])
+
     assert numpy.allclose(
-            X_from_spark,
-            X_from_arrow)
+            X_from_arrow,
+            X_from_spark)
