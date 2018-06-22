@@ -1,8 +1,4 @@
-from __future__ import absolute_import
-
 import numpy
-
-from keras.models import load_model
 
 import arimo.backend
 
@@ -29,10 +25,11 @@ def train(merge=False, reloc=False):
         filepath=MODEL_O_FILE_PATH,
         overwrite=True,
         include_optimizer=True)
-    model_0 = load_model(
-        filepath=MODEL_O_FILE_PATH,
-        custom_objects=None,
-        compile=True)
+    model_0 = \
+        arimo.backend.keras.models.load_model(
+            filepath=MODEL_O_FILE_PATH,
+            custom_objects=None,
+            compile=True)
     y0 = model_0.predict(x)
 
     multi_gpu_model = \
@@ -54,20 +51,22 @@ def train(merge=False, reloc=False):
         filepath=MODEL_1_FILE_PATH,
         overwrite=True,
         include_optimizer=True)
-    model_1 = load_model(
-        filepath=MODEL_1_FILE_PATH,
-        custom_objects=None,
-        compile=True)
+    model_1 = \
+        arimo.backend.keras.models.load_model(
+            filepath=MODEL_1_FILE_PATH,
+            custom_objects=None,
+            compile=True)
     y1 = model_1.predict(x)
 
     multi_gpu_model.save(
         filepath=MODEL_2_FILE_PATH,
         overwrite=True,
         include_optimizer=True)
-    model_2 = load_model(
-        filepath=MODEL_2_FILE_PATH,
-        custom_objects=None,
-        compile=True)
+    model_2 = \
+        arimo.backend.keras.models.load_model(
+            filepath=MODEL_2_FILE_PATH,
+            custom_objects=None,
+            compile=True)
     y2 = model_2.predict(x)
 
     print('MERGE= {}, RELOC= {}: Loss={}'.format(
