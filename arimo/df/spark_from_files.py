@@ -670,9 +670,9 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 return self
 
             else:
-                if nPieceSubPaths > 1:
-                    verbose = kwargs.pop('verbose', True)
+                verbose = kwargs.pop('verbose', True)
 
+                if nPieceSubPaths > 1:
                     if self.s3Client:
                         subsetDirS3Key = \
                             os.path.join(
