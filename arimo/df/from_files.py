@@ -833,7 +833,7 @@ class ArrowADF(_ArrowADFABC):
             _cache.srcTypesInclPartitionKVs = Namespace()
 
             for i, piecePath in enumerate(_cache.piecePaths):
-                if piecePath in self._PIECE_CACHES:
+                if (_cache.nPieces > 1) and (piecePath in self._PIECE_CACHES):
                     pieceCache = self._PIECE_CACHES[piecePath]
 
                     pieceCache.arrowDFs.add(self)
