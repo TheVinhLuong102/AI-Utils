@@ -14,7 +14,9 @@ import uuid
 from pyspark.sql.types import ArrayType, DoubleType, StructField, StructType
 
 import arimo.backend
-from arimo.blueprints.base import _docstr_blueprint, _SupervisedBlueprintABC, _DLSupervisedBlueprintABC
+from arimo.blueprints.base import \
+    _docstr_blueprint, _SupervisedBlueprintABC, _DLSupervisedBlueprintABC, \
+    BlueprintedArimoDLModel, BlueprintedKerasModel
 from arimo.df.spark import SparkADF
 import arimo.eval.metrics
 from arimo.util import clean_str, clean_uuid, fs
@@ -326,7 +328,29 @@ class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSu
         n_classes = self.params.data.label._n_classes
         binary = (n_classes == 2)
 
-        if isinstance(model._obj, arimo.backend.keras.models.Model):
+        if isinstance(model, BlueprintedArimoDLModel):
+            def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
+                if cluster:
+                    from dl import _load_arimo_dl_model
+                else:
+                    from arimo.util.dl import _load_arimo_dl_model
+
+                return [(r +
+                         (float(s[0])
+                          if (n_classes is None) or binary
+                          else s.tolist(),))
+                        for r, s in
+                            zip(tup[0],
+                                _load_arimo_dl_model(
+                                        dir_path=_model_dir_path)
+                                    .predict(
+                                        data=tup[1],
+                                        input_tensor_transform_fn=None,
+                                        batch_size=__batch_size__))]
+
+        else:
+            assert isinstance(model, BlueprintedKerasModel)
+
             def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
                 if cluster:
                     from dl import _load_keras_model
@@ -338,13 +362,13 @@ class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSu
                           if (n_classes is None) or binary
                           else s.tolist(),))
                         for r, s in
-                        zip(tup[0],
-                            _load_keras_model(
-                                file_path=_model_file_path)
-                            .predict(
-                                x=tup[1],
-                                batch_size=__batch_size__,
-                                verbose=0))]
+                            zip(tup[0],
+                                _load_keras_model(
+                                        file_path=_model_file_path)
+                                    .predict(
+                                        x=tup[1],
+                                        batch_size=__batch_size__,
+                                        verbose=0))]
 
         score_adf = \
             SparkADF.create(

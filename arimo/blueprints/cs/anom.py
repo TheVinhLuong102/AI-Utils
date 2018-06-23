@@ -40,31 +40,31 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
         prep_vec_cols = []
         raw_score_cols = []
 
-        for label_var_name, blueprint_params in self.params.model.component_blueprints.items():
-            if (label_var_name in adf.columns) and blueprint_params.model.ver:
+        for label_var_name, component_blueprint_params in self.params.model.component_blueprints.items():
+            if (label_var_name in adf.columns) and component_blueprint_params.model.ver:
                 label_var_names.append(label_var_name)
 
                 # legacy fix
                 _component_blueprint_uuid_prefix = \
                     '{}---{}'.format(self.params.uuid, label_var_name)
 
-                if not blueprint_params.uuid.startswith(_component_blueprint_uuid_prefix):
-                    blueprint_params.uuid = _component_blueprint_uuid_prefix
+                if not component_blueprint_params.uuid.startswith(_component_blueprint_uuid_prefix):
+                    component_blueprint_params.uuid = _component_blueprint_uuid_prefix
 
                 component_blueprint = \
                     _blueprint_from_params(
-                        blueprint_params=blueprint_params,
+                        blueprint_params=component_blueprint_params,
                         aws_access_key_id=self.auth.aws.access_key_id,
                         aws_secret_access_key=self.auth.aws.secret_access_key,
                         verbose=False)
 
-                assert component_blueprint.params.uuid == blueprint_params.uuid, \
+                assert component_blueprint.params.uuid == component_blueprint_params.uuid, \
                     '*** {} ***'.format(component_blueprint.params.uuid)
 
                 model_file_path = \
                     os.path.join(
-                        component_blueprint.model(ver=blueprint_params.model.ver).dir,
-                        blueprint_params.model._persist.file)
+                        component_blueprint.model(ver=component_blueprint_params.model.ver).dir,
+                        component_blueprint_params.model._persist.file)
 
                 assert os.path.isfile(model_file_path), \
                     '*** {} DOES NOT EXIST ***'.format(model_file_path)
@@ -97,9 +97,9 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
 
                 model_file_paths.append(_model_file_path)
 
-                prep_vec_cols.append(blueprint_params.data._prep_vec_col + label_var_name)
+                prep_vec_cols.append(component_blueprint_params.data._prep_vec_col + label_var_name)
 
-                raw_score_cols.append(blueprint_params.model.score.raw_score_col_prefix + label_var_name)
+                raw_score_cols.append(component_blueprint_params.model.score.raw_score_col_prefix + label_var_name)
 
         if __eval__:
             adf(self.params.data.id_col,
@@ -123,25 +123,47 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
 
         rdd = adf.rdd.mapPartitions(batch)
 
-        def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
-            if cluster:
-                from dl import _load_keras_model
-            else:
-                from arimo.util.dl import _load_keras_model
+        if component_blueprint_params.model.factory.name.startswith('arimo.dl.experimental.keras'):
+            def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
+                if cluster:
+                    from dl import _load_keras_model
+                else:
+                    from arimo.util.dl import _load_keras_model
 
-            return [(row[0] +
-                         tuple(
-                            float(s[0])
-                            for s in row[1:]))
-                    for row in
-                        zip(tup[0],
-                            *(_load_keras_model(
-                                    file_path=dl_model_file_path)
-                                  .predict(
-                                    x=x,
-                                    batch_size=__batch_size__,
-                                    verbose=0)
-                              for dl_model_file_path, x in zip(model_file_paths, tup[1:])))]
+                return [(row[0] +
+                            tuple(
+                                float(s[0])
+                                for s in row[1:]))
+                        for row in
+                            zip(tup[0],
+                                *(_load_keras_model(
+                                        file_path=dl_model_file_path)
+                                    .predict(
+                                        x=x,
+                                        batch_size=__batch_size__,
+                                        verbose=0)
+                                  for dl_model_file_path, x in zip(model_file_paths, tup[1:])))]
+
+        else:
+            def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
+                if cluster:
+                    from dl import _load_arimo_dl_model
+                else:
+                    from arimo.util.dl import _load_arimo_dl_model
+
+                return [(row[0] +
+                            tuple(
+                                float(s[0])
+                                for s in row[1:]))
+                        for row in
+                            zip(tup[0],
+                                *(_load_arimo_dl_model(
+                                        dir_path=dl_model_dir_path)
+                                    .predict(
+                                        data=x,
+                                        input_tensor_transform_fn=None,
+                                        batch_size=__batch_size__)
+                              for dl_model_dir_path, x in zip(model_dir_paths, tup[1:])))]
 
         return SparkADF.create(
                 data=rdd.flatMap(score),
