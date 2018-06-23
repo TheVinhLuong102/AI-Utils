@@ -187,33 +187,48 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
                      if prep_vec_col in col)
         max_input_ser_len = self.params.max_input_ser_len
 
-        model_path = os.path.join(model.dir, self.params.model._persist.file)
+        if isinstance(model, BlueprintedArimoDLModel):
+            model_path = _model_path = model.dir
 
-        if fs._ON_LINUX_CLUSTER_WITH_HDFS:
-            if model_path not in self._MODEL_PATHS_ON_SPARK_WORKER_NODES:
-                _tmp_local_file_name = \
-                    str(uuid.uuid4())
+            if fs._ON_LINUX_CLUSTER_WITH_HDFS and (model_path not in self._MODEL_PATHS_ON_SPARK_WORKER_NODES):
+                fs.put(
+                    from_local=model_path,
+                    to_hdfs=model_path,
+                    is_dir=True,
+                    _mv=False)
 
-                _tmp_local_file_path = \
-                    os.path.join(
-                        '/tmp',
-                        _tmp_local_file_name)
-
-                shutil.copyfile(
-                    src=model_path,
-                    dst=_tmp_local_file_path)
-
-                arimo.backend.spark.sparkContext.addFile(
-                    path=_tmp_local_file_path,
-                    recursive=False)
-
-                self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path] = \
-                    _tmp_local_file_name   # SparkFiles.get(filename=_tmp_local_file_name)
-
-            _model_path = self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path]
+                self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path] = model_path
 
         else:
-            _model_path = model_path
+            assert isinstance(model, BlueprintedKerasModel)
+
+            model_path = os.path.join(model.dir, self.params.model._persist.file)
+
+            if fs._ON_LINUX_CLUSTER_WITH_HDFS:
+                if model_path not in self._MODEL_PATHS_ON_SPARK_WORKER_NODES:
+                    _tmp_local_file_name = \
+                        str(uuid.uuid4())
+
+                    _tmp_local_file_path = \
+                        os.path.join(
+                            '/tmp',
+                            _tmp_local_file_name)
+
+                    shutil.copyfile(
+                        src=model_path,
+                        dst=_tmp_local_file_path)
+
+                    arimo.backend.spark.sparkContext.addFile(
+                        path=_tmp_local_file_path,
+                        recursive=False)
+
+                    self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path] = \
+                        _tmp_local_file_name   # SparkFiles.get(filename=_tmp_local_file_name)
+
+                _model_path = self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path]
+
+            else:
+                _model_path = model_path
 
         raw_score_col = self.params.model.score.raw_score_col_prefix + self.params.data.label.var
         
@@ -261,7 +276,8 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
                         for i, chunk, t_ord_in_chunk, score in
                             zip(tup[0], tup[1], tup[2],
                                 _load_arimo_dl_model(
-                                        dir_path=_model_path)
+                                        dir_path=_model_path,
+                                        hdfs=cluster)
                                     .predict(
                                         data=tup[3],
                                         input_tensor_transform_fn=None,

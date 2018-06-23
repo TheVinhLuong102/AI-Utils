@@ -61,39 +61,56 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
                 assert component_blueprint.params.uuid == component_blueprint_params.uuid, \
                     '*** {} ***'.format(component_blueprint.params.uuid)
 
-                model_path = \
-                    os.path.join(
-                        component_blueprint.model(ver=component_blueprint_params.model.ver).dir,
-                        component_blueprint_params.model._persist.file)
+                if component_blueprint_params.model.factory.name.startswith('arimo.dl.experimental.keras'):
+                    model_path = \
+                        os.path.join(
+                            component_blueprint.model(ver=component_blueprint_params.model.ver).dir,
+                            component_blueprint_params.model._persist.file)
 
-                assert os.path.isfile(model_path), \
-                    '*** {} DOES NOT EXIST ***'.format(model_path)
+                    assert os.path.isfile(model_path), \
+                        '*** {} DOES NOT EXIST ***'.format(model_path)
 
-                if fs._ON_LINUX_CLUSTER_WITH_HDFS:
-                    if model_path not in self._MODEL_PATHS_ON_SPARK_WORKER_NODES:
-                        _tmp_local_file_name = \
-                            str(uuid.uuid4())
+                    if fs._ON_LINUX_CLUSTER_WITH_HDFS:
+                        if model_path not in self._MODEL_PATHS_ON_SPARK_WORKER_NODES:
+                            _tmp_local_file_name = \
+                                str(uuid.uuid4())
 
-                        _tmp_local_file_path = \
-                            os.path.join(
-                                '/tmp',
-                                _tmp_local_file_name)
+                            _tmp_local_file_path = \
+                                os.path.join(
+                                    '/tmp',
+                                    _tmp_local_file_name)
 
-                        shutil.copyfile(
-                            src=model_path,
-                            dst=_tmp_local_file_path)
+                            shutil.copyfile(
+                                src=model_path,
+                                dst=_tmp_local_file_path)
 
-                        arimo.backend.spark.sparkContext.addFile(
-                            path=_tmp_local_file_path,
-                            recursive=False)
+                            arimo.backend.spark.sparkContext.addFile(
+                                path=_tmp_local_file_path,
+                                recursive=False)
 
-                        self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path] = \
-                            _tmp_local_file_name   # SparkFiles.get(filename=_tmp_local_file_name)
+                            self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path] = \
+                                _tmp_local_file_name   # SparkFiles.get(filename=_tmp_local_file_name)
 
-                    _model_path = self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path]
+                        _model_path = self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path]
+
+                    else:
+                        _model_path = model_path
 
                 else:
-                    _model_path = model_path
+                    model_path = _model_path = \
+                        component_blueprint.model(ver=component_blueprint_params.model.ver).dir
+
+                    assert os.path.isdir(model_path), \
+                        '*** {} DOES NOT EXIST ***'.format(model_path)
+
+                    if fs._ON_LINUX_CLUSTER_WITH_HDFS and (model_path not in self._MODEL_PATHS_ON_SPARK_WORKER_NODES):
+                        fs.put(
+                            from_local=model_path,
+                            to_hdfs=model_path,
+                            is_dir=True,
+                            _mv=False)
+
+                        self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path] = model_path
 
                 model_paths.append(_model_path)
 
@@ -158,7 +175,8 @@ class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
                         for row in
                             zip(tup[0],
                                 *(_load_arimo_dl_model(
-                                        dir_path=model_path)
+                                        dir_path=model_path,
+                                        hdfs=cluster)
                                     .predict(
                                         data=x,
                                         input_tensor_transform_fn=None,
