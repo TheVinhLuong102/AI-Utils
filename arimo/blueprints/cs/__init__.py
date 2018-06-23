@@ -266,13 +266,13 @@ class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSu
 
         prep_vec_col = self.params.data._prep_vec_col
 
-        model_file_path = \
+        model_path = \
             os.path.join(
                 model.dir,
                 self.params.model._persist.file)
 
         if fs._ON_LINUX_CLUSTER_WITH_HDFS:
-            if model_file_path not in self._MODEL_PATHS_ON_SPARK_WORKER_NODES:
+            if model_path not in self._MODEL_PATHS_ON_SPARK_WORKER_NODES:
                 _tmp_local_file_name = \
                     str(uuid.uuid4())
 
@@ -282,20 +282,20 @@ class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSu
                         _tmp_local_file_name)
 
                 shutil.copyfile(
-                    src=model_file_path,
+                    src=model_path,
                     dst=_tmp_local_file_path)
 
                 arimo.backend.spark.sparkContext.addFile(
                     path=_tmp_local_file_path,
                     recursive=False)
 
-                self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_file_path] = \
+                self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path] = \
                     _tmp_local_file_name   # SparkFiles.get(filename=_tmp_local_file_name)
 
-            _model_file_path = self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_file_path]
+            _model_path = self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path]
 
         else:
-            _model_file_path = model_file_path
+            _model_path = model_path
 
         raw_score_col = self.params.model.score.raw_score_col_prefix + self.params.data.label.var
 
@@ -342,7 +342,7 @@ class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSu
                         for r, s in
                             zip(tup[0],
                                 _load_arimo_dl_model(
-                                        dir_path=_model_dir_path)
+                                        dir_path=_model_path)
                                     .predict(
                                         data=tup[1],
                                         input_tensor_transform_fn=None,
@@ -364,7 +364,7 @@ class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSu
                         for r, s in
                             zip(tup[0],
                                 _load_keras_model(
-                                        file_path=_model_file_path)
+                                        file_path=_model_path)
                                     .predict(
                                         x=tup[1],
                                         batch_size=__batch_size__,
