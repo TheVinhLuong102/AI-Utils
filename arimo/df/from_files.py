@@ -1072,7 +1072,9 @@ class ArrowADF(_ArrowADFABC):
 
     def __next__(self):
         if self.piecePathsToIter:
-            return self.reduce(self.piecePathsToIter.pop())
+            return self.reduce(
+                self.piecePathsToIter.pop(),
+                verbose=False)
 
         else:
             raise StopIteration
