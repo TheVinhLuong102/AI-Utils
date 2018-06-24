@@ -1091,10 +1091,9 @@ class ArrowADF(_ArrowADFABC):
         else:
             _s3 = False
             _dir_path = dir_path
-
-        fs.empty(
-            dir=_dir_path,
-            hdfs=False)
+            fs.empty(
+                dir=_dir_path,
+                hdfs=False)
 
         if verbose:
             msg = 'Saving to "{}"...'.format(_dir_path)
