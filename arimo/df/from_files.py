@@ -1082,7 +1082,7 @@ class ArrowADF(_ArrowADFABC):
     # IO METHODS
     # save
 
-    def save(self, dir_path, verbose=True):
+    def save(self, dir_path, collect=False, verbose=True):
         if dir_path.startswith('s3://'):
             assert self.fromS3
             _s3 = True
@@ -1100,10 +1100,9 @@ class ArrowADF(_ArrowADFABC):
             self.stdout_logger.info(msg)
             tic = time.time()
 
-        for i, pandasDF in \
-                (tqdm.tqdm(enumerate(self), total=self.nPieces)
-                 if verbose
-                 else enumerate(self)):
+        if collect:
+            pandasDF = self.collect(verbose=verbose)
+
             # ValueError: parquet must have string column names
             pandasDF.columns = \
                 pandasDF.columns.map(str)
@@ -1111,7 +1110,7 @@ class ArrowADF(_ArrowADFABC):
             pandasDF.to_parquet(
                 fname=os.path.join(
                         _dir_path,
-                        '{}.snappy.parquet'.format(i)),
+                        '0.snappy.parquet'),
                 engine='pyarrow',
                 compression='snappy',
                 row_group_size=None,
@@ -1120,6 +1119,28 @@ class ArrowADF(_ArrowADFABC):
                 use_deprecated_int96_timestamps=None,
                 coerce_timestamps=None,
                 flavor='spark')
+
+        else:
+            for i, pandasDF in \
+                    (tqdm.tqdm(enumerate(self), total=self.nPieces)
+                     if verbose
+                     else enumerate(self)):
+                # ValueError: parquet must have string column names
+                pandasDF.columns = \
+                    pandasDF.columns.map(str)
+
+                pandasDF.to_parquet(
+                    fname=os.path.join(
+                            _dir_path,
+                            '{}.snappy.parquet'.format(i)),
+                    engine='pyarrow',
+                    compression='snappy',
+                    row_group_size=None,
+                    # version='1.0',
+                    use_dictionary=True,
+                    use_deprecated_int96_timestamps=None,
+                    coerce_timestamps=None,
+                    flavor='spark')
 
         if verbose:
             toc = time.time()
