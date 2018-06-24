@@ -12,6 +12,7 @@ import psutil
 import random
 import re
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, RobustScaler, StandardScaler
+import tempfile
 import time
 import tqdm
 import uuid
@@ -1056,11 +1057,70 @@ class ArrowADF(_ArrowADFABC):
         self._cache = arrowADF._cache
 
     # **********
+    # ITERATOR
+    # __len__
+    # __iter__
+    # __next__
+
+    def __len__(self):
+        return self.nPieces
+
+    def __iter__(self):
+        arrowADF = self.copy(inheritCache=True, inheritNRows=True)
+        arrowADF.piecePathsToIter = arrowADF.piecePaths.copy()
+        return arrowADF
+
+    def __next__(self):
+        if self.piecePathsToIter:
+            return self.reduce(self.piecePathsToIter.pop())
+
+        else:
+            raise StopIteration
+
+    # **********
     # IO METHODS
     # save
 
-    def save(self, *args, **kwargs):
-        return NotImplemented
+    def save(self, dir_path, verbose=True):
+        if dir_path.startswith('s3://'):
+            assert self.fromS3
+            _s3 = True
+            _dir_path = tempfile.mkdtemp()
+
+        else:
+            _s3 = False
+            _dir_path = dir_path
+
+        for i, pandasDF in \
+                (tqdm.tqdm(enumerate(self))
+                 if verbose
+                 else enumerate(self)):
+            pandasDF.to_parquet(
+                fname=os.path.join(
+                        _dir_path,
+                        '{}.snappy.parquet'.format(i)),
+                engine='pyarrow',
+                compression='snappy',
+                row_group_size=None,
+                # version='1.0',
+                use_dictionary=True,
+                use_deprecated_int96_timestamps=None,
+                coerce_timestamps=None,
+                flavor='spark')
+
+        if _s3:
+            s3.sync(
+                from_dir_path=_dir_path,
+                to_dir_path=dir_path,
+                access_key_id=self._srcArrowDS.fs.fs.key,
+                secret_access_key=self._srcArrowDS.fs.fs.secret,
+                delete=True, quiet=True,
+                verbose=verbose)
+
+            fs.rm(
+                path=_dir_path,
+                hdfs=False,
+                is_dir=True)
 
     def copy(self, **kwargs):
         resetMappers = kwargs.pop('resetMappers')
