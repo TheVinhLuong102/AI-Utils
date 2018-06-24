@@ -1077,6 +1077,7 @@ class ArrowADF(_ArrowADFABC):
         else:
             raise StopIteration
 
+    # https://stackoverflow.com/questions/40923522/python-defining-an-iterator-class-failed-with-iter-returned-non-iterator-of?rq=1
     def next(self):
         return self.__next__()
 
