@@ -1058,13 +1058,8 @@ class ArrowADF(_ArrowADFABC):
 
     # **********
     # ITERATOR
-    # __len__
     # __iter__
     # __next__ / next
-
-    def __len__(self):
-        return self.nPieces
-
     def __iter__(self):
         arrowADF = self.copy(inheritCache=True, inheritNRows=True)
         arrowADF.piecePathsToIter = arrowADF.piecePaths.copy()
@@ -1801,22 +1796,12 @@ class ArrowADF(_ArrowADFABC):
 
     # *********************
     # ROWS, COLUMNS & TYPES
-    # nRows
     # approxNRows
+    # nRows
+    # __len__
     # columns
     # types
     # type / typeIsNum / typeIsComplex
-
-    @property
-    def nRows(self):
-        if self._cache.nRows is None:
-            self.stdout_logger.info('Counting No. of Rows...')
-
-            self._cache.nRows = \
-                sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
-                    for piecePath in tqdm.tqdm(self.piecePaths))
-
-        return self._cache.nRows
 
     @property
     def approxNRows(self):
@@ -1830,6 +1815,22 @@ class ArrowADF(_ArrowADFABC):
                 / self._reprSampleMinNPieces
 
         return self._cache.approxNRows
+
+    @property
+    def nRows(self):
+        if self._cache.nRows is None:
+            self.stdout_logger.info('Counting No. of Rows...')
+
+            self._cache.nRows = \
+                sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
+                    for piecePath in tqdm.tqdm(self.piecePaths))
+
+        return self._cache.nRows
+
+    def __len__(self):
+        return self._cache.nRows \
+            if self._cache.nRows \
+          else self.approxNRows
 
     @property
     def columns(self):
