@@ -1102,7 +1102,7 @@ class ArrowADF(_ArrowADFABC):
             tic = time.time()
 
         for i, pandasDF in \
-                (tqdm.tqdm(enumerate(self))
+                (tqdm.tqdm(enumerate(self), total=self.nPieces)
                  if verbose
                  else enumerate(self)):
             # ValueError: parquet must have string column names
