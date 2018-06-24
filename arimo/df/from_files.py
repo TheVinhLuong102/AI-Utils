@@ -1099,6 +1099,10 @@ class ArrowADF(_ArrowADFABC):
                 (tqdm.tqdm(enumerate(self))
                  if verbose
                  else enumerate(self)):
+            # ValueError: parquet must have string column names
+            pandasDF.columns = \
+                pandasDF.columns.map(str)
+
             pandasDF.to_parquet(
                 fname=os.path.join(
                         _dir_path,
