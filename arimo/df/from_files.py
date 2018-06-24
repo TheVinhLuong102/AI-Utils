@@ -1121,6 +1121,8 @@ class ArrowADF(_ArrowADFABC):
                 flavor='spark')
 
         else:
+            file_name_formatter = '{:0%dd}.snappy.parquet' % len(str(self.nPieces))
+
             for i, pandasDF in \
                     (tqdm.tqdm(enumerate(self), total=self.nPieces)
                      if verbose
@@ -1132,7 +1134,7 @@ class ArrowADF(_ArrowADFABC):
                 pandasDF.to_parquet(
                     fname=os.path.join(
                             _dir_path,
-                            '{}.snappy.parquet'.format(i)),
+                            file_name_formatter.format(i)),
                     engine='pyarrow',
                     compression='snappy',
                     row_group_size=None,
