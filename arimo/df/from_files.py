@@ -1095,6 +1095,15 @@ class ArrowADF(_ArrowADFABC):
             _s3 = False
             _dir_path = dir_path
 
+        fs.mkdir(
+            dir=_dir_path,
+            hdfs=False)
+
+        if verbose:
+            msg = 'Saving to "{}"...'.format(_dir_path)
+            self.stdout_logger.info(msg)
+            tic = time.time()
+
         for i, pandasDF in \
                 (tqdm.tqdm(enumerate(self))
                  if verbose
@@ -1115,6 +1124,10 @@ class ArrowADF(_ArrowADFABC):
                 use_deprecated_int96_timestamps=None,
                 coerce_timestamps=None,
                 flavor='spark')
+
+        if verbose:
+            toc = time.time()
+            self.stdout_logger.info(msg + 'done!   <{:,.1f} m>'.format((toc - tic) / 60))
 
         if _s3:
             s3.sync(
