@@ -1123,7 +1123,7 @@ class ArrowADF(_ArrowADFABC):
                 is_dir=True)
 
     def copy(self, **kwargs):
-        resetMappers = kwargs.pop('resetMappers')
+        resetMappers = kwargs.pop('resetMappers', False)
         inheritCache = kwargs.pop('inheritCache', not resetMappers)
         inheritNRows = kwargs.pop('inheritNRows', inheritCache)
 
