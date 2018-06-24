@@ -1092,7 +1092,7 @@ class ArrowADF(_ArrowADFABC):
             _s3 = False
             _dir_path = dir_path
 
-        fs.mkdir(
+        fs.empty(
             dir=_dir_path,
             hdfs=False)
 
