@@ -1060,7 +1060,7 @@ class ArrowADF(_ArrowADFABC):
     # ITERATOR
     # __len__
     # __iter__
-    # __next__
+    # __next__ / next
 
     def __len__(self):
         return self.nPieces
@@ -1076,6 +1076,9 @@ class ArrowADF(_ArrowADFABC):
 
         else:
             raise StopIteration
+
+    def next(self):
+        return self.__next__()
 
     # **********
     # IO METHODS
