@@ -5,8 +5,8 @@ import itertools
 import os
 import pandas
 
-import sys
-if sys.version_info.major == 3:
+import six
+if six.PY3:
     from functools import reduce
 
 import arimo.backend
