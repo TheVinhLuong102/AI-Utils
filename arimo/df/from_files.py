@@ -837,6 +837,22 @@ class ArrowADF(_ArrowADFABC):
                 if piecePath in self._PIECE_CACHES:
                     pieceCache = self._PIECE_CACHES[piecePath]
 
+                    if (pieceCache.nRows is None) and (not i):
+                        pieceCache.localOrHDFSPath = self.pieceLocalOrHDFSPath(piecePath=piecePath)
+
+                        schema = read_schema(where=pieceCache.localOrHDFSPath)
+
+                        pieceCache.srcColsExclPartitionKVs = schema.names
+
+                        pieceCache.srcColsInclPartitionKVs += schema.names
+
+                        for col in schema.names:
+                            pieceCache.srcTypesExclPartitionKVs[col] = \
+                                pieceCache.srcTypesInclPartitionKVs[col] = \
+                                schema.field_by_name(col).type
+
+                        pieceCache.nRows = read_metadata(where=pieceCache.localOrHDFSPath).num_rows
+
                 else:
                     srcColsInclPartitionKVs = []
 
