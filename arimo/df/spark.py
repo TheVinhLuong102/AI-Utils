@@ -1782,6 +1782,13 @@ class SparkADF(_ADFABC):
         if (partitionBy is None) and self._dCol and (self._dCol != self._tCol):
             partitionBy = self._dCol
 
+        if partitionBy:
+            # repartition data according to partitionBy, in order to write 1 file per partition (usually efficient)
+            sparkDF = sparkDF.repartition(*to_iterable(partitionBy))
+
+            if self.hasTS:   # sort data within each file
+                sparkDF = sparkDF.sortWithinPartititons(self._iCol, self._tCol, ascending=True)
+
         if verbose:
             msg = 'Saving Columns {} by {} Format{}{} in {} Mode to "{}"{}...' \
                     .format(
