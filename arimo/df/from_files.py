@@ -837,8 +837,6 @@ class ArrowADF(_ArrowADFABC):
                 if (_cache.nPieces > 1) and (piecePath in self._PIECE_CACHES):
                     pieceCache = self._PIECE_CACHES[piecePath]
 
-                    pieceCache.arrowDFs.add(self)
-
                 else:
                     srcColsInclPartitionKVs = []
 
@@ -890,8 +888,6 @@ class ArrowADF(_ArrowADFABC):
                     self._PIECE_CACHES[piecePath] = \
                         pieceCache = \
                         Namespace(
-                            arrowDFs={self},
-
                             localOrHDFSPath=localOrHDFSPath,
                             partitionKVs=partitionKVs,
 
