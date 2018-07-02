@@ -62,19 +62,19 @@ sparkDF = \
 sparkDF.cache()
 n = sparkDF.count()
 
-print('Orig Spark DF:')
+print('\nOrig Spark DF:')
 sparkDF.withColumn(_PARTITION_ID_COL, spark_partition_id()).show(n)
 
 
 sparkDF_sorted = sparkDF.sort(ID_COL_NAME, TIME_COL_NAME)
 
-print('Spark DF Sorted:')
+print('\nSpark DF Sorted:')
 sparkDF_sorted.withColumn(_PARTITION_ID_COL, spark_partition_id()).show(n)
 
 
 sparkDF_sorted_repartitioned = sparkDF_sorted.repartition(DATE_COL_NAME)
 
-print('Spark DF Sorted then Repartitioned: ORDERING LOST:')
+print('\nSpark DF Sorted then Repartitioned: ORDERING LOST:')
 sparkDF_sorted_repartitioned.withColumn(_PARTITION_ID_COL, spark_partition_id()).show(n)
 
 sparkDF_sorted_repartitioned.write.partitionBy(DATE_COL_NAME).parquet(PARQUET_PATH___PARTITITIONED_BY_DATE, mode='overwrite')
@@ -86,7 +86,7 @@ print(pandasDF_sorted_repartitioned)
 sparkDF_repartitioned_sortedWithinPartitions = \
     sparkDF.repartition(DATE_COL_NAME).sortWithinPartitions(ID_COL_NAME, TIME_COL_NAME)
 
-print('Spark DF Repartitioned then Sorted Within Partitions:')
+print('\nSpark DF Repartitioned then Sorted Within Partitions:')
 sparkDF_repartitioned_sortedWithinPartitions.withColumn(_PARTITION_ID_COL, spark_partition_id()).show(n)
 
 sparkDF_repartitioned_sortedWithinPartitions.write.partitionBy(DATE_COL_NAME).parquet(PARQUET_PATH___REPARTITIONED___SORTED_WITHIN_PARTITIONS___PARTITIONED_BY_DATE, mode='overwrite')
