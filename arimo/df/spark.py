@@ -75,7 +75,7 @@ from arimo.util.iterables import flatten, to_iterable
 from arimo.util.types.numpy_pandas import PY_NUM_TYPES
 from arimo.util.types.spark_sql import \
     _INT_TYPE, _BIGINT_TYPE, _INT_TYPES, _DOUBLE_TYPE, _FLOAT_TYPES, _NUM_TYPES, \
-    _BOOL_TYPE, _STR_TYPE, _POSSIBLE_CAT_TYPES, _DATE_TYPE, _TIMESTAMP_TYPE, \
+    _BOOL_TYPE, _STR_TYPE, _BINARY_TYPE, _POSSIBLE_CAT_TYPES, _DATE_TYPE, _TIMESTAMP_TYPE, \
     _VECTOR_TYPE, _DECIMAL_TYPE_PREFIX, _ARRAY_TYPE_PREFIX, _MAP_TYPE_PREFIX, _STRUCT_TYPE_PREFIX, \
     StructField, StructType
 import arimo.debug
@@ -1706,12 +1706,24 @@ class SparkADF(_ADFABC):
                     access_key_id=aws_access_key_id,
                     secret_access_key=aws_secret_access_key)
 
-            adf = SparkADF(
-                sparkDF=arimo.backend.spark.read.load(
+            sparkDF = \
+                arimo.backend.spark.read.load(
                     path=path,
                     format=format,
                     schema=schema,
-                    **options),
+                    **options)
+
+            _schema = sparkDF.schema
+
+            for colName in sparkDF.columns:
+                if _schema[colName].dataType.simpleString() == _BINARY_TYPE:
+                    sparkDF = \
+                        sparkDF.withColumn(
+                        colName=colName,
+                        col=sparkDF[colName].astype(_STR_TYPE))
+
+            adf = SparkADF(
+                sparkDF=sparkDF,
                 nRows=None,
                 **stdKwArgs)
 
