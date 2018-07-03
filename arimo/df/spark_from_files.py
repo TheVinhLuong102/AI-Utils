@@ -35,6 +35,7 @@ from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols
 from arimo.util.decor import enable_inplace
 from arimo.util.iterables import to_iterable
+from arimo.util.types.spark_sql import _BINARY_TYPE, _STR_TYPE
 import arimo.debug
 
 from .spark import SparkADF
@@ -196,15 +197,26 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 logger.info(msg)
                 tic = time.time()
 
-            _cache._srcSparkDF = \
+            _srcSparkDF = \
                 arimo.backend.spark.read.load(
                     path=path,
                     format='parquet',
                     schema=_srcSparkDFSchema)
 
-            _cache._srcNRows = _cache._srcSparkDF.count()
+            _schema = _srcSparkDF.schema
 
-            _cache._srcSparkDFSchema = _cache._srcSparkDF.schema
+            for colName in _srcSparkDF.columns:
+                if _schema[colName].dataType.simpleString() == _BINARY_TYPE:
+                    _srcSparkDF = \
+                        _srcSparkDF.withColumn(
+                            colName=colName,
+                            col=_srcSparkDF[colName].astype(_STR_TYPE))
+
+            _cache._srcSparkDF = _srcSparkDF
+
+            _cache._srcNRows = _srcSparkDF.count()
+
+            _cache._srcSparkDFSchema = _srcSparkDF.schema
 
             if verbose:
                 toc = time.time()
