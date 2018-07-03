@@ -1773,9 +1773,9 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                                 condition="{} = {}"
                                     .format(
                                         id_col,
-                                        "'{}'".format(_id))
+                                        "'{}'".format(_id)
                                             if id_col_type_is_str
-                                            else _id) \
+                                            else _id)) \
                             .drop(
                                 id_col,
                                 alias=(_per_label_adf.alias + '__' + clean_str(clean_uuid(id)))
