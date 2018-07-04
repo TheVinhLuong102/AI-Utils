@@ -378,8 +378,8 @@ class _ArrowADF__prep__pandasDFTransform:
                     # Try using .loc[row_indexer,col_indexer] = value instead
 
                     assert minMaxScaledIdxSeries.between(left=-1, right=1, inclusive=True).all(), \
-                        '*** "{}" CERTAIN MIN-MAX SCALED INT INDICES NOT BETWEEN -1 AND 1: ({}, {}) ***'.format(
-                            prepCatCol, minMaxScaledIdxSeries.min(), minMaxScaledIdxSeries.max())
+                        '*** "{}" ({:,} CATS) CERTAIN MIN-MAX SCALED INT INDICES NOT BETWEEN -1 AND 1: ({}, {}) ***'.format(
+                            prepCatCol, nCats, minMaxScaledIdxSeries.min(), minMaxScaledIdxSeries.max())
 
         pandasDF = \
             self.numNullFillPandasDFTransform(
