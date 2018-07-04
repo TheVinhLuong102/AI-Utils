@@ -77,6 +77,7 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
         # verbosity
         verbose = kwargs.pop('verbose', True)
 
+        # *** MUST .prep_data(...) FIRST, AS IT ALTERS CERTAIN BLUEPRINT PARAMS ***
         adf = self.prep_data(
             __mode__=self._TRAIN_MODE,
             verbose=verbose,

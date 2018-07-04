@@ -109,6 +109,7 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
 
         verbose = kwargs.pop('verbose', True)
 
+        # *** MUST .prep_data(...) FIRST, AS IT ALTERS CERTAIN BLUEPRINT PARAMS ***
         adf = self.prep_data(
             __mode__=self._TRAIN_MODE,
             verbose=verbose,
@@ -117,8 +118,6 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
         self.params.data.label._n_classes = \
             int(adf('MAX({})'.format(self.params.data.label._int_var)).first()[0]) + 1
 
-        model = self.model(ver=self.params.model.ver)
-
         self._derive_model_train_params(
             data_size=
                 (adf.approxNRows
@@ -126,6 +125,8 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
                  else adf.nRows)
                 if self.params.model.train.n_samples_max_multiple_of_data_size
                 else None)
+
+        model = self.model(ver=self.params.model.ver)
 
         model.stdout_logger.info(
             'TRAINING:'
