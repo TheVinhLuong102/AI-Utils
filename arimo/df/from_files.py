@@ -455,6 +455,10 @@ class _ArrowADF__pieceArrowTableFunc:
                     Key=parsedURL.path[1:],
                     Filename=path)
 
+                # make sure AWS S3's asynchronous process has finished downloading a potentially large file
+                while not os.path.isfile(path):
+                    time.sleep(1)
+
         else:
             path = piecePath
 
@@ -1318,6 +1322,10 @@ class ArrowADF(_ArrowADFABC):
                     Bucket=parsedURL.netloc,
                     Key=parsedURL.path[1:],
                     Filename=localOrHDFSPath)
+
+                # make sure AWS S3's asynchronous process has finished downloading a potentially large file
+                while not os.path.isfile(localOrHDFSPath):
+                    time.sleep(1)
 
             else:
                 localOrHDFSPath = piecePath
