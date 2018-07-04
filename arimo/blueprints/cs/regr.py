@@ -158,8 +158,6 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
             if __excl_outliers__ \
             else {}
 
-        print('*** FILTER: {} ***'.format(filter))
-
         piece_paths = list(adf.piecePaths)
         random.shuffle(piece_paths)
         split_idx = int(math.ceil(self.params.model.train.train_proportion * adf.nPieces))
