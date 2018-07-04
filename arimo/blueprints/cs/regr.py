@@ -105,6 +105,8 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                     msg='*** TRAIN: CONDITION ROBUST TO OUTLIER LABELS: {} {} ***'
                         .format(self.params.data.label.var, _outlier_robust_condition))
 
+        print('*** {} ***'.format(__excl_outliers__))
+
         adf = self.prep_data(
             __mode__=self._TRAIN_MODE,
             verbose=verbose,
@@ -150,6 +152,8 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                     else ''))
 
         feature_cols = self.params.data._cat_prep_cols + self.params.data._num_prep_cols
+
+        print('*** {} ***'.format(__excl_outliers__))
 
         filter = \
             {self.params.data.label.var:
