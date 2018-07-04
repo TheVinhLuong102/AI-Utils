@@ -510,8 +510,7 @@ class _ArrowADF__gen:
 
         self.filterConditions = filterConditions
 
-        if filterConditions and arimo.debug.ON:
-            print('*** FILTER CONDITION: {} ***'.format(filterConditions))
+        print('*** FILTER CONDITION: {} ***'.format(filterConditions))
 
         self.n = n
         self.sampleN = sampleN
