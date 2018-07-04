@@ -377,9 +377,9 @@ class _ArrowADF__prep__pandasDFTransform:
                     # A value is trying to be set on a copy of a slice from a DataFrame.
                     # Try using .loc[row_indexer,col_indexer] = value instead
 
-                    # assert minMaxScaledIdxSeries.between(left=-1, right=1, inclusive=True).all(), \
-                    #     '*** "{}" ({:,} CATS) CERTAIN MIN-MAX SCALED INT INDICES NOT BETWEEN -1 AND 1: ({}, {}) ***'.format(
-                    #         prepCatCol, nCats, minMaxScaledIdxSeries.min(), minMaxScaledIdxSeries.max())
+                    assert minMaxScaledIdxSeries.between(left=-1, right=1, inclusive=True).all(), \
+                        '*** "{}" ({:,} CATS) CERTAIN MIN-MAX SCALED INT INDICES NOT BETWEEN -1 AND 1: ({}, {}) ***'.format(
+                            prepCatCol, nCats, minMaxScaledIdxSeries.min(), minMaxScaledIdxSeries.max())
 
         pandasDF = \
             self.numNullFillPandasDFTransform(
