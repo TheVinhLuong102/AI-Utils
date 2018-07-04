@@ -75,6 +75,10 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
 
         model = self.model(ver=self.params.model.ver)
 
+        print('*** {}, {} ***'.format(
+            self.params.data.label.lower_outlier_threshold,
+            self.params.data.label.upper_outlier_threshold))
+
         # whether to exclude outlying labels
         _lower_outlier_threshold_applicable = \
             pandas.notnull(self.params.data.label.lower_outlier_threshold)
