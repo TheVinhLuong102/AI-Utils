@@ -158,7 +158,7 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
             if __excl_outliers__ \
             else {}
 
-        print('*** FILTER: {} ***'.format(filter))
+        print('*** {} ==> FILTER: {} ***'.format(__excl_outliers__, filter))
 
         piece_paths = list(adf.piecePaths)
         random.shuffle(piece_paths)
