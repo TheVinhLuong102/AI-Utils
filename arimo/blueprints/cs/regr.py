@@ -89,21 +89,12 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
             (self.params.data.label.outlier_tail_proportion < .5) and \
             (_lower_outlier_threshold_applicable or _upper_outlier_threshold_applicable)
 
-        if __excl_outliers__:
-            _outlier_robust_condition = \
-                ('BETWEEN {} AND {}'
-                    .format(
-                        self.params.data.label.lower_outlier_threshold,
-                        self.params.data.label.upper_outlier_threshold)
-                 if _upper_outlier_threshold_applicable
-                 else '>= {}'.format(self.params.data.label.lower_outlier_threshold)) \
-                if _lower_outlier_threshold_applicable \
-                else '<= {}'.format(self.params.data.label.upper_outlier_threshold)
-
-            if arimo.debug.ON:
-                model.stdout_logger.debug(
-                    msg='*** TRAIN: CONDITION ROBUST TO OUTLIER LABELS: {} {} ***'
-                        .format(self.params.data.label.var, _outlier_robust_condition))
+        filter = \
+            {self.params.data.label.var:
+                (self.params.data.label.lower_outlier_threshold,
+                 self.params.data.label.upper_outlier_threshold)} \
+            if __excl_outliers__ \
+            else {}
 
         adf = self.prep_data(
             __mode__=self._TRAIN_MODE,
@@ -132,6 +123,7 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
             '\n- Processes/Threads: {:,}'
             '\n- Multi-Processing: {}'
             '\n- GPUs: {}{}'
+            '\n- Filter: {}'
             .format(
                 self.params.data._prep_vec_size,
                 self.params.model.train._n_train_samples,
@@ -147,16 +139,10 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                 __n_gpus__,
                 ' (CPU Merge: {}; CPU Reloc: {})'.format(__cpu_merge__, __cpu_reloc__)
                     if __n_gpus__ > 1
-                    else ''))
+                    else '',
+                filter))
 
         feature_cols = self.params.data._cat_prep_cols + self.params.data._num_prep_cols
-
-        filter = \
-            {self.params.data.label.var:
-                (self.params.data.label.lower_outlier_threshold,
-                 self.params.data.label.upper_outlier_threshold)} \
-            if __excl_outliers__ \
-            else {}
 
         piece_paths = list(adf.piecePaths)
         random.shuffle(piece_paths)
