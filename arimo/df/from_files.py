@@ -360,12 +360,17 @@ class _ArrowADF__prep__pandasDFTransform:
                          for i, cat in enumerate(cats)) +
                      ((~s.isin(cats)) * nCats)) \
                     if self.typeStrs[catCol] == _STR_TYPE \
-                    else (sum((((s - cat).abs() < _FLOAT_ABS_TOL) * i)
+                    else (sum(((s - cat).abs().between(left=0, right=_FLOAT_ABS_TOL, inclusive=True) * i)
                               for i, cat in enumerate(cats)) +
                           ((1 -
-                            sum(((s - cat).abs() < _FLOAT_ABS_TOL)
+                            sum((s - cat).abs().between(left=0, right=_FLOAT_ABS_TOL, inclusive=True)
                                 for cat in cats)) *
                            nCats))
+                        # *** NOTE NumPy BUG ***
+                        # *** abs(...) of a data type most negative value equals to the same most negative value ***
+                        # https://github.com/numpy/numpy/issues/5657
+                        # https://github.com/numpy/numpy/issues/9463
+                        # http://numpy-discussion.10968.n7.nabble.com/abs-for-max-negative-integers-desired-behavior-td8939.html
                 # ^^^ SettingWithCopyWarning (?)
                 # A value is trying to be set on a copy of a slice from a DataFrame.
                 # Try using .loc[row_indexer,col_indexer] = value instead
