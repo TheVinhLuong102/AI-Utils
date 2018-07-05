@@ -1480,6 +1480,8 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                     aws_secret_access_key=self.auth.aws.secret_access_key,
                     verbose=False)
 
+            print('*** {} ***'.format(blueprint.params.data.nulls))
+
             if blueprint_params.model.ver is None:
                 if blueprint_params.model.train.objective is None:
                     blueprint_params.model.train.objective = \
