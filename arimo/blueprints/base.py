@@ -1473,6 +1473,8 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                     blueprint_params.data.label.upper_outlier_threshold = \
                     None
 
+            print('*** {} ***'.format(blueprint_params.data.nulls))
+
             blueprint = \
                 _blueprint_from_params(
                     blueprint_params=blueprint_params,
