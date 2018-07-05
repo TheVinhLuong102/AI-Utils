@@ -724,6 +724,7 @@ class ArrowADF(_ArrowADFABC):
             reprSampleMinNPieces=_ArrowADFABC._REPR_SAMPLE_MIN_N_PIECES,
             reprSampleSize=_ArrowADFABC._DEFAULT_REPR_SAMPLE_SIZE,
 
+            nulls=DefaultDict((None, None)),
             minNonNullProportion=DefaultDict(_ArrowADFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
             outlierTailProportion=DefaultDict(_ArrowADFABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
             maxNCats=DefaultDict(_ArrowADFABC._DEFAULT_MAX_N_CATS),
@@ -2200,9 +2201,33 @@ class ArrowADF(_ArrowADFABC):
                     if verbose:
                         tic = time.time()
 
+                    lowerNumericNull, upperNumericNull = self._nulls[col]
+
                     self._cache.count[col] = result = \
                         self[col] \
-                        .map(mapper=lambda series: len(series.loc[pandas.notnull(series)])) \
+                        .map(mapper=
+                                ((lambda series:
+                                    series.notnull()
+                                    .sum(skipna=True,
+                                         min_count=0))
+                                 if pandas.isnull(upperNumericNull)
+                                 else (lambda series:
+                                        (series < upperNumericNull)
+                                        .sum(skipna=True,
+                                             min_count=0)))
+                                if pandas.isnull(lowerNumericNull)
+                                else ((lambda series:
+                                        (series > lowerNumericNull)
+                                        .sum(skipna=True,
+                                             min_count=0))
+                                      if pandas.isnull(upperNumericNull)
+                                      else (lambda series:
+                                                series.between(
+                                                    left=lowerNumericNull,
+                                                    right=upperNumericNull,
+                                                    inclusive=False)
+                                                .sum(skipna=True,
+                                                     min_count=0)))) \
                         .reduce(
                             cols=col,
                             reducer=sum)

@@ -152,6 +152,7 @@ class SparkADF(_ADFABC):
 
             reprSampleSize=_ADFABC._DEFAULT_REPR_SAMPLE_SIZE,
 
+            nulls=DefaultDict((None, None)),
             minNonNullProportion=DefaultDict(_ADFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
             outlierTailProportion=DefaultDict(_ADFABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
             maxNCats=DefaultDict(_ADFABC._DEFAULT_MAX_N_CATS),
@@ -2725,10 +2726,16 @@ class SparkADF(_ADFABC):
                 if verbose:
                     tic = time.time()
 
+                lowerNumericNull, upperNumericNull = self._nulls[col]
+
                 self._cache.count[col] = result = \
                     self._sparkDF.select(sparkSQLFuncs.count(col)).first()[0] \
-                        if self.typeIsComplex(col) \
-                        else self._nonNullCol(col=col).count()
+                    if self.typeIsComplex(col) \
+                    else self._nonNullCol(
+                            col=col,
+                            lower=lowerNumericNull,
+                            upper=upperNumericNull,
+                            strict=True).count()
 
                 assert isinstance(result, int), \
                     '*** "{}" COUNT = {} ***'.format(col, result)
