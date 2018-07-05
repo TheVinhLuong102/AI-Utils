@@ -185,12 +185,18 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                 elif is_integer(label_col_type) and __first_train__:
                     self.params.data.label._int_var = self.params.data.label.var
 
-                if is_num(label_col_type) and isinstance(self, RegrEvalMixIn) and self.params.data.label.excl_outliers:
-                    assert self.params.data.label.outlier_tails \
+                if is_num(label_col_type) and isinstance(self, RegrEvalMixIn):
+                    assert self.params.data.label.excl_outliers \
+                       and self.params.data.label.outlier_tails \
                        and self.params.data.label.outlier_tail_proportion \
                        and (self.params.data.label.outlier_tail_proportion < .5)
 
                     if __first_train__:
+                        lower_numeric_null, upper_numeric_null = \
+                            self.params.data.nulls.get(
+                                self.params.data.label.var,
+                                (None, None))
+
                         self.params.data.label.outlier_tails = \
                             self.params.data.label.outlier_tails.lower()
 
@@ -226,11 +232,50 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                                            1 - self.params.data.label.outlier_tail_proportion),
                                         interpolation='linear')
 
+                                if lower_numeric_null is not None:
+                                    _lower_outlier_threshold = \
+                                        sample_label_series.loc[sample_label_series > lower_numeric_null] \
+                                        .min(skipna=True)
+
+                                    assert pandas.notnull(_lower_outlier_threshold), \
+                                        '*** {} SAMPLE MAX = {} ***'.format(
+                                            self.params.data.label.var,
+                                            sample_label_series.max())
+
+                                    if _lower_outlier_threshold > self.params.data.label.lower_outlier_threshold:
+                                        self.params.data.label.lower_outlier_threshold = _lower_outlier_threshold
+
+                                if upper_numeric_null is not None:
+                                    _upper_outlier_threshold = \
+                                        sample_label_series.loc[sample_label_series < upper_numeric_null] \
+                                        .max(skipna=True)
+
+                                    assert pandas.notnull(_upper_outlier_threshold), \
+                                        '*** {} SAMPLE MIN = {} ***'.format(
+                                            self.params.data.label.var,
+                                            sample_label_series.min())
+
+                                    if _upper_outlier_threshold < self.params.data.label.upper_outlier_threshold:
+                                        self.params.data.label.upper_outlier_threshold = _upper_outlier_threshold
+
                             else:
                                 self.params.data.label.lower_outlier_threshold = \
                                     sample_label_series.quantile(
                                         q=self.params.data.label.outlier_tail_proportion,
                                         interpolation='linear')
+
+                                if lower_numeric_null is not None:
+                                    _lower_outlier_threshold = \
+                                        sample_label_series.loc[sample_label_series > lower_numeric_null] \
+                                        .min(skipna=True)
+
+                                    assert pandas.notnull(_lower_outlier_threshold), \
+                                        '*** {} SAMPLE MAX = {} ***'.format(
+                                            self.params.data.label.var,
+                                            sample_label_series.max())
+
+                                    if _lower_outlier_threshold > self.params.data.label.lower_outlier_threshold:
+                                        self.params.data.label.lower_outlier_threshold = _lower_outlier_threshold
 
                         elif _calc_upper_outlier_threshold:
                             if sample_label_series is None:
@@ -252,6 +297,19 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                                 sample_label_series.quantile(
                                     q=1 - self.params.data.label.outlier_tail_proportion,
                                     interpolation='linear')
+
+                            if upper_numeric_null is not None:
+                                _upper_outlier_threshold = \
+                                    sample_label_series.loc[sample_label_series < upper_numeric_null] \
+                                    .max(skipna=True)
+
+                                assert pandas.notnull(_upper_outlier_threshold), \
+                                    '*** {} SAMPLE MIN = {} ***'.format(
+                                        self.params.data.label.var,
+                                        sample_label_series.min())
+
+                                if _upper_outlier_threshold < self.params.data.label.upper_outlier_threshold:
+                                    self.params.data.label.upper_outlier_threshold = _upper_outlier_threshold
 
                     _lower_outlier_threshold_applicable = \
                         pandas.notnull(self.params.data.label.lower_outlier_threshold)
@@ -341,12 +399,18 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                     self.params.data.label._int_var = self.params.data.label.var
 
                 if __train__ and (label_col_type.startswith('decimal') or (label_col_type in _NUM_TYPES)) \
-                        and isinstance(self, RegrEvalMixIn) and self.params.data.label.excl_outliers:
-                    assert self.params.data.label.outlier_tails \
+                        and isinstance(self, RegrEvalMixIn):
+                    assert self.params.data.label.excl_outliers \
+                       and self.params.data.label.outlier_tails \
                        and self.params.data.label.outlier_tail_proportion \
                        and (self.params.data.label.outlier_tail_proportion < .5)
 
                     if __first_train__:
+                        lower_numeric_null, upper_numeric_null = \
+                            self.params.data.nulls.get(
+                                self.params.data.label.var,
+                                (None, None))
+
                         self.params.data.label.outlier_tails = \
                             self.params.data.label.outlier_tails.lower()
 
@@ -368,6 +432,18 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                                            1 - self.params.data.label.outlier_tail_proportion),
                                         relativeError=self.params.data.label.outlier_tail_proportion / 3)
 
+                                if lower_numeric_null is not None:
+                                    _lower_outlier_threshold = lower_numeric_null + 1e-6
+
+                                    if _lower_outlier_threshold > self.params.data.label.lower_outlier_threshold:
+                                        self.params.data.label.lower_outlier_threshold = _lower_outlier_threshold
+
+                                if upper_numeric_null is not None:
+                                    _upper_outlier_threshold = upper_numeric_null - 1e-6
+
+                                    if _upper_outlier_threshold < self.params.data.label.upper_outlier_threshold:
+                                        self.params.data.label.upper_outlier_threshold = _upper_outlier_threshold
+
                             else:
                                 self.params.data.label.lower_outlier_threshold = \
                                     adf.quantile(
@@ -375,12 +451,24 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                                         q=self.params.data.label.outlier_tail_proportion,
                                         relativeError=self.params.data.label.outlier_tail_proportion / 3)
 
+                                if lower_numeric_null is not None:
+                                    _lower_outlier_threshold = lower_numeric_null + 1e-6
+
+                                    if _lower_outlier_threshold > self.params.data.label.lower_outlier_threshold:
+                                        self.params.data.label.lower_outlier_threshold = _lower_outlier_threshold
+
                         elif _calc_upper_outlier_threshold:
                             self.params.data.label.upper_outlier_threshold = \
                                 adf.quantile(
                                     self.params.data.label.var,
                                     q=1 - self.params.data.label.outlier_tail_proportion,
                                     relativeError=self.params.data.label.outlier_tail_proportion / 3)
+
+                            if upper_numeric_null is not None:
+                                _upper_outlier_threshold = upper_numeric_null - 1e-6
+
+                                if _upper_outlier_threshold < self.params.data.label.upper_outlier_threshold:
+                                    self.params.data.label.upper_outlier_threshold = _upper_outlier_threshold
 
                     _lower_outlier_threshold_applicable = \
                         pandas.notnull(self.params.data.label.lower_outlier_threshold)
