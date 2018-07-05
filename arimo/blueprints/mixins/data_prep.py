@@ -192,6 +192,8 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                        and (self.params.data.label.outlier_tail_proportion < .5)
 
                     if __first_train__:
+                        print(self.params.data.nulls)
+                        
                         lower_numeric_null, upper_numeric_null = \
                             self.params.data.nulls.get(
                                 self.params.data.label.var,
