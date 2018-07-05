@@ -2192,6 +2192,8 @@ class ArrowADF(_ArrowADFABC):
 
             pandasDF = kwargs.get('pandasDF')
 
+            lowerNumericNull, upperNumericNull = self._nulls[col]
+
             if pandasDF is None:
                 if col not in self._cache.count:
                     verbose = True \
@@ -2200,8 +2202,6 @@ class ArrowADF(_ArrowADFABC):
 
                     if verbose:
                         tic = time.time()
-
-                    lowerNumericNull, upperNumericNull = self._nulls[col]
 
                     self._cache.count[col] = result = \
                         self[col] \
@@ -2244,7 +2244,25 @@ class ArrowADF(_ArrowADFABC):
                 return self._cache.count[col]
 
             else:
-                return len(pandasDF.loc[pandas.notnull(pandasDF[col])])
+                return (pandasDF[col]
+                            .notnull()
+                            .sum(skipna=True,
+                                 min_count=0)
+                        if pandas.isnull(upperNumericNull)
+                        else (pandasDF[col] < upperNumericNull)
+                                .sum(skipna=True,
+                                     min_count=0)) \
+                    if pandas.isnull(lowerNumericNull) \
+                  else ((pandasDF[col] > lowerNumericNull)
+                            .sum(skipna=True,
+                                 min_count=0)
+                        if pandas.isnull(upperNumericNull)
+                        else pandasDF[col].between(
+                                left=lowerNumericNull,
+                                right=upperNumericNull,
+                                inclusive=False)
+                            .sum(skipna=True,
+                                 min_count=0))
 
     @_docstr_verbose
     def nonNullProportion(self, *cols, **kwargs):
