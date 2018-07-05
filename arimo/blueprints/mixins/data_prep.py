@@ -197,8 +197,6 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                                 self.params.data.label.var,
                                 (None, None))
 
-                        print('*** {}, {} ***'.format(lower_numeric_null, upper_numeric_null))
-
                         self.params.data.label.outlier_tails = \
                             self.params.data.label.outlier_tails.lower()
 
@@ -239,8 +237,6 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                                         sample_label_series.loc[sample_label_series > lower_numeric_null] \
                                         .min(skipna=True)
 
-                                    print('*** {} ***'.format(_lower_outlier_threshold))
-
                                     assert pandas.notnull(_lower_outlier_threshold), \
                                         '*** {} SAMPLE MAX = {} ***'.format(
                                             self.params.data.label.var,
@@ -253,8 +249,6 @@ class LabeledDataPrepMixIn(_DataPrepMixInABC):
                                     _upper_outlier_threshold = \
                                         sample_label_series.loc[sample_label_series < upper_numeric_null] \
                                         .max(skipna=True)
-
-                                    print('*** {} ***'.format(_upper_outlier_threshold))
 
                                     assert pandas.notnull(_upper_outlier_threshold), \
                                         '*** {} SAMPLE MIN = {} ***'.format(
