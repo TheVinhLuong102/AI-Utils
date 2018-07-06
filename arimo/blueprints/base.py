@@ -1592,7 +1592,7 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
 
             _per_label_adf = \
                 _per_label_adf_pre_cached.filter(
-                    condition='({} IS NOT NULL) AND ({} IS NOT NULL)'
+                    condition="({0} IS NOT NULL) AND (STRING({0}) != 'NaN') AND ({1} IS NOT NULL) AND (STRING({1}) != 'NaN')"
                         .format(label_var_name, score_col_name))
 
             blueprint = \
