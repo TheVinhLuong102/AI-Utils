@@ -340,7 +340,7 @@ class _ArrowADF__prep__pandasDFTransform:
             assert self.numScaler is None
 
     def __call__(self, pandasDF):
-        _FLOAT_ABS_TOL = 1e-6
+        _FLOAT_ABS_TOL = 1e-9
 
         for col, value in self.addCols.items():
             pandasDF[col] = value
@@ -3481,17 +3481,19 @@ class ArrowADF(_ArrowADFABC):
                                     (profile[catCol].distinctProportions.index
                                      if catCol in forceCat
                                      else profile[catCol].distinctProportions.index[:self._maxNCats[catCol]])
-                                if (cat != '') and pandas.notnull(cat)]
+                                if pandas.notnull(cat) and
+                                    ((cat != '')
+                                     if isStr
+                                     else numpy.isfinite(cat))]
 
                         nCats = len(cats)
 
                         catIdxSqlItem = \
                             'CASE {} ELSE {} END'.format(
-                                ' '.join('WHEN {} = {} THEN {}'.format(
-                                            catCol,
-                                            "'{}'".format(cat.replace("'", "''").replace('"', '""'))
+                                ' '.join('WHEN {} THEN {}'.format(
+                                            "{} = '{}'".format(catCol, cat.replace("'", "''").replace('"', '""'))
                                                 if isStr
-                                                else cat,
+                                                else 'ABS({} - {}) < 1e-9'.format(catCol, cat),
                                             i)
                                          for i, cat in enumerate(cats)),
                                 nCats)
