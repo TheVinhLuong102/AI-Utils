@@ -1657,8 +1657,9 @@ class SparkADF(_ADFABC):
 
             msg = 'Loading by {} Format from {}{}...'.format(
                     format.upper(),
-                    path if isinstance(path, _STR_CLASSES)
-                         else '{} Paths e.g. {}'.format(len(path), path[:3]),
+                    '"{}"'.format(path)
+                        if isinstance(path, _STR_CLASSES)
+                        else '{} Paths e.g. {}'.format(len(path), path[:3]),
                     ' (DB Table "{}")'.format(options['dbtable'])
                         if 'dbtable' in options
                         else '')
