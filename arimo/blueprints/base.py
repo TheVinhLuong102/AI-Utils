@@ -1338,7 +1338,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                                     inheritNRows=True
                                 ).sample(
                                     self.params.data.label.var,
-                                    n=10 ** 8,   # 1mil = 68MB
+                                    n=10 ** 8   # 1mil = 68MB
                                 )[self.params.data.label.var]
 
                             sample_label_series = \
@@ -1347,8 +1347,8 @@ class _SupervisedBlueprintABC(_BlueprintABC):
 
                         self.params.data.label._strings = \
                             LabelEncoder() \
-                                .fit(sample_label_series) \
-                                .classes_.tolist()
+                            .fit(sample_label_series) \
+                            .classes_.tolist()
 
                     adf.map(
                         mapper=_ArrowADF__encodeStr__pandasDFTransform(
@@ -1393,7 +1393,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                                         inheritNRows=True
                                     ).sample(
                                         self.params.data.label.var,
-                                        n=10 ** 8,   # 1mil = 68MB
+                                        n=10 ** 8   # 1mil = 68MB
                                     )[self.params.data.label.var]
 
                                 sample_label_series = \
@@ -1463,7 +1463,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                                         inheritNRows=True
                                     ).sample(
                                         self.params.data.label.var,
-                                        n=10 ** 8,   # 1mil = 68MB
+                                        n=10 ** 8   # 1mil = 68MB
                                     )[self.params.data.label.var]
 
                                 sample_label_series = \
