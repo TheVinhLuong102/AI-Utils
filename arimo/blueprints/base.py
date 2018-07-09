@@ -3228,8 +3228,6 @@ class _PPPBlueprintABC(_BlueprintABC):
                      itertools.product(cls._RAW_METRICS, cls._GLOBAL_OR_INDIV_PREFIXES, cls._SGN_PREFIXES)]
 
         if isinstance(df_w_err_mults, SparkADF):
-            from arimo.blueprints.base import _SupervisedBlueprintABC
-
             col_strs = []
 
             for col_name in cols_to_agg:
@@ -3422,8 +3420,6 @@ def _blueprint_from_params(
 
 # utility to validate Blueprint params
 def validate_blueprint_params(blueprint_or_blueprint_params):
-    from arimo.blueprints.base import _BlueprintABC, _blueprint_from_params
-
     if isinstance(blueprint_or_blueprint_params, _BlueprintABC):
         blueprint = blueprint_or_blueprint_params
         blueprint_params = blueprint.params
