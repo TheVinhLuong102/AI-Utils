@@ -2305,8 +2305,6 @@ class _PPPBlueprintABC(_BlueprintABC):
             orig_cols_to_keep = set(adf.indexCols)
             orig_cols_to_keep.add(self.params.data.id_col)
 
-        print('*** PREPPING {} --> {} ***'.format(data_transforms_load_path, data_transforms_save_path))
-
         adf, cat_orig_to_prep_col_map, num_orig_to_prep_col_map = \
             adf.prep(
                 *cols_to_prep,
