@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division
+
 import copy
 import math
 import os
@@ -5,8 +7,6 @@ import psutil
 import random
 
 import arimo.backend
-from arimo.blueprints.base import  BlueprintedArimoDLModel, BlueprintedKerasModel, _docstr_blueprint
-from arimo.blueprints.mixins.eval import ClassifEvalMixIn
 from arimo.df.from_files import ArrowADF
 from arimo.df.spark_from_files import ArrowSparkADF
 from arimo.dl.base import LossPlateauLrDecay
@@ -15,11 +15,12 @@ from arimo.util.decor import _docstr_verbose
 from arimo.util.dl import MASK_VAL
 from arimo.util.pkl import pickle_able
 
-from . import _TimeSerDLSupervisedBlueprintABC
+from ..base import  BlueprintedArimoDLModel, BlueprintedKerasModel, _docstr_blueprint, ClassifEvalMixIn
+from . import _TimeSerDLSupervisedBlueprintABC, _TimeSerDataPrepMixInABC
 
 
 @_docstr_blueprint
-class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC):
+class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC, _TimeSerDataPrepMixInABC):
     _DEFAULT_PARAMS = \
         copy.deepcopy(
             _TimeSerDLSupervisedBlueprintABC._DEFAULT_PARAMS)

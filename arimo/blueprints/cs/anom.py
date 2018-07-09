@@ -9,16 +9,15 @@ import uuid
 from pyspark.sql.types import DoubleType, StructField, StructType
 
 import arimo.backend
-from arimo.blueprints.base import _docstr_blueprint, _blueprint_from_params, _PPPBlueprintABC
 from arimo.df.spark import SparkADF
 from arimo.util import fs
 import arimo.debug
 
-from ..mixins.data_prep import PPPDataPrepMixIn
+from ..base import _docstr_blueprint, _blueprint_from_params, _PPPBlueprintABC
 
 
 @_docstr_blueprint
-class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
+class DLPPPBlueprint(_PPPBlueprintABC):
     def score(self, *args, **kwargs):
         # scoring batch size
         __batch_size__ = kwargs.pop('__batch_size__', 1000)

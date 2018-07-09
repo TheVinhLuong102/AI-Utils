@@ -14,9 +14,6 @@ import uuid
 from pyspark.sql.types import ArrayType, DoubleType, IntegerType, StructField, StructType
 
 import arimo.backend
-from arimo.blueprints.base import \
-    _docstr_blueprint, _DLSupervisedBlueprintABC, \
-    BlueprintedArimoDLModel, BlueprintedKerasModel
 from arimo.df.spark import SparkADF
 import arimo.eval.metrics
 from arimo.util import clean_str, clean_uuid, fs, Namespace
@@ -26,12 +23,12 @@ from arimo.util.log import STDOUT_HANDLER
 from arimo.util.types.spark_sql import _NUM_TYPES, _STR_TYPE
 import arimo.debug
 
-from ..mixins.data_prep import LabeledDataPrepMixIn
-from ..mixins.eval import RegrEvalMixIn
+from ..base import _docstr_blueprint, _DLSupervisedBlueprintABC, RegrEvalMixIn, \
+    BlueprintedArimoDLModel, BlueprintedKerasModel
 
 
 @_docstr_blueprint
-class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBlueprintABC):
+class _TimeSerDLSupervisedBlueprintABC(_DLSupervisedBlueprintABC):
     __metaclass__ = abc.ABCMeta
 
     _DEFAULT_PARAMS = \
@@ -573,3 +570,8 @@ class _TimeSerDLSupervisedBlueprintABC(LabeledDataPrepMixIn, _DLSupervisedBluepr
         adf.unpersist()
 
         return metrics
+
+
+# place-holder mix-in class
+class _TimeSerDataPrepMixInABC(object):
+    pass

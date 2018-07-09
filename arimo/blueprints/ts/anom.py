@@ -9,17 +9,17 @@ import uuid
 from pyspark.sql.types import DoubleType, IntegerType, StructField, StructType
 
 import arimo.backend
-from arimo.blueprints.base import _blueprint_from_params, _docstr_blueprint, _PPPBlueprintABC
 from arimo.df.spark import SparkADF
 from arimo.util import fs
 from arimo.util.dl import MASK_VAL
 import arimo.debug
 
-from ..mixins.data_prep import PPPDataPrepMixIn
+from ..base import _blueprint_from_params, _docstr_blueprint, _PPPBlueprintABC
+from . import _TimeSerDataPrepMixInABC
 
 
 @_docstr_blueprint
-class DLPPPBlueprint(PPPDataPrepMixIn, _PPPBlueprintABC):
+class DLPPPBlueprint(_TimeSerDataPrepMixInABC, _PPPBlueprintABC):
     _SCORE_ADF_ALIAS = '__Scored__'
 
     def score(self, *args, **kwargs):

@@ -1,32 +1,52 @@
 # -*- coding: utf-8 -*-
-from __future__ import division, unicode_literals
+from __future__ import absolute_import, division, unicode_literals
 
 import abc
 import argparse
 import copy
+import itertools
 import joblib
 import logging
 import math
+import numpy
 import os
 import pandas
+from sklearn.preprocessing import LabelEncoder
 import tempfile
 import time
 import tqdm
 import uuid
 
+import six
+_STR_CLASSES = \
+    (str, unicode) \
+    if six.PY2 \
+    else str
+
+from pyspark.ml import PipelineModel
+from pyspark.ml.feature import StringIndexer, VectorAssembler
+import pyspark.sql
+from pyspark.sql.types import DoubleType, StringType, StructField, StructType
+
 import arimo.backend
+from arimo.df.from_files import ArrowADF, \
+    _ArrowADF__castType__pandasDFTransform, _ArrowADF__encodeStr__pandasDFTransform
+from arimo.df.spark import SparkADF
+from arimo.df.spark_from_files import ArrowSparkADF
 from arimo.dl.base import DataFramePreprocessor, ModelServingPersistence
 import arimo.eval.metrics
 from arimo.util import clean_str, clean_uuid, date_time, fs, import_obj, Namespace
 from arimo.util.aws import s3
-from arimo.util.date_time import _PRED_VARS_INCL_T_AUX_COLS, _PRED_VARS_INCL_T_CAT_AUX_COLS, _PRED_VARS_INCL_T_NUM_AUX_COLS
+from arimo.util.date_time import DATE_COL, MONTH_COL, \
+    _PRED_VARS_INCL_T_AUX_COLS, _PRED_VARS_INCL_T_CAT_AUX_COLS, _PRED_VARS_INCL_T_NUM_AUX_COLS
+from arimo.util.iterables import to_iterable
 from arimo.util.log import STDOUT_HANDLER
 from arimo.util.pkl import COMPAT_PROTOCOL, COMPAT_COMPRESS, MAX_COMPRESS_LVL, PKL_EXT
-from arimo.util.types.spark_sql import _NUM_TYPES, _STR_TYPE
+from arimo.util.types.arrow import is_boolean, is_float, is_integer, is_num, is_string, string
+from arimo.util.types.spark_sql import _BOOL_TYPE, _FLOAT_TYPES, _INT_TYPES, _NUM_TYPES, _STR_TYPE
 import arimo.debug
 
-from .mixins.anom import PPPAnalysesMixIn
-from .mixins.eval import RegrEvalMixIn
+from .ts import _TimeSerDataPrepMixInABC
 
 
 _TMP_FILE_NAME = '.tmp'
@@ -220,6 +240,8 @@ class _BlueprintABC(object):
     _TRAIN_MODE = 'train'
     _SCORE_MODE = 'score'
     _EVAL_MODE = 'eval'
+
+    _PREP_ADF_ALIAS_SUFFIX = '__Prep'
 
     _GLOBAL_EVAL_KEY = 'GLOBAL'
     _BY_ID_EVAL_KEY = 'BY_ID'
@@ -977,6 +999,31 @@ class BlueprintedKerasModel(_BlueprintedModelABC):
             self.stdout_logger.info(message + ' done!')
 
 
+class _EvalMixInABC(object):
+    __metaclass__ = abc.ABCMeta
+
+    _EVAL_ADF_ALIAS_SUFFIX = '__Eval'
+
+    @classmethod
+    @abc.abstractproperty
+    def eval_metrics(cls):
+        raise NotImplementedError
+
+
+class ClassifEvalMixIn(_EvalMixInABC):
+    eval_metrics = \
+        'Prevalence', 'ConfMat', 'Acc', \
+        'Precision', 'WeightedPrecision', \
+        'Recall', 'WeightedRecall', \
+        'F1', 'WeightedF1', \
+        'PR_AuC', 'Weighted_PR_AuC', \
+        'ROC_AuC', 'Weighted_ROC_AuC'
+
+
+class RegrEvalMixIn(_EvalMixInABC):
+    eval_metrics = 'MedAE', 'MAE', 'RMSE', 'R2'
+
+
 @_docstr_blueprint
 class _SupervisedBlueprintABC(_BlueprintABC):
     __metaclass__ = abc.ABCMeta
@@ -1145,6 +1192,9 @@ class _SupervisedBlueprintABC(_BlueprintABC):
 
             'model.score.raw_score_col_prefix': Namespace()})
 
+    _INT_LABEL_COL = '__INT_LABEL__'
+    _LABELED_ADF_ALIAS_SUFFIX = '__Labeled'
+
     def __init__(self, *args, **kwargs):
         super(_SupervisedBlueprintABC, self).__init__(*args, **kwargs)
 
@@ -1158,8 +1208,6 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                 self.params.persist._models_dir)
 
         # set __BlueprintedModelClass__
-        from arimo.blueprints.base import BlueprintedArimoDLModel, BlueprintedKerasModel
-
         self.__BlueprintedModelClass__ = \
             BlueprintedKerasModel \
             if self.params.model.factory.name.startswith('arimo.dl.experimental.keras') \
@@ -1173,6 +1221,650 @@ class _SupervisedBlueprintABC(_BlueprintABC):
             self.__qual_name__(),
             self.params.uuid,
             self.params.data.label.var)
+
+    def prep_data(
+            self, df, __mode__='score',
+            __from_ppp__=False,
+            __ohe_cat__=False, __scale_cat__=True, __vectorize__=True,
+            verbose=True, **kwargs):
+        # check if (incrementally-)training, scoring or evaluating
+        if __mode__ == self._TRAIN_MODE:
+            __train__ = True
+            __score__ = __eval__ = False
+
+        elif __mode__ == self._SCORE_MODE:
+            __train__ = __eval__ = False
+            __score__ = True
+
+        elif __mode__ == self._EVAL_MODE:
+            __train__ = __score__ = False
+            __eval__ = True
+
+        else:
+            raise ValueError(
+                '*** Blueprint "{}" argument must be either "{}", "{}" or "{}" ***'
+                    .format(self._MODE_ARG, self._TRAIN_MODE, self._SCORE_MODE, self._EVAL_MODE))
+
+        assert __train__ + __score__ + __eval__ == 1
+
+        __first_train__ = __train__ and (not os.path.isdir(self.data_transforms_dir))
+
+        if isinstance(df, SparkADF):
+            adf = df
+
+            adf.tCol = self.params.data.time_col
+
+            if isinstance(self, _TimeSerDataPrepMixInABC):
+                adf.iCol = self.params.data.id_col
+
+        else:
+            kwargs['tCol'] = self.params.data.time_col
+
+            if isinstance(self, _TimeSerDataPrepMixInABC):
+                kwargs['iCol'] = self.params.data.id_col
+
+            if isinstance(df, pandas.DataFrame):
+                adf = SparkADF.create(
+                        data=df,
+                        schema=None,
+                        samplingRatio=None,
+                        verifySchema=False,
+                        **kwargs)
+
+            elif isinstance(df, pyspark.sql.DataFrame):
+                adf = SparkADF(sparkDF=df, **kwargs)
+
+            else:
+                __vectorize__ = False
+
+                if isinstance(df, ArrowADF):
+                    adf = df
+
+                    adf.tCol = self.params.data.time_col
+
+                    if isinstance(self, _TimeSerDataPrepMixInABC):
+                        adf.iCol = self.params.data.id_col
+
+                else:
+                    assert isinstance(df, _STR_CLASSES)
+
+                    adf = (ArrowSparkADF
+                           if arimo.backend._ON_LINUX_CLUSTER_WITH_HDFS
+                           else ArrowADF)(
+                        path=df, **kwargs)
+
+        if __train__:
+            assert self._INT_LABEL_COL not in adf.columns
+
+            label_col_type = adf.type(self.params.data.label.var)
+
+            if isinstance(adf, ArrowADF):
+                sample_label_series = None
+
+                if is_float(label_col_type) and isinstance(self, ClassifEvalMixIn):
+                    adf.map(
+                        mapper=_ArrowADF__castType__pandasDFTransform(
+                                col=self.params.data.label.var,
+                                asType=str,
+                                asCol=None),
+                        inheritNRows=True,
+                        inplace=True)
+
+                    label_col_type = string()
+
+                if is_boolean(label_col_type):
+                    if __first_train__:
+                        self.params.data.label._int_var = self._INT_LABEL_COL
+
+                    adf.map(
+                        mapper=_ArrowADF__castType__pandasDFTransform(
+                                col=self.params.data.label.var,
+                                asType=int,
+                                asCol=self.params.data.label._int_var),
+                        inheritNRows=True,
+                        inplace=True)
+
+                elif is_string(label_col_type):
+                    if __first_train__:
+                        self.params.data.label._int_var = self._INT_LABEL_COL
+
+                        if sample_label_series is None:
+                            sample_label_series = \
+                                adf.copy(
+                                    resetMappers=True,
+                                    inheritCache=True,
+                                    inheritNRows=True
+                                ).sample(
+                                    self.params.data.label.var,
+                                    n=10 ** 8,   # 1mil = 68MB
+                                )[self.params.data.label.var]
+
+                            sample_label_series = \
+                                sample_label_series.loc[
+                                    pandas.notnull(sample_label_series)]
+
+                        self.params.data.label._strings = \
+                            LabelEncoder() \
+                                .fit(sample_label_series) \
+                                .classes_.tolist()
+
+                    adf.map(
+                        mapper=_ArrowADF__encodeStr__pandasDFTransform(
+                                col=self.params.data.label.var,
+                                strs=self.params.data.label._strings,
+                                asCol=self.params.data.label._int_var),
+                        inheritNRows=True,
+                        inplace=True)
+
+                elif is_integer(label_col_type) and __first_train__:
+                    self.params.data.label._int_var = self.params.data.label.var
+
+                if is_num(label_col_type) and isinstance(self, RegrEvalMixIn):
+                    assert self.params.data.label.excl_outliers \
+                       and self.params.data.label.outlier_tails \
+                       and self.params.data.label.outlier_tail_proportion \
+                       and (self.params.data.label.outlier_tail_proportion < .5)
+
+                    if __first_train__:
+                        lower_numeric_null, upper_numeric_null = \
+                            self.params.data.nulls.get(
+                                self.params.data.label.var,
+                                (None, None))
+
+                        self.params.data.label.outlier_tails = \
+                            self.params.data.label.outlier_tails.lower()
+
+                        _calc_lower_outlier_threshold = \
+                            (self.params.data.label.outlier_tails in ('both', 'lower')) and \
+                            pandas.isnull(self.params.data.label.lower_outlier_threshold)
+
+                        _calc_upper_outlier_threshold = \
+                            (self.params.data.label.outlier_tails in ('both', 'upper')) and \
+                            pandas.isnull(self.params.data.label.upper_outlier_threshold)
+
+                        if _calc_lower_outlier_threshold:
+                            if sample_label_series is None:
+                                sample_label_series = \
+                                    adf.copy(
+                                        resetMappers=True,
+                                        inheritCache=True,
+                                        inheritNRows=True
+                                    ).sample(
+                                        self.params.data.label.var,
+                                        n=10 ** 8,   # 1mil = 68MB
+                                    )[self.params.data.label.var]
+
+                                sample_label_series = \
+                                    sample_label_series.loc[
+                                        pandas.notnull(sample_label_series) &
+                                        numpy.isfinite(sample_label_series)]
+
+                            if _calc_upper_outlier_threshold:
+                                self.params.data.label.lower_outlier_threshold, \
+                                self.params.data.label.upper_outlier_threshold = \
+                                    sample_label_series.quantile(
+                                        q=(self.params.data.label.outlier_tail_proportion,
+                                           1 - self.params.data.label.outlier_tail_proportion),
+                                        interpolation='linear')
+
+                                if lower_numeric_null is not None:
+                                    _lower_outlier_threshold = \
+                                        sample_label_series.loc[sample_label_series > lower_numeric_null] \
+                                        .min(skipna=True)
+
+                                    assert pandas.notnull(_lower_outlier_threshold), \
+                                        '*** {} SAMPLE MAX = {} ***'.format(
+                                            self.params.data.label.var,
+                                            sample_label_series.max())
+
+                                    if _lower_outlier_threshold > self.params.data.label.lower_outlier_threshold:
+                                        self.params.data.label.lower_outlier_threshold = _lower_outlier_threshold
+
+                                if upper_numeric_null is not None:
+                                    _upper_outlier_threshold = \
+                                        sample_label_series.loc[sample_label_series < upper_numeric_null] \
+                                        .max(skipna=True)
+
+                                    assert pandas.notnull(_upper_outlier_threshold), \
+                                        '*** {} SAMPLE MIN = {} ***'.format(
+                                            self.params.data.label.var,
+                                            sample_label_series.min())
+
+                                    if _upper_outlier_threshold < self.params.data.label.upper_outlier_threshold:
+                                        self.params.data.label.upper_outlier_threshold = _upper_outlier_threshold
+
+                            else:
+                                self.params.data.label.lower_outlier_threshold = \
+                                    sample_label_series.quantile(
+                                        q=self.params.data.label.outlier_tail_proportion,
+                                        interpolation='linear')
+
+                                if lower_numeric_null is not None:
+                                    _lower_outlier_threshold = \
+                                        sample_label_series.loc[sample_label_series > lower_numeric_null] \
+                                        .min(skipna=True)
+
+                                    assert pandas.notnull(_lower_outlier_threshold), \
+                                        '*** {} SAMPLE MAX = {} ***'.format(
+                                            self.params.data.label.var,
+                                            sample_label_series.max())
+
+                                    if _lower_outlier_threshold > self.params.data.label.lower_outlier_threshold:
+                                        self.params.data.label.lower_outlier_threshold = _lower_outlier_threshold
+
+                        elif _calc_upper_outlier_threshold:
+                            if sample_label_series is None:
+                                sample_label_series = \
+                                    adf.copy(
+                                        resetMappers=True,
+                                        inheritCache=True,
+                                        inheritNRows=True
+                                    ).sample(
+                                        self.params.data.label.var,
+                                        n=10 ** 8,   # 1mil = 68MB
+                                    )[self.params.data.label.var]
+
+                                sample_label_series = \
+                                    sample_label_series.loc[
+                                        pandas.notnull(sample_label_series) &
+                                        numpy.isfinite(sample_label_series)]
+
+                            self.params.data.label.upper_outlier_threshold = \
+                                sample_label_series.quantile(
+                                    q=1 - self.params.data.label.outlier_tail_proportion,
+                                    interpolation='linear')
+
+                            if upper_numeric_null is not None:
+                                _upper_outlier_threshold = \
+                                    sample_label_series.loc[sample_label_series < upper_numeric_null] \
+                                    .max(skipna=True)
+
+                                assert pandas.notnull(_upper_outlier_threshold), \
+                                    '*** {} SAMPLE MIN = {} ***'.format(
+                                        self.params.data.label.var,
+                                        sample_label_series.min())
+
+                                if _upper_outlier_threshold < self.params.data.label.upper_outlier_threshold:
+                                    self.params.data.label.upper_outlier_threshold = _upper_outlier_threshold
+
+            else:
+                if __from_ppp__:
+                    assert adf.alias
+
+                else:
+                    adf_uuid = clean_uuid(uuid.uuid4())
+
+                    adf.alias = \
+                        '{}__{}__{}'.format(
+                            self.params._uuid,
+                            __mode__,
+                            adf_uuid)
+
+                if (label_col_type.startswith('decimal') or (label_col_type in _FLOAT_TYPES)) \
+                        and isinstance(self, ClassifEvalMixIn):
+                    adf('STRING({0}) AS {0}'.format(self.params.data.label.var),
+                        *(col for col in adf.columns
+                          if col != self.params.data.label.var),
+                        inheritCache=True,
+                        inheritNRows=True,
+                        inplace=True)
+
+                    label_col_type = _STR_TYPE
+
+                if label_col_type == _BOOL_TYPE:
+                    if __first_train__:
+                        self.params.data.label._int_var = self._INT_LABEL_COL
+
+                    adf('*',
+                        'INT({}) AS {}'.format(
+                            self.params.data.label.var,
+                            self.params.data.label._int_var),
+                        inheritCache=True,
+                        inheritNRows=True,
+                        inplace=True)
+
+                elif label_col_type == _STR_TYPE:
+                    if __first_train__:
+                        self.params.data.label._int_var = self._INT_LABEL_COL
+
+                        self.params.data.label._strings = \
+                            [s for s in
+                                StringIndexer(
+                                    inputCol=self.params.data.label.var,
+                                    outputCol=self.params.data.label._int_var,
+                                    handleInvalid='skip'   # filter out rows with invalid data (just in case there are NULL labels)
+                                        # 'error': throw an error
+                                        # 'keep': put invalid data in a special additional bucket, at index numLabels
+                                ).fit(dataset=adf).labels
+                             if pandas.notnull(s)]
+
+                    adf('*',
+                        '(CASE {} ELSE NULL END) AS {}'.format(
+                            ' '.join(
+                                "WHEN {} = '{}' THEN {}".format(
+                                    self.params.data.label.var, label, i)
+                                for i, label in enumerate(self.params.data.label._strings)),
+                            self.params.data.label._int_var),
+                        inheritCache=True,
+                        inheritNRows=True,
+                        inplace=True)
+
+                elif (label_col_type in _INT_TYPES) and __first_train__:
+                    self.params.data.label._int_var = self.params.data.label.var
+
+                if __train__ and (label_col_type.startswith('decimal') or (label_col_type in _NUM_TYPES)) \
+                        and isinstance(self, RegrEvalMixIn):
+                    assert self.params.data.label.excl_outliers \
+                       and self.params.data.label.outlier_tails \
+                       and self.params.data.label.outlier_tail_proportion \
+                       and (self.params.data.label.outlier_tail_proportion < .5)
+
+                    if __first_train__:
+                        lower_numeric_null, upper_numeric_null = \
+                            self.params.data.nulls.get(
+                                self.params.data.label.var,
+                                (None, None))
+
+                        self.params.data.label.outlier_tails = \
+                            self.params.data.label.outlier_tails.lower()
+
+                        _calc_lower_outlier_threshold = \
+                            (self.params.data.label.outlier_tails in ('both', 'lower')) and \
+                            pandas.isnull(self.params.data.label.lower_outlier_threshold)
+
+                        _calc_upper_outlier_threshold = \
+                            (self.params.data.label.outlier_tails in ('both', 'upper')) and \
+                            pandas.isnull(self.params.data.label.upper_outlier_threshold)
+
+                        if _calc_lower_outlier_threshold:
+                            if _calc_upper_outlier_threshold:
+                                self.params.data.label.lower_outlier_threshold, \
+                                self.params.data.label.upper_outlier_threshold = \
+                                    adf.quantile(
+                                        self.params.data.label.var,
+                                        q=(self.params.data.label.outlier_tail_proportion,
+                                           1 - self.params.data.label.outlier_tail_proportion),
+                                        relativeError=self.params.data.label.outlier_tail_proportion / 3)
+
+                                if lower_numeric_null is not None:
+                                    _lower_outlier_threshold = lower_numeric_null + 1e-9
+
+                                    if _lower_outlier_threshold > self.params.data.label.lower_outlier_threshold:
+                                        self.params.data.label.lower_outlier_threshold = _lower_outlier_threshold
+
+                                if upper_numeric_null is not None:
+                                    _upper_outlier_threshold = upper_numeric_null - 1e-9
+
+                                    if _upper_outlier_threshold < self.params.data.label.upper_outlier_threshold:
+                                        self.params.data.label.upper_outlier_threshold = _upper_outlier_threshold
+
+                            else:
+                                self.params.data.label.lower_outlier_threshold = \
+                                    adf.quantile(
+                                        self.params.data.label.var,
+                                        q=self.params.data.label.outlier_tail_proportion,
+                                        relativeError=self.params.data.label.outlier_tail_proportion / 3)
+
+                                if lower_numeric_null is not None:
+                                    _lower_outlier_threshold = lower_numeric_null + 1e-9
+
+                                    if _lower_outlier_threshold > self.params.data.label.lower_outlier_threshold:
+                                        self.params.data.label.lower_outlier_threshold = _lower_outlier_threshold
+
+                        elif _calc_upper_outlier_threshold:
+                            self.params.data.label.upper_outlier_threshold = \
+                                adf.quantile(
+                                    self.params.data.label.var,
+                                    q=1 - self.params.data.label.outlier_tail_proportion,
+                                    relativeError=self.params.data.label.outlier_tail_proportion / 3)
+
+                            if upper_numeric_null is not None:
+                                _upper_outlier_threshold = upper_numeric_null - 1e-9
+
+                                if _upper_outlier_threshold < self.params.data.label.upper_outlier_threshold:
+                                    self.params.data.label.upper_outlier_threshold = _upper_outlier_threshold
+
+                    _lower_outlier_threshold_applicable = \
+                        pandas.notnull(self.params.data.label.lower_outlier_threshold)
+
+                    _upper_outlier_threshold_applicable = \
+                        pandas.notnull(self.params.data.label.upper_outlier_threshold)
+
+                    if _lower_outlier_threshold_applicable or _upper_outlier_threshold_applicable:
+                        _outlier_robust_condition = \
+                            ('BETWEEN {} AND {}'.format(
+                                self.params.data.label.lower_outlier_threshold,
+                                self.params.data.label.upper_outlier_threshold)
+                             if _upper_outlier_threshold_applicable
+                             else '>= {}'.format(self.params.data.label.lower_outlier_threshold)) \
+                            if _lower_outlier_threshold_applicable \
+                            else '<= {}'.format(self.params.data.label.upper_outlier_threshold)
+
+                        if arimo.debug.ON:
+                            self.stdout_logger.debug(
+                                msg='*** DATA PREP FOR TRAIN: CONDITION ROBUST TO LABEL OUTLIERS: {} {}... ***\n'
+                                    .format(self.params.data.label.var, _outlier_robust_condition))
+
+                        adf('IF({0} {1}, {0}, NULL) AS {0}'.format(
+                                self.params.data.label.var,
+                                _outlier_robust_condition),
+                            *(col for col in adf.columns
+                              if col != self.params.data.label.var),
+                            inheritCache=True,
+                            inheritNRows=True,
+                            inplace=True)
+
+                adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
+
+        elif __eval__:
+            assert self._INT_LABEL_COL not in adf.columns
+
+            label_col_type = adf.type(self.params.data.label.var)
+
+            if isinstance(adf, ArrowADF):
+                if is_float(label_col_type) and isinstance(self, ClassifEvalMixIn):
+                    adf.map(
+                        mapper=_ArrowADF__castType__pandasDFTransform(
+                                col=self.params.data.label.var,
+                                asType=str,
+                                asCol=None),
+                        inheritNRows=True,
+                        inplace=True)
+
+                    label_col_type = string()
+
+                if is_boolean(label_col_type):
+                    adf.map(
+                        mapper=_ArrowADF__castType__pandasDFTransform(
+                                col=self.params.data.label.var,
+                                asType=int,
+                                asCol=self.params.data.label._int_var),
+                        inheritNRows=True,
+                        inplace=True)
+
+                elif is_string(label_col_type):
+                    adf.map(
+                        mapper=_ArrowADF__encodeStr__pandasDFTransform(
+                                col=self.params.data.label.var,
+                                strs=self.params.data.label._strings,
+                                asCol=self.params.data.label._int_var),
+                        inheritNRows=True,
+                        inplace=True)
+
+            else:
+                if (label_col_type.startswith('decimal') or (label_col_type in _FLOAT_TYPES)) \
+                        and isinstance(self, ClassifEvalMixIn):
+                    adf('STRING({0}) AS {0}'.format(self.params.data.label.var),
+                        *(col for col in adf.columns
+                          if col != self.params.data.label.var),
+                        inheritCache=True,
+                        inheritNRows=True,
+                        inplace=True)
+
+                    label_col_type = _STR_TYPE
+
+                if label_col_type == _BOOL_TYPE:
+                    adf('*',
+                        'INT({}) AS {}'.format(
+                            self.params.data.label.var,
+                            self.params.data.label._int_var),
+                        inheritCache=True,
+                        inheritNRows=True,
+                        inplace=True)
+
+                elif label_col_type == _STR_TYPE:
+                    adf('*',
+                        '(CASE {} ELSE NULL END) AS {}'.format(
+                            ' '.join(
+                                "WHEN {} = '{}' THEN {}".format(
+                                    self.params.data.label.var, label, i)
+                                for i, label in enumerate(self.params.data.label._strings)),
+                            self.params.data.label._int_var),
+                        inheritCache=True,
+                        inheritNRows=True,
+                        inplace=True)
+
+                adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
+
+        if not __from_ppp__:
+            # Prepare data into model-able vectors
+            if __train__:
+                if __first_train__:
+                    adf._reprSampleSize = self.params.data.repr_sample_size
+
+                    self.params.data.pred_vars = \
+                        set(to_iterable(self.params.data.pred_vars)
+                            if self.params.data.pred_vars
+                            else adf.possibleFeatureCols) \
+                        .union(
+                            to_iterable(self.params.data.pred_vars_incl)
+                            if self.params.data.pred_vars_incl
+                            else []) \
+                        .difference(
+                            (to_iterable(self.params.data.pred_vars_excl, iterable_type=list)
+                             if self.params.data.pred_vars_excl
+                             else []) +
+                            [self.params.data.label.var,
+                             self.params.data.label._int_var])
+
+                    data_transforms_load_path = None
+                    data_transforms_save_path = self.data_transforms_dir
+
+                else:
+                    data_transforms_load_path = self.data_transforms_dir
+                    data_transforms_save_path = None
+
+                adf.maxNCats = self.params.data.max_n_cats
+
+            else:
+                data_transforms_load_path = self.data_transforms_dir
+                data_transforms_save_path = None
+
+            adf, cat_orig_to_prep_col_map, num_orig_to_prep_col_map = \
+                adf.prep(
+                    *self.params.data.pred_vars,
+
+                    nulls=self.params.data.nulls,
+
+                    forceCat=self.params.data.force_cat,
+                    forceCatIncl=self.params.data.force_cat_incl,
+                    forceCatExcl=self.params.data.force_cat_excl,
+
+                    oheCat=__ohe_cat__,
+                    scaleCat=__scale_cat__,
+
+                    forceNum=self.params.data.force_num,
+                    forceNumIncl=self.params.data.force_num_incl,
+                    forceNumExcl=self.params.data.force_num_excl,
+
+                    fill=dict(
+                        method=self.params.data.num_null_fill_method,
+                        value=None,
+                        outlierTails=self.params.data.num_outlier_tails,
+                        fillOutliers=False),
+
+                    scaler=self.params.data.num_data_scaler,
+
+                    assembleVec=self.params.data._prep_vec_col
+                        if __vectorize__
+                        else None,
+
+                    loadPath=data_transforms_load_path,
+                    savePath=data_transforms_save_path,
+
+                    returnOrigToPrepColMaps=True,
+
+                    inplace=False,
+
+                    verbose=verbose,
+
+                    alias='{}__{}__{}{}'.format(
+                            self.params._uuid,
+                            __mode__,
+                            adf_uuid,
+                            self._PREP_ADF_ALIAS_SUFFIX)
+                        if isinstance(adf, SparkADF)
+                        else None)
+
+            if __train__:
+                if __first_train__:
+                    self.params.data.pred_vars = \
+                        tuple(sorted(self.params.data.pred_vars
+                                     .intersection(set(cat_orig_to_prep_col_map)
+                                                   .union(num_orig_to_prep_col_map))))
+
+                    self.params.data.pred_vars_incl = \
+                        self.params.data.pred_vars_excl = None
+
+                    self.params.data._cat_prep_cols_metadata = \
+                        dict(cat_prep_col_n_metadata
+                             for cat_orig_col, cat_prep_col_n_metadata in cat_orig_to_prep_col_map.items()
+                             if cat_orig_col in self.params.data.pred_vars)
+
+                    self.params.data._cat_prep_cols = \
+                        tuple(sorted(self.params.data._cat_prep_cols_metadata))
+
+                    self.params.data._num_prep_cols_metadata = \
+                        dict(num_prep_col_n_metadata
+                             for num_orig_col, num_prep_col_n_metadata in num_orig_to_prep_col_map.items()
+                             if num_orig_col in self.params.data.pred_vars)
+
+                    self.params.data._num_prep_cols = \
+                        tuple(sorted(self.params.data._num_prep_cols_metadata))
+
+                    self.params.data._prep_vec_size = \
+                        adf._colWidth(self.params.data._prep_vec_col) \
+                        if __vectorize__ \
+                        else (len(self.params.data._num_prep_cols) +
+                              (sum(_cat_prep_col_metadata['NCats']
+                                   for _cat_prep_col_metadata in self.params.data._cat_prep_cols_metadata.values())
+                               if cat_orig_to_prep_col_map['__OHE__']
+                               else len(self.params.data._cat_prep_cols)))
+
+                adf = adf[
+                    [self.params.data.label.var
+                     if self.params.data.label._int_var is None
+                     else self.params.data.label._int_var] +
+                    ([] if self.params.data.id_col in adf.indexCols
+                        else [self.params.data.id_col]) +
+                    list(adf.indexCols + adf.tAuxCols +
+                         self.params.data._cat_prep_cols + self.params.data._num_prep_cols)]
+
+            elif __eval__:
+                adf(self.params.data.label.var
+                    if self.params.data.label._int_var is None
+                    else self.params.data.label._int_var,
+                    *((() if self.params.data.id_col in adf.indexCols
+                       else (self.params.data.id_col,)) +
+                      adf.indexCols + adf.tAuxCols +
+                      ((self.params.data._prep_vec_col,)
+                       if __vectorize__
+                       else (self.params.data._cat_prep_cols + self.params.data._num_prep_cols))),
+                    inheritCache=True,
+                    inheritNRows=True,
+                    inplace=True)
+
+        return adf
 
     def model(self, ver='latest'):
         return self.__BlueprintedModelClass__(
@@ -1363,7 +2055,7 @@ class _DLSupervisedBlueprintABC(_SupervisedBlueprintABC):
 
 
 @_docstr_blueprint
-class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
+class _PPPBlueprintABC(_BlueprintABC):
     __metaclass__ = abc.ABCMeta
 
     _DEFAULT_PARAMS = \
@@ -1379,6 +2071,64 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
                 label='Model Params'),
 
             'model.component_blueprints': Namespace()})
+
+    _TO_SCORE_ALL_VARS_ADF_ALIAS_SUFFIX = '__toScoreAllVars'
+
+    _SGN_PREFIX = 'sgn__'
+    _ABS_PREFIX = 'abs__'
+    _NEG_PREFIX = 'neg__'
+    _POS_PREFIX = 'pos__'
+    _SGN_PREFIXES = _SGN_PREFIX, _ABS_PREFIX, _NEG_PREFIX, _POS_PREFIX
+
+    _BENCHMARK_METRICS_ADF_ALIAS = '__BenchmarkMetrics__'
+
+    _GLOBAL_PREFIX = 'global__'
+    _INDIV_PREFIX = 'indiv__'
+    _GLOBAL_OR_INDIV_PREFIX = ''
+    _GLOBAL_OR_INDIV_PREFIXES = _GLOBAL_OR_INDIV_PREFIX,
+
+    _RAW_METRICS = 'MedAE', 'MAE'   # , 'RMSE'
+
+    _ERR_MULT_COLS = \
+        dict(MedAE='MedAE_Mult',
+             MAE='MAE_Mult',
+             RMSE='RMSE_Mult')
+
+    _ERR_MULT_PREFIXES = \
+        {k: (v + '__')
+         for k, v in _ERR_MULT_COLS.items()}
+
+    _rowEuclNorm_PREFIX = 'rowEuclNorm__'
+    _rowSumOfLog_PREFIX = 'rowSumOfLog__'
+    _rowHigh_PREFIX = 'rowHigh__'
+    _rowLow_PREFIX = 'rowLow__'
+    _rowMean_PREFIX = 'rowMean__'
+    _rowGMean_PREFIX = 'rowGMean__'
+    _ROW_SUMM_PREFIXES = \
+        _rowEuclNorm_PREFIX, \
+        _rowSumOfLog_PREFIX, \
+        _rowHigh_PREFIX, \
+        _rowLow_PREFIX, \
+        _rowMean_PREFIX, \
+        _rowGMean_PREFIX
+
+    _ROW_ERR_MULT_SUMM_COLS = \
+        [(_row_summ_prefix + _ABS_PREFIX + _global_or_indiv_prefix + _ERR_MULT_COLS[_metric])
+         for _metric, _global_or_indiv_prefix, _row_summ_prefix in
+         itertools.product(_RAW_METRICS, _GLOBAL_OR_INDIV_PREFIXES, _ROW_SUMM_PREFIXES)]
+
+    _dailyMed_PREFIX = 'dailyMed__'
+    _dailyMean_PREFIX = 'dailyMean__'
+    _dailyMax_PREFIX = 'dailyMax__'
+    _dailyMin_PREFIX = 'dailyMin__'
+    _DAILY_SUMM_PREFIXES = _dailyMed_PREFIX, _dailyMean_PREFIX, _dailyMax_PREFIX, _dailyMin_PREFIX
+
+    _DAILY_ERR_MULT_SUMM_COLS = \
+        [(_daily_summ_prefix + _row_err_mult_summ_col)
+         for _row_err_mult_summ_col, _daily_summ_prefix in
+         itertools.product(_ROW_ERR_MULT_SUMM_COLS, _DAILY_SUMM_PREFIXES)]
+
+    _EWMA_PREFIX = 'ewma'
 
     def __init__(self, *args, **kwargs):
         model_params = kwargs.pop('__model_params__', {})
@@ -1415,6 +2165,303 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
             self.params.uuid,
             ', '.join('"{}"'.format(label_var_name)
                       for label_var_name in self.params.model.component_blueprints))
+
+    def prep_data(self, df, __mode__='score', __vectorize__=True, verbose=True, **kwargs):
+        # check if (incrementally-)training, scoring or evaluating
+        if __mode__ == self._TRAIN_MODE:
+            __train__ = True
+            __score__ = __eval__ = False
+
+        elif __mode__ == self._SCORE_MODE:
+            __train__ = __eval__ = False
+            __score__ = True
+
+        elif __mode__ == self._EVAL_MODE:
+            __train__ = __score__ = False
+            __eval__ = True
+
+        else:
+            raise ValueError(
+                '*** Blueprint "{}" argument must be one of "{}", "{}" and "{}" ***'
+                    .format(self._MODE_ARG, self._TRAIN_MODE, self._SCORE_MODE, self._EVAL_MODE))
+
+        assert __train__ + __score__ + __eval__ == 1
+
+        __first_train__ = __train__ and (not os.path.isdir(self.data_transforms_dir))
+
+        if isinstance(df, SparkADF):
+            adf = df
+
+            adf.tCol = self.params.data.time_col
+
+            if isinstance(self, _TimeSerDataPrepMixInABC):
+                adf.iCol = self.params.data.id_col
+
+        else:
+            kwargs['tCol'] = self.params.data.time_col
+
+            if isinstance(self, _TimeSerDataPrepMixInABC):
+                kwargs['iCol'] = self.params.data.id_col
+
+            if isinstance(df, pandas.DataFrame):
+                adf = SparkADF.create(
+                        data=df,
+                        schema=None,
+                        samplingRatio=None,
+                        verifySchema=False,
+                        **kwargs)
+
+            elif isinstance(df, pyspark.sql.DataFrame):
+                adf = SparkADF(sparkDF=df, **kwargs)
+
+            elif isinstance(df, ArrowADF):
+                adf = df
+
+                adf.tCol = self.params.data.time_col
+
+                if isinstance(self, _TimeSerDataPrepMixInABC):
+                    adf.iCol = self.params.data.id_col
+
+            else:
+                assert isinstance(df, _STR_CLASSES)
+
+                adf = (ArrowSparkADF
+                       if arimo.backend._ON_LINUX_CLUSTER_WITH_HDFS
+                       else ArrowADF)(
+                    path=df, **kwargs)
+
+        assert (self.params.data.id_col in adf.columns) \
+           and (self.params.data.time_col in adf.columns)
+
+        if __train__:
+            if isinstance(adf, SparkADF):
+                adf_uuid = clean_uuid(uuid.uuid4())
+
+                adf.alias = \
+                    '{}__{}__{}'.format(
+                        self.params._uuid,
+                        __mode__,
+                        adf_uuid)
+
+            if __first_train__:
+                adf._reprSampleSize = self.params.data.repr_sample_size
+
+                cols_to_prep = set()
+
+                for label_var_name in set(self.params.model.component_blueprints).intersection(adf.contentCols):
+                    component_blueprint_params = \
+                        self.params.model.component_blueprints[label_var_name]
+
+                    component_blueprint_params.data.pred_vars = \
+                        set(to_iterable(component_blueprint_params.data.pred_vars)
+                            if component_blueprint_params.data.pred_vars
+                            else adf.possibleFeatureCols) \
+                        .union(
+                            to_iterable(component_blueprint_params.data.pred_vars_incl)
+                            if component_blueprint_params.data.pred_vars_incl
+                            else []) \
+                        .difference(
+                            (to_iterable(component_blueprint_params.data.pred_vars_excl, iterable_type=list)
+                             if component_blueprint_params.data.pred_vars_excl
+                             else []) +
+                            [label_var_name])
+
+                    cols_to_prep.update(component_blueprint_params.data.pred_vars)
+
+                    component_blueprint_params.data.pred_vars_incl = \
+                        component_blueprint_params.data.pred_vars_excl = None
+
+                data_transforms_load_path = None
+                data_transforms_save_path = self.data_transforms_dir
+
+            else:
+                data_transforms_load_path = self.data_transforms_dir
+                data_transforms_save_path = None
+
+                cols_to_prep = ()
+
+            adf.maxNCats = self.params.data.max_n_cats
+
+        else:
+            if isinstance(adf, SparkADF):
+                adf_uuid = clean_uuid(uuid.uuid4())
+
+                adf.filter(
+                    condition="({0} IS NOT NULL) AND (STRING({0}) != 'NaN') AND ({1} IS NOT NULL) AND (STRING({1}) != 'NaN')"
+                        .format(self.params.data.id_col, self.params.data.time_col),
+                    alias='{}__{}__{}'.format(
+                        self.params._uuid,
+                        __mode__,
+                        adf_uuid),
+                    inplace=True)
+
+            data_transforms_load_path = self.data_transforms_dir
+            data_transforms_save_path = None
+
+            cols_to_prep = ()
+
+            orig_cols_to_keep = set(adf.indexCols)
+            orig_cols_to_keep.add(self.params.data.id_col)
+
+        adf, cat_orig_to_prep_col_map, num_orig_to_prep_col_map = \
+            adf.prep(
+                *cols_to_prep,
+
+                nulls=self.params.data.nulls,
+
+                forceCat=self.params.data.force_cat,
+                forceCatIncl=self.params.data.force_cat_incl,
+                forceCatExcl=self.params.data.force_cat_excl,
+
+                oheCat=False,
+                scaleCat=True,
+
+                forceNum=self.params.data.force_num,
+                forceNumIncl=self.params.data.force_num_incl,
+                forceNumExcl=self.params.data.force_num_excl,
+
+                fill=dict(
+                    method=self.params.data.num_null_fill_method,
+                    value=None,
+                    outlierTails=self.params.data.num_outlier_tails,
+                    fillOutliers=False),
+
+                scaler=self.params.data.num_data_scaler,
+
+                assembleVec=None,
+
+                loadPath=data_transforms_load_path,
+                savePath=data_transforms_save_path,
+
+                returnOrigToPrepColMaps=True,
+
+                inplace=False,
+
+                verbose=verbose)
+
+        if __train__:
+            if isinstance(adf, SparkADF):
+                adf.alias = \
+                    '{}__{}__{}{}'.format(
+                        self.params._uuid,
+                        __mode__,
+                        adf_uuid,
+                        self._PREP_ADF_ALIAS_SUFFIX)
+
+            component_labeled_adfs = Namespace()
+
+            for label_var_name in set(self.params.model.component_blueprints).intersection(adf.contentCols):
+                if adf.suffNonNull(label_var_name):
+                    component_blueprint_params = \
+                        self.params.model.component_blueprints[label_var_name]
+
+                    if __first_train__:
+                        component_blueprint_params.data.pred_vars = \
+                            tuple(sorted(component_blueprint_params.data.pred_vars
+                                         .intersection(set(cat_orig_to_prep_col_map)
+                                                       .union(num_orig_to_prep_col_map))))
+
+                        component_blueprint_params.data.pred_vars_incl = \
+                            component_blueprint_params.data.pred_vars_excl = None
+
+                        component_blueprint_params.data._cat_prep_cols_metadata = \
+                            dict(cat_prep_col_n_metadata
+                                 for cat_orig_col, cat_prep_col_n_metadata in cat_orig_to_prep_col_map.items()
+                                 if cat_orig_col in component_blueprint_params.data.pred_vars)
+
+                        component_blueprint_params.data._cat_prep_cols = \
+                            tuple(sorted(component_blueprint_params.data._cat_prep_cols_metadata))
+
+                        component_blueprint_params.data._num_prep_cols_metadata = \
+                            dict(num_prep_col_n_metadata
+                                 for num_orig_col, num_prep_col_n_metadata in num_orig_to_prep_col_map.items()
+                                 if num_orig_col in component_blueprint_params.data.pred_vars)
+
+                        component_blueprint_params.data._num_prep_cols = \
+                            tuple(sorted(component_blueprint_params.data._num_prep_cols_metadata))
+
+                        component_blueprint_params.data._prep_vec_size = \
+                            len(component_blueprint_params.data._num_prep_cols) + \
+                            (sum(_cat_prep_col_metadata['NCats']
+                                 for _cat_prep_col_metadata in component_blueprint_params.data._cat_prep_cols_metadata.values())
+                             if cat_orig_to_prep_col_map['__OHE__']
+                             else len(component_blueprint_params.data._cat_prep_cols))
+
+                    component_labeled_adfs[label_var_name] = \
+                        (adf(VectorAssembler(
+                                inputCols=component_blueprint_params.data._cat_prep_cols +
+                                          component_blueprint_params.data._num_prep_cols,
+                                outputCol=component_blueprint_params.data._prep_vec_col).transform,
+                             inheritCache=True,
+                             inheritNRows=True)(
+                            label_var_name,
+                            component_blueprint_params.data._prep_vec_col,
+                            *(adf.indexCols + adf.tAuxCols),
+                            alias=adf.alias + '__LABEL__' + label_var_name,
+                            inheritCache=True,
+                            inheritNRows=True)
+                         if (__vectorize__ is None) or __vectorize__
+                         else adf(label_var_name,
+                                  *(adf.indexCols + adf.tAuxCols +
+                                    component_blueprint_params.data._cat_prep_cols +
+                                    component_blueprint_params.data._num_prep_cols),
+                                  alias=adf.alias + '__LABEL__' + label_var_name,
+                                  inheritCache=True,
+                                  inheritNRows=True)) \
+                        if isinstance(adf, SparkADF) \
+                        else adf[[label_var_name] +
+                                 list(adf.indexCols + adf.tAuxCols +
+                                      component_blueprint_params.data._cat_prep_cols +
+                                      component_blueprint_params.data._num_prep_cols)]
+
+            # save Blueprint & data transforms
+            self.save()
+
+            return component_labeled_adfs
+
+        elif isinstance(adf, SparkADF):
+            adf.alias = \
+                '{}__{}__{}{}'.format(
+                    self.params._uuid,
+                    __mode__,
+                    adf_uuid,
+                    self._PREP_ADF_ALIAS_SUFFIX)
+
+            if __vectorize__:
+                vector_assemblers = []
+                vector_cols = []
+
+                for label_var_name, component_blueprint_params in self.params.model.component_blueprints.items():
+                    if (label_var_name in adf.columns) and component_blueprint_params.model.ver:
+                        orig_cols_to_keep.add(label_var_name)
+
+                        component_blueprint_params = \
+                            self.params.model.component_blueprints[label_var_name]
+
+                        vector_col = component_blueprint_params.data._prep_vec_col + label_var_name
+
+                        vector_assemblers.append(
+                            VectorAssembler(
+                                inputCols=component_blueprint_params.data._cat_prep_cols +
+                                          component_blueprint_params.data._num_prep_cols,
+                                outputCol=vector_col))
+
+                        vector_cols.append(vector_col)
+
+                return adf(PipelineModel(stages=vector_assemblers).transform,
+                           inheritCache=True,
+                           inheritNRows=True)(
+                    *(orig_cols_to_keep.union(vector_cols)),
+                    alias=adf.alias + self._TO_SCORE_ALL_VARS_ADF_ALIAS_SUFFIX,
+                    inheritCache=True,
+                    inheritNRows=True)
+
+            else:
+                adf.alias += self._TO_SCORE_ALL_VARS_ADF_ALIAS_SUFFIX
+                return adf
+
+        else:
+            pass   # TODO
 
     def train(self, *args, **kwargs):
         __gen_queue_size__ = \
@@ -1809,6 +2856,553 @@ class _PPPBlueprintABC(_BlueprintABC, PPPAnalysesMixIn):
             self.save()
 
         return eval_metrics
+
+    def err_mults(self, df):
+        label_var_names = []
+        score_col_names = {}
+
+        for label_var_name, component_blueprint_params in self.params.model.component_blueprints.items():
+            if (label_var_name in df.columns) and component_blueprint_params.model.ver:
+                label_var_names.append(label_var_name)
+
+                score_col_names[label_var_name] = \
+                    component_blueprint_params.model.score.raw_score_col_prefix + label_var_name
+
+        benchmark_metric_col_names = {}
+
+        benchmark_metric_col_names_list = \
+            ['pop__{}'.format(label_var_name)
+             for label_var_name in label_var_names]
+
+        for _global_or_indiv_prefix in (self._GLOBAL_PREFIX, self._INDIV_PREFIX, self._GLOBAL_OR_INDIV_PREFIX):
+            benchmark_metric_col_names[_global_or_indiv_prefix] = {}
+
+            for _raw_metric in (('n',) + self._RAW_METRICS):
+                if (_global_or_indiv_prefix, _raw_metric) != (self._GLOBAL_OR_INDIV_PREFIX, 'n'):
+                    benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric] = {}
+
+                    for label_var_name in label_var_names:
+                        benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name] = \
+                            benchmark_metric_col_name = \
+                            _global_or_indiv_prefix + _raw_metric + '__' + label_var_name
+
+                        benchmark_metric_col_names_list.append(benchmark_metric_col_name)
+
+        err_mult_col_names = {}
+        abs_err_mult_col_names = {}
+
+        for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
+            err_mult_col_names[_global_or_indiv_prefix] = {}
+            abs_err_mult_col_names[_global_or_indiv_prefix] = {}
+
+            for _raw_metric in self._RAW_METRICS:
+                err_mult_col_names[_global_or_indiv_prefix][_raw_metric] = {}
+                abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric] = {}
+
+                for label_var_name in label_var_names:
+                    err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name] = {}
+
+                    for _sgn_prefix in self._SGN_PREFIXES:
+                        err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][_sgn_prefix] = \
+                            err_mult_col = \
+                            _sgn_prefix + _global_or_indiv_prefix + self._ERR_MULT_PREFIXES[_raw_metric] + label_var_name
+
+                        if _sgn_prefix == self._ABS_PREFIX:
+                            abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name] = err_mult_col
+
+        id_col = self.params.data.id_col
+
+        if isinstance(df, SparkADF):
+            _is_adf = True
+
+            benchmark_metrics_df = \
+                df("SELECT \
+                        DISTINCT({}) \
+                    FROM \
+                        this".format(id_col),
+                   inheritCache=False,
+                   inheritNRows=False) \
+                .toPandas()
+
+            for label_var_name in label_var_names:
+                benchmark_metrics_df['pop__' + label_var_name] = \
+                    len(self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY])
+
+                for _raw_metric in (('n',) + self._RAW_METRICS):
+                    _global_benchmark_metric_col_name = \
+                        benchmark_metric_col_names[self._GLOBAL_PREFIX][_raw_metric][label_var_name]
+                    benchmark_metrics_df.loc[:, _global_benchmark_metric_col_name] = \
+                        self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric]
+
+                    _indiv_benchmark_metric_col_name = \
+                        benchmark_metric_col_names[self._INDIV_PREFIX][_raw_metric][label_var_name]
+                    benchmark_metrics_df.loc[:, _indiv_benchmark_metric_col_name] = \
+                        benchmark_metrics_df[id_col].map(
+                            lambda _id:
+                                self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY]
+                                    .get(_id, {})
+                                    .get(_raw_metric))
+
+                    if _raw_metric != 'n':
+                        _global_or_indiv_benchmark_metric_col_name = \
+                            benchmark_metric_col_names[self._GLOBAL_OR_INDIV_PREFIX][_raw_metric][label_var_name]
+                        benchmark_metrics_df.loc[:, _global_or_indiv_benchmark_metric_col_name] = \
+                            benchmark_metrics_df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
+                            .max(axis='columns',
+                                 skipna=True,
+                                 level=None,
+                                 numeric_only=True)
+
+            SparkADF.create(
+                data=benchmark_metrics_df.where(
+                        cond=pandas.notnull(benchmark_metrics_df),
+                        other=None,
+                        inplace=False,
+                        axis=None,
+                        level=None,
+                        errors='raise',
+                        try_cast=False),
+                schema=StructType(
+                    [StructField(
+                        name=id_col,
+                        dataType=StringType(),
+                        nullable=False,
+                        metadata=None)] +
+                    [StructField(
+                        name=benchmark_metric_col_name,
+                        dataType=DoubleType(),
+                        nullable=True,
+                        metadata=None)
+                        for benchmark_metric_col_name in benchmark_metrics_df.columns[1:]]),
+                alias=self._BENCHMARK_METRICS_ADF_ALIAS)
+
+            df = df('SELECT \
+                        this.*, \
+                        {2} \
+                    FROM \
+                        this LEFT JOIN {0} \
+                            ON this.{1} = {0}.{1}'
+                .format(
+                    self._BENCHMARK_METRICS_ADF_ALIAS,
+                    id_col,
+                    ', '.join('{}.{}'.format(self._BENCHMARK_METRICS_ADF_ALIAS, col)
+                              for col in benchmark_metric_col_names_list)))
+
+            col_exprs = []
+
+            for label_var_name in label_var_names:
+                score_col_name = score_col_names[label_var_name]
+
+                _sgn_err_col_expr = df[label_var_name] - df[score_col_name]
+
+                for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
+                    for _raw_metric in self._RAW_METRICS:
+                        _sgn_err_mult_col_expr = \
+                            _sgn_err_col_expr / \
+                            df[benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name]]
+
+                        col_exprs += \
+                            [_sgn_err_mult_col_expr
+                                 .alias(err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._SGN_PREFIX]),
+
+                             pyspark.sql.functions.abs(_sgn_err_mult_col_expr)
+                                 .alias(err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._ABS_PREFIX]),
+
+                             pyspark.sql.functions.when(df[label_var_name] < df[score_col_name], _sgn_err_mult_col_expr)
+                                 .alias(err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._NEG_PREFIX]),
+
+                             pyspark.sql.functions.when(df[label_var_name] > df[score_col_name], _sgn_err_mult_col_expr)
+                                 .alias(err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._POS_PREFIX])]
+
+            df = df.select('*', *col_exprs)
+
+        else:
+            _is_adf = False
+
+            for label_var_name in label_var_names:
+                score_col_name = score_col_names[label_var_name]
+
+                _sgn_err_series = df[label_var_name] - df[score_col_name]
+                _neg_chk_series = _sgn_err_series < 0
+                _pos_chk_series = _sgn_err_series > 0
+
+                for _raw_metric in (('n',) + self._RAW_METRICS):
+                    _global_benchmark_metric_col_name = \
+                        benchmark_metric_col_names[self._GLOBAL_PREFIX][_raw_metric][label_var_name]
+                    df.loc[:, _global_benchmark_metric_col_name] = \
+                        self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric]
+
+                    _indiv_benchmark_metric_col_name = \
+                        benchmark_metric_col_names[self._INDIV_PREFIX][_raw_metric][label_var_name]
+                    df[_indiv_benchmark_metric_col_name] = \
+                        df[id_col].map(
+                            lambda id:
+                                self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY]
+                                    .get(id, {})
+                                    .get(_raw_metric, numpy.nan))
+
+                    if _raw_metric != 'n':
+                        _global_or_indiv_benchmark_metric_col_name = \
+                            benchmark_metric_col_names[self._GLOBAL_OR_INDIV_PREFIX][_raw_metric][label_var_name]
+                        df.loc[:, _global_or_indiv_benchmark_metric_col_name] = \
+                            df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
+                            .max(axis='columns',
+                                 skipna=True,
+                                 level=None,
+                                 numeric_only=True)
+
+                        for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
+                            df[err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._SGN_PREFIX]] = \
+                                _sgn_err_mult_series = \
+                                _sgn_err_series / \
+                                df[benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name]]
+
+                            df[err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._ABS_PREFIX]] = \
+                                _sgn_err_mult_series.abs()
+
+                            df.loc[_neg_chk_series,
+                                   err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._NEG_PREFIX]] = \
+                                _sgn_err_mult_series.loc[_neg_chk_series]
+
+                            df.loc[_pos_chk_series,
+                                   err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._POS_PREFIX]] = \
+                                _sgn_err_mult_series.loc[_pos_chk_series]
+
+        n_label_vars = len(label_var_names)
+
+        if _is_adf:
+            _row_summ_col_exprs = []
+
+            for _raw_metric in self._RAW_METRICS:
+                for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
+                    _abs_err_mult_col_names = \
+                        list(abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric].values())
+
+                    _row_summ_col_name_body = \
+                        self._ABS_PREFIX + _global_or_indiv_prefix + self._ERR_MULT_COLS[_raw_metric]
+
+                    _rowEuclNorm_summ_col_name = self._rowEuclNorm_PREFIX + _row_summ_col_name_body
+                    _rowSumOfLog_summ_col_name = self._rowSumOfLog_PREFIX + _row_summ_col_name_body
+                    _rowHigh_summ_col_name = self._rowHigh_PREFIX + _row_summ_col_name_body
+                    _rowLow_summ_col_name = self._rowLow_PREFIX + _row_summ_col_name_body
+                    _rowMean_summ_col_name = self._rowMean_PREFIX + _row_summ_col_name_body
+                    _rowGMean_summ_col_name = self._rowGMean_PREFIX + _row_summ_col_name_body
+
+                    if n_label_vars > 1:
+                        _row_summ_col_exprs += \
+                            ['POW({}, 0.5) AS {}'.format(
+                                ' + '.join(
+                                    'POW({} - 1, 2)'.format(_abs_err_mult_col_name)
+                                    for _abs_err_mult_col_name in _abs_err_mult_col_names),
+                                _rowEuclNorm_summ_col_name),
+
+                                'LN({}) AS {}'.format(
+                                    ' * '.join(_abs_err_mult_col_names),
+                                    _rowSumOfLog_summ_col_name),
+
+                                'GREATEST({}) AS {}'.format(
+                                    ', '.join(_abs_err_mult_col_names),
+                                    _rowHigh_summ_col_name),
+
+                                'LEAST({}) AS {}'.format(
+                                    ', '.join(_abs_err_mult_col_names),
+                                    _rowLow_summ_col_name),
+
+                                '(({}) / {}) AS {}'.format(
+                                    ' + '.join(_abs_err_mult_col_names),
+                                    n_label_vars,
+                                    _rowMean_summ_col_name),
+
+                                'POW({}, 1 / {}) AS {}'.format(
+                                    ' * '.join(_abs_err_mult_col_names),
+                                    n_label_vars,
+                                    _rowGMean_summ_col_name)]
+
+                    else:
+                        _abs_err_mult_col_name = _abs_err_mult_col_names[0]
+
+                        _row_summ_col_exprs += \
+                            [df[_abs_err_mult_col_name].alias(_rowEuclNorm_summ_col_name),
+                             pyspark.sql.functions.log(df[_abs_err_mult_col_name]).alias(_rowSumOfLog_summ_col_name),
+                             df[_abs_err_mult_col_name].alias(_rowHigh_summ_col_name),
+                             df[_abs_err_mult_col_name].alias(_rowLow_summ_col_name),
+                             df[_abs_err_mult_col_name].alias(_rowMean_summ_col_name),
+                             df[_abs_err_mult_col_name].alias(_rowGMean_summ_col_name)]
+
+            return df.select('*', *_row_summ_col_exprs)
+
+        else:
+            if isinstance(df, ArrowADF):
+                df = df.toPandas()
+
+            for _raw_metric in self._RAW_METRICS:
+                for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
+                    _row_summ_col_name_body = \
+                        self._ABS_PREFIX + _global_or_indiv_prefix + self._ERR_MULT_COLS[_raw_metric]
+
+                    _rowEuclNorm_summ_col_name = self._rowEuclNorm_PREFIX + _row_summ_col_name_body
+                    _rowSumOfLog_summ_col_name = self._rowSumOfLog_PREFIX + _row_summ_col_name_body
+                    _rowHigh_summ_col_name = self._rowHigh_PREFIX + _row_summ_col_name_body
+                    _rowLow_summ_col_name = self._rowLow_PREFIX + _row_summ_col_name_body
+                    _rowMean_summ_col_name = self._rowMean_PREFIX + _row_summ_col_name_body
+                    _rowGMean_summ_col_name = self._rowGMean_PREFIX + _row_summ_col_name_body
+
+                    if n_label_vars > 1:
+                        abs_err_mults_df = \
+                            df[list(abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric].values())]
+
+                        df[_rowEuclNorm_summ_col_name] = \
+                            ((abs_err_mults_df - 1) ** 2).sum(
+                                axis='columns',
+                                skipna=True,
+                                level=None,
+                                numeric_only=None,
+                                min_count=0) ** .5
+
+                        _prod_series = \
+                            abs_err_mults_df.product(
+                                axis='columns',
+                                skipna=False,
+                                level=None,
+                                numeric_only=True)
+
+                        df[_rowSumOfLog_summ_col_name] = \
+                            numpy.log(_prod_series)
+
+                        df[_rowHigh_summ_col_name] = \
+                            abs_err_mults_df.max(
+                                axis='columns',
+                                skipna=True,
+                                level=None,
+                                numeric_only=True)
+
+                        df[_rowLow_summ_col_name] = \
+                            abs_err_mults_df.min(
+                                axis='columns',
+                                skipna=True,
+                                level=None,
+                                numeric_only=True)
+
+                        df[_rowMean_summ_col_name] = \
+                            abs_err_mults_df.mean(
+                                axis='columns',
+                                skipna=True,
+                                level=None,
+                                numeric_only=True)
+
+                        df[_rowGMean_summ_col_name] = \
+                            _prod_series ** (1 / n_label_vars)
+
+                    else:
+                        _abs_err_mult_col_name = \
+                            abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name]
+
+                        df[_rowSumOfLog_summ_col_name] = \
+                            numpy.log(df[_abs_err_mult_col_name])
+
+                        df[_rowEuclNorm_summ_col_name] = \
+                            df[_rowHigh_summ_col_name] = \
+                            df[_rowLow_summ_col_name] = \
+                            df[_rowMean_summ_col_name] = \
+                            df[_rowGMean_summ_col_name] = \
+                            df[_abs_err_mult_col_name]
+
+            return df
+
+    @classmethod
+    def daily_err_mults(cls, df_w_err_mults, *label_var_names, **kwargs):
+        id_col = kwargs.pop('id_col', 'id')
+        time_col = kwargs.pop('time_col', 'date_time')
+
+        clip = kwargs.pop('clip', 9)
+
+        cols_to_agg = copy.copy(cls._ROW_ERR_MULT_SUMM_COLS)
+
+        for label_var_name in label_var_names:
+            if label_var_name in df_w_err_mults.columns:
+                cols_to_agg += \
+                    [(_sgn + _global_or_indiv_prefix + cls._ERR_MULT_PREFIXES[_metric] + label_var_name)
+                     for _metric, _global_or_indiv_prefix, _sgn in
+                     itertools.product(cls._RAW_METRICS, cls._GLOBAL_OR_INDIV_PREFIXES, cls._SGN_PREFIXES)]
+
+        if isinstance(df_w_err_mults, SparkADF):
+            from arimo.blueprints.base import _SupervisedBlueprintABC
+
+            col_strs = []
+
+            for col_name in cols_to_agg:
+                assert col_name in df_w_err_mults.columns
+
+                col_strs += \
+                    ['PERCENTILE_APPROX(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1})), 0.5) AS {2}{0}'
+                         .format(col_name, clip, cls._dailyMed_PREFIX),
+                     'AVG(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1}))) AS {2}{0}'
+                         .format(col_name, clip, cls._dailyMean_PREFIX),
+                     'MAX(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1}))) AS {2}{0}'
+                         .format(col_name, clip, cls._dailyMax_PREFIX),
+                     'MIN(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1}))) AS {2}{0}'
+                         .format(col_name, clip, cls._dailyMin_PREFIX)]
+
+            for _global_or_indiv_prefix in cls._GLOBAL_OR_INDIV_PREFIXES:
+                for _raw_metric in cls._RAW_METRICS:
+                    for label_var_name in label_var_names:
+                        if label_var_name in df_w_err_mults.columns:
+                            _metric_col_name = _global_or_indiv_prefix + _raw_metric + '__' + label_var_name
+                            cols_to_agg.append(_metric_col_name)
+                            col_strs.append('AVG({0}) AS {0}'.format(_metric_col_name))
+
+            return df_w_err_mults(
+                'SELECT \
+                    {0}, \
+                    {1}, \
+                    {2}, \
+                    {3} \
+                FROM \
+                    this \
+                GROUP BY \
+                    {0}, \
+                    {4}'
+                .format(
+                    id_col,
+                    DATE_COL
+                        if DATE_COL in df_w_err_mults.columns
+                        else 'TO_DATE({}) AS {}'.format(time_col, DATE_COL),
+                    ', '.join(col_strs),
+                    ', '.join('FIRST_VALUE({0}) AS {0}'.format(col)
+                              for col in set(df_w_err_mults.columns)
+                                        .difference(
+                                            [id_col, time_col, DATE_COL, MONTH_COL] +
+                                            list(label_var_names) +
+                                            [(_SupervisedBlueprintABC._DEFAULT_PARAMS.model.score.raw_score_col_prefix + label_var_name)
+                                             for label_var_name in label_var_names] +
+                                            cols_to_agg)),
+                    DATE_COL
+                        if DATE_COL in df_w_err_mults.columns
+                        else 'TO_DATE({})'.format(time_col)),
+                tCol=None)
+
+        else:
+            if df_w_err_mults[time_col].dtype != 'datetime64[ns]':
+                df_w_err_mults[time_col] = pandas.DatetimeIndex(df_w_err_mults[time_col])
+
+            def f(group_df):
+                cols = [id_col, DATE_COL]
+
+                _first_row = group_df.iloc[0]
+
+                d = {id_col: _first_row[id_col],
+                     DATE_COL: _first_row[time_col]}
+
+                for _global_or_indiv_prefix in cls._GLOBAL_OR_INDIV_PREFIXES:
+                    for _raw_metric in cls._RAW_METRICS:
+                        for label_var_name in label_var_names:
+                            if label_var_name in df_w_err_mults.columns:
+                                _metric_col_name = _global_or_indiv_prefix + _raw_metric + '__' + label_var_name
+
+                                d[_metric_col_name] = _first_row[_metric_col_name]
+
+                                cols.append(_metric_col_name)
+
+                for col_to_agg in cols_to_agg:
+                    clipped_series = \
+                        group_df[col_to_agg].clip(
+                            lower=-clip,
+                            upper=clip)
+
+                    _dailyMed_agg_col = cls._dailyMed_PREFIX + col_to_agg
+                    d[_dailyMed_agg_col] = clipped_series.median(skipna=True)
+
+                    _dailyMean_agg_col = cls._dailyMean_PREFIX + col_to_agg
+                    d[_dailyMean_agg_col] = clipped_series.mean(skipna=True)
+
+                    _dailyMax_agg_col = cls._dailyMax_PREFIX + col_to_agg
+                    d[_dailyMax_agg_col] = clipped_series.max(skipna=True)
+
+                    _dailyMin_agg_col = cls._dailyMin_PREFIX + col_to_agg
+                    d[_dailyMin_agg_col] = clipped_series.min(skipna=True)
+
+                    cols += [_dailyMed_agg_col, _dailyMean_agg_col, _dailyMax_agg_col, _dailyMin_agg_col]
+
+                return pandas.Series(d, index=cols)
+
+            return df_w_err_mults.groupby(
+                    by=[df_w_err_mults[id_col], df_w_err_mults[time_col].dt.date],
+                    axis='index',
+                    level=None,
+                    as_index=False,
+                    sort=True,
+                    group_keys=True,
+                    squeeze=False).apply(f)
+
+    @classmethod
+    def ewma_daily_err_mults(cls, daily_err_mults_df, *daily_err_mult_summ_col_names, **kwargs):
+        id_col = kwargs.pop('id_col', 'id')
+
+        alpha = kwargs.pop('alpha', .168)
+
+        daily_err_mult_summ_col_names = \
+            list(daily_err_mult_summ_col_names) \
+                if daily_err_mult_summ_col_names \
+                else copy.copy(cls._DAILY_ERR_MULT_SUMM_COLS)
+
+        daily_err_mults_df = \
+            daily_err_mults_df[
+                [id_col, DATE_COL] +
+                daily_err_mult_summ_col_names]
+
+        if not isinstance(daily_err_mults_df, pandas.DataFrame):
+            daily_err_mults_df = daily_err_mults_df.toPandas()
+
+        daily_err_mults_df.sort_values(
+            by=[id_col, DATE_COL],
+            axis='index',
+            ascending=True,
+            inplace=True,
+            na_position='last')
+
+        for _alpha in to_iterable(alpha):
+            _ewma_prefix = cls._EWMA_PREFIX + '{:.3f}'.format(_alpha)[-3:] + '__'
+
+            # ref: https://stackoverflow.com/questions/44417010/pandas-groupby-weighted-cumulative-sum
+            daily_err_mults_df[
+                [(_ewma_prefix + col_name)
+                 for col_name in daily_err_mult_summ_col_names]] = \
+                daily_err_mults_df.groupby(
+                    by=id_col,
+                        # Used to determine the groups for the groupby
+                    axis='index',
+                    level=None,
+                        # If the axis is a MultiIndex (hierarchical), group by a particular level or levels
+                    as_index=False,
+                        # For aggregated output, return object with group labels as the index.
+                        # Only relevant for DataFrame input. as_index=False is effectively SQL-style grouped output
+                    sort=False,
+                        # Sort group keys. Get better performance by turning this off.
+                        # Note this does not influence the order of observations within each group.
+                        # groupby preserves the order of rows within each group.
+                    group_keys=False,
+                        # When calling apply, add group keys to index to identify pieces
+                    squeeze=False
+                        # reduce the dimensionality of the return type if possible, otherwise return a consistent type
+                )[daily_err_mult_summ_col_names] \
+                .apply(
+                    lambda df:
+                        df.ewm(
+                            com=None,
+                            span=None,
+                            halflife=None,
+                            alpha=_alpha,
+                            min_periods=0,
+                            adjust=False,   # ref: http://pandas.pydata.org/pandas-docs/stable/computation.html#exponentially-weighted-windows
+                            ignore_na=True,
+                            axis='index')
+                        .mean())
+
+        return daily_err_mults_df.drop(
+                columns=daily_err_mult_summ_col_names,
+                level=None,
+                inplace=False,
+                errors='raise')
 
 
 # utility to create Blueprint from its params

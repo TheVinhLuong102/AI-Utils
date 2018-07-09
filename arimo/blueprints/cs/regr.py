@@ -8,9 +8,6 @@ import psutil
 import random
 
 import arimo.backend
-from arimo.blueprints.base import BlueprintedArimoDLModel, BlueprintedKerasModel, _docstr_blueprint
-from arimo.blueprints.cs import _DLCrossSectSupervisedBlueprintABC
-from arimo.blueprints.mixins.eval import RegrEvalMixIn
 from arimo.df.from_files import ArrowADF
 from arimo.df.spark_from_files import ArrowSparkADF
 from arimo.dl.base import LossPlateauLrDecay
@@ -18,6 +15,9 @@ from arimo.util import fs, Namespace
 from arimo.util.decor import _docstr_verbose
 from arimo.util.pkl import pickle_able
 import arimo.debug
+
+from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, _docstr_blueprint, RegrEvalMixIn
+from . import _DLCrossSectSupervisedBlueprintABC
 
 
 @_docstr_blueprint

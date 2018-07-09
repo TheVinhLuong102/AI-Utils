@@ -14,9 +14,6 @@ import uuid
 from pyspark.sql.types import ArrayType, DoubleType, StructField, StructType
 
 import arimo.backend
-from arimo.blueprints.base import \
-    _docstr_blueprint, _SupervisedBlueprintABC, _DLSupervisedBlueprintABC, \
-    BlueprintedArimoDLModel, BlueprintedKerasModel
 from arimo.df.spark import SparkADF
 import arimo.eval.metrics
 from arimo.util import clean_str, clean_uuid, fs
@@ -24,12 +21,12 @@ from arimo.util.log import STDOUT_HANDLER
 from arimo.util.types.spark_sql import _NUM_TYPES, _STR_TYPE, _VECTOR_TYPE
 import arimo.debug
 
-from ..mixins.data_prep import LabeledDataPrepMixIn
-from ..mixins.eval import RegrEvalMixIn
+from ..base import _docstr_blueprint, _SupervisedBlueprintABC, _DLSupervisedBlueprintABC, RegrEvalMixIn, \
+    BlueprintedArimoDLModel, BlueprintedKerasModel
 
 
 @_docstr_blueprint
-class _CrossSectSupervisedBlueprintABC(LabeledDataPrepMixIn, _SupervisedBlueprintABC):
+class _CrossSectSupervisedBlueprintABC(_SupervisedBlueprintABC):
     __metaclass__ = abc.ABCMeta
 
     def eval(self, *args, **kwargs):
