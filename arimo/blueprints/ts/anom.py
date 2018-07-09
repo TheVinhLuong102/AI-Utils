@@ -14,8 +14,7 @@ from arimo.util import fs
 from arimo.util.dl import MASK_VAL
 import arimo.debug
 
-from ..base import _blueprint_from_params, _docstr_blueprint, _PPPBlueprintABC
-from . import _TimeSerDataPrepMixInABC
+from ..base import _blueprint_from_params, _docstr_blueprint, _PPPBlueprintABC, _TimeSerDataPrepMixInABC
 
 
 @_docstr_blueprint

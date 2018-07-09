@@ -570,8 +570,3 @@ class _TimeSerDLSupervisedBlueprintABC(_DLSupervisedBlueprintABC):
         adf.unpersist()
 
         return metrics
-
-
-# place-holder mix-in class
-class _TimeSerDataPrepMixInABC(object):
-    pass

@@ -15,8 +15,8 @@ from arimo.util.decor import _docstr_verbose
 from arimo.util.dl import MASK_VAL
 from arimo.util.pkl import pickle_able
 
-from ..base import  BlueprintedArimoDLModel, BlueprintedKerasModel, _docstr_blueprint, ClassifEvalMixIn
-from . import _TimeSerDLSupervisedBlueprintABC, _TimeSerDataPrepMixInABC
+from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, _docstr_blueprint, ClassifEvalMixIn, _TimeSerDataPrepMixInABC
+from . import _TimeSerDLSupervisedBlueprintABC
 
 
 @_docstr_blueprint

@@ -46,8 +46,6 @@ from arimo.util.types.arrow import is_boolean, is_float, is_integer, is_num, is_
 from arimo.util.types.spark_sql import _BOOL_TYPE, _FLOAT_TYPES, _INT_TYPES, _NUM_TYPES, _STR_TYPE
 import arimo.debug
 
-from .ts import _TimeSerDataPrepMixInABC
-
 
 _TMP_FILE_NAME = '.tmp'
 
@@ -997,6 +995,10 @@ class BlueprintedKerasModel(_BlueprintedModelABC):
 
         if verbose:
             self.stdout_logger.info(message + ' done!')
+
+
+class _TimeSerDataPrepMixInABC(object):
+    pass
 
 
 class _EvalMixInABC(object):
