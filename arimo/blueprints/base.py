@@ -1808,7 +1808,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                         if isinstance(adf, SparkADF)
                         else None)
 
-            if __train__:
+            if __train__ or __eval__:
                 if __first_train__:
                     self.params.data.pred_vars = \
                         tuple(sorted(self.params.data.pred_vars
@@ -1843,28 +1843,43 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                                if cat_orig_to_prep_col_map['__OHE__']
                                else len(self.params.data._cat_prep_cols)))
 
-                adf = adf[
-                    [self.params.data.label.var
-                     if self.params.data.label._int_var is None
-                     else self.params.data.label._int_var] +
-                    ([] if self.params.data.id_col in adf.indexCols
-                        else [self.params.data.id_col]) +
-                    list(adf.indexCols + adf.tAuxCols +
-                         self.params.data._cat_prep_cols + self.params.data._num_prep_cols)]
+                if isinstance(adf, ArrowADF):
+                    adf = adf[
+                        [self.params.data.label.var
+                         if self.params.data.label._int_var is None
+                         else self.params.data.label._int_var] +
+                        ([] if self.params.data.id_col in adf.indexCols
+                            else [self.params.data.id_col]) +
+                        list(adf.indexCols + adf.tAuxCols +
+                             self.params.data._cat_prep_cols + self.params.data._num_prep_cols)]
 
-            elif __eval__:
-                adf(self.params.data.label.var
-                    if self.params.data.label._int_var is None
-                    else self.params.data.label._int_var,
-                    *((() if self.params.data.id_col in adf.indexCols
-                       else (self.params.data.id_col,)) +
-                      adf.indexCols + adf.tAuxCols +
-                      ((self.params.data._prep_vec_col,)
-                       if __vectorize__
-                       else (self.params.data._cat_prep_cols + self.params.data._num_prep_cols))),
-                    inheritCache=True,
-                    inheritNRows=True,
-                    inplace=True)
+                elif isinstance(adf, ArrowSparkADF):
+                    _adf_alias = adf.alias
+
+                    adf = adf[
+                        [self.params.data.label.var
+                         if self.params.data.label._int_var is None
+                         else self.params.data.label._int_var] +
+                        ([] if self.params.data.id_col in adf.indexCols
+                         else [self.params.data.id_col]) +
+                        list(adf.indexCols + adf.tAuxCols +
+                             self.params.data._cat_prep_cols + self.params.data._num_prep_cols)]
+
+                    adf.alias = _adf_alias
+
+                else:
+                    adf(self.params.data.label.var
+                        if self.params.data.label._int_var is None
+                        else self.params.data.label._int_var,
+                        *((() if self.params.data.id_col in adf.indexCols
+                           else (self.params.data.id_col,)) +
+                          adf.indexCols + adf.tAuxCols +
+                          ((self.params.data._prep_vec_col,)
+                           if __vectorize__
+                           else (self.params.data._cat_prep_cols + self.params.data._num_prep_cols))),
+                        inheritCache=True,
+                        inheritNRows=True,
+                        inplace=True)
 
         return adf
 
