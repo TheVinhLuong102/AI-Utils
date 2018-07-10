@@ -2123,7 +2123,9 @@ class ArrowADF(_ArrowADFABC):
             nSamplePieces = \
                 max(int(math.ceil(((min(n, self.approxNRows) / self.approxNRows) ** .5)
                                   * self.nPieces)),
-                    minNPieces)
+                    minNPieces) \
+                if (self.nPieces > 1) and ((maxNPieces is None) or (maxNPieces > 1)) \
+                else 1
 
             if maxNPieces:
                 nSamplePieces = min(nSamplePieces, maxNPieces)
