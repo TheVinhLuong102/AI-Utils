@@ -2427,7 +2427,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                                   inheritNRows=True)) \
                         if isinstance(adf, SparkADF) \
                         else adf[[label_var_name] +
-                                 list(adf.indexCols + adf.tAuxCols +
+                                 list(# adf.indexCols + adf.tAuxCols +
                                       component_blueprint_params.data._cat_prep_cols +
                                       component_blueprint_params.data._num_prep_cols)]
 
@@ -2478,7 +2478,17 @@ class _PPPBlueprintABC(_BlueprintABC):
                 return adf
 
         else:
-            pass   # TODO
+            label_var_names = []
+            prep_cols = set()
+
+            for label_var_name, component_blueprint_params in self.params.model.component_blueprints.items():
+                if (label_var_name in adf.columns) and component_blueprint_params.model.ver:
+                    label_var_names.append(label_var_name)
+                    prep_cols.update(
+                        component_blueprint_params.data._cat_prep_cols +
+                        component_blueprint_params.data._num_prep_cols)
+
+            return adf[label_var_names + list(prep_cols)]
 
     def train(self, *args, **kwargs):
         __gen_queue_size__ = \
