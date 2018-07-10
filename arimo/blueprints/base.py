@@ -2432,7 +2432,8 @@ class _PPPBlueprintABC(_BlueprintABC):
                                       component_blueprint_params.data._num_prep_cols)]
 
             # save Blueprint & data transforms
-            self.save()
+            if __first_train__:
+                self.save()
 
             return component_labeled_adfs
 
