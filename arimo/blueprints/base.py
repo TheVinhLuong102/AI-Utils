@@ -3536,6 +3536,11 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
                     access_key_id=aws_access_key_id,
                     secret_access_key=aws_secret_access_key)
 
+        elif not (aws_access_key_id and aws_secret_access_key):
+            pass
+            # TODO: create temp key pair from client
+            # aws_access_key_id, aws_secret_access_key = ...
+
         if dir_path:
             s3_bucket, s3_dir_prefix = \
                 dir_path.split('://')[1].split('/', 1)
