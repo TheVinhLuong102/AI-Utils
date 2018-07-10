@@ -2413,13 +2413,17 @@ class _PPPBlueprintABC(_BlueprintABC):
                              inheritNRows=True)(
                             label_var_name,
                             component_blueprint_params.data._prep_vec_col,
-                            *(adf.indexCols + adf.tAuxCols),
+                            *((() if self.params.data.id_col in adf.indexCols
+                                  else (self.params.data.id_col,)) +
+                              adf.indexCols + adf.tAuxCols),
                             alias=adf.alias + '__LABEL__' + label_var_name,
                             inheritCache=True,
                             inheritNRows=True)
                          if (__vectorize__ is None) or __vectorize__
                          else adf(label_var_name,
-                                  *(adf.indexCols + adf.tAuxCols +
+                                  *((() if self.params.data.id_col in adf.indexCols
+                                        else (self.params.data.id_col,)) +
+                                    adf.indexCols + adf.tAuxCols +
                                     component_blueprint_params.data._cat_prep_cols +
                                     component_blueprint_params.data._num_prep_cols),
                                   alias=adf.alias + '__LABEL__' + label_var_name,
@@ -2427,7 +2431,9 @@ class _PPPBlueprintABC(_BlueprintABC):
                                   inheritNRows=True)) \
                         if isinstance(adf, SparkADF) \
                         else adf[[label_var_name] +
-                                 list(adf.indexCols +   # adf.tAuxCols +
+                                 list((() if self.params.data.id_col in adf.indexCols
+                                          else (self.params.data.id_col,)) +
+                                      adf.indexCols +   # adf.tAuxCols +
                                       component_blueprint_params.data._cat_prep_cols +
                                       component_blueprint_params.data._num_prep_cols)]
 
