@@ -75,225 +75,225 @@ print(arrow_spark_adf)
 
 
 # 1
-sup_prep_data_path__train = \
+ppp_prep_data_path__train = \
     ppp_bp.prep_data(
         df=DATA_PATH,
         aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         __mode__='train',
         __vectorize__=False)[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
 print('PPPBlueprint-prepped Data Path for Training:\n{}\n'
-      .format(sup_prep_data_path__train))
+    .format(ppp_prep_data_path__train))
 
 
 # 2
-sup_prep_data_path__train__vectorized = \
+ppp_prep_data_path__train__vectorized = \
     ppp_bp.prep_data(
         df=DATA_PATH,
         aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         __mode__='train',
         __vectorize__=True)[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
 print('PPPBlueprint-prepped Data Path for Training (Vectorized):\n{}\n'
-      .format(sup_prep_data_path__train__vectorized))
+    .format(ppp_prep_data_path__train__vectorized))
 
 
 # 3
-sup_prep_data_path__score = \
+ppp_prep_data_path__score = \
     ppp_bp.prep_data(
         df=DATA_PATH,
         aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         __mode__='score',
         __vectorize__=False)
 print('PPPBlueprint-prepped Data Path for Scoring:\n{}\n'
-      .format(sup_prep_data_path__score))
+    .format(ppp_prep_data_path__score))
 
 
 # 4
-sup_prep_data_path__score__vectorized = \
+ppp_prep_data_path__score__vectorized = \
     ppp_bp.prep_data(
         df=DATA_PATH,
         aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         __mode__='score',
         __vectorize__=True)
 print('PPPBlueprint-prepped Data Path for Scoring (Vectorized):\n{}\n'
-      .format(sup_prep_data_path__score__vectorized))
+    .format(ppp_prep_data_path__score__vectorized))
 
 
 # 5
-sup_prep_data_path__eval = \
+ppp_prep_data_path__eval = \
     ppp_bp.prep_data(
         df=DATA_PATH,
         aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         __mode__='eval',
         __vectorize__=False)
 print('PPPBlueprint-prepped Data Path for Eval:\n{}\n'
-      .format(sup_prep_data_path__eval))
+    .format(ppp_prep_data_path__eval))
 
 
 # 6
-sup_prep_data_path__eval__vectorized = \
+ppp_prep_data_path__eval__vectorized = \
     ppp_bp.prep_data(
         df=DATA_PATH,
         aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         __mode__='eval',
         __vectorize__=True)
 print('PPPBlueprint-prepped Data Path for Eval (Vectorized):\n{}\n'
-      .format(sup_prep_data_path__eval__vectorized))
+    .format(ppp_prep_data_path__eval__vectorized))
 
 
 # 7
-sup_prep_arrow_adf__train = \
+ppp_prep_arrow_adf__train = \
     ppp_bp.prep_data(
         df=arrow_adf,
         __mode__='train')[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
 print('PPPBlueprint-prepped ArrowADF for Training:\n{}\n({} --> {})\n\n(from {})\n'
-    .format(sup_prep_arrow_adf__train,
-            sup_prep_arrow_adf__train._mappers,
-            sup_prep_arrow_adf__train.sample(maxNPieces=1).columns.tolist(),
+    .format(ppp_prep_arrow_adf__train,
+            ppp_prep_arrow_adf__train._mappers,
+            ppp_prep_arrow_adf__train.sample(maxNPieces=1).columns.tolist(),
             arrow_adf))
 
 
 # 8
-sup_prep_arrow_adf__score = \
+ppp_prep_arrow_adf__score = \
     ppp_bp.prep_data(
         df=arrow_adf,
         __mode__='score')
 print('PPPBlueprint-prepped ArrowADF for Scoring:\n{}\n({} --> {})\n\n(from {})\n'
-    .format(sup_prep_arrow_adf__score,
-            sup_prep_arrow_adf__score._mappers,
-            sup_prep_arrow_adf__score.sample(maxNPieces=1).columns.tolist(),
+    .format(ppp_prep_arrow_adf__score,
+            ppp_prep_arrow_adf__score._mappers,
+            ppp_prep_arrow_adf__score.sample(maxNPieces=1).columns.tolist(),
             arrow_adf))
 
 
 # 9
-sup_prep_arrow_adf__eval = \
+ppp_prep_arrow_adf__eval = \
     ppp_bp.prep_data(
         df=arrow_adf,
         __mode__='eval')
 print('PPPBlueprint-prepped ArrowADF for Eval:\n{}\n({} --> {})\n\n(from {})\n'
-    .format(sup_prep_arrow_adf__eval,
-            sup_prep_arrow_adf__eval._mappers,
-            sup_prep_arrow_adf__eval.sample(maxNPieces=1).columns.tolist(),
+    .format(ppp_prep_arrow_adf__eval,
+            ppp_prep_arrow_adf__eval._mappers,
+            ppp_prep_arrow_adf__eval.sample(maxNPieces=1).columns.tolist(),
             arrow_adf))
 
 
 # 10
-sup_prep_spark_adf__train = \
+ppp_prep_spark_adf__train = \
     ppp_bp.prep_data(
         df=spark_adf,
         __mode__='train',
         __vectorize__=False)[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
 print('PPPBlueprint-prepped SparkADF for Training:\n{}\n\n(from {})\n'
-      .format(sup_prep_spark_adf__train, spark_adf))
+    .format(ppp_prep_spark_adf__train, spark_adf))
 
 
 # 11
-sup_prep_spark_adf__train__vectorized = \
+ppp_prep_spark_adf__train__vectorized = \
     ppp_bp.prep_data(
         df=spark_adf,
         __mode__='train',
         __vectorize__=True)[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
 print('PPPBlueprint-prepped SparkADF for Training (Vectorized):\n{}\n\n(from {})\n'
-      .format(sup_prep_spark_adf__train__vectorized, spark_adf))
+    .format(ppp_prep_spark_adf__train__vectorized, spark_adf))
 
 
 # 12
-sup_prep_spark_adf__score = \
+ppp_prep_spark_adf__score = \
     ppp_bp.prep_data(
         df=spark_adf,
         __mode__='score',
         __vectorize__=False)
 print('PPPBlueprint-prepped SparkADF for Scoring:\n{}\n\n(from {})\n'
-      .format(sup_prep_spark_adf__score, spark_adf))
+    .format(ppp_prep_spark_adf__score, spark_adf))
 
 
 # 13
-sup_prep_spark_adf__score__vectorized = \
+ppp_prep_spark_adf__score__vectorized = \
     ppp_bp.prep_data(
         df=spark_adf,
         __mode__='score',
         __vectorize__=True)
 print('PPPBlueprint-prepped SparkADF for Scoring (Vectorized):\n{}\n\n(from {})\n'
-      .format(sup_prep_spark_adf__score__vectorized, spark_adf))
+    .format(ppp_prep_spark_adf__score__vectorized, spark_adf))
 
 
 # 14
-sup_prep_spark_adf__eval = \
+ppp_prep_spark_adf__eval = \
     ppp_bp.prep_data(
         df=spark_adf,
         __mode__='eval',
         __vectorize__=False)
 print('PPPBlueprint-prepped SparkADF for Eval:\n{}\n\n(from {})\n'
-      .format(sup_prep_spark_adf__eval, spark_adf))
+    .format(ppp_prep_spark_adf__eval, spark_adf))
 
 
 # 15
-sup_prep_spark_adf__eval__vectorized = \
+ppp_prep_spark_adf__eval__vectorized = \
     ppp_bp.prep_data(
         df=spark_adf,
         __mode__='eval',
         __vectorize__=True)
 print('PPPBlueprint-prepped SparkADF for Eval (Vectorized):\n{}\n\n(from {})\n'
-      .format(sup_prep_spark_adf__eval__vectorized, spark_adf))
+    .format(ppp_prep_spark_adf__eval__vectorized, spark_adf))
 
 
 # 16
-sup_prep_arrow_spark_adf__train = \
+ppp_prep_arrow_spark_adf__train = \
     ppp_bp.prep_data(
         df=arrow_spark_adf,
         __mode__='train',
         __vectorize__=False)[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
 print('PPPBlueprint-prepped ArrowSparkADF for Training:\n{}\n\n(from {})\n'
-      .format(sup_prep_arrow_spark_adf__train, arrow_spark_adf))
+    .format(ppp_prep_arrow_spark_adf__train, arrow_spark_adf))
 
 
 # 17
-sup_prep_arrow_spark_adf__train__vectorized = \
+ppp_prep_arrow_spark_adf__train__vectorized = \
     ppp_bp.prep_data(
         df=arrow_spark_adf,
         __mode__='train',
         __vectorize__=True)[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
 print('PPPBlueprint-prepped ArrowSparkADF for Training (Vectorized):\n{}\n\n(from {})\n'
-      .format(sup_prep_arrow_spark_adf__train__vectorized, arrow_spark_adf))
+    .format(ppp_prep_arrow_spark_adf__train__vectorized, arrow_spark_adf))
 
 
 # 18
-sup_prep_arrow_spark_adf__score = \
+ppp_prep_arrow_spark_adf__score = \
     ppp_bp.prep_data(
         df=arrow_spark_adf,
         __mode__='score',
         __vectorize__=False)
 print('PPPBlueprint-prepped ArrowSparkADF for Scoring:\n{}\n\n(from {})\n'
-      .format(sup_prep_arrow_spark_adf__score, arrow_spark_adf))
+    .format(ppp_prep_arrow_spark_adf__score, arrow_spark_adf))
 
 
 # 19
-sup_prep_arrow_spark_adf__score__vectorized = \
+ppp_prep_arrow_spark_adf__score__vectorized = \
     ppp_bp.prep_data(
         df=arrow_spark_adf,
         __mode__='score',
         __vectorize__=True)
 print('PPPBlueprint-prepped ArrowSparkADF for Scoring (Vectorized):\n{}\n\n(from {})\n'
-      .format(sup_prep_arrow_spark_adf__score__vectorized, arrow_spark_adf))
+    .format(ppp_prep_arrow_spark_adf__score__vectorized, arrow_spark_adf))
 
 
 # 20
-sup_prep_arrow_spark_adf__eval = \
+ppp_prep_arrow_spark_adf__eval = \
     ppp_bp.prep_data(
         df=arrow_spark_adf,
         __mode__='eval',
         __vectorize__=False)
 print('PPPBlueprint-prepped ArrowSparkADF for Eval:\n{}\n\n(from {})\n'
-      .format(sup_prep_arrow_spark_adf__eval, arrow_spark_adf))
+    .format(ppp_prep_arrow_spark_adf__eval, arrow_spark_adf))
 
 
 # 21
-sup_prep_arrow_spark_adf__eval__vectorized = \
+ppp_prep_arrow_spark_adf__eval__vectorized = \
     ppp_bp.prep_data(
         df=arrow_spark_adf,
         __mode__='eval',
         __vectorize__=True)
 print('PPPBlueprint-prepped ArrowSparkADF for Eval (Vectorized):\n{}\n\n(from {})\n'
-      .format(sup_prep_arrow_spark_adf__eval__vectorized, arrow_spark_adf))
+    .format(ppp_prep_arrow_spark_adf__eval__vectorized, arrow_spark_adf))
 
 
 # 22
