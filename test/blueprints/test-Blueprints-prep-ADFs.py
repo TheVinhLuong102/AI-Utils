@@ -56,14 +56,14 @@ print(arrow_spark_adf)
 ppp_prep_arrow_adf__train = \
     ppp_bp.prep_data(
         df=arrow_adf,
-        __mode__='train')[LABEL_VAR]
+        __mode__='train')[LABEL_VAR]   # count & sampling will be triggered because of adf.suffNonNull(label_var_name)
 print('PPP Blueprint-prepped Arrow ADF for Train: {}'.format(ppp_prep_arrow_adf__train))
 
 
-# ppp_prep_arrow_adf__eval = \
-#     ppp_bp.prep_data(
-#         df=arrow_adf,
-#         __mode__='eval')[LABEL_VAR]
+ppp_prep_arrow_adf__eval = \
+    ppp_bp.prep_data(
+        df=arrow_adf,
+        __mode__='score')[LABEL_VAR]
 
 # print('PPP Blueprint-prepped Arrow ADF for Eval: {}'.format(ppp_prep_arrow_adf__eval))
 
@@ -71,7 +71,7 @@ print('PPP Blueprint-prepped Arrow ADF for Train: {}'.format(ppp_prep_arrow_adf_
 # ppp_prep_arrow_adf__score = \
 #     ppp_bp.prep_data(
 #         df=arrow_adf,
-#         __mode__='score')[LABEL_VAR]
+#         __mode__='eval')[LABEL_VAR]
 
 # print('PPP Blueprint-prepped Arrow ADF for Score: {}'.format(ppp_prep_arrow_adf__score))
 
