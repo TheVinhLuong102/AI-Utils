@@ -2489,7 +2489,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                         component_blueprint_params.data._cat_prep_cols +
                         component_blueprint_params.data._num_prep_cols)
 
-            return adf[label_var_names + list(prep_cols)]
+            return adf[label_var_names + sorted(prep_cols)]
 
     def train(self, *args, **kwargs):
         __gen_queue_size__ = \
