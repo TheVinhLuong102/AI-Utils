@@ -43,6 +43,8 @@ sup_bp = \
          s3_dir_prefix=os.path.join(
             PROJECT.params.s3.ppp.blueprints_dir_prefix,
             SUP_BP_UUID),
+         aws_access_key_id=PROJECT.params.s3.access_key_id,
+         aws_secret_access_key=PROJECT.params.s3.secret_access_key,
          s3_client=PROJECT.s3_client,
          verbose=False)
 print(sup_bp)
