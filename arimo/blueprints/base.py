@@ -2481,21 +2481,34 @@ class _PPPBlueprintABC(_BlueprintABC):
                     inheritNRows=True)
 
             else:
-                adf.alias += self._TO_SCORE_ALL_VARS_ADF_ALIAS_SUFFIX
-                return adf
+                prep_cols = set()
+
+                for label_var_name, component_blueprint_params in self.params.model.component_blueprints.items():
+                    if (label_var_name in adf.columns) and component_blueprint_params.model.ver:
+                        orig_cols_to_keep.add(label_var_name)
+
+                        prep_cols.update(
+                            component_blueprint_params.data._cat_prep_cols +
+                            component_blueprint_params.data._num_prep_cols)
+
+                return adf(
+                    *(orig_cols_to_keep.union(prep_cols)),
+                    alias=adf.alias + self._TO_SCORE_ALL_VARS_ADF_ALIAS_SUFFIX,
+                    inheritCache=True,
+                    inheritNRows=True)
 
         else:
-            label_var_names = []
             prep_cols = set()
 
             for label_var_name, component_blueprint_params in self.params.model.component_blueprints.items():
                 if (label_var_name in adf.columns) and component_blueprint_params.model.ver:
-                    label_var_names.append(label_var_name)
+                    orig_cols_to_keep.add(label_var_name)
+
                     prep_cols.update(
                         component_blueprint_params.data._cat_prep_cols +
                         component_blueprint_params.data._num_prep_cols)
 
-            return adf[list(adf.indexCols) + label_var_names + sorted(prep_cols)]
+            return adf[list(orig_cols_to_keep) + sorted(prep_cols)]
 
     def train(self, *args, **kwargs):
         __gen_queue_size__ = \
