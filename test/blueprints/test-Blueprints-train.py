@@ -21,6 +21,7 @@ LABEL_VAR = 'inside_temperature'
 
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument('--ppp', action='store_true')
+arg_parser.add_argument('--incr', action='store_true')
 arg_parser.add_argument('--arrow', action='store_true')
 arg_parser.add_argument('--spark', action='store_true')
 args = arg_parser.parse_args()
@@ -45,8 +46,9 @@ else:
     assert bp.params.model.ver is None, \
         '*** {} ***'.format(bp.params.model.ver)
 
-    bp.params.model.ver = \
-        ppp_bp.params.model.component_blueprints[LABEL_VAR].model.ver
+    if args.incr:
+        bp.params.model.ver = \
+            ppp_bp.params.model.component_blueprints[LABEL_VAR].model.ver
 
 
 df = (PROJECT.load_equipment_data(
