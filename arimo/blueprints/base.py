@@ -918,7 +918,8 @@ class BlueprintedArimoDLModel(_BlueprintedModelABC):
                 to_dir_path=self.blueprint.params.persist.s3._models_dir_path,
                 access_key_id=self.blueprint.auth.aws.access_key_id,
                 secret_access_key=self.blueprint.auth.aws.secret_access_key,
-                delete=True, quiet=False)
+                delete=False,   # to allow multiple training jobs to upload new models to S3 at same time
+                quiet=False)
 
             if verbose:
                 self.blueprint.stdout_logger.info(msg + ' done!')
@@ -989,7 +990,8 @@ class BlueprintedKerasModel(_BlueprintedModelABC):
                 to_dir_path=self.blueprint.params.persist.s3._models_dir_path,
                 access_key_id=self.blueprint.auth.aws.access_key_id,
                 secret_access_key=self.blueprint.auth.aws.secret_access_key,
-                delete=True, quiet=False)
+                delete=False,   # to allow multiple training jobs to upload new models to S3 at same time
+                quiet=False)
 
             if verbose:
                 self.blueprint.stdout_logger.info(msg + ' done!')
