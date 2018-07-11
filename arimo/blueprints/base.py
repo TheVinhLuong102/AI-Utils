@@ -1864,18 +1864,19 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                              self.params.data._cat_prep_cols + self.params.data._num_prep_cols)]
 
                 elif isinstance(adf, ArrowSparkADF):
-                    _adf_alias = adf.alias
+                    if not __vectorize__:
+                        _adf_alias = adf.alias
 
-                    adf = adf[
-                        [self.params.data.label.var
-                         if self.params.data.label._int_var is None
-                         else self.params.data.label._int_var] +
-                        ([] if self.params.data.id_col in adf.indexCols
-                         else [self.params.data.id_col]) +
-                        list(adf.indexCols + adf.tAuxCols +
-                             self.params.data._cat_prep_cols + self.params.data._num_prep_cols)]
+                        adf = adf[
+                            [self.params.data.label.var
+                             if self.params.data.label._int_var is None
+                             else self.params.data.label._int_var] +
+                            ([] if self.params.data.id_col in adf.indexCols
+                             else [self.params.data.id_col]) +
+                            list(adf.indexCols + adf.tAuxCols +
+                                 self.params.data._cat_prep_cols + self.params.data._num_prep_cols)]
 
-                    adf.alias = _adf_alias
+                        adf.alias = _adf_alias
 
                 else:
                     adf(self.params.data.label.var
