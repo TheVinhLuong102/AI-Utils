@@ -2595,6 +2595,16 @@ class _PPPBlueprintABC(_BlueprintABC):
                         __cpu_reloc__=__cpu_reloc__,
                         verbose=verbose)
 
+                # *** COPY DataTransforms AFTER model training so that __first_train__ is correctly detected ***
+                if not os.path.isdir(blueprint.data_transforms_dir):
+                    fs.cp(from_path=self.data_transforms_dir,
+                          to_path=blueprint.data_transforms_dir,
+                          hdfs=False,
+                          is_dir=True)
+
+                # re-save blueprint to make sure DataTransforms dir is sync'ed to S3
+                blueprint.save()
+
                 blueprint_params.model.ver = \
                     blueprint.params.model.ver = \
                     model.ver
@@ -2612,13 +2622,6 @@ class _PPPBlueprintABC(_BlueprintABC):
                 models[label_var_name] = \
                     blueprint.model(
                         ver=blueprint_params.model.ver)
-
-            # *** COPY DataTransforms AFTER model training so that __first_train__ is correctly detected ***
-            if not os.path.isdir(blueprint.data_transforms_dir):
-                fs.cp(from_path=self.data_transforms_dir,
-                      to_path=blueprint.data_transforms_dir,
-                      hdfs=False,
-                      is_dir=True)
 
         # save Blueprint, with updated component blueprint params
         self.save()
