@@ -94,7 +94,7 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                 if self.params.model.train.n_samples_max_multiple_of_data_size
                 else None)
 
-        model = self.model() \
+        model = self.model(ver=None) \
             if self.params.model.ver is None \
             else self.model(ver=self.params.model.ver).copy()
 
