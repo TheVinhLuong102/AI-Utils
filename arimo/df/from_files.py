@@ -3833,8 +3833,8 @@ class ArrowADF(_ArrowADFABC):
 
     def gen(self, *args, **kwargs):
         if self.fromS3:
-            aws_access_key_id=self._srcArrowDS.fs.fs.key
-            aws_secret_access_key=self._srcArrowDS.fs.fs.secret
+            aws_access_key_id = self._srcArrowDS.fs.fs.key
+            aws_secret_access_key = self._srcArrowDS.fs.fs.secret
 
         else:
             aws_access_key_id = aws_secret_access_key = None
