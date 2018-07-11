@@ -247,16 +247,6 @@ print('PPPBlueprint-prepped ArrowSparkADF for Training:\n{}\n\n(from {})\n'
 
 
 # 17
-ppp_prep_arrow_spark_adf__train__vectorized = \
-    ppp_bp.prep_data(
-        df=arrow_spark_adf,
-        __mode__='train',
-        __vectorize__=True)[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
-print('PPPBlueprint-prepped ArrowSparkADF for Training (Vectorized):\n{}\n\n(from {})\n'
-    .format(ppp_prep_arrow_spark_adf__train__vectorized, arrow_spark_adf))
-
-
-# 18
 ppp_prep_arrow_spark_adf__score = \
     ppp_bp.prep_data(
         df=arrow_spark_adf,
@@ -266,7 +256,7 @@ print('PPPBlueprint-prepped ArrowSparkADF for Scoring:\n{}\n\n(from {})\n'
     .format(ppp_prep_arrow_spark_adf__score, arrow_spark_adf))
 
 
-# 19
+# 18
 ppp_prep_arrow_spark_adf__score__vectorized = \
     ppp_bp.prep_data(
         df=arrow_spark_adf,
@@ -276,7 +266,7 @@ print('PPPBlueprint-prepped ArrowSparkADF for Scoring (Vectorized):\n{}\n\n(from
     .format(ppp_prep_arrow_spark_adf__score__vectorized, arrow_spark_adf))
 
 
-# 20
+# 19
 ppp_prep_arrow_spark_adf__eval = \
     ppp_bp.prep_data(
         df=arrow_spark_adf,
@@ -286,7 +276,7 @@ print('PPPBlueprint-prepped ArrowSparkADF for Eval:\n{}\n\n(from {})\n'
     .format(ppp_prep_arrow_spark_adf__eval, arrow_spark_adf))
 
 
-# 21
+# 20
 ppp_prep_arrow_spark_adf__eval__vectorized = \
     ppp_bp.prep_data(
         df=arrow_spark_adf,
@@ -296,7 +286,7 @@ print('PPPBlueprint-prepped ArrowSparkADF for Eval (Vectorized):\n{}\n\n(from {}
     .format(ppp_prep_arrow_spark_adf__eval__vectorized, arrow_spark_adf))
 
 
-# 22
+# 21
 sup_prep_data_path__train = \
     sup_bp.prep_data(
         df=DATA_PATH,
@@ -307,7 +297,7 @@ print('SupervisedBlueprint-prepped Data Path for Training:\n{}\n'
     .format(sup_prep_data_path__train))
 
 
-# 23
+# 22
 sup_prep_data_path__train__vectorized = \
     sup_bp.prep_data(
         df=DATA_PATH,
@@ -318,7 +308,7 @@ print('SupervisedBlueprint-prepped Data Path for Training (Vectorized):\n{}\n'
     .format(sup_prep_data_path__train__vectorized))
 
 
-# 24
+# 23
 sup_prep_data_path__score = \
     sup_bp.prep_data(
         df=DATA_PATH,
@@ -329,7 +319,7 @@ print('SupervisedBlueprint-prepped Data Path for Scoring:\n{}\n'
     .format(sup_prep_data_path__score))
 
 
-# 25
+# 24
 sup_prep_data_path__score__vectorized = \
     sup_bp.prep_data(
         df=DATA_PATH,
@@ -340,7 +330,7 @@ print('SupervisedBlueprint-prepped Data Path for Scoring (Vectorized):\n{}\n'
     .format(sup_prep_data_path__score__vectorized))
 
 
-# 26
+# 25
 sup_prep_data_path__eval = \
     sup_bp.prep_data(
         df=DATA_PATH,
@@ -351,7 +341,7 @@ print('SupervisedBlueprint-prepped Data Path for Eval:\n{}\n'
     .format(sup_prep_data_path__eval))
 
 
-# 27
+# 26
 sup_prep_data_path__eval__vectorized = \
     sup_bp.prep_data(
         df=DATA_PATH,
@@ -362,7 +352,7 @@ print('SupervisedBlueprint-prepped Data Path for Eval (Vectorized):\n{}\n'
     .format(sup_prep_data_path__eval__vectorized))
 
 
-# 28
+# 27
 sup_prep_arrow_adf__train = \
     sup_bp.prep_data(
         df=arrow_adf,
@@ -374,7 +364,7 @@ print('SupervisedBlueprint-prepped ArrowADF for Training:\n{}\n({} --> {})\n\n(f
             arrow_adf))
 
 
-# 29
+# 28
 sup_prep_arrow_adf__score = \
     sup_bp.prep_data(
         df=arrow_adf,
@@ -386,7 +376,7 @@ print('SupervisedBlueprint-prepped ArrowADF for Scoring:\n{}\n({} --> {})\n\n(fr
             arrow_adf))
 
 
-# 30
+# 29
 sup_prep_arrow_adf__eval = \
     sup_bp.prep_data(
         df=arrow_adf,
@@ -398,7 +388,7 @@ print('SupervisedBlueprint-prepped ArrowADF for Eval:\n{}\n({} --> {})\n\n(from 
             arrow_adf))
 
 
-# 31
+# 30
 sup_prep_spark_adf__train = \
     sup_bp.prep_data(
         df=spark_adf,
@@ -408,7 +398,7 @@ print('SupervisedBlueprint-prepped SparkADF for Training:\n{}\n\n(from {})\n'
     .format(sup_prep_spark_adf__train, spark_adf))
 
 
-# 32
+# 31
 sup_prep_spark_adf__train__vectorized = \
     sup_bp.prep_data(
         df=spark_adf,
@@ -418,7 +408,7 @@ print('SupervisedBlueprint-prepped SparkADF for Training (Vectorized):\n{}\n\n(f
     .format(sup_prep_spark_adf__train__vectorized, spark_adf))
 
 
-# 33
+# 32
 sup_prep_spark_adf__score = \
     sup_bp.prep_data(
         df=spark_adf,
@@ -428,7 +418,7 @@ print('SupervisedBlueprint-prepped SparkADF for Scoring:\n{}\n\n(from {})\n'
     .format(sup_prep_spark_adf__score, spark_adf))
 
 
-# 34
+# 33
 sup_prep_spark_adf__score__vectorized = \
     sup_bp.prep_data(
         df=spark_adf,
@@ -438,7 +428,7 @@ print('SupervisedBlueprint-prepped SparkADF for Scoring (Vectorized):\n{}\n\n(fr
     .format(sup_prep_spark_adf__score__vectorized, spark_adf))
 
 
-# 35
+# 34
 sup_prep_spark_adf__eval = \
     sup_bp.prep_data(
         df=spark_adf,
@@ -448,7 +438,7 @@ print('SupervisedBlueprint-prepped SparkADF for Eval:\n{}\n\n(from {})\n'
     .format(sup_prep_spark_adf__eval, spark_adf))
 
 
-# 36
+# 35
 sup_prep_spark_adf__eval__vectorized = \
     sup_bp.prep_data(
         df=spark_adf,
@@ -458,27 +448,16 @@ print('SupervisedBlueprint-prepped SparkADF for Eval (Vectorized):\n{}\n\n(from 
     .format(sup_prep_spark_adf__eval__vectorized, spark_adf))
 
 
-# 37
+# 36
 sup_prep_arrow_spark_adf__train = \
     sup_bp.prep_data(
         df=arrow_spark_adf,
-        __mode__='train',
-        __vectorize__=False)
+        __mode__='train')
 print('SupervisedBlueprint-prepped ArrowSparkADF for Training:\n{}\n\n(from {})\n'
     .format(sup_prep_arrow_spark_adf__train, arrow_spark_adf))
 
 
-# 38
-sup_prep_arrow_spark_adf__train__vectorized = \
-    sup_bp.prep_data(
-        df=arrow_spark_adf,
-        __mode__='train',
-        __vectorize__=True)
-print('SupervisedBlueprint-prepped ArrowSparkADF for Training (Vectorized):\n{}\n\n(from {})\n'
-    .format(sup_prep_arrow_spark_adf__train__vectorized, arrow_spark_adf))
-
-
-# 39
+# 37
 sup_prep_arrow_spark_adf__score = \
     sup_bp.prep_data(
         df=arrow_spark_adf,
@@ -488,7 +467,7 @@ print('SupervisedBlueprint-prepped ArrowSparkADF for Scoring:\n{}\n\n(from {})\n
     .format(sup_prep_arrow_spark_adf__score, arrow_spark_adf))
 
 
-# 40
+# 38
 sup_prep_arrow_spark_adf__score__vectorized = \
     sup_bp.prep_data(
         df=arrow_spark_adf,
@@ -498,7 +477,7 @@ print('SupervisedBlueprint-prepped ArrowSparkADF for Scoring (Vectorized):\n{}\n
     .format(sup_prep_arrow_spark_adf__score__vectorized, arrow_spark_adf))
 
 
-# 41
+# 39
 sup_prep_arrow_spark_adf__eval = \
     sup_bp.prep_data(
         df=arrow_spark_adf,
@@ -508,7 +487,7 @@ print('SupervisedBlueprint-prepped ArrowSparkADF for Eval:\n{}\n\n(from {})\n'
     .format(sup_prep_arrow_spark_adf__eval, arrow_spark_adf))
 
 
-# 42
+# 40
 sup_prep_arrow_spark_adf__eval__vectorized = \
     sup_bp.prep_data(
         df=arrow_spark_adf,
