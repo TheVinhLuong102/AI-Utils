@@ -99,7 +99,9 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                 pandas.notnull(self.params.data.label.upper_outlier_threshold)) \
             else {}
 
-        model = self.model(ver=self.params.model.ver)
+        model = self.model() \
+            if self.params.model.ver is None \
+            else self.model(ver=self.params.model.ver).copy()
 
         model.stdout_logger.info(
             'TRAINING:'
