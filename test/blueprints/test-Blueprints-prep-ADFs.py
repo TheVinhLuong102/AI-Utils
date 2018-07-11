@@ -313,7 +313,7 @@ sup_prep_data_path__train__vectorized = \
         df=DATA_PATH,
         aws_access_key_id=AWS_ACCESS_KEY_ID, aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         __mode__='train',
-        __vectorize__=True)[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
+        __vectorize__=True)
 print('SupervisedBlueprint-prepped Data Path for Training (Vectorized):\n{}\n'
     .format(sup_prep_data_path__train__vectorized))
 
@@ -366,7 +366,7 @@ print('SupervisedBlueprint-prepped Data Path for Eval (Vectorized):\n{}\n'
 sup_prep_arrow_adf__train = \
     sup_bp.prep_data(
         df=arrow_adf,
-        __mode__='train')[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
+        __mode__='train')
 print('SupervisedBlueprint-prepped ArrowADF for Training:\n{}\n({} --> {})\n\n(from {})\n'
     .format(sup_prep_arrow_adf__train,
             sup_prep_arrow_adf__train._mappers,
@@ -403,7 +403,7 @@ sup_prep_spark_adf__train = \
     sup_bp.prep_data(
         df=spark_adf,
         __mode__='train',
-        __vectorize__=False)[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
+        __vectorize__=False)
 print('SupervisedBlueprint-prepped SparkADF for Training:\n{}\n\n(from {})\n'
     .format(sup_prep_spark_adf__train, spark_adf))
 
@@ -413,7 +413,7 @@ sup_prep_spark_adf__train__vectorized = \
     sup_bp.prep_data(
         df=spark_adf,
         __mode__='train',
-        __vectorize__=True)[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
+        __vectorize__=True)
 print('SupervisedBlueprint-prepped SparkADF for Training (Vectorized):\n{}\n\n(from {})\n'
     .format(sup_prep_spark_adf__train__vectorized, spark_adf))
 
@@ -463,7 +463,7 @@ sup_prep_arrow_spark_adf__train = \
     sup_bp.prep_data(
         df=arrow_spark_adf,
         __mode__='train',
-        __vectorize__=False)[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
+        __vectorize__=False)
 print('SupervisedBlueprint-prepped ArrowSparkADF for Training:\n{}\n\n(from {})\n'
     .format(sup_prep_arrow_spark_adf__train, arrow_spark_adf))
 
@@ -473,7 +473,7 @@ sup_prep_arrow_spark_adf__train__vectorized = \
     sup_bp.prep_data(
         df=arrow_spark_adf,
         __mode__='train',
-        __vectorize__=True)[LABEL_VAR]   # counting & sampling will be triggered because of adf.suffNonNull(...)
+        __vectorize__=True)
 print('SupervisedBlueprint-prepped ArrowSparkADF for Training (Vectorized):\n{}\n\n(from {})\n'
     .format(sup_prep_arrow_spark_adf__train__vectorized, arrow_spark_adf))
 
