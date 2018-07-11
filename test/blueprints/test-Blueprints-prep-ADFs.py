@@ -47,6 +47,8 @@ sup_bp = \
          aws_secret_access_key=PROJECT.params.s3.secret_access_key,
          s3_client=PROJECT.s3_client,
          verbose=False)
+assert sup_bp.params.model.ver is None, \
+    '*** {} ***'.format(sup_bp.params.model.ver)
 print(sup_bp)
 
 
