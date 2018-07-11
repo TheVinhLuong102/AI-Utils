@@ -272,10 +272,6 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC, _TimeSerDa
 
                     yield x, y
 
-            fs.mkdir(
-                dir=model.dir,
-                hdfs=False)
-
             open(os.path.join(
                     model.dir,
                     self.params.model._persist.struct_file), 'w') \

@@ -240,10 +240,6 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
 
                     yield x, y
 
-            fs.mkdir(
-                dir=model.dir,
-                hdfs=False)
-
             open(os.path.join(
                     model.dir,
                     self.params.model._persist.struct_file), 'w') \

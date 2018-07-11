@@ -213,10 +213,6 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                          # 'MAPE'   # mean_absolute_percentage_error
                 ])
 
-            fs.mkdir(
-                dir=model.dir,
-                hdfs=False)
-
             open(os.path.join(
                     model.dir,
                     self.params.model._persist.struct_file), 'w') \

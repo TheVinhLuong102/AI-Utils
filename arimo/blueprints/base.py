@@ -818,6 +818,10 @@ class _BlueprintedModelABC(object):
                 blueprint.models_dir,
                 self.ver)
 
+        fs.mkdir(
+            dir=self.dir,
+            hdfs=False)
+
         # initiate empty Model object
         self._obj = None
 
