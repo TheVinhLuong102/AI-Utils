@@ -1876,8 +1876,9 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                                 else self.params.data.label._int_var,
                             self.params.data._prep_vec_col,
                             *((() if self.params.data.id_col in adf.indexCols
-                               else (self.params.data.id_col,)) +
-                              adf.indexCols + adf.tAuxCols),
+                                  else (self.params.data.id_col,)) +
+                              adf.indexCols +
+                              adf.tAuxCols),
                             inheritCache=True,
                             inheritNRows=True,
                             inplace=True)
@@ -1890,8 +1891,9 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                                 if self.params.data.label._int_var is None
                                 else self.params.data.label._int_var] +
                             ([] if self.params.data.id_col in adf.indexCols
-                             else [self.params.data.id_col]) +
-                            list(adf.indexCols + adf.tAuxCols +
+                                else [self.params.data.id_col]) +
+                            list(tuple(set(adf.indexCols) - {adf._PARTITION_ID_COL}) +
+                                 adf.tAuxCols +
                                  self.params.data._cat_prep_cols + self.params.data._num_prep_cols)]
 
                         adf.alias = _adf_alias
@@ -1902,7 +1904,8 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                         else self.params.data.label._int_var,
                         *((() if self.params.data.id_col in adf.indexCols
                            else (self.params.data.id_col,)) +
-                          adf.indexCols + adf.tAuxCols +
+                          adf.indexCols +
+                          adf.tAuxCols +
                           ((self.params.data._prep_vec_col,)
                            if __vectorize__
                            else (self.params.data._cat_prep_cols + self.params.data._num_prep_cols))),
