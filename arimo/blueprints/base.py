@@ -2026,8 +2026,8 @@ class _DLSupervisedBlueprintABC(_SupervisedBlueprintABC):
 
             'model._persist.train_history_file': Namespace()})
 
-    DEFAULT_MODEL_TRAIN_MAX_GEN_QUEUE_SIZE = 99   # sufficient to keep CPUs busy while feeding into GPU
-    DEFAULT_MODEL_TRAIN_N_WORKERS = 9   # 2-3x No. of CPUs
+    DEFAULT_MODEL_TRAIN_MAX_GEN_QUEUE_SIZE = 10 ** 3   # sufficient to keep CPUs busy while feeding into GPU
+    DEFAULT_MODEL_TRAIN_N_WORKERS = 9   # not too many in order to avoid OOM
     DEFAULT_MODEL_TRAIN_N_GPUS = 1
 
     def _derive_model_train_params(self, data_size=None):
