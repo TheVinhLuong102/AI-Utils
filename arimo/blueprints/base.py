@@ -2464,7 +2464,10 @@ class _PPPBlueprintABC(_BlueprintABC):
                                 adf[[label_var_name] +
                                     list((() if self.params.data.id_col in adf.indexCols
                                              else (self.params.data.id_col,)) +
-                                         adf.indexCols + adf.tAuxCols +
+                                         (tuple(set(adf.indexCols) - {adf._PARTITION_ID_COL})
+                                          if isinstance(adf, ArrowSparkADF)
+                                          else adf.indexCols) +
+                                         adf.tAuxCols +
                                          component_blueprint_params.data._cat_prep_cols +
                                          component_blueprint_params.data._num_prep_cols)]
 
