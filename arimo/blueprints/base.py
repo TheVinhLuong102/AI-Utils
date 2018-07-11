@@ -863,9 +863,6 @@ class _BlueprintedModelABC(object):
         # use existing model object to overwrite recipe's initial model
         model._obj = self._obj
 
-        # save new Model
-        model.save()
-
         return model
 
 
