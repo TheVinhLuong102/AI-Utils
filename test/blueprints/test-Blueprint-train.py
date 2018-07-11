@@ -29,29 +29,6 @@ args = arg_parser.parse_args()
 
 ppp_bp = PROJECT._ppp_blueprint(uuid=PPP_BP_UUID)
 
-if args.ppp:
-    bp = ppp_bp
-
-else:
-    bp = load(
-        s3_bucket=PROJECT.params.s3.bucket,
-        s3_dir_prefix=os.path.join(
-            PROJECT.params.s3.ppp.blueprints_dir_prefix,
-            SUP_BP_UUID),
-        aws_access_key_id=PROJECT.params.s3.access_key_id,
-        aws_secret_access_key=PROJECT.params.s3.secret_access_key,
-        s3_client=PROJECT.s3_client,
-        verbose=False)
-
-    if bp.params.model.ver:
-        assert bp.params.model.ver == ppp_bp.params.model.component_blueprints[LABEL_VAR].model.ver, \
-            '*** {} vs. {} ***'.format(bp.params.model.ver, ppp_bp.params.model.component_blueprints[LABEL_VAR].model.ver)
-
-    bp.params.model.ver = \
-        ppp_bp.params.model.component_blueprints[LABEL_VAR].model.ver \
-        if args.incr \
-        else None
-
 
 df = (PROJECT.load_equipment_data(
         DATASET_NAME,
@@ -71,10 +48,34 @@ df = (PROJECT.load_equipment_data(
           else DATA_PATH)
 
 
-print('\n*** {} .train(df= {} ) ***\n'.format(bp, df))
+if args.ppp:
+    ppp_bp.train(
+        df=df,
+        aws_access_key_id=PROJECT.params.s3.access_key_id,
+        aws_secret_access_key=PROJECT.params.s3.secret_access_key,
+        __retrain_components__=True)
 
+else:
+    sup_bp = load(
+        s3_bucket=PROJECT.params.s3.bucket,
+        s3_dir_prefix=os.path.join(
+            PROJECT.params.s3.ppp.blueprints_dir_prefix,
+            SUP_BP_UUID),
+        aws_access_key_id=PROJECT.params.s3.access_key_id,
+        aws_secret_access_key=PROJECT.params.s3.secret_access_key,
+        s3_client=PROJECT.s3_client,
+        verbose=False)
 
-bp.train(
-    df=df,
-    aws_access_key_id=PROJECT.params.s3.access_key_id,
-    aws_secret_access_key=PROJECT.params.s3.secret_access_key)
+    if sup_bp.params.model.ver:
+        assert sup_bp.params.model.ver == ppp_bp.params.model.component_blueprints[LABEL_VAR].model.ver, \
+            '*** {} vs. {} ***'.format(sup_bp.params.model.ver, ppp_bp.params.model.component_blueprints[LABEL_VAR].model.ver)
+
+    sup_bp.params.model.ver = \
+        ppp_bp.params.model.component_blueprints[LABEL_VAR].model.ver \
+        if args.incr \
+        else None
+
+    sup_bp.train(
+        df=df,
+        aws_access_key_id=PROJECT.params.s3.access_key_id,
+        aws_secret_access_key=PROJECT.params.s3.secret_access_key)
