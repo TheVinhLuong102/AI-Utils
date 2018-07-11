@@ -1490,6 +1490,9 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                                     self.params.data.label.upper_outlier_threshold = _upper_outlier_threshold
 
             else:
+                if isinstance(adf, ArrowSparkADF):
+                    __vectorize__ = False
+
                 if __from_ppp__:
                     assert adf.alias
 
@@ -1864,13 +1867,25 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                              self.params.data._cat_prep_cols + self.params.data._num_prep_cols)]
 
                 elif isinstance(adf, ArrowSparkADF):
-                    if not __vectorize__:
+                    if __vectorize__:
+                        adf(self.params.data.label.var
+                                if self.params.data.label._int_var is None
+                                else self.params.data.label._int_var,
+                            self.params.data._prep_vec_col,
+                            *((() if self.params.data.id_col in adf.indexCols
+                               else (self.params.data.id_col,)) +
+                              adf.indexCols + adf.tAuxCols),
+                            inheritCache=True,
+                            inheritNRows=True,
+                            inplace=True)
+
+                    else:
                         _adf_alias = adf.alias
 
                         adf = adf[
                             [self.params.data.label.var
-                             if self.params.data.label._int_var is None
-                             else self.params.data.label._int_var] +
+                                if self.params.data.label._int_var is None
+                                else self.params.data.label._int_var] +
                             ([] if self.params.data.id_col in adf.indexCols
                              else [self.params.data.id_col]) +
                             list(adf.indexCols + adf.tAuxCols +
@@ -2263,6 +2278,9 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         if __train__:
             if isinstance(adf, SparkADF):
+                if isinstance(adf, ArrowSparkADF):
+                    __vectorize__ = False
+
                 adf_uuid = clean_uuid(uuid.uuid4())
 
                 adf.alias = \
@@ -2415,38 +2433,48 @@ class _PPPBlueprintABC(_BlueprintABC):
                              if cat_orig_to_prep_col_map['__OHE__']
                              else len(component_blueprint_params.data._cat_prep_cols))
 
-                    component_labeled_adfs[label_var_name] = \
-                        (adf(VectorAssembler(
-                                inputCols=component_blueprint_params.data._cat_prep_cols +
-                                          component_blueprint_params.data._num_prep_cols,
-                                outputCol=component_blueprint_params.data._prep_vec_col).transform,
-                             inheritCache=True,
-                             inheritNRows=True)(
-                            label_var_name,
-                            component_blueprint_params.data._prep_vec_col,
-                            *((() if self.params.data.id_col in adf.indexCols
-                                  else (self.params.data.id_col,)) +
-                              adf.indexCols + adf.tAuxCols),
-                            alias=adf.alias + '__LABEL__' + label_var_name,
-                            inheritCache=True,
-                            inheritNRows=True)
-                         if (__vectorize__ is None) or __vectorize__
-                         else adf(label_var_name,
-                                  *((() if self.params.data.id_col in adf.indexCols
-                                        else (self.params.data.id_col,)) +
-                                    adf.indexCols + adf.tAuxCols +
-                                    component_blueprint_params.data._cat_prep_cols +
-                                    component_blueprint_params.data._num_prep_cols),
-                                  alias=adf.alias + '__LABEL__' + label_var_name,
-                                  inheritCache=True,
-                                  inheritNRows=True)) \
-                        if isinstance(adf, SparkADF) \
-                        else adf[[label_var_name] +
-                                 list((() if self.params.data.id_col in adf.indexCols
+                    if isinstance(adf, SparkADF):
+                        if (__vectorize__ is None) or __vectorize__:
+                            component_labeled_adfs[label_var_name] = \
+                                adf(VectorAssembler(
+                                        inputCols=component_blueprint_params.data._cat_prep_cols +
+                                                  component_blueprint_params.data._num_prep_cols,
+                                        outputCol=component_blueprint_params.data._prep_vec_col).transform,
+                                    inheritCache=True,
+                                    inheritNRows=True)(
+                                    label_var_name,
+                                    component_blueprint_params.data._prep_vec_col,
+                                    *((() if self.params.data.id_col in adf.indexCols
                                           else (self.params.data.id_col,)) +
-                                      adf.indexCols +   # adf.tAuxCols +
-                                      component_blueprint_params.data._cat_prep_cols +
-                                      component_blueprint_params.data._num_prep_cols)]
+                                      adf.indexCols + adf.tAuxCols),
+                                    alias=adf.alias + '__LABEL__' + label_var_name,
+                                    inheritCache=True,
+                                    inheritNRows=True)
+
+                        else:
+                            _adf_alias = adf.alias
+
+                            component_labeled_adf = \
+                                adf[[label_var_name] +
+                                    list((() if self.params.data.id_col in adf.indexCols
+                                             else (self.params.data.id_col,)) +
+                                         adf.indexCols + adf.tAuxCols +
+                                         component_blueprint_params.data._cat_prep_cols +
+                                         component_blueprint_params.data._num_prep_cols)]
+
+                            component_labeled_adf.alias = \
+                                _adf_alias + '__LABEL__' + label_var_name
+
+                            component_labeled_adfs[label_var_name] = component_labeled_adf
+
+                    else:
+                        component_labeled_adfs[label_var_name] = \
+                            adf[[label_var_name] +
+                                list((() if self.params.data.id_col in adf.indexCols
+                                         else (self.params.data.id_col,)) +
+                                     adf.indexCols +   # adf.tAuxCols +
+                                     component_blueprint_params.data._cat_prep_cols +
+                                     component_blueprint_params.data._num_prep_cols)]
 
             # save Blueprint & data transforms
             if __first_train__:
