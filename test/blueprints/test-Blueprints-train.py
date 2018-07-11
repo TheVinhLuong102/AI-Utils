@@ -44,11 +44,13 @@ else:
         verbose=False)
 
     if bp.params.model.ver:
-        print('\n*** {} ***\n'.format(bp.params.model.ver))
+        assert bp.params.model.ver == ppp_bp.params.model.component_blueprints[LABEL_VAR].model.ver, \
+            '*** {} vs. {} ***'.format(bp.params.model.ver, ppp_bp.params.model.component_blueprints[LABEL_VAR].model.ver)
 
-    if args.incr:
-        bp.params.model.ver = \
-            ppp_bp.params.model.component_blueprints[LABEL_VAR].model.ver
+    bp.params.model.ver = \
+        ppp_bp.params.model.component_blueprints[LABEL_VAR].model.ver \
+        if args.incr \
+        else None
 
 
 df = (PROJECT.load_equipment_data(
