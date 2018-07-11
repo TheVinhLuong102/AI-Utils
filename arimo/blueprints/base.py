@@ -1658,75 +1658,85 @@ class _SupervisedBlueprintABC(_BlueprintABC):
 
                 adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
 
-        elif __eval__:
-            assert self._INT_LABEL_COL not in adf.columns
+        else:
+            if isinstance(adf, SparkADF):
+                adf_uuid = clean_uuid(uuid.uuid4())
 
-            label_col_type = adf.type(self.params.data.label.var)
+                adf.alias = \
+                    '{}__{}__{}'.format(
+                        self.params._uuid,
+                        __mode__,
+                        adf_uuid)
 
-            if isinstance(adf, ArrowADF):
-                if is_float(label_col_type) and isinstance(self, ClassifEvalMixIn):
-                    adf.map(
-                        mapper=_ArrowADF__castType__pandasDFTransform(
-                                col=self.params.data.label.var,
-                                asType=str,
-                                asCol=None),
-                        inheritNRows=True,
-                        inplace=True)
+            if __eval__:
+                assert self._INT_LABEL_COL not in adf.columns
 
-                    label_col_type = string()
+                label_col_type = adf.type(self.params.data.label.var)
 
-                if is_boolean(label_col_type):
-                    adf.map(
-                        mapper=_ArrowADF__castType__pandasDFTransform(
-                                col=self.params.data.label.var,
-                                asType=int,
-                                asCol=self.params.data.label._int_var),
-                        inheritNRows=True,
-                        inplace=True)
+                if isinstance(adf, ArrowADF):
+                    if is_float(label_col_type) and isinstance(self, ClassifEvalMixIn):
+                        adf.map(
+                            mapper=_ArrowADF__castType__pandasDFTransform(
+                                    col=self.params.data.label.var,
+                                    asType=str,
+                                    asCol=None),
+                            inheritNRows=True,
+                            inplace=True)
 
-                elif is_string(label_col_type):
-                    adf.map(
-                        mapper=_ArrowADF__encodeStr__pandasDFTransform(
-                                col=self.params.data.label.var,
-                                strs=self.params.data.label._strings,
-                                asCol=self.params.data.label._int_var),
-                        inheritNRows=True,
-                        inplace=True)
+                        label_col_type = string()
 
-            else:
-                if (label_col_type.startswith('decimal') or (label_col_type in _FLOAT_TYPES)) \
-                        and isinstance(self, ClassifEvalMixIn):
-                    adf('STRING({0}) AS {0}'.format(self.params.data.label.var),
-                        *(col for col in adf.columns
-                          if col != self.params.data.label.var),
-                        inheritCache=True,
-                        inheritNRows=True,
-                        inplace=True)
+                    if is_boolean(label_col_type):
+                        adf.map(
+                            mapper=_ArrowADF__castType__pandasDFTransform(
+                                    col=self.params.data.label.var,
+                                    asType=int,
+                                    asCol=self.params.data.label._int_var),
+                            inheritNRows=True,
+                            inplace=True)
 
-                    label_col_type = _STR_TYPE
+                    elif is_string(label_col_type):
+                        adf.map(
+                            mapper=_ArrowADF__encodeStr__pandasDFTransform(
+                                    col=self.params.data.label.var,
+                                    strs=self.params.data.label._strings,
+                                    asCol=self.params.data.label._int_var),
+                            inheritNRows=True,
+                            inplace=True)
 
-                if label_col_type == _BOOL_TYPE:
-                    adf('*',
-                        'INT({}) AS {}'.format(
-                            self.params.data.label.var,
-                            self.params.data.label._int_var),
-                        inheritCache=True,
-                        inheritNRows=True,
-                        inplace=True)
+                else:
+                    if (label_col_type.startswith('decimal') or (label_col_type in _FLOAT_TYPES)) \
+                            and isinstance(self, ClassifEvalMixIn):
+                        adf('STRING({0}) AS {0}'.format(self.params.data.label.var),
+                            *(col for col in adf.columns
+                              if col != self.params.data.label.var),
+                            inheritCache=True,
+                            inheritNRows=True,
+                            inplace=True)
 
-                elif label_col_type == _STR_TYPE:
-                    adf('*',
-                        '(CASE {} ELSE NULL END) AS {}'.format(
-                            ' '.join(
-                                "WHEN {} = '{}' THEN {}".format(
-                                    self.params.data.label.var, label, i)
-                                for i, label in enumerate(self.params.data.label._strings)),
-                            self.params.data.label._int_var),
-                        inheritCache=True,
-                        inheritNRows=True,
-                        inplace=True)
+                        label_col_type = _STR_TYPE
 
-                adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
+                    if label_col_type == _BOOL_TYPE:
+                        adf('*',
+                            'INT({}) AS {}'.format(
+                                self.params.data.label.var,
+                                self.params.data.label._int_var),
+                            inheritCache=True,
+                            inheritNRows=True,
+                            inplace=True)
+
+                    elif label_col_type == _STR_TYPE:
+                        adf('*',
+                            '(CASE {} ELSE NULL END) AS {}'.format(
+                                ' '.join(
+                                    "WHEN {} = '{}' THEN {}".format(
+                                        self.params.data.label.var, label, i)
+                                    for i, label in enumerate(self.params.data.label._strings)),
+                                self.params.data.label._int_var),
+                            inheritCache=True,
+                            inheritNRows=True,
+                            inplace=True)
+
+                    adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
 
         if not __from_ppp__:
             # Prepare data into model-able vectors
