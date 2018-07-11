@@ -2594,18 +2594,19 @@ class _PPPBlueprintABC(_BlueprintABC):
         for label_var_name, component_labeled_adf in component_labeled_adfs.items():
             blueprint_params = self.params.model.component_blueprints[label_var_name]
 
-            blueprint_params.uuid = \
-                '{}---{}---{}'.format(
-                    self.params.uuid,
-                    label_var_name,
-                    uuid.uuid4())
-
-            if __retrain_components__:
+            if blueprint_params.model.ver and __retrain_components__:
                 blueprint_params.model.ver = None
 
                 blueprint_params.data.label.lower_outlier_threshold = \
                     blueprint_params.data.label.upper_outlier_threshold = \
                     None
+
+            else:
+                blueprint_params.uuid = \
+                    '{}---{}---{}'.format(
+                        self.params.uuid,
+                        label_var_name,
+                        uuid.uuid4())
 
             blueprint = \
                 _blueprint_from_params(
