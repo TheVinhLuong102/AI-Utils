@@ -23,8 +23,8 @@ from arimo.IoT.PredMaint import project, _PARQUET_EXT
 
 PROJECT = project('PanaAP-CC')
 
-PPP_BP_UUID = 'DISP_CASE---business_freezer---to-2018-01---61b944fa-8faf-4683-8bac-a90eaec0e41f'
-SUP_BP_UUID = 'DISP_CASE---business_freezer---to-2018-01---61b944fa-8faf-4683-8bac-a90eaec0e41f---inside_temperature---2ef0937e-29f8-4300-8db2-f36bb58d6002'
+PPP_BP_UUID = 'DISP_CASE---business_freezer---to-2018-01---8cad4273-d93f-414a-84fb-64cc583c55c5'
+SUP_BP_UUID = 'DISP_CASE---business_freezer---to-2018-01---8cad4273-d93f-414a-84fb-64cc583c55c5---inside_temperature---7778ece4-33ae-4e38-9c1e-a8a2fb19020a'
 
 DATASET_NAME = 'DISP_CASE---business_freezer'
 
