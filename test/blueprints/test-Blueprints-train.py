@@ -43,8 +43,8 @@ else:
         s3_client=PROJECT.s3_client,
         verbose=False)
 
-    assert bp.params.model.ver is None, \
-        '*** {} ***'.format(bp.params.model.ver)
+    if bp.params.model.ver:
+        print('\n*** {} ***\n'.format(bp.params.model.ver))
 
     if args.incr:
         bp.params.model.ver = \
