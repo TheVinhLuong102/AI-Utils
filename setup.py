@@ -14,6 +14,7 @@ setup(
     long_description='Arimo BAI dev',
     keywords='Arimo BAI dev',
     packages=find_packages(),
+    include_package_data=True,
     install_requires=
         [s for s in
             {i.strip()
