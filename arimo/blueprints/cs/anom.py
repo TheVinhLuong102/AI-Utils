@@ -142,7 +142,12 @@ class DLPPPBlueprint(_PPPBlueprintABC):
         if component_blueprint_params.model.factory.name.startswith('arimo.dl.experimental.keras'):
             def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
                 if cluster:
-                    from dl import _load_keras_model
+                    try:
+                        from arimo.util.dl import _load_keras_model
+
+                    except ImportError:
+                        from dl import _load_keras_model
+
                 else:
                     from arimo.util.dl import _load_keras_model
 
@@ -162,10 +167,7 @@ class DLPPPBlueprint(_PPPBlueprintABC):
 
         else:
             def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
-                if cluster:
-                    from dl import _load_arimo_dl_model
-                else:
-                    from arimo.util.dl import _load_arimo_dl_model
+                from arimo.util.dl import _load_arimo_dl_model
 
                 return [(row[0] +
                             tuple(

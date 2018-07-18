@@ -261,10 +261,7 @@ class _TimeSerDLSupervisedBlueprintABC(_DLSupervisedBlueprintABC):
 
         if isinstance(model, BlueprintedArimoDLModel):
             def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
-                if cluster:
-                    from dl import _load_arimo_dl_model
-                else:
-                    from arimo.util.dl import _load_arimo_dl_model
+                from arimo.util.dl import _load_arimo_dl_model
 
                 return [(i, chunk, t_ord_in_chunk,
                          float(score[0])
@@ -285,7 +282,12 @@ class _TimeSerDLSupervisedBlueprintABC(_DLSupervisedBlueprintABC):
 
             def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
                 if cluster:
-                    from dl import _load_keras_model
+                    try:
+                        from arimo.util.dl import _load_keras_model
+
+                    except ImportError:
+                        from dl import _load_keras_model
+
                 else:
                     from arimo.util.dl import _load_keras_model
 
