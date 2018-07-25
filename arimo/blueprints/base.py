@@ -3495,11 +3495,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                             axis='index')
                         .mean())
 
-        return daily_err_mults_df.drop(
-                columns=daily_err_mult_summ_col_names,
-                level=None,
-                inplace=False,
-                errors='raise')
+        return daily_err_mults_df
 
 
 # utility to create Blueprint from its params
