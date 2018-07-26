@@ -2956,16 +2956,26 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         return eval_metrics
 
-    def err_mults(self, df):
-        label_var_names = []
+    def err_mults(self, df, *label_var_names):
         score_col_names = {}
 
-        for label_var_name, component_blueprint_params in self.params.model.component_blueprints.items():
-            if (label_var_name in df.columns) and component_blueprint_params.model.ver:
-                label_var_names.append(label_var_name)
+        if label_var_names:
+            for label_var_name in set(label_var_names).intersection(self.params.model.component_blueprints).intersection(df.columns):
+                component_blueprint_params = self.params.model.component_blueprints[label_var_name]
 
-                score_col_names[label_var_name] = \
-                    component_blueprint_params.model.score.raw_score_col_prefix + label_var_name
+                if component_blueprint_params.model.ver:
+                    score_col_names[label_var_name] = \
+                        component_blueprint_params.model.score.raw_score_col_prefix + label_var_name
+
+        else:
+            label_var_names = []
+
+            for label_var_name, component_blueprint_params in self.params.model.component_blueprints.items():
+                if (label_var_name in df.columns) and component_blueprint_params.model.ver:
+                    label_var_names.append(label_var_name)
+
+                    score_col_names[label_var_name] = \
+                        component_blueprint_params.model.score.raw_score_col_prefix + label_var_name
 
         benchmark_metric_col_names = {}
 
