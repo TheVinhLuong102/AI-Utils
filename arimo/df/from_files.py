@@ -1315,9 +1315,16 @@ class ArrowADF(_ArrowADFABC):
                         parsedURL.netloc,
                         parsedURL.path[1:])
 
+                localDirPath = \
+                    os.path.dirname(localOrHDFSPath)
+
                 fs.mkdir(
-                    dir=os.path.dirname(localOrHDFSPath),
+                    dir=localDirPath,
                     hdfs=False)
+
+                # make sure the dir has been created
+                while not os.path.isdir(localDirPath):
+                    time.sleep(1)
 
                 self.s3Client.download_file(
                     Bucket=parsedURL.netloc,
