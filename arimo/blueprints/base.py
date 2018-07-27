@@ -3449,8 +3449,8 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         daily_err_mult_summ_col_names = \
             list(daily_err_mult_summ_col_names) \
-                if daily_err_mult_summ_col_names \
-                else copy.copy(cls._DAILY_ERR_MULT_SUMM_COLS)
+            if daily_err_mult_summ_col_names \
+            else copy.copy(cls._DAILY_ERR_MULT_SUMM_COLS)
 
         daily_err_mults_df = \
             daily_err_mults_df[
