@@ -2643,7 +2643,6 @@ class _PPPBlueprintABC(_BlueprintABC):
                         __cpu_merge__=__cpu_merge__,
                         __cpu_reloc__=__cpu_reloc__,
                         verbose=verbose)
-                # ^^^ DataTransforms dir hasn't been copied yet, so there will be S3 Sync warning ^^^
 
                 # *** COPY DataTransforms AFTER model training so that __first_train__ is correctly detected ***
                 if not os.path.isdir(blueprint.data_transforms_dir):
