@@ -666,13 +666,14 @@ class _BlueprintABC(object):
                 Bucket=self.params.persist.s3.bucket,
                 Key=self.params.persist.s3._file_key)
 
-            s3.sync(
-                from_dir_path=self.data_transforms_dir,
-                to_dir_path=self.params.persist.s3._data_transforms_dir_path,
-                access_key_id=self.auth.aws.access_key_id,
-                secret_access_key=self.auth.aws.secret_access_key,
-                delete=True, quiet=False,
-                verbose=verbose)
+            if os.path.isdir(self.data_transforms_dir):
+                s3.sync(
+                    from_dir_path=self.data_transforms_dir,
+                    to_dir_path=self.params.persist.s3._data_transforms_dir_path,
+                    access_key_id=self.auth.aws.access_key_id,
+                    secret_access_key=self.auth.aws.secret_access_key,
+                    delete=True, quiet=False,
+                    verbose=verbose)
 
             if verbose:
                 toc = time.time()
