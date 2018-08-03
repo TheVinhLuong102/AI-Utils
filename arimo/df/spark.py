@@ -1802,7 +1802,7 @@ class SparkADF(_ADFABC):
             sparkDF = sparkDF.repartition(*to_iterable(partitionBy))
 
             if self.hasTS:   # sort data within each file
-                sparkDF = sparkDF.sortWithinPartititons(self._iCol, self._tCol, ascending=True)
+                sparkDF = sparkDF.sortWithinPartitions(self._iCol, self._tCol, ascending=True)
 
         if verbose:
             msg = 'Saving Columns {} by {} Format{}{} in {} Mode to "{}"{}...' \
