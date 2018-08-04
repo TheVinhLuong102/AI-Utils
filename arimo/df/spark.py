@@ -1655,11 +1655,16 @@ class SparkADF(_ADFABC):
         if verbose:
             logger = cls.class_stdout_logger()
 
+            if isinstance(path, _STR_CLASSES):
+                _path_str = '"{}"'.format(path)
+
+            else:
+                path = list(path)
+                _path_str = '{} Paths e.g. {}'.format(len(path), path[:3])
+
             msg = 'Loading by {} Format from {}{}...'.format(
                     format.upper(),
-                    '"{}"'.format(path)
-                        if isinstance(path, _STR_CLASSES)
-                        else '{} Paths e.g. {}'.format(len(path), path[:3]),
+                    _path_str,
                     ' (DB Table "{}")'.format(options['dbtable'])
                         if 'dbtable' in options
                         else '')
