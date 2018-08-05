@@ -3335,6 +3335,8 @@ class _PPPBlueprintABC(_BlueprintABC):
                      for _metric, _global_or_indiv_prefix, _sgn in
                      itertools.product(cls._RAW_METRICS, cls._GLOBAL_OR_INDIV_PREFIXES, cls._SGN_PREFIXES)]
 
+        n_label_vars = len(label_var_names)
+
         if isinstance(df_w_err_mults, SparkADF):
             col_strs = []
 
@@ -3359,7 +3361,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                             cols_to_agg.append(_metric_col_name)
                             col_strs.append('AVG({0}) AS {0}'.format(_metric_col_name))
 
-            return df_w_err_mults(
+            adf = df_w_err_mults(
                 'SELECT \
                     {0}, \
                     {1}, \
@@ -3388,6 +3390,74 @@ class _PPPBlueprintABC(_BlueprintABC):
                         if DATE_COL in df_w_err_mults.columns
                         else 'TO_DATE({})'.format(time_col)),
                 tCol=None)
+
+            _row_summ_daily_summ_col_exprs = []
+
+            for _raw_metric in cls._RAW_METRICS:
+                for _global_or_indiv_prefix in cls._GLOBAL_OR_INDIV_PREFIXES:
+                    for _daily_summ_prefix in cls._DAILY_SUMM_PREFIXES:
+                        _row_summ_daily_summ_col_name_body = \
+                            _daily_summ_prefix + cls._ABS_PREFIX + _global_or_indiv_prefix + cls._ERR_MULT_COLS[_raw_metric]
+
+                        _daily_summ_abs_err_mult_col_names = \
+                            [(_row_summ_daily_summ_col_name_body + '__' + label_var_name)
+                             for label_var_name in label_var_names]
+
+                        _rowEuclNorm_summ_daily_summ_col_name = \
+                            cls._rowEuclNorm_PREFIX + _row_summ_daily_summ_col_name_body
+                        _rowSumOfLog_summ_daily_summ_col_name = \
+                            cls._rowSumOfLog_PREFIX + _row_summ_daily_summ_col_name_body
+                        _rowHigh_summ_daily_summ_col_name = \
+                            cls._rowHigh_PREFIX + _row_summ_daily_summ_col_name_body
+                        _rowLow_summ_daily_summ_col_name = \
+                            cls._rowLow_PREFIX + _row_summ_daily_summ_col_name_body
+                        _rowMean_summ_daily_summ_col_name = \
+                            cls._rowMean_PREFIX + _row_summ_daily_summ_col_name_body
+                        _rowGMean_summ_daily_summ_col_name = \
+                            cls._rowGMean_PREFIX + _row_summ_daily_summ_col_name_body
+
+                        if n_label_vars > 1:
+                            _row_summ_daily_summ_col_exprs += \
+                                ['POW({}, 0.5) AS {}'.format(
+                                    ' + '.join(
+                                        'POW({} - 1, 2)'.format(_daily_summ_abs_err_mult_col_name)
+                                        for _daily_summ_abs_err_mult_col_name in _daily_summ_abs_err_mult_col_names),
+                                    _rowEuclNorm_summ_daily_summ_col_name),
+
+                                 'LN({}) AS {}'.format(
+                                    ' * '.join(_daily_summ_abs_err_mult_col_names),
+                                    _rowSumOfLog_summ_daily_summ_col_name),
+
+                                 'GREATEST({}) AS {}'.format(
+                                    ', '.join(_daily_summ_abs_err_mult_col_names),
+                                    _rowHigh_summ_daily_summ_col_name),
+
+                                 'LEAST({}) AS {}'.format(
+                                    ', '.join(_daily_summ_abs_err_mult_col_names),
+                                    _rowLow_summ_daily_summ_col_name),
+
+                                 '(({}) / {}) AS {}'.format(
+                                    ' + '.join(_daily_summ_abs_err_mult_col_names),
+                                    n_label_vars,
+                                    _rowMean_summ_daily_summ_col_name),
+
+                                 'POW({}, 1 / {}) AS {}'.format(
+                                    ' * '.join(_daily_summ_abs_err_mult_col_names),
+                                    n_label_vars,
+                                    _rowGMean_summ_daily_summ_col_name)]
+
+                        else:
+                            _daily_summ_abs_err_mult_col_name = _daily_summ_abs_err_mult_col_names[0]
+
+                            _row_summ_daily_summ_col_exprs += \
+                                [adf[_daily_summ_abs_err_mult_col_name].alias(_rowEuclNorm_summ_daily_summ_col_name),
+                                 pyspark.sql.functions.log(adf[_daily_summ_abs_err_mult_col_name]).alias(_rowSumOfLog_summ_daily_summ_col_name),
+                                 adf[_daily_summ_abs_err_mult_col_name].alias(_rowHigh_summ_daily_summ_col_name),
+                                 adf[_daily_summ_abs_err_mult_col_name].alias(_rowLow_summ_daily_summ_col_name),
+                                 adf[_daily_summ_abs_err_mult_col_name].alias(_rowMean_summ_daily_summ_col_name),
+                                 adf[_daily_summ_abs_err_mult_col_name].alias(_rowGMean_summ_daily_summ_col_name)]
+
+            return adf.select('*', *_row_summ_daily_summ_col_exprs)
 
         else:
             if df_w_err_mults[time_col].dtype != 'datetime64[ns]':
@@ -3433,7 +3503,7 @@ class _PPPBlueprintABC(_BlueprintABC):
 
                 return pandas.Series(d, index=cols)
 
-            return df_w_err_mults.groupby(
+            df = df_w_err_mults.groupby(
                     by=[df_w_err_mults[id_col], df_w_err_mults[time_col].dt.date],
                     axis='index',
                     level=None,
@@ -3441,6 +3511,88 @@ class _PPPBlueprintABC(_BlueprintABC):
                     sort=True,
                     group_keys=True,
                     squeeze=False).apply(f)
+
+            for _raw_metric in cls._RAW_METRICS:
+                for _global_or_indiv_prefix in cls._GLOBAL_OR_INDIV_PREFIXES:
+                    for _daily_summ_prefix in cls._DAILY_SUMM_PREFIXES:
+                        _row_summ_daily_summ_col_name_body = \
+                            _daily_summ_prefix + cls._ABS_PREFIX + _global_or_indiv_prefix + cls._ERR_MULT_COLS[_raw_metric]
+
+                        _rowEuclNorm_summ_daily_summ_col_name = \
+                            cls._rowEuclNorm_PREFIX + _row_summ_daily_summ_col_name_body
+                        _rowSumOfLog_summ_daily_summ_col_name = \
+                            cls._rowSumOfLog_PREFIX + _row_summ_daily_summ_col_name_body
+                        _rowHigh_summ_daily_summ_col_name = \
+                            cls._rowHigh_PREFIX + _row_summ_daily_summ_col_name_body
+                        _rowLow_summ_daily_summ_col_name = \
+                            cls._rowLow_PREFIX + _row_summ_daily_summ_col_name_body
+                        _rowMean_summ_daily_summ_col_name = \
+                            cls._rowMean_PREFIX + _row_summ_daily_summ_col_name_body
+                        _rowGMean_summ_daily_summ_col_name = \
+                            cls._rowGMean_PREFIX + _row_summ_daily_summ_col_name_body
+
+                        if n_label_vars > 1:
+                            _daily_summ_abs_err_mults_df = \
+                                df[[(_row_summ_daily_summ_col_name_body + '__' + label_var_name)
+                                    for label_var_name in label_var_names]]
+
+                            df[_rowEuclNorm_summ_daily_summ_col_name] = \
+                                ((_daily_summ_abs_err_mults_df - 1) ** 2).sum(
+                                    axis='columns',
+                                    skipna=True,
+                                    level=None,
+                                    numeric_only=None,
+                                    min_count=0) ** .5
+
+                            _prod_series = \
+                                _daily_summ_abs_err_mults_df.product(
+                                    axis='columns',
+                                    skipna=False,
+                                    level=None,
+                                    numeric_only=True)
+
+                            df[_rowSumOfLog_summ_daily_summ_col_name] = \
+                                numpy.log(_prod_series)
+
+                            df[_rowHigh_summ_daily_summ_col_name] = \
+                                _daily_summ_abs_err_mults_df.max(
+                                    axis='columns',
+                                    skipna=True,
+                                    level=None,
+                                    numeric_only=True)
+
+                            df[_rowLow_summ_daily_summ_col_name] = \
+                                _daily_summ_abs_err_mults_df.min(
+                                    axis='columns',
+                                    skipna=True,
+                                    level=None,
+                                    numeric_only=True)
+
+                            df[_rowMean_summ_daily_summ_col_name] = \
+                                _daily_summ_abs_err_mults_df.mean(
+                                    axis='columns',
+                                    skipna=True,
+                                    level=None,
+                                    numeric_only=True)
+
+                            df[_rowGMean_summ_daily_summ_col_name] = \
+                                _prod_series ** (1 / n_label_vars)
+
+                        else:
+                            _daily_summ_abs_err_mult_col_name = \
+                                _row_summ_daily_summ_col_name_body + '__' + label_var_name
+
+                            df[_rowSumOfLog_summ_daily_summ_col_name] = \
+                                numpy.log(df[_daily_summ_abs_err_mult_col_name])
+
+                            df[_rowEuclNorm_summ_daily_summ_col_name] = \
+                                df[_rowHigh_summ_daily_summ_col_name] = \
+                                df[_rowLow_summ_daily_summ_col_name] = \
+                                df[_rowMean_summ_daily_summ_col_name] = \
+                                df[_rowGMean_summ_daily_summ_col_name] = \
+                                df[_daily_summ_abs_err_mult_col_name]
+
+            return df
 
     @classmethod
     def ewma_daily_err_mults(cls, daily_err_mults_df, *daily_err_mult_summ_col_names, **kwargs):
