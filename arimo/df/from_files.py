@@ -1421,7 +1421,12 @@ class ArrowADF(_ArrowADFABC):
                         levels=None,
                         names=None,
                         verify_integrity=False,
-                        copy=False))
+                        copy=False,
+                        sort=False   # FutureWarning: Sorting because non-concatenation axisis not aligned.
+                                     # A future version of pandas will change to not sort by default.
+                                     # To accept the future behavior, pass 'sort=False'.
+                                     # To retain the current behavior and silence the warning, pass 'sort=True'.
+                        ))
 
         verbose = kwargs.pop('verbose', True)
         
