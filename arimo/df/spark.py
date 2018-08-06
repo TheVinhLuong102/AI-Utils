@@ -71,7 +71,6 @@ from pyspark.sql.window import Window
 
 from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import rds, s3
-from arimo.util.date_time import DATE_COL
 from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
 from arimo.util.iterables import flatten, to_iterable
 from arimo.util.types.numpy_pandas import PY_NUM_TYPES
@@ -5415,7 +5414,8 @@ class SparkADF(_ADFABC):
     def _consoParquet(hdfsDestPath, *srcPaths, **kwargs):
         MAX_N_PATHS_AT_A_TIME = 100
 
-        partitionByDate = kwargs.pop('partitionByDate')
+        partitionBy = kwargs.pop('partitionBy', None)
+        restartSpark = kwargs.pop('restartSpark', False)
 
         nSrcPaths = len(srcPaths)
 
@@ -5424,29 +5424,36 @@ class SparkADF(_ADFABC):
         if nParts > 1:
             srcPaths = sorted(srcPaths)
 
+            partPaths = []
             partADFs = []
 
             for partI in range(nParts):
                 pathFromI = partI * MAX_N_PATHS_AT_A_TIME
                 pathToI = min((partI + 1) * MAX_N_PATHS_AT_A_TIME, nSrcPaths)
-
-                _hdfsDestPath = '{}---from-{}---to-{}'.format(hdfsDestPath, pathFromI, pathToI)
+                pathPath = '{}---from-{}---to-{}'.format(hdfsDestPath, pathFromI, pathToI)
+                partPaths.append(pathPath)
 
                 try:
-                    partADFs.append(SparkADF.load(_hdfsDestPath))
+                    partADFs.append(SparkADF.load(pathPath))
 
                 except:
                     SparkADF.load(path=srcPaths[pathFromI:pathToI], **kwargs) \
-                            .save(path=_hdfsDestPath,
-                                  partitionBy=DATE_COL if partitionByDate else None)
+                            .save(path=pathPath,
+                                  partitionBy=partitionBy)
 
-                    partADFs.append(SparkADF.load(_hdfsDestPath))
+                    if restartSpark:
+                        arimo.backend.spark.stop()
 
-            adf = SparkADF.unionAllCols(*partADFs)
+                    else:
+                        partADFs.append(SparkADF.load(pathPath))
+
+            adf = SparkADF.load(path=partPaths) \
+                if restartSpark \
+                else SparkADF.unionAllCols(*partADFs)
 
         else:
             adf = SparkADF.load(path=srcPaths, **kwargs)
 
         adf.save(
             path=hdfsDestPath,
-            partitionBy=DATE_COL if partitionByDate else None)
+            partitionBy=partitionBy)
