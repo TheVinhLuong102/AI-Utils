@@ -2369,7 +2369,7 @@ class ArrowADF(_ArrowADFABC):
     def quantile(self, *cols, **kwargs):
         if len(cols) > 1:
             return Namespace(**
-                {col: self.approxQuantile(col, **kwargs)
+                {col: self.quantile(col, **kwargs)
                  for col in cols}) \
 
         else:
