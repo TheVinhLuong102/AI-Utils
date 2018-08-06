@@ -2346,7 +2346,7 @@ class ArrowADF(_ArrowADFABC):
             if col in self._cache.distinct:
                 series = self._cache.distinct[col]
 
-                assert isinstance(series, pandas.Series)
+                assert isinstance(series, (numpy.ndarray, pandas.Series))
 
                 if (series.dtype in PY_NUM_TYPES) or (not count):
                     return series
