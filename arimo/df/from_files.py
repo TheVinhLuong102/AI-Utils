@@ -2331,6 +2331,8 @@ class ArrowADF(_ArrowADFABC):
         if not cols:
             cols = self.contentCols
 
+        asDict = kwargs.pop('asDict', False)
+
         if len(cols) > 1:
             return Namespace(**
                 {col: self.distinct(col, **kwargs)
@@ -2338,8 +2340,6 @@ class ArrowADF(_ArrowADFABC):
 
         else:
             col = cols[0]
-
-            asDict = kwargs.pop('asDict', False)
 
             count = kwargs.get('count', True)
 
