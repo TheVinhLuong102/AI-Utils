@@ -8,6 +8,7 @@ from collections import Counter
 import copy
 import itertools
 import json
+import math
 import numpy
 import os
 import pandas
@@ -70,6 +71,7 @@ from pyspark.sql.window import Window
 
 from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import rds, s3
+from arimo.util.date_time import DATE_COL
 from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
 from arimo.util.iterables import flatten, to_iterable
 from arimo.util.types.numpy_pandas import PY_NUM_TYPES
@@ -5408,3 +5410,42 @@ class SparkADF(_ADFABC):
                     "MIN({0}) AS {0}___min, MAX(IF(STRING({0}) = 'NaN', NULL, {0})) AS {0}___max".format(col)
                     for col in self.columns))) \
             .toPandas().iloc[0]
+
+    def _consoParquet(self, hdfsDestPath, *srcPaths, **kwargs):
+        MAX_N_PATHS_AT_A_TIME = 100
+
+        partitionByDate = kwargs.pop('partitionByDate')
+
+        nSrcPaths = len(srcPaths)
+
+        nParts = int(math.ceil(nSrcPaths / MAX_N_PATHS_AT_A_TIME))
+
+        if nParts > 1:
+            srcPaths = sorted(srcPaths)
+
+            partADFs = []
+
+            for partI in range(nParts):
+                pathFromI = partI * MAX_N_PATHS_AT_A_TIME
+                pathToI = min((partI + 1) * MAX_N_PATHS_AT_A_TIME, nSrcPaths)
+
+                _hdfsDestPath = '{}---from-{}---to-{}'.format(hdfsDestPath, pathFromI, pathToI)
+
+                try:
+                    partADFs.append(SparkADF.load(_hdfsDestPath))
+
+                except:
+                    SparkADF.load(path=srcPaths[pathFromI:pathToI], **kwargs) \
+                            .save(path=_hdfsDestPath,
+                                  partitionBy=DATE_COL if partitionByDate else None)
+
+                    partADFs.append(SparkADF.load(_hdfsDestPath))
+
+            adf = SparkADF.unionAllCols(*partADFs)
+
+        else:
+            adf = SparkADF.load(path=srcPaths, **kwargs)
+
+        adf.save(
+            path=hdfsDestPath,
+            partitionBy=DATE_COL if partitionByDate else None)
