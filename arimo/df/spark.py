@@ -5411,7 +5411,8 @@ class SparkADF(_ADFABC):
                     for col in self.columns))) \
             .toPandas().iloc[0]
 
-    def _consoParquet(self, hdfsDestPath, *srcPaths, **kwargs):
+    @staticmethod
+    def _consoParquet(hdfsDestPath, *srcPaths, **kwargs):
         MAX_N_PATHS_AT_A_TIME = 100
 
         partitionByDate = kwargs.pop('partitionByDate')
