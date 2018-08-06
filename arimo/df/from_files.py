@@ -2334,6 +2334,8 @@ class ArrowADF(_ArrowADFABC):
         else:
             col = cols[0]
 
+            asDict = kwargs.pop('asDict', False)
+
             count = kwargs.get('count', True)
 
             if col in self._cache.distinct:
@@ -2354,7 +2356,9 @@ class ArrowADF(_ArrowADFABC):
                 if count \
                 else self.reprSample[col].unique()
 
-            return self._cache.distinct[col]
+            return Namespace(**{col: self._cache.distinct[col]}) \
+                if asDict \
+              else self._cache.distinct[col]
 
     @lru_cache()
     def quantile(self, *cols, **kwargs):
