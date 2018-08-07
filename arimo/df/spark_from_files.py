@@ -835,7 +835,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
         pandasDF = \
             self._pieceArrowTable(pieceSubPath) \
                 .to_pandas(
-                    nthreads=max(1, psutil.cpu_count(logical=True) // 2),
+                    use_threads=max(1, psutil.cpu_count(logical=True) // 2),
                     strings_to_categorical=False,
                     memory_pool=None,
                     zero_copy_only=True)

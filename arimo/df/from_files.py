@@ -594,7 +594,7 @@ class _ArrowADF__gen:
                     self.pieceArrowTableFunc(piecePath=piecePath)
                         .to_batches(chunksize=self.sampleN)) \
                     .to_pandas(
-                        nthreads=self.nThreads)
+                        use_threads=self.nThreads)
 
             if self.partitionKVs:
                 for k, v in self.partitionKVs[piecePath].items():
@@ -1512,7 +1512,7 @@ class ArrowADF(_ArrowADFABC):
                                 random.sample(
                                     population=recordBatches,
                                     k=nChunksForIntermediateN):
-                            chunkPandasDF = recordBatch.to_pandas(nthreads=max(1, psutil.cpu_count() // 2))
+                            chunkPandasDF = recordBatch.to_pandas(use_threads=max(1, psutil.cpu_count() // 2))
 
                             for k in partitionKeyCols:
                                 chunkPandasDF[k] = pieceCache.partitionKVs[k]
@@ -1587,7 +1587,7 @@ class ArrowADF(_ArrowADFABC):
                     else:
                         piecePandasDF = \
                             pieceArrowTable.to_pandas(
-                                nthreads=max(1, psutil.cpu_count(logical=True) // 2),
+                                use_threads=max(1, psutil.cpu_count(logical=True) // 2),
                                     # For the default, we divide the CPU count by 2
                                     # because most modern computers have hyperthreading turned on,
                                     # so doubling the CPU count beyond the number of physical cores does not help
@@ -1654,7 +1654,7 @@ class ArrowADF(_ArrowADFABC):
                 else:
                     piecePandasDF = \
                         pieceArrowTable.to_pandas(
-                            nthreads=max(1, psutil.cpu_count(logical=True) // 2),
+                            use_threads=max(1, psutil.cpu_count(logical=True) // 2),
                                 # For the default, we divide the CPU count by 2
                                 # because most modern computers have hyperthreading turned on,
                                 # so doubling the CPU count beyond the number of physical cores does not help
