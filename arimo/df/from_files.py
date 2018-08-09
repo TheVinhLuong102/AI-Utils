@@ -113,10 +113,24 @@ class _ArrowADF__getattr__pandasDFTransform:
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _ArrowADF__getitem__pandasDFTransform:
     def __init__(self, item):
-        self.item = item
+        if isinstance(item, _STR_CLASSES):
+            self.col = item
+            self.cols = None
+
+        else:
+            self.cols = item
+            self.col_set = set(item)
 
     def __call__(self, pandasDF):
-        return pandasDF[self.item]
+        if self.cols:
+            pandasDF[:, list(self.col_set.difference(pandasDF.columns))] = None
+            return pandasDF[self.cols]
+
+        elif self.col in pandasDF.columns:
+            return pandasDF[self.col]
+
+        else:
+            return pandas.Series(index=pandasDF.index)
 
 
 # class with __call__ to serve as pickle-able function for use in multi-processing
