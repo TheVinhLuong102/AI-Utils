@@ -642,7 +642,9 @@ class _ArrowADF__gen:
 
                 except Exception as err:
                     print('*** "{}": PANDAS TRANSFORM #{} ***'.format(piecePath, i))
-                    raise err
+
+                    # https://stackoverflow.com/questions/4825234/exception-traceback-is-hidden-if-not-re-raised-immediately
+                    raise
 
             if self.filterConditions:
                 filterChunkPandasDF = chunkPandasDF[list(self.filterConditions)]
@@ -1548,7 +1550,9 @@ class ArrowADF(_ArrowADFABC):
 
                                     except Exception as err:
                                         print('*** {} ***'.format(piecePath))
-                                        raise err
+
+                                        # https://stackoverflow.com/questions/4825234/exception-traceback-is-hidden-if-not-re-raised-immediately
+                                        raise
 
                                 else:
                                     try:
@@ -1559,7 +1563,9 @@ class ArrowADF(_ArrowADFABC):
 
                                     except Exception as err:
                                         print('*** {} ***'.format(piecePath))
-                                        raise err
+
+                                        # https://stackoverflow.com/questions/4825234/exception-traceback-is-hidden-if-not-re-raised-immediately
+                                        raise
 
                             if nSamplesPerChunk < len(chunkPandasDF):
                                 chunkPandasDF = \
@@ -1631,7 +1637,9 @@ class ArrowADF(_ArrowADFABC):
 
                                 except Exception as err:
                                     print('*** {} ***'.format(piecePath))
-                                    raise err
+
+                                    # https://stackoverflow.com/questions/4825234/exception-traceback-is-hidden-if-not-re-raised-immediately
+                                    raise
 
                             else:
                                 try:
@@ -1642,7 +1650,9 @@ class ArrowADF(_ArrowADFABC):
 
                                 except Exception as err:
                                     print('*** {} ***'.format(piecePath))
-                                    raise err
+
+                                    # https://stackoverflow.com/questions/4825234/exception-traceback-is-hidden-if-not-re-raised-immediately
+                                    raise
 
                         piecePandasDF = \
                             piecePandasDF.sample(
@@ -1698,7 +1708,9 @@ class ArrowADF(_ArrowADFABC):
 
                             except Exception as err:
                                 print('*** {} ***'.format(piecePath))
-                                raise err
+
+                                # https://stackoverflow.com/questions/4825234/exception-traceback-is-hidden-if-not-re-raised-immediately
+                                raise
 
                         else:
                             try:
@@ -1709,7 +1721,9 @@ class ArrowADF(_ArrowADFABC):
 
                             except Exception as err:
                                 print('*** {} ***'.format(piecePath))
-                                raise err
+                                
+                                # https://stackoverflow.com/questions/4825234/exception-traceback-is-hidden-if-not-re-raised-immediately
+                                raise
 
             else:
                 piecePandasDF = pandas.DataFrame(
