@@ -123,10 +123,8 @@ class _ArrowADF__getitem__pandasDFTransform:
 
     def __call__(self, pandasDF):
         if self.cols:
-            missingCols = self.col_set.difference(pandasDF.columns)
-
-            if missingCols:
-                pandasDF[:, list(missingCols)] = None
+            for missingCol in self.col_set.difference(pandasDF.columns)
+                pandasDF[:, missingCol] = None
             
             return pandasDF[self.cols]
 
@@ -134,7 +132,9 @@ class _ArrowADF__getitem__pandasDFTransform:
             return pandasDF[self.col]
 
         else:
-            return pandas.Series(index=pandasDF.index)
+            return pandas.Series(
+                index=pandasDF.index,
+                name=self.col)
 
 
 # class with __call__ to serve as pickle-able function for use in multi-processing
