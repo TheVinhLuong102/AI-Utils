@@ -57,6 +57,7 @@ from .spark import SparkADF
 class _ArrowADFABC(_ADFABC):
     __metaclass__ = abc.ABCMeta
 
+    _SCHEMA_MIN_N_PIECES = 10
     _REPR_SAMPLE_MIN_N_PIECES = 100
 
     # file systems
@@ -848,7 +849,7 @@ class ArrowADF(_ArrowADFABC):
                 if piecePath in self._PIECE_CACHES:
                     pieceCache = self._PIECE_CACHES[piecePath]
 
-                    if (pieceCache.nRows is None) and (not i):
+                    if (pieceCache.nRows is None) and (i < self._SCHEMA_MIN_N_PIECES):
                         pieceCache.localOrHDFSPath = self.pieceLocalOrHDFSPath(piecePath=piecePath)
 
                         schema = read_schema(where=pieceCache.localOrHDFSPath)
