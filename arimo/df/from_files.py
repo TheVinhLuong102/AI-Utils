@@ -124,7 +124,7 @@ class _ArrowADF__getitem__pandasDFTransform:
     def __call__(self, pandasDF):
         if self.cols:
             for missingCol in self.col_set.difference(pandasDF.columns):
-                pandasDF[:, missingCol] = None
+                pandasDF.loc[:, missingCol] = None
             
             return pandasDF[self.cols]
 
