@@ -442,6 +442,7 @@ class _ArrowADF__pieceArrowTableFunc:
 
         self.nThreads = nThreads
 
+    @lru_cache(maxsize=68)
     def __call__(self, piecePath):
         if piecePath.startswith('s3'):
             global _PIECE_LOCAL_CACHE_PATHS
