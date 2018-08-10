@@ -651,15 +651,16 @@ class _ArrowADF__gen:
 
                 rowIndices = \
                     filterChunkPandasDF.loc[
-                        sum((filterChunkPandasDF[filterCol]
+                        sum(# *** AVOID INCLUDING EXTREMES EQUALLING MEDIAN ***
+                            (filterChunkPandasDF[filterCol]
                                 .between(
                                     left=left,
                                     right=right,
-                                    inclusive=True)
+                                    inclusive=False)
                              if pandas.notnull(left) and pandas.notnull(right)
-                             else ((filterChunkPandasDF[filterCol] >= left)
+                             else ((filterChunkPandasDF[filterCol] > left)
                                    if pandas.notnull(left)
-                                   else ((filterChunkPandasDF[filterCol] <= right))))
+                                   else ((filterChunkPandasDF[filterCol] < right))))
                             for filterCol, (left, right) in self.filterConditions.items())
                         == len(self.filterConditions)] \
                     .index.tolist()
@@ -3939,15 +3940,16 @@ class ArrowADF(_ArrowADFABC):
             cols = feature_cols + [target_col]
 
             return chunkPandasDF.loc[
-                    sum((chunkPandasDF[filterCol]
+                    sum(# *** AVOID INCLUDING EXTREMES EQUALLING MEDIAN ***
+                        (chunkPandasDF[filterCol]
                             .between(
                                 left=left,
                                 right=right,
-                                inclusive=True)
+                                inclusive=False)
                          if pandas.notnull(left) and pandas.notnull(right)
-                         else ((chunkPandasDF[filterCol] >= left)
+                         else ((chunkPandasDF[filterCol] > left)
                                if pandas.notnull(left)
-                               else ((chunkPandasDF[filterCol] <= right))))
+                               else ((chunkPandasDF[filterCol] < right))))
                         for filterCol, (left, right) in filter.items())
                     == len(filter),
                     cols] \

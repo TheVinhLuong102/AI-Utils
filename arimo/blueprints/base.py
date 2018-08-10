@@ -1417,50 +1417,37 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                                            1 - self.params.data.label.outlier_tail_proportion),
                                         interpolation='linear')
 
-                                if lower_numeric_null is not None:
-                                    _lower_outlier_threshold = \
-                                        sample_label_series.loc[sample_label_series > lower_numeric_null] \
-                                        .min(skipna=True)
+                                if (lower_numeric_null is not None) and \
+                                        (lower_numeric_null > self.params.data.label.lower_outlier_threshold):
+                                    assert lower_numeric_null < self.params.data.label.upper_outlier_threshold, \
+                                        '*** {} >= {} ***'.format(
+                                            lower_numeric_null,
+                                            self.params.data.label.upper_outlier_threshold)
 
-                                    assert pandas.notnull(_lower_outlier_threshold), \
-                                        '*** {} SAMPLE MAX = {} ***'.format(
-                                            self.params.data.label.var,
-                                            sample_label_series.max())
+                                    self.params.data.label.lower_outlier_threshold = lower_numeric_null
 
-                                    if _lower_outlier_threshold > self.params.data.label.lower_outlier_threshold:
-                                        self.params.data.label.lower_outlier_threshold = _lower_outlier_threshold
+                                if (upper_numeric_null is not None) and \
+                                        (upper_numeric_null < self.params.data.label.upper_outlier_threshold):
+                                    assert upper_numeric_null > self.params.data.label.lower_outlier_threshold, \
+                                        '*** {} <= {} ***'.format(
+                                            upper_numeric_null,
+                                            self.params.data.label.lower_outlier_threshold)
 
-                                if upper_numeric_null is not None:
-                                    _upper_outlier_threshold = \
-                                        sample_label_series.loc[sample_label_series < upper_numeric_null] \
-                                        .max(skipna=True)
-
-                                    assert pandas.notnull(_upper_outlier_threshold), \
-                                        '*** {} SAMPLE MIN = {} ***'.format(
-                                            self.params.data.label.var,
-                                            sample_label_series.min())
-
-                                    if _upper_outlier_threshold < self.params.data.label.upper_outlier_threshold:
-                                        self.params.data.label.upper_outlier_threshold = _upper_outlier_threshold
+                                    self.params.data.label.upper_outlier_threshold = upper_numeric_null
 
                             else:
-                                self.params.data.label.lower_outlier_threshold = \
-                                    sample_label_series.quantile(
-                                        q=self.params.data.label.outlier_tail_proportion,
+                                self.params.data.label.lower_outlier_threshold, \
+                                M = sample_label_series.quantile(
+                                        q=(self.params.data.label.outlier_tail_proportion,
+                                           1),
                                         interpolation='linear')
 
-                                if lower_numeric_null is not None:
-                                    _lower_outlier_threshold = \
-                                        sample_label_series.loc[sample_label_series > lower_numeric_null] \
-                                        .min(skipna=True)
+                                if (lower_numeric_null is not None) and \
+                                        (lower_numeric_null > self.params.data.label.lower_outlier_threshold):
+                                    assert lower_numeric_null < M, \
+                                        '*** {} >= {} ***'.format(lower_numeric_null, M)
 
-                                    assert pandas.notnull(_lower_outlier_threshold), \
-                                        '*** {} SAMPLE MAX = {} ***'.format(
-                                            self.params.data.label.var,
-                                            sample_label_series.max())
-
-                                    if _lower_outlier_threshold > self.params.data.label.lower_outlier_threshold:
-                                        self.params.data.label.lower_outlier_threshold = _lower_outlier_threshold
+                                    self.params.data.label.lower_outlier_threshold = lower_numeric_null
 
                         elif _calc_upper_outlier_threshold:
                             if sample_label_series is None:
@@ -1479,23 +1466,18 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                                         pandas.notnull(sample_label_series) &
                                         numpy.isfinite(sample_label_series)]
 
-                            self.params.data.label.upper_outlier_threshold = \
+                            m, self.params.data.label.upper_outlier_threshold = \
                                 sample_label_series.quantile(
-                                    q=1 - self.params.data.label.outlier_tail_proportion,
+                                    q=(0,
+                                       1 - self.params.data.label.outlier_tail_proportion),
                                     interpolation='linear')
 
-                            if upper_numeric_null is not None:
-                                _upper_outlier_threshold = \
-                                    sample_label_series.loc[sample_label_series < upper_numeric_null] \
-                                    .max(skipna=True)
+                            if (upper_numeric_null is not None) and \
+                                    (upper_numeric_null < self.params.data.label.upper_outlier_threshold):
+                                assert upper_numeric_null > m, \
+                                    '*** {} <= {} ***'.format(upper_numeric_null, m)
 
-                                assert pandas.notnull(_upper_outlier_threshold), \
-                                    '*** {} SAMPLE MIN = {} ***'.format(
-                                        self.params.data.label.var,
-                                        sample_label_series.min())
-
-                                if _upper_outlier_threshold < self.params.data.label.upper_outlier_threshold:
-                                    self.params.data.label.upper_outlier_threshold = _upper_outlier_threshold
+                                self.params.data.label.upper_outlier_threshold = upper_numeric_null
 
             else:
                 if isinstance(adf, ArrowSparkADF):
@@ -1599,43 +1581,53 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                                            1 - self.params.data.label.outlier_tail_proportion),
                                         relativeError=self.params.data.label.outlier_tail_proportion / 3)
 
-                                if lower_numeric_null is not None:
-                                    _lower_outlier_threshold = lower_numeric_null + 1e-9
+                                if (lower_numeric_null is not None) and \
+                                        (lower_numeric_null > self.params.data.label.lower_outlier_threshold):
+                                    assert lower_numeric_null < self.params.data.label.upper_outlier_threshold, \
+                                        '*** {} >= {} ***'.format(
+                                            lower_numeric_null,
+                                            self.params.data.label.upper_outlier_threshold)
 
-                                    if _lower_outlier_threshold > self.params.data.label.lower_outlier_threshold:
-                                        self.params.data.label.lower_outlier_threshold = _lower_outlier_threshold
+                                    self.params.data.label.lower_outlier_threshold = lower_numeric_null
 
-                                if upper_numeric_null is not None:
-                                    _upper_outlier_threshold = upper_numeric_null - 1e-9
+                                if (upper_numeric_null is not None) and \
+                                        (upper_numeric_null < self.params.data.label.upper_outlier_threshold):
+                                    assert upper_numeric_null > self.params.data.label.lower_outlier_threshold, \
+                                        '*** {} <= {} ***'.format(
+                                            upper_numeric_null,
+                                            self.params.data.label.lower_outlier_threshold)
 
-                                    if _upper_outlier_threshold < self.params.data.label.upper_outlier_threshold:
-                                        self.params.data.label.upper_outlier_threshold = _upper_outlier_threshold
+                                    self.params.data.label.upper_outlier_threshold = upper_numeric_null
 
                             else:
-                                self.params.data.label.lower_outlier_threshold = \
-                                    adf.quantile(
+                                self.params.data.label.lower_outlier_threshold, \
+                                M = adf.quantile(
                                         self.params.data.label.var,
-                                        q=self.params.data.label.outlier_tail_proportion,
+                                        q=(self.params.data.label.outlier_tail_proportion,
+                                           1),
                                         relativeError=self.params.data.label.outlier_tail_proportion / 3)
 
-                                if lower_numeric_null is not None:
-                                    _lower_outlier_threshold = lower_numeric_null + 1e-9
+                                if (lower_numeric_null is not None) and \
+                                        (lower_numeric_null > self.params.data.label.lower_outlier_threshold):
+                                    assert lower_numeric_null < M, \
+                                        '*** {} >= {} ***'.format(lower_numeric_null, M)
 
-                                    if _lower_outlier_threshold > self.params.data.label.lower_outlier_threshold:
-                                        self.params.data.label.lower_outlier_threshold = _lower_outlier_threshold
+                                    self.params.data.label.lower_outlier_threshold = lower_numeric_null
 
                         elif _calc_upper_outlier_threshold:
-                            self.params.data.label.upper_outlier_threshold = \
+                            m, self.params.data.label.upper_outlier_threshold = \
                                 adf.quantile(
                                     self.params.data.label.var,
-                                    q=1 - self.params.data.label.outlier_tail_proportion,
+                                    q=(0,
+                                       1 - self.params.data.label.outlier_tail_proportion),
                                     relativeError=self.params.data.label.outlier_tail_proportion / 3)
 
-                            if upper_numeric_null is not None:
-                                _upper_outlier_threshold = upper_numeric_null - 1e-9
+                            if (upper_numeric_null is not None) and \
+                                    (upper_numeric_null < self.params.data.label.upper_outlier_threshold):
+                                assert upper_numeric_null > m, \
+                                    '*** {} <= {} ***'.format(upper_numeric_null, m)
 
-                                if _upper_outlier_threshold < self.params.data.label.upper_outlier_threshold:
-                                    self.params.data.label.upper_outlier_threshold = _upper_outlier_threshold
+                                self.params.data.label.upper_outlier_threshold = upper_numeric_null
 
                     _lower_outlier_threshold_applicable = \
                         pandas.notnull(self.params.data.label.lower_outlier_threshold)
@@ -1645,22 +1637,27 @@ class _SupervisedBlueprintABC(_BlueprintABC):
 
                     if _lower_outlier_threshold_applicable or _upper_outlier_threshold_applicable:
                         _outlier_robust_condition = \
-                            ('BETWEEN {} AND {}'.format(
+                            ('({0} > {1}) AND ({0} < {2})'.format(
+                                self.params.data.label.var,
                                 self.params.data.label.lower_outlier_threshold,
                                 self.params.data.label.upper_outlier_threshold)
                              if _upper_outlier_threshold_applicable
-                             else '>= {}'.format(self.params.data.label.lower_outlier_threshold)) \
+                             else '{} > {}'.format(
+                                self.params.data.label.var,
+                                self.params.data.label.lower_outlier_threshold)) \
                             if _lower_outlier_threshold_applicable \
-                            else '<= {}'.format(self.params.data.label.upper_outlier_threshold)
+                            else '{} < {}'.format(
+                                self.params.data.label.var,
+                                self.params.data.label.upper_outlier_threshold)
 
                         if arimo.debug.ON:
                             self.stdout_logger.debug(
                                 msg='*** DATA PREP FOR TRAIN: CONDITION ROBUST TO LABEL OUTLIERS: {} {}... ***\n'
                                     .format(self.params.data.label.var, _outlier_robust_condition))
 
-                        adf('IF({0} {1}, {0}, NULL) AS {0}'.format(
-                                self.params.data.label.var,
-                                _outlier_robust_condition),
+                        adf('IF({0}, {1}, NULL) AS {1}'.format(
+                                _outlier_robust_condition,
+                                self.params.data.label.var),
                             *(col for col in adf.columns
                               if col != self.params.data.label.var),
                             inheritCache=True,
@@ -2776,14 +2773,19 @@ class _PPPBlueprintABC(_BlueprintABC):
                 assert (label_var_type.startswith('decimal') or (label_var_type in _NUM_TYPES))
 
                 _outlier_robust_condition = \
-                    ('BETWEEN {} AND {}'
+                    ('({0} > {1}) AND ({0} < {2})'
                         .format(
+                            label_var_name,
                             blueprint_params.data.label.lower_outlier_threshold,
                             blueprint_params.data.label.upper_outlier_threshold)
                      if _upper_outlier_threshold_applicable
-                     else '>= {}'.format(blueprint_params.data.label.lower_outlier_threshold)) \
+                     else '{} > {}'.format(
+                            label_var_name,
+                            blueprint_params.data.label.lower_outlier_threshold)) \
                     if _lower_outlier_threshold_applicable \
-                    else '<= {}'.format(blueprint_params.data.label.upper_outlier_threshold)
+                    else '{} < {}'.format(
+                            label_var_name,
+                            blueprint_params.data.label.upper_outlier_threshold)
 
                 if arimo.debug.ON:
                     self.stdout_logger.debug(
@@ -2791,9 +2793,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                             .format(label_var_name, _outlier_robust_condition))
 
                 _per_label_adf.filter(
-                    condition='{} {}'.format(
-                        label_var_name,
-                        _outlier_robust_condition),
+                    condition=_outlier_robust_condition,
                     inplace=True)
 
             if __partition_by_id__:
