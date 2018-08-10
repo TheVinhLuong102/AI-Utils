@@ -442,7 +442,7 @@ class _ArrowADF__pieceArrowTableFunc:
 
         self.nThreads = nThreads
 
-    @lru_cache(maxsize=68)
+    # @lru_cache(maxsize=68)   # *** too memory-intensive esp. when used in multi-proc ***
     def __call__(self, piecePath):
         if piecePath.startswith('s3'):
             global _PIECE_LOCAL_CACHE_PATHS
