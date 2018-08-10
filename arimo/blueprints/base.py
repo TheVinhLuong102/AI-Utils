@@ -3174,7 +3174,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                 _sgn_err_col_expr = \
                     pyspark.sql.functions.when(
                         condition=(df[label_var_name] > lower_outlier_thresholds[label_var_name])
-                              and (df[label_var_name] < upper_outlier_thresholds[label_var_name]),
+                                & (df[label_var_name] < upper_outlier_thresholds[label_var_name]),
                         value=df[label_var_name] - df[score_col_name])
 
                 for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
