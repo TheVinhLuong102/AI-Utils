@@ -106,6 +106,7 @@ _BLUEPRINT_PARAMS_ORDERED_LIST = [
             'data.label.var',
             'data.label._int_var',
             'data.label._n_classes',
+            'data.label.excl_median',
             'data.label.excl_outliers',
             'data.label.outlier_tails',
             'data.label.outlier_tail_proportion',
@@ -1062,6 +1063,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                 var='y',
                 _int_var=None,
                 _n_classes=None,
+                excl_median=None,
                 excl_outliers=True,
                 outlier_tails='both',
                 outlier_tail_proportion=5e-3,
@@ -1132,6 +1134,8 @@ class _SupervisedBlueprintABC(_BlueprintABC):
             'data.label._int_var': Namespace(),
 
             'data.label._n_classes': Namespace(),
+
+            'data.label.excl_median': Namespace(),
 
             'data.label.excl_outliers': Namespace(),
 
