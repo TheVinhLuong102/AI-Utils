@@ -3001,6 +3001,8 @@ class _PPPBlueprintABC(_BlueprintABC):
 
     def err_mults(self, df, *label_var_names):
         score_col_names = {}
+        lower_outlier_thresholds = {}
+        upper_outlier_thresholds = {}
 
         if label_var_names:
             _label_var_names = []
@@ -3017,6 +3019,12 @@ class _PPPBlueprintABC(_BlueprintABC):
                     score_col_names[label_var_name] = \
                         component_blueprint_params.model.score.raw_score_col_prefix + label_var_name
 
+                    lower_outlier_thresholds[label_var_name] = \
+                        component_blueprint_params.data.label.lower_outlier_threshold
+
+                    upper_outlier_thresholds[label_var_name] = \
+                        component_blueprint_params.data.label.upper_outlier_threshold
+
             label_var_names = _label_var_names
 
         else:
@@ -3031,6 +3039,12 @@ class _PPPBlueprintABC(_BlueprintABC):
 
                     score_col_names[label_var_name] = \
                         component_blueprint_params.model.score.raw_score_col_prefix + label_var_name
+
+                    lower_outlier_thresholds[label_var_name] = \
+                        component_blueprint_params.data.label.lower_outlier_threshold
+
+                    upper_outlier_thresholds[label_var_name] = \
+                        component_blueprint_params.data.label.upper_outlier_threshold
 
         benchmark_metric_col_names = {}
 
@@ -3157,7 +3171,11 @@ class _PPPBlueprintABC(_BlueprintABC):
             for label_var_name in label_var_names:
                 score_col_name = score_col_names[label_var_name]
 
-                _sgn_err_col_expr = df[label_var_name] - df[score_col_name]
+                _sgn_err_col_expr = \
+                    pyspark.sql.functions.when(
+                        condition=(df[label_var_name] > lower_outlier_thresholds[label_var_name])
+                              and (df[label_var_name] < upper_outlier_thresholds[label_var_name]),
+                        value=df[label_var_name] - df[score_col_name])
 
                 for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
                     for _raw_metric in self._RAW_METRICS:
@@ -3187,6 +3205,11 @@ class _PPPBlueprintABC(_BlueprintABC):
                 score_col_name = score_col_names[label_var_name]
 
                 _sgn_err_series = df[label_var_name] - df[score_col_name]
+
+                _sgn_err_series.loc[
+                    (df[label_var_name] <= lower_outlier_thresholds[label_var_name]) |
+                    (df[label_var_name] >= upper_outlier_thresholds[label_var_name])] = numpy.nan
+
                 _neg_chk_series = _sgn_err_series < 0
                 _pos_chk_series = _sgn_err_series > 0
 
