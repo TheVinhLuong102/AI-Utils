@@ -2985,8 +2985,10 @@ class _PPPBlueprintABC(_BlueprintABC):
                     return True
 
                 else:
-                    print('*** {}: {}: MAE / MedAE = {:.3g} / {:.3g} = {:.3g} ***'
-                        .format(blueprint_obj, label_var_name, mae, medae, mae_medae_ratio))
+                    print('*** {}: {}: MAE / MedAE = {:.3g} / {:.3g} = {:.3g}{} ***'.format(
+                        blueprint_obj, label_var_name,
+                        mae, medae, mae_medae_ratio,
+                        '; R2 = {:.3f}'.format(r2) if r2 < .9 else ''))
                     return False
 
             else:
