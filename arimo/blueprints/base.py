@@ -2773,7 +2773,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                 assert (label_var_type.startswith('decimal') or (label_var_type in _NUM_TYPES))
 
                 _outlier_robust_condition = \
-                    ('{} BETWEEN {} AND {}'
+                    ('({0} > {1}) AND ({0} < {2})'
                         .format(
                             label_var_name,
                             blueprint_params.data.label.lower_outlier_threshold,
