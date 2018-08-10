@@ -2128,6 +2128,9 @@ class _PPPBlueprintABC(_BlueprintABC):
 
     _TO_SCORE_ALL_VARS_ADF_ALIAS_SUFFIX = '__toScoreAllVars'
 
+    GOOD_COMPONENT_BLUEPRINT_MIN_R2 = .68
+    GOOD_COMPONENT_BLUEPRINT_MAX_MAE_MedAE_RATIO = 3
+
     _SGN_PREFIX = 'sgn__'
     _ABS_PREFIX = 'abs__'
     _NEG_PREFIX = 'neg__'
@@ -2961,22 +2964,63 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         return eval_metrics
 
+    @classmethod
+    def _is_good_component_blueprint(cls, label_var_name, benchmark_metrics_for_label_var_name=None, blueprint_obj=None):
+        if not benchmark_metrics_for_label_var_name:
+            benchmark_metrics_for_label_var_name = \
+                blueprint_obj.params.benchmark_metrics.get(label_var_name)
+
+        if benchmark_metrics_for_label_var_name:
+            global_benchmark_metrics_for_label_var_name = \
+                benchmark_metrics_for_label_var_name[cls._GLOBAL_EVAL_KEY]
+
+            r2 = global_benchmark_metrics_for_label_var_name['R2']
+
+            if r2 > cls.GOOD_COMPONENT_BLUEPRINT_MIN_R2:
+                mae = global_benchmark_metrics_for_label_var_name['MAE']
+                medae = global_benchmark_metrics_for_label_var_name['MedAE']
+                mae_medae_ratio = mae / medae
+
+                if mae_medae_ratio < cls.GOOD_COMPONENT_BLUEPRINT_MAX_MAE_MedAE_RATIO:
+                    return True
+
+                else:
+                    print('*** {}: {}: MAE / MedAE = {:.3g} / {:.3g} = {:.3g} ***'
+                        .format(blueprint_obj, label_var_name, mae, medae, mae_medae_ratio))
+                    return False
+
+            else:
+                print('*** {}: {}: R2 = {:.3f} ***'.format(blueprint_obj, label_var_name, r2))
+                return False
+
     def err_mults(self, df, *label_var_names):
         score_col_names = {}
 
         if label_var_names:
+            _label_var_names = []
+
             for label_var_name in set(label_var_names).intersection(self.params.model.component_blueprints).intersection(df.columns):
                 component_blueprint_params = self.params.model.component_blueprints[label_var_name]
 
-                if component_blueprint_params.model.ver:
+                if component_blueprint_params.model.ver and \
+                        self._is_good_component_blueprint(
+                            label_var_name=label_var_name,
+                            blueprint_obj=self):
+                    _label_var_names.append(label_var_name)
+
                     score_col_names[label_var_name] = \
                         component_blueprint_params.model.score.raw_score_col_prefix + label_var_name
+
+            label_var_names = _label_var_names
 
         else:
             label_var_names = []
 
             for label_var_name, component_blueprint_params in self.params.model.component_blueprints.items():
-                if (label_var_name in df.columns) and component_blueprint_params.model.ver:
+                if (label_var_name in df.columns) and component_blueprint_params.model.ver and \
+                        self._is_good_component_blueprint(
+                            label_var_name=label_var_name,
+                            blueprint_obj=self):
                     label_var_names.append(label_var_name)
 
                     score_col_names[label_var_name] = \
