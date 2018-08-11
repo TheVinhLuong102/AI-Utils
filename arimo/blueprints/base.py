@@ -26,6 +26,7 @@ _STR_CLASSES = \
 from pyspark.ml import PipelineModel
 from pyspark.ml.feature import StringIndexer, VectorAssembler
 import pyspark.sql
+from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
 import arimo.backend

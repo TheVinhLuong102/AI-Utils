@@ -11,6 +11,7 @@ import shutil
 import tqdm
 import uuid
 
+from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import ArrayType, DoubleType, IntegerType, StructField, StructType
 
 import arimo.backend
