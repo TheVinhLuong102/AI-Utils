@@ -7,6 +7,12 @@ def import_deps(_):
     d = {}
 
     try:
+        import arimo.ver
+        d['Arimo'] = arimo.ver.VER
+    except ImportError:
+        d['Arimo'] = None
+
+    try:
         import numpy
         d['NumPy'] = numpy.__version__
     except ImportError:
