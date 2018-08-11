@@ -2848,7 +2848,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                         nullable=True,
                         metadata=None)]),
                 functionType=PandasUDFType.GROUPED_MAP)
-            def eval_metrics_per_id(pandas_df, id_col=id_col, label_col=label_var_name, score_col=score_col_name):
+            def eval_metrics_per_id(pandas_df):
                 from sklearn.metrics import mean_absolute_error, median_absolute_error, mean_squared_error, r2_score
 
                 return pandas.DataFrame(
