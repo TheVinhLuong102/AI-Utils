@@ -2857,24 +2857,24 @@ class _PPPBlueprintABC(_BlueprintABC):
                           'n': [len(pandas_df)],
 
                           'MAE': [mean_absolute_error(
-                                    y_true=pandas_df[label_col],
-                                    y_pred=pandas_df[score_col],
+                                    y_true=pandas_df[label_var_name],
+                                    y_pred=pandas_df[score_col_name],
                                     sample_weight=None,
                                     multioutput='uniform_average')],
 
                           'MedAE': [median_absolute_error(
-                                        y_true=pandas_df[label_col],
-                                        y_pred=pandas_df[score_col])],
+                                        y_true=pandas_df[label_var_name],
+                                        y_pred=pandas_df[score_col_name])],
 
                           'RMSE': [mean_squared_error(
-                                        y_true=pandas_df[label_col],
-                                        y_pred=pandas_df[score_col],
+                                        y_true=pandas_df[label_var_name],
+                                        y_pred=pandas_df[score_col_name],
                                         sample_weight=None,
                                         multioutput='uniform_average') ** .5],
 
                           'R2': [r2_score(
-                                    y_true=pandas_df[label_col],
-                                    y_pred=pandas_df[score_col],
+                                    y_true=pandas_df[label_var_name],
+                                    y_pred=pandas_df[score_col_name],
                                     sample_weight=None,
                                     multioutput='uniform_average')]})
 
