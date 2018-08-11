@@ -2843,7 +2843,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                         nullable=True,
                         metadata=None),
                      StructField(
-                        name='RMSE',
+                        name='R2',
                         dataType=DoubleType(),
                         nullable=True,
                         metadata=None)]),
@@ -2870,7 +2870,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                                         y_true=pandas_df[label_col],
                                         y_pred=pandas_df[score_col],
                                         sample_weight=None,
-                                        multioutput='uniform_average')],
+                                        multioutput='uniform_average') ** .5],
 
                           'R2': [r2_score(
                                     y_true=pandas_df[label_col],
