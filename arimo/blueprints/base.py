@@ -11,10 +11,10 @@ import math
 import numpy
 import os
 import pandas
+from sklearn.metrics import mean_absolute_error, median_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import LabelEncoder
 import tempfile
 import time
-import tqdm
 import uuid
 
 import six
@@ -2849,8 +2849,6 @@ class _PPPBlueprintABC(_BlueprintABC):
                         metadata=None)]),
                 functionType=PandasUDFType.GROUPED_MAP)
             def eval_metrics_per_id(pandas_df):
-                from sklearn.metrics import mean_absolute_error, median_absolute_error, mean_squared_error, r2_score
-
                 return pandas.DataFrame(
                     data={id_col: [pandas_df[id_col].iloc[0]],
 
@@ -2876,7 +2874,9 @@ class _PPPBlueprintABC(_BlueprintABC):
                                     y_true=pandas_df[label_var_name],
                                     y_pred=pandas_df[score_col_name],
                                     sample_weight=None,
-                                    multioutput='uniform_average')]})
+                                    multioutput='uniform_average')]},
+
+                    columns=[id_col, 'n', 'MAE', 'MedAE', 'RMSE', 'R2'])
 
             for _id, row in \
                     _per_label_adf.groupBy(id_col) \
