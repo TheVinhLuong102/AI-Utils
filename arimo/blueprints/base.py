@@ -2142,7 +2142,7 @@ class _PPPBlueprintABC(_BlueprintABC):
     _GLOBAL_OR_INDIV_PREFIX = ''
     _GLOBAL_OR_INDIV_PREFIXES = _GLOBAL_OR_INDIV_PREFIX,
 
-    _RAW_METRICS = 'MAE',   # 'MedAE', 'RMSE'
+    _RAW_METRICS = 'MedAE', 'MAE'   # , 'RMSE'
 
     _ERR_MULT_COLS = \
         dict(MedAE='MedAE_Mult',
