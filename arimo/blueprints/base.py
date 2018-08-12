@@ -2876,6 +2876,8 @@ class _PPPBlueprintABC(_BlueprintABC):
                                     sample_weight=None,
                                     multioutput='uniform_average')]},
 
+                    # specify exact column order to match specified schema
+                    # and avoid bug: https://jira.apache.org/jira/browse/ARROW-2590
                     columns=[id_col, 'n', 'MAE', 'MedAE', 'RMSE', 'R2'])
 
             for _id, row in \
