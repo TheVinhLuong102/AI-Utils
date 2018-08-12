@@ -2801,8 +2801,8 @@ class _PPPBlueprintABC(_BlueprintABC):
                 verbose=verbose)
 
             eval_metrics[label_var_name] = \
-                {self._GLOBAL_EVAL_KEY: dict(n=arimo.eval.metrics.n(_per_label_adf)),
-                 self._BY_ID_EVAL_KEY: {}}
+                {self._GLOBAL_EVAL_KEY:
+                    dict(n=arimo.eval.metrics.n(_per_label_adf))}
 
             for metric_name in blueprint.eval_metrics:
                 metric_class = getattr(arimo.eval.metrics, metric_name)
@@ -2880,18 +2880,19 @@ class _PPPBlueprintABC(_BlueprintABC):
                     # and avoid bug: https://jira.apache.org/jira/browse/ARROW-2590
                     columns=[id_col, 'n', 'MAE', 'MedAE', 'RMSE', 'R2'])
 
-            for _id, row in \
-                    _per_label_adf.groupBy(id_col) \
-                    .apply(eval_metrics_per_id) \
-                    .toPandas() \
+            eval_metrics[label_var_name][self._BY_ID_EVAL_KEY] = \
+                {_id: row.to_dict()
+                 for _id, row in
+                    _per_label_adf.groupBy(id_col)
+                    .apply(eval_metrics_per_id)
+                    .toPandas()
                     .set_index(
                         keys=id_col,
                         drop=True,
                         append=False,
                         inplace=False,
-                        verify_integrity=False) \
-                    .iterrows():
-                eval_metrics[label_var_name][self._BY_ID_EVAL_KEY][_id] = row.to_dict()
+                        verify_integrity=False)
+                    .iterrows()}
 
             _per_label_adf.unpersist()
 
