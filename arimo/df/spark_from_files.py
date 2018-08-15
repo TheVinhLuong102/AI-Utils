@@ -173,12 +173,13 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
 
                     arimo.backend.setSpark1Partition1File(on=True)
 
-                else:
-                    if arimo.debug.ON:
-                        logger.debug(
-                            msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to Defaults ***')
+                # *** BUG: re-setting the configs to defaults leads to subsequent bugs ***
+                # else:
+                #     if arimo.debug.ON:
+                #         logger.debug(
+                #             msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to Defaults ***')
 
-                    arimo.backend.setSpark1Partition1File(on=False)
+                #     arimo.backend.setSpark1Partition1File(on=False)
 
             else:
                 sparkConf = kwargs.pop('sparkConf', {})
