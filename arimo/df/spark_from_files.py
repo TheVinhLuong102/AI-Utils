@@ -166,12 +166,15 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 _cache.tmpDirPath = self._TMP_DIR_PATH
 
             if arimo.backend.chkSpark():
-                if kwargs['detPrePartitioned']:
-                    if arimo.debug.ON:
-                        logger.debug(
-                            msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to MAX_JAVA_INTEGER ***')
+                pass
 
-                    arimo.backend.setSpark1Partition1File(on=True)
+                # *** BUG: setting the configs again leads to subsequent bugs ***
+                # if kwargs['detPrePartitioned']:
+                #     if arimo.debug.ON:
+                #         logger.debug(
+                #             msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to MAX_JAVA_INTEGER ***')
+
+                #     arimo.backend.setSpark1Partition1File(on=True)
 
                 # *** BUG: re-setting the configs to defaults leads to subsequent bugs ***
                 # else:
