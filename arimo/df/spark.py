@@ -251,10 +251,12 @@ class SparkADF(_ADFABC):
                 else:
                     if self._nDetPrePartitions is None:
                         self._nDetPrePartitions = self.nPartitions
-                    else:
-                        assert self._nDetPrePartitions == self.nPartitions, \
-                            '*** Deterministically Pre-Partitioned SparkADF: Set nDetPrePartitions {} != Detected {} Partitions (Likely Due to Big Files Being Split by Spark) ***'.format(
-                                self._nDetPrePartitions, self.nPartitions)
+
+                    # *** BELOW IS NOT TRUE WHEN FILES ARE PARTITIONED ACCORDING TO HIVE STANDARDS BUT W/ DIFF NO. OF FILES PER PARTITION ***
+                    # else:
+                    #     assert self._nDetPrePartitions == self.nPartitions, \
+                    #         '*** Deterministically Pre-Partitioned SparkADF: Set nDetPrePartitions {} != Detected {} Partitions (Likely Due to Big Files Being Split by Spark) ***'.format(
+                    #             self._nDetPrePartitions, self.nPartitions)
 
                     self._sparkDF = \
                         self._sparkDF.withColumn(
