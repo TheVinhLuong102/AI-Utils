@@ -251,9 +251,10 @@ class SparkADF(_ADFABC):
                 else:
                     if self._nDetPrePartitions is None:
                         self._nDetPrePartitions = self.nPartitions
+
                     else:
-                        assert self._nDetPrePartitions == self.nPartitions, \
-                            '*** Deterministically Pre-Partitioned SparkADF: Set nDetPrePartitions {} != Detected {} Partitions (Likely Due to Big Files Being Split by Spark) ***'.format(
+                        assert self._nDetPrePartitions >= self.nPartitions, \
+                            '*** Deterministically Pre-Partitioned SparkADF: Set nDetPrePartitions {} < Detected {} Partitions ***'.format(
                                 self._nDetPrePartitions, self.nPartitions)
 
                     self._sparkDF = \
