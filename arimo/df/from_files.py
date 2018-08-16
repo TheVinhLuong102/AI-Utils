@@ -613,8 +613,8 @@ class _ArrowADF__gen:
                 random.choice(
                     self.pieceArrowTableFunc(piecePath=piecePath)
                         .to_batches(chunksize=self.sampleN)) \
-                    .to_pandas(
-                        use_threads=self.nThreads)
+                .to_pandas(
+                    use_threads=self.nThreads)
 
             if self.partitionKVs:
                 for k, v in self.partitionKVs[piecePath].items():
