@@ -2005,11 +2005,13 @@ class SparkADF(_ADFABC):
                 toc = time.time()
                 self.stdout_logger.info('Cached!   <{:,.1f} m>'.format((toc - tic) / 60))
 
-    def checkpoint(self, cache=False, format=None, eager=True, verbose=True, **options):
-        if cache:
-            self.cache(
-                eager=eager,
-                verbose=verbose)
+    def checkpoint(self, eager=True, verbose=True):
+        # *** Spark RDD Doc ***
+        # It is strongly recommended that this RDD is persisted in memory,
+        # otherwise saving it on a file will require recomputation.
+        self.cache(
+            eager=eager,
+            verbose=verbose)
 
         if arimo.debug.ON:
             eager = verbose = True
@@ -2021,21 +2023,7 @@ class SparkADF(_ADFABC):
             self.stdout_logger.info(msg)
             tic = time.time()
 
-        if format is None:
-            self._sparkDF.checkpoint(eager=eager)
-
-        else:
-            self.save(
-                path=os.path.join(
-                    arimo.backend._SPARK_CKPT_DIR,
-                    '{}.{}'.format(
-                        uuid.uuid4(),
-                        format)),
-                format=format,
-                mode='overwrite',
-                verbose=verbose,
-                switch=True,
-                **options)
+        self._sparkDF.checkpoint(eager=eager)
 
         if verbose:
             toc = time.time()
