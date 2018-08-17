@@ -3755,8 +3755,7 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
         logger.setLevel(logging.INFO)
         logger.addHandler(STDOUT_HANDLER)
 
-    if ((s3_bucket and s3_dir_prefix) or (dir_path.startswith('s3://'))) \
-            and ((aws_access_key_id and aws_secret_access_key) or s3_client):
+    if (s3_bucket and s3_dir_prefix) or dir_path.startswith('s3://'):
         _from_s3 = True
 
         if s3_client is None:
