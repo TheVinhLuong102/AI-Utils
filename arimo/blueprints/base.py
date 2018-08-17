@@ -2713,9 +2713,12 @@ class _PPPBlueprintABC(_BlueprintABC):
              for label_var_name, blueprint_params in self.params.model.component_blueprints.items()
              if (label_var_name in adf.columns) and blueprint_params.model.ver}
 
-        # cache to calculate multiple metrics quickly
-        if len(label_var_names_n_blueprint_params) > 1:
-            adf.cache(
+        n_label_var_names = \
+            len(label_var_names_n_blueprint_params)
+
+        # cache & checkpoint to calculate multiple metrics quickly & reliably
+        if n_label_var_names > 1:
+            adf.checkpoint(
                 eager=True,
                 verbose=verbose)
 
@@ -2732,9 +2735,15 @@ class _PPPBlueprintABC(_BlueprintABC):
             _per_label_adf_pre_cached = \
                 adf[id_col, score_col_name, label_var_name]
 
-            _per_label_adf_pre_cached.cache(
-                eager=True,
-                verbose=verbose)
+            if n_label_var_names > 1:
+                _per_label_adf_pre_cached.cache(
+                    eager=True,
+                    verbose=verbose)
+
+            else:
+                _per_label_adf_pre_cached.checkpoint(
+                    eager=True,
+                    verbose=verbose)
             # ^^^ *** SPARK 2.3.0/1 BUG ***
 
             _per_label_adf = \
