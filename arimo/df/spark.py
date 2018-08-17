@@ -2006,20 +2006,13 @@ class SparkADF(_ADFABC):
                 self.stdout_logger.info('Cached!   <{:,.1f} m>'.format((toc - tic) / 60))
 
     def checkpoint(self, eager=True, verbose=True):
-        # *** Spark RDD Doc ***
-        # It is strongly recommended that this RDD is persisted in memory,
-        # otherwise saving it on a file will require recomputation.
-        self.cache(
-            eager=eager,
-            verbose=verbose)
-
         if arimo.debug.ON:
             eager = verbose = True
         elif not eager:
             verbose = False
 
         if verbose:
-            msg = 'Checkpointing...'
+            msg = 'Checkpointing Columns {}...'.format(self.columns)
             self.stdout_logger.info(msg)
             tic = time.time()
 
