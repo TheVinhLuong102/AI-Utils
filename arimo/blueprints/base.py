@@ -23,6 +23,7 @@ _STR_CLASSES = \
     if six.PY2 \
     else str
 
+from pyspark import StorageLevel
 from pyspark.ml import PipelineModel
 from pyspark.ml.feature import StringIndexer, VectorAssembler
 import pyspark.sql
@@ -2727,14 +2728,14 @@ class _PPPBlueprintABC(_BlueprintABC):
             score_col_name = blueprint_params.model.score.raw_score_col_prefix + label_var_name
 
             # *** SPARK 2.3.0/1 BUG *** >>>
-            # NOT CACHING BEFORE FILTERING RESULTS IN
+            # NOT CACHING/PERSISTING BEFORE FILTERING RESULTS IN
             # "WARN TaskMemoryManager:302 - Failed to allocate a page (... bytes) try again"
             _per_label_adf_pre_cached = \
                 adf[id_col, score_col_name, label_var_name]
-
-            _per_label_adf_pre_cached.cache(
-                eager=True,
-                verbose=verbose)
+            
+            # persist on disk to avoid OOM errors
+            _per_label_adf_pre_cached.persist(
+                storageLevel=StorageLevel.DISK_ONLY)
             # ^^^ *** SPARK 2.3.0/1 BUG ***
 
             _per_label_adf = \
@@ -2795,10 +2796,10 @@ class _PPPBlueprintABC(_BlueprintABC):
             _per_label_adf.alias = \
                 adf.alias + '__toEval__' + label_var_name
 
-            # cache to calculate multiple metrics quickly
-            _per_label_adf.cache(
-                eager=True,
-                verbose=verbose)
+            # cache/persist to calculate multiple metrics quickly
+            # persist on disk to avoid OOM errors
+            _per_label_adf.persist(
+                storageLevel=StorageLevel.DISK_ONLY)
 
             eval_metrics[label_var_name] = \
                 {self._GLOBAL_EVAL_KEY:
