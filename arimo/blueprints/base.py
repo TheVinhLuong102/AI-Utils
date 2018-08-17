@@ -2733,9 +2733,9 @@ class _PPPBlueprintABC(_BlueprintABC):
             _per_label_adf_pre_cached = \
                 adf[id_col, score_col_name, label_var_name]
             
-            # persist on disk to avoid OOM errors
+            # persist on disk or off-heap to avoid OOM errors
             _per_label_adf_pre_cached.persist(
-                storageLevel=StorageLevel.DISK_ONLY)
+                storageLevel=StorageLevel.OFF_HEAP)
             # ^^^ *** SPARK 2.3.0/1 BUG ***
 
             _per_label_adf = \
@@ -2797,9 +2797,9 @@ class _PPPBlueprintABC(_BlueprintABC):
                 adf.alias + '__toEval__' + label_var_name
 
             # cache/persist to calculate multiple metrics quickly
-            # persist on disk to avoid OOM errors
+            # persist on disk or off-heap to avoid OOM errors
             _per_label_adf.persist(
-                storageLevel=StorageLevel.DISK_ONLY)
+                storageLevel=StorageLevel.OFF_HEAP)
 
             eval_metrics[label_var_name] = \
                 {self._GLOBAL_EVAL_KEY:
