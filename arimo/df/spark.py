@@ -1996,7 +1996,7 @@ class SparkADF(_ADFABC):
 
             arimo.backend.spark.catalog.cacheTable(tableName=self._alias)
 
-        self._sparkDF.cache()
+        self._sparkDF = self._sparkDF.cache()
 
         if eager:
             self._cache.nRows = self._sparkDF.count()
@@ -2006,6 +2006,13 @@ class SparkADF(_ADFABC):
                 self.stdout_logger.info('Cached!   <{:,.1f} m>'.format((toc - tic) / 60))
 
     def checkpoint(self, eager=True, verbose=True):
+        # *** Spark RDD Doc ***
+        # It is strongly recommended that this RDD is persisted in memory,
+        # otherwise saving it on a file will require recomputation.
+        self.cache(
+            eager=eager,
+            verbose=verbose)
+
         if arimo.debug.ON:
             eager = verbose = True
         elif not eager:
@@ -2016,7 +2023,7 @@ class SparkADF(_ADFABC):
             self.stdout_logger.info(msg)
             tic = time.time()
 
-        self._sparkDF.checkpoint(eager=eager)
+        self._sparkDF = self._sparkDF.checkpoint(eager=eager)
 
         if verbose:
             toc = time.time()
