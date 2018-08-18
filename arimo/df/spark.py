@@ -2025,6 +2025,11 @@ class SparkADF(_ADFABC):
 
         self._sparkDF = self._sparkDF.checkpoint(eager=eager)
 
+        # *** re-cache to enhance performance, as it is unclear whether the pre- and post-checkpoint SparkDFs have any relationship ***
+        self.cache(
+            eager=eager,
+            verbose=verbose)
+
         if verbose:
             toc = time.time()
             self.stdout_logger.info(msg + ' done!   <{:,.1f} m>'.format((toc - tic) / 60))
