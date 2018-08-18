@@ -2722,10 +2722,6 @@ class _PPPBlueprintABC(_BlueprintABC):
                 eager=True,
                 verbose=verbose)
 
-            adf.cache(
-                eager=True,
-                verbose=verbose)
-
         eval_metrics = {}
 
         id_col = self.params.data.id_col
@@ -2739,14 +2735,15 @@ class _PPPBlueprintABC(_BlueprintABC):
             _per_label_adf_pre_cached = \
                 adf[id_col, score_col_name, label_var_name]
 
-            if n_label_var_names == 1:
-                _per_label_adf_pre_cached.checkpoint(
+            if n_label_var_names > 1:
+                _per_label_adf_pre_cached.cache(
                     eager=True,
                     verbose=verbose)
 
-            _per_label_adf_pre_cached.cache(
-                eager=True,
-                verbose=verbose)
+            else:
+                _per_label_adf_pre_cached.checkpoint(
+                    eager=True,
+                    verbose=verbose)
             # ^^^ *** SPARK 2.3.0/1 BUG ***
 
             _per_label_adf = \
