@@ -2015,9 +2015,7 @@ class SparkADF(_ADFABC):
             self.save(
                 path=os.path.join(
                     arimo.backend._SPARK_CKPT_DIR,
-                    '{}.{}'.format(
-                        uuid.uuid4(),
-                        format)),
+                    str(uuid.uuid4())),
                 format=format,
                 partitionBy=None,
                 mode='overwrite',
