@@ -3367,7 +3367,8 @@ class _PPPBlueprintABC(_BlueprintABC):
             col_strs = []
 
             for col_name in cols_to_agg:
-                assert col_name in df_w_err_mults.columns
+                assert col_name in df_w_err_mults.columns, \
+                    '*** "{}" NOT IN {} ***'.format(col_name, df_w_err_mults.columns)
 
                 col_strs += \
                     ['PERCENTILE_APPROX(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1})), 0.5) AS {2}{0}'
