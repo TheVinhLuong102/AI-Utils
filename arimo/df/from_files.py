@@ -463,9 +463,13 @@ class _ArrowADF__pieceArrowTableFunc:
                         parsedURL.netloc,
                         parsedURL.path[1:])
 
-                fs.mkdir(
-                    dir=os.path.dirname(path),
-                    hdfs=False)
+                _dir_path = os.path.dirname(path)
+
+                fs.mkdir(dir=_dir_path,
+                         hdfs=False)
+
+                while not os.path.isdir(_dir_path):
+                    time.sleep(1)
 
                 s3.client(
                     access_key_id=self.aws_access_key_id,
