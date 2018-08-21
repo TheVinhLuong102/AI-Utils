@@ -2005,30 +2005,44 @@ class SparkADF(_ADFABC):
                 toc = time.time()
                 self.stdout_logger.info('Cached!   <{:,.1f} m>'.format((toc - tic) / 60))
 
-    def checkpoint(self, eager=True, verbose=True):
-        # *** Spark RDD Doc ***
-        # It is strongly recommended that this RDD is persisted in memory,
-        # otherwise saving it on a file will require recomputation.
-        self.cache(
-            eager=eager,
-            verbose=verbose)
-
-        if arimo.debug.ON:
-            eager = verbose = True
-        elif not eager:
-            verbose = False
-
+    def checkpoint(self, format='parquet', eager=True, verbose=True):
         if verbose:
             msg = 'Checkpointing Columns {}...'.format(self.columns)
             self.stdout_logger.info(msg)
             tic = time.time()
 
-        self._sparkDF = self._sparkDF.checkpoint(eager=eager)
+        if format:
+            self.save(
+                path=os.path.join(
+                    arimo.backend._SPARK_CKPT_DIR,
+                    '{}.{}'.format(
+                        uuid.uuid4(),
+                        format)),
+                format=format,
+                partitionBy=None,
+                mode='overwrite',
+                verbose=verbose,
+                switch=True)
 
-        # *** re-cache to enhance performance, as it is unclear whether the pre- and post-checkpoint SparkDFs have any relationship ***
-        # self.cache(
-        #     eager=eager,
-        #     verbose=verbose)
+        else:
+            if arimo.debug.ON:
+                eager = verbose = True
+            elif not eager:
+                verbose = False
+
+            # *** Spark RDD Doc ***
+            # It is strongly recommended that this RDD is persisted in memory,
+            # otherwise saving it on a file will require recomputation.
+            self.cache(
+                eager=eager,
+                verbose=verbose)
+
+            self._sparkDF = self._sparkDF.checkpoint(eager=eager)
+
+            # *** re-cache to enhance performance, as it is unclear whether the pre- and post-checkpoint SparkDFs have any relationship ***
+            # self.cache(
+            #     eager=eager,
+            #     verbose=verbose)
 
         if verbose:
             toc = time.time()
