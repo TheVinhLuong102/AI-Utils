@@ -2722,10 +2722,6 @@ class _PPPBlueprintABC(_BlueprintABC):
                 eager=True,
                 verbose=verbose)
 
-            adf.cache(
-                eager=True,
-                verbose=verbose)
-
         eval_metrics = {}
 
         id_col = self.params.data.id_col
