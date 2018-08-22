@@ -3339,14 +3339,16 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         clip = kwargs.pop('clip', 9)
 
-        cols_to_agg = copy.copy(cls._ROW_ERR_MULT_SUMM_COLS)
+        label_var_names = set(label_var_names).intersection(df_w_err_mults.columns)
+
+        cols_to_agg = set(cls._ROW_ERR_MULT_SUMM_COLS)
 
         for label_var_name in label_var_names:
-            if label_var_name in df_w_err_mults.columns:
-                cols_to_agg += \
-                    [(_sgn + _global_or_indiv_prefix + cls._ERR_MULT_PREFIXES[_metric] + label_var_name)
-                     for _metric, _global_or_indiv_prefix, _sgn in
-                     itertools.product(cls._RAW_METRICS, cls._GLOBAL_OR_INDIV_PREFIXES, cls._SGN_PREFIXES)]
+            cols_to_agg.update(
+                {(_sgn + _global_or_indiv_prefix + cls._ERR_MULT_PREFIXES[_metric] + label_var_name)
+                 for _metric, _global_or_indiv_prefix, _sgn in
+                 itertools.product(cls._RAW_METRICS, cls._GLOBAL_OR_INDIV_PREFIXES, cls._SGN_PREFIXES)}
+                .intersection(df_w_err_mults.columns))
 
         n_label_vars = len(label_var_names)
 
@@ -3354,9 +3356,6 @@ class _PPPBlueprintABC(_BlueprintABC):
             col_strs = []
 
             for col_name in cols_to_agg:
-                assert col_name in df_w_err_mults.columns, \
-                    '*** "{}" NOT IN {} ***'.format(col_name, df_w_err_mults.columns)
-
                 col_strs += \
                     ['PERCENTILE_APPROX(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1})), 0.5) AS {2}{0}'
                          .format(col_name, clip, cls._dailyMed_PREFIX),
