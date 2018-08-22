@@ -3371,8 +3371,10 @@ class _PPPBlueprintABC(_BlueprintABC):
                     for label_var_name in label_var_names:
                         if label_var_name in df_w_err_mults.columns:
                             _metric_col_name = _global_or_indiv_prefix + _raw_metric + '__' + label_var_name
-                            cols_to_agg.add(_metric_col_name)
-                            col_strs.append('AVG({0}) AS {0}'.format(_metric_col_name))
+
+                            if _metric_col_name in df_w_err_mults.columns:
+                                cols_to_agg.add(_metric_col_name)
+                                col_strs.append('AVG({0}) AS {0}'.format(_metric_col_name))
 
             adf = df_w_err_mults(
                 'SELECT \
