@@ -3414,9 +3414,11 @@ class _PPPBlueprintABC(_BlueprintABC):
                         _row_summ_daily_summ_col_name_body = \
                             _daily_summ_prefix + cls._ABS_PREFIX + _global_or_indiv_prefix + cls._ERR_MULT_COLS[_raw_metric]
 
-                        _daily_summ_abs_err_mult_col_names = \
-                            [(_row_summ_daily_summ_col_name_body + '__' + label_var_name)
-                             for label_var_name in label_var_names]
+                        _daily_summ_abs_err_mult_col_names = []
+                        for label_var_name in label_var_names:
+                            _col = _row_summ_daily_summ_col_name_body + '__' + label_var_name
+                            if _col in df_w_err_mults.columns:
+                                _daily_summ_abs_err_mult_col_names.append(_col)
 
                         _rowEuclNorm_summ_daily_summ_col_name = \
                             cls._rowEuclNorm_PREFIX + _row_summ_daily_summ_col_name_body
