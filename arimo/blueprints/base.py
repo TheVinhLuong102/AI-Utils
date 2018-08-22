@@ -3343,12 +3343,18 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         cols_to_agg = set(cls._ROW_ERR_MULT_SUMM_COLS)
 
-        for label_var_name in label_var_names:
-            cols_to_agg.update(
-                {(_sgn + _global_or_indiv_prefix + cls._ERR_MULT_PREFIXES[_metric] + label_var_name)
-                 for _metric, _global_or_indiv_prefix, _sgn in
-                 itertools.product(cls._RAW_METRICS, cls._GLOBAL_OR_INDIV_PREFIXES, cls._SGN_PREFIXES)}
-                .intersection(df_w_err_mults.columns))
+        for label_var_name, _metric, _global_or_indiv_prefix, _sgn in \
+                itertools.product(label_var_names, cls._RAW_METRICS, cls._GLOBAL_OR_INDIV_PREFIXES, cls._SGN_PREFIXES):
+            if label_var_name in label_var_names:
+                col_to_agg = _sgn + _global_or_indiv_prefix + cls._ERR_MULT_PREFIXES[_metric] + label_var_name
+
+                if col_to_agg in df_w_err_mults.columns:
+                    cols_to_agg.add(col_to_agg)
+
+                else:
+                    label_var_names.remove(label_var_name)
+
+        assert label_var_names
 
         n_label_vars = len(label_var_names)
 
