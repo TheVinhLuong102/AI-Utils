@@ -2733,9 +2733,6 @@ class _PPPBlueprintABC(_BlueprintABC):
         for label_var_name, blueprint_params in label_var_names_n_blueprint_params.items():
             score_col_name = blueprint_params.model.score.raw_score_col_prefix + label_var_name
 
-            # *** SPARK 2.3.0/1 BUG *** >>>
-            # NOT CACHING BEFORE FILTERING RESULTS IN
-            # "WARN TaskMemoryManager:302 - Failed to allocate a page (... bytes) try again"
             _per_label_adf_pre_cached = \
                 adf[id_col, score_col_name, label_var_name]
 
@@ -2743,11 +2740,6 @@ class _PPPBlueprintABC(_BlueprintABC):
                 _per_label_adf_pre_cached.checkpoint(
                     eager=True,
                     verbose=verbose)
-
-            _per_label_adf_pre_cached.cache(
-                eager=True,
-                verbose=verbose)
-            # ^^^ *** SPARK 2.3.0/1 BUG ***
 
             _per_label_adf = \
                 _per_label_adf_pre_cached.filter(
@@ -2907,10 +2899,6 @@ class _PPPBlueprintABC(_BlueprintABC):
                     .iterrows()}
 
             _per_label_adf.unpersist()
-
-            # *** SPARK 2.3.0/1 BUG *** >>>
-            _per_label_adf_pre_cached.unpersist()
-            # ^^^ *** SPARK 2.3.0/1 BUG ***
 
         adf.unpersist()
 
