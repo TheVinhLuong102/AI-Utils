@@ -3394,10 +3394,10 @@ class _PPPBlueprintABC(_BlueprintABC):
                     ', '.join('FIRST_VALUE({0}) AS {0}'.format(col)
                               for col in set(df_w_err_mults.columns)
                                         .difference(
-                                            {id_col, time_col, DATE_COL, MONTH_COL} +
-                                            label_var_names +
+                                            {id_col, time_col, DATE_COL, MONTH_COL} |
+                                            label_var_names |
                                             {(_SupervisedBlueprintABC._DEFAULT_PARAMS.model.score.raw_score_col_prefix + label_var_name)
-                                             for label_var_name in label_var_names} +
+                                             for label_var_name in label_var_names} |
                                             cols_to_agg)),
                     DATE_COL
                         if DATE_COL in df_w_err_mults.columns
