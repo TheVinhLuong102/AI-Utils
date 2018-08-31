@@ -3061,11 +3061,13 @@ class _PPPBlueprintABC(_BlueprintABC):
                         _global_or_indiv_benchmark_metric_col_name = \
                             benchmark_metric_col_names[self._GLOBAL_OR_INDIV_PREFIX][_raw_metric][label_var_name]
                         benchmark_metrics_df.loc[:, _global_or_indiv_benchmark_metric_col_name] = \
-                            benchmark_metrics_df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
-                            .max(axis='columns',
-                                 skipna=True,
-                                 level=None,
-                                 numeric_only=True)
+                            benchmark_metrics_df[_global_benchmark_metric_col_name]
+                            # ^^^ USE GLOBAL METRICS TO KEEP IT SIMPLE ^^^
+                            # benchmark_metrics_df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
+                            # .max(axis='columns',
+                            #      skipna=True,
+                            #      level=None,
+                            #      numeric_only=True)
 
             SparkADF.create(
                 data=benchmark_metrics_df.where(
@@ -3168,11 +3170,13 @@ class _PPPBlueprintABC(_BlueprintABC):
                         _global_or_indiv_benchmark_metric_col_name = \
                             benchmark_metric_col_names[self._GLOBAL_OR_INDIV_PREFIX][_raw_metric][label_var_name]
                         df.loc[:, _global_or_indiv_benchmark_metric_col_name] = \
-                            df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
-                            .max(axis='columns',
-                                 skipna=True,
-                                 level=None,
-                                 numeric_only=True)
+                            df[_global_benchmark_metric_col_name]
+                            # ^^^ USE GLOBAL METRICS TO KEEP IT SIMPLE ^^^
+                            # df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
+                            # .max(axis='columns',
+                            #      skipna=True,
+                            #      level=None,
+                            #      numeric_only=True)
 
                         for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
                             df[err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._SGN_PREFIX]] = \
