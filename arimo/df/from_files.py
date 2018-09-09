@@ -45,7 +45,7 @@ from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_
 from arimo.util.iterables import to_iterable
 from arimo.util.types.arrow import \
     _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE, \
-    is_boolean, is_complex, is_float, is_integer, is_num, is_possible_cat, is_string
+    is_binary, is_boolean, is_complex, is_float, is_integer, is_num, is_possible_cat, is_string
 from arimo.util.types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY_NUM_TYPES
 from arimo.util.types.spark_sql import _STR_TYPE
 import arimo.debug
@@ -1484,6 +1484,9 @@ class ArrowADF(_ArrowADFABC):
                         pieceCache.srcTypesInclPartitionKVs[col] = \
                         _arrowType = \
                         schema.field_by_name(col).type
+
+                    assert not is_binary(_arrowType), \
+                        '*** {} IS OF BINARY TYPE ***'.format(col)
 
                     if col in self.srcTypesInclPartitionKVs:
                         assert _arrowType == self.srcTypesInclPartitionKVs[col], \
