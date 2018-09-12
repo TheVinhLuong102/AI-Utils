@@ -3031,7 +3031,10 @@ class _PPPBlueprintABC(_BlueprintABC):
 
             sql_filter = kwargs.pop('sql_filter', None)
             if sql_filter:
-                df = df.filter(condition=sql_filter)
+                try:
+                    df = df.filter(condition=sql_filter)
+                except Exception as err:
+                    print(err)
 
             benchmark_metrics_df = \
                 df("SELECT \
