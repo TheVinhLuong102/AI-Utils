@@ -2935,7 +2935,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                 print('*** {}: {}: R2 = {:.3f} ***'.format(blueprint_obj, label_var_name, r2))
                 return False
 
-    def err_mults(self, df, *label_var_names, **kwargs):
+    def err_mults(self, df, *label_var_names):
         score_col_names = {}
         lower_outlier_thresholds = {}
         upper_outlier_thresholds = {}
@@ -3028,10 +3028,6 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         if isinstance(df, SparkADF):
             _is_adf = True
-
-            sql_filter = kwargs.pop('sql_filter', None)
-            if sql_filter:
-                df = df.filter(condition=sql_filter)
 
             benchmark_metrics_df = \
                 df("SELECT \
