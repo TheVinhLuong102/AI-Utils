@@ -2037,12 +2037,20 @@ class ArrowADF(_ArrowADFABC):
                                 else piecePaths):
                             pieceSubPath = piecePath[_pathPlusSepLen:]
 
-                            self.s3Client.copy(
-                                CopySource=dict(
+                            _from_key = os.path.join(self.pathS3Key, pieceSubPath)
+                            _to_key = os.path.join(subsetDirS3Key, pieceSubPath)
+
+                            try:
+                                self.s3Client.copy(
+                                    CopySource=dict(
+                                        Bucket=self.s3Bucket,
+                                        Key=_from_key),
                                     Bucket=self.s3Bucket,
-                                    Key=os.path.join(self.pathS3Key, pieceSubPath)),
-                                Bucket=self.s3Bucket,
-                                Key=os.path.join(subsetDirS3Key, pieceSubPath))
+                                    Key=_to_key)
+
+                            except Exception as err:
+                                print('*** FAILED TO COPY FROM "{}" TO "{}" ***'.format(_from_key, _to_key))
+                                raise
 
                         subsetPath = \
                             os.path.join(
