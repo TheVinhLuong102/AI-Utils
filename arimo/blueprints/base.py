@@ -15,6 +15,7 @@ from sklearn.metrics import mean_absolute_error, median_absolute_error, mean_squ
 from sklearn.preprocessing import LabelEncoder
 import tempfile
 import time
+import tqdm
 import uuid
 
 import six
