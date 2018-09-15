@@ -2605,7 +2605,7 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         models = Namespace()
 
-        for label_var_name, component_labeled_adf in component_labeled_adfs.items():
+        for label_var_name, component_labeled_adf in tqdm.tqdm(component_labeled_adfs.items()):
             blueprint_params = self.params.model.component_blueprints[label_var_name]
 
             if blueprint_params.model.ver and __retrain_components__:
