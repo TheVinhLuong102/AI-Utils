@@ -2136,48 +2136,24 @@ class _PPPBlueprintABC(_BlueprintABC):
     _POS_PREFIX = 'pos__'
     _SGN_PREFIXES = _SGN_PREFIX, _ABS_PREFIX, _NEG_PREFIX, _POS_PREFIX
 
-    _BENCHMARK_METRICS_ADF_ALIAS = '__BenchmarkMetrics__'
+    _RAW_METRICS = 'MAE',
 
-    _GLOBAL_PREFIX = 'global__'
-    _INDIV_PREFIX = 'indiv__'
-    _GLOBAL_OR_INDIV_PREFIX = ''
-    _GLOBAL_OR_INDIV_PREFIXES = _GLOBAL_OR_INDIV_PREFIX,
-
-    _RAW_METRICS = 'MedAE', 'MAE'   # , 'RMSE'
-
-    _ERR_MULT_COLS = \
-        dict(MedAE='MedAE_Mult',
-             MAE='MAE_Mult',
-             RMSE='RMSE_Mult')
+    _ERR_MULT_COLS = dict(MAE='MAE_Mult')
 
     _ERR_MULT_PREFIXES = \
         {k: (v + '__')
          for k, v in _ERR_MULT_COLS.items()}
 
-    _rowEuclNorm_PREFIX = 'rowEuclNorm__'
-    _rowSumOfLog_PREFIX = 'rowSumOfLog__'
     _rowHigh_PREFIX = 'rowHigh__'
-    _rowLow_PREFIX = 'rowLow__'
-    _rowMean_PREFIX = 'rowMean__'
-    _rowGMean_PREFIX = 'rowGMean__'
-    _ROW_SUMM_PREFIXES = \
-        _rowEuclNorm_PREFIX, \
-        _rowSumOfLog_PREFIX, \
-        _rowHigh_PREFIX, \
-        _rowLow_PREFIX, \
-        _rowMean_PREFIX, \
-        _rowGMean_PREFIX
+    _ROW_SUMM_PREFIXES = _rowHigh_PREFIX,
 
     _ROW_ERR_MULT_SUMM_COLS = \
-        [(_row_summ_prefix + _ABS_PREFIX + _global_or_indiv_prefix + _ERR_MULT_COLS[_metric])
-         for _metric, _global_or_indiv_prefix, _row_summ_prefix in
-         itertools.product(_RAW_METRICS, _GLOBAL_OR_INDIV_PREFIXES, _ROW_SUMM_PREFIXES)]
+        [(_row_summ_prefix + _ABS_PREFIX + _ERR_MULT_COLS[_metric])
+         for _metric, _row_summ_prefix in
+         itertools.product(_RAW_METRICS, _ROW_SUMM_PREFIXES)]
 
-    _dailyMed_PREFIX = 'dailyMed__'
     _dailyMean_PREFIX = 'dailyMean__'
-    _dailyMax_PREFIX = 'dailyMax__'
-    _dailyMin_PREFIX = 'dailyMin__'
-    _DAILY_SUMM_PREFIXES = _dailyMed_PREFIX, _dailyMean_PREFIX, _dailyMax_PREFIX, _dailyMin_PREFIX
+    _DAILY_SUMM_PREFIXES = _dailyMean_PREFIX,
 
     _DAILY_ERR_MULT_SUMM_COLS = \
         [(_daily_summ_prefix + _row_err_mult_summ_col)
@@ -2984,358 +2960,89 @@ class _PPPBlueprintABC(_BlueprintABC):
                         component_blueprint_params.data.label.upper_outlier_threshold
 
         benchmark_metric_col_names = {}
-
-        benchmark_metric_col_names_list = \
-            ['pop__{}'.format(label_var_name)
-             for label_var_name in label_var_names]
-
-        for _global_or_indiv_prefix in (self._GLOBAL_PREFIX, self._INDIV_PREFIX, self._GLOBAL_OR_INDIV_PREFIX):
-            benchmark_metric_col_names[_global_or_indiv_prefix] = {}
-
-            for _raw_metric in (('n',) + self._RAW_METRICS):
-                if (_global_or_indiv_prefix, _raw_metric) != (self._GLOBAL_OR_INDIV_PREFIX, 'n'):
-                    benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric] = {}
-
-                    for label_var_name in label_var_names:
-                        benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name] = \
-                            benchmark_metric_col_name = \
-                            _global_or_indiv_prefix + _raw_metric + '__' + label_var_name
-
-                        benchmark_metric_col_names_list.append(benchmark_metric_col_name)
+        for _raw_metric in self._RAW_METRICS:
+            benchmark_metric_col_names[_raw_metric] = {}
+            for label_var_name in label_var_names:
+                benchmark_metric_col_names[_raw_metric][label_var_name] = \
+                    _raw_metric + '__' + label_var_name
 
         err_mult_col_names = {}
         abs_err_mult_col_names = {}
+        for _raw_metric in self._RAW_METRICS:
+            err_mult_col_names[_raw_metric] = {}
+            abs_err_mult_col_names[_raw_metric] = {}
+            for label_var_name in label_var_names:
+                err_mult_col_names[_raw_metric][label_var_name] = {}
+                for _sgn_prefix in self._SGN_PREFIXES:
+                    err_mult_col_names[_raw_metric][label_var_name][_sgn_prefix] = \
+                        err_mult_col = \
+                        _sgn_prefix + self._ERR_MULT_PREFIXES[_raw_metric] + label_var_name
+                    if _sgn_prefix == self._ABS_PREFIX:
+                        abs_err_mult_col_names[_raw_metric][label_var_name] = err_mult_col
 
-        for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
-            err_mult_col_names[_global_or_indiv_prefix] = {}
-            abs_err_mult_col_names[_global_or_indiv_prefix] = {}
+        assert isinstance(df, SparkADF)
+
+        df('*',
+           *(pyspark.sql.functions.lit(self.params.benchmark_metrics[label_var_name][_raw_metric])
+                .alias(benchmark_metric_col_names[_raw_metric][label_var_name])
+             for label_var_name in label_var_names
+             for _raw_metric in self._RAW_METRICS),
+           inplace=True)
+
+        col_exprs = []
+
+        for label_var_name in label_var_names:
+            score_col_name = score_col_names[label_var_name]
+
+            _sgn_err_col_expr = \
+                pyspark.sql.functions.when(
+                    condition=(df[label_var_name] > lower_outlier_thresholds[label_var_name])
+                            & (df[label_var_name] < upper_outlier_thresholds[label_var_name]),
+                    value=df[label_var_name] - df[score_col_name])
 
             for _raw_metric in self._RAW_METRICS:
-                err_mult_col_names[_global_or_indiv_prefix][_raw_metric] = {}
-                abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric] = {}
+                _sgn_err_mult_col_expr = \
+                    _sgn_err_col_expr / \
+                    df[benchmark_metric_col_names[_raw_metric][label_var_name]]
 
-                for label_var_name in label_var_names:
-                    err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name] = {}
+                col_exprs += \
+                    [_sgn_err_mult_col_expr
+                        .alias(err_mult_col_names[_raw_metric][label_var_name][self._SGN_PREFIX]),
 
-                    for _sgn_prefix in self._SGN_PREFIXES:
-                        err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][_sgn_prefix] = \
-                            err_mult_col = \
-                            _sgn_prefix + _global_or_indiv_prefix + self._ERR_MULT_PREFIXES[_raw_metric] + label_var_name
+                     pyspark.sql.functions.abs(_sgn_err_mult_col_expr)
+                        .alias(err_mult_col_names[_raw_metric][label_var_name][self._ABS_PREFIX]),
 
-                        if _sgn_prefix == self._ABS_PREFIX:
-                            abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name] = err_mult_col
+                     pyspark.sql.functions.when(df[label_var_name] < df[score_col_name], _sgn_err_mult_col_expr)
+                        .alias(err_mult_col_names[_raw_metric][label_var_name][self._NEG_PREFIX]),
 
-        id_col = self.params.data.id_col
+                     pyspark.sql.functions.when(df[label_var_name] > df[score_col_name], _sgn_err_mult_col_expr)
+                        .alias(err_mult_col_names[_raw_metric][label_var_name][self._POS_PREFIX])]
 
-        if isinstance(df, SparkADF):
-            _is_adf = True
-
-            benchmark_metrics_df = \
-                df("SELECT \
-                        DISTINCT({}) \
-                    FROM \
-                        this".format(id_col),
-                   inheritCache=False,
-                   inheritNRows=False) \
-                .toPandas()
-
-            for label_var_name in label_var_names:
-                benchmark_metrics_df['pop__' + label_var_name] = \
-                    len(self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY])
-
-                for _raw_metric in (('n',) + self._RAW_METRICS):
-                    _global_benchmark_metric_col_name = \
-                        benchmark_metric_col_names[self._GLOBAL_PREFIX][_raw_metric][label_var_name]
-                    benchmark_metrics_df.loc[:, _global_benchmark_metric_col_name] = \
-                        self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric]
-
-                    _indiv_benchmark_metric_col_name = \
-                        benchmark_metric_col_names[self._INDIV_PREFIX][_raw_metric][label_var_name]
-                    benchmark_metrics_df.loc[:, _indiv_benchmark_metric_col_name] = \
-                        benchmark_metrics_df[id_col].map(
-                            lambda _id:
-                                self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY]
-                                    .get(_id, {})
-                                    .get(_raw_metric))
-
-                    if _raw_metric != 'n':
-                        _global_or_indiv_benchmark_metric_col_name = \
-                            benchmark_metric_col_names[self._GLOBAL_OR_INDIV_PREFIX][_raw_metric][label_var_name]
-                        benchmark_metrics_df.loc[:, _global_or_indiv_benchmark_metric_col_name] = \
-                            benchmark_metrics_df[_global_benchmark_metric_col_name]
-                            # ^^^ USE GLOBAL METRICS TO KEEP IT SIMPLE ^^^
-                            # benchmark_metrics_df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
-                            # .max(axis='columns',
-                            #      skipna=True,
-                            #      level=None,
-                            #      numeric_only=True)
-
-            SparkADF.create(
-                data=benchmark_metrics_df.where(
-                        cond=pandas.notnull(benchmark_metrics_df),
-                        other=None,
-                        inplace=False,
-                        axis=None,
-                        level=None,
-                        errors='raise',
-                        try_cast=False),
-                schema=StructType(
-                    [StructField(
-                        name=id_col,
-                        dataType=StringType(),
-                        nullable=False,
-                        metadata=None)] +
-                    [StructField(
-                        name=benchmark_metric_col_name,
-                        dataType=DoubleType(),
-                        nullable=True,
-                        metadata=None)
-                        for benchmark_metric_col_name in benchmark_metrics_df.columns[1:]]),
-                alias=self._BENCHMARK_METRICS_ADF_ALIAS)
-
-            df = df('SELECT \
-                        this.*, \
-                        {2} \
-                    FROM \
-                        this LEFT JOIN {0} \
-                            ON this.{1} = {0}.{1}'
-                .format(
-                    self._BENCHMARK_METRICS_ADF_ALIAS,
-                    id_col,
-                    ', '.join('{}.{}'.format(self._BENCHMARK_METRICS_ADF_ALIAS, col)
-                              for col in benchmark_metric_col_names_list)))
-
-            col_exprs = []
-
-            for label_var_name in label_var_names:
-                score_col_name = score_col_names[label_var_name]
-
-                _sgn_err_col_expr = \
-                    pyspark.sql.functions.when(
-                        condition=(df[label_var_name] > lower_outlier_thresholds[label_var_name])
-                                & (df[label_var_name] < upper_outlier_thresholds[label_var_name]),
-                        value=df[label_var_name] - df[score_col_name])
-
-                for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
-                    for _raw_metric in self._RAW_METRICS:
-                        _sgn_err_mult_col_expr = \
-                            _sgn_err_col_expr / \
-                            df[benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name]]
-
-                        col_exprs += \
-                            [_sgn_err_mult_col_expr
-                                 .alias(err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._SGN_PREFIX]),
-
-                             pyspark.sql.functions.abs(_sgn_err_mult_col_expr)
-                                 .alias(err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._ABS_PREFIX]),
-
-                             pyspark.sql.functions.when(df[label_var_name] < df[score_col_name], _sgn_err_mult_col_expr)
-                                 .alias(err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._NEG_PREFIX]),
-
-                             pyspark.sql.functions.when(df[label_var_name] > df[score_col_name], _sgn_err_mult_col_expr)
-                                 .alias(err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._POS_PREFIX])]
-
-            df = df.select('*', *col_exprs)
-
-        else:
-            _is_adf = False
-
-            for label_var_name in label_var_names:
-                score_col_name = score_col_names[label_var_name]
-
-                _sgn_err_series = df[label_var_name] - df[score_col_name]
-
-                _sgn_err_series.loc[
-                    (df[label_var_name] <= lower_outlier_thresholds[label_var_name]) |
-                    (df[label_var_name] >= upper_outlier_thresholds[label_var_name])] = numpy.nan
-
-                _neg_chk_series = _sgn_err_series < 0
-                _pos_chk_series = _sgn_err_series > 0
-
-                for _raw_metric in (('n',) + self._RAW_METRICS):
-                    _global_benchmark_metric_col_name = \
-                        benchmark_metric_col_names[self._GLOBAL_PREFIX][_raw_metric][label_var_name]
-                    df.loc[:, _global_benchmark_metric_col_name] = \
-                        self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric]
-
-                    _indiv_benchmark_metric_col_name = \
-                        benchmark_metric_col_names[self._INDIV_PREFIX][_raw_metric][label_var_name]
-                    df[_indiv_benchmark_metric_col_name] = \
-                        df[id_col].map(
-                            lambda id:
-                                self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY]
-                                    .get(id, {})
-                                    .get(_raw_metric, numpy.nan))
-
-                    if _raw_metric != 'n':
-                        _global_or_indiv_benchmark_metric_col_name = \
-                            benchmark_metric_col_names[self._GLOBAL_OR_INDIV_PREFIX][_raw_metric][label_var_name]
-                        df.loc[:, _global_or_indiv_benchmark_metric_col_name] = \
-                            df[_global_benchmark_metric_col_name]
-                            # ^^^ USE GLOBAL METRICS TO KEEP IT SIMPLE ^^^
-                            # df[[_global_benchmark_metric_col_name, _indiv_benchmark_metric_col_name]] \
-                            # .max(axis='columns',
-                            #      skipna=True,
-                            #      level=None,
-                            #      numeric_only=True)
-
-                        for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
-                            df[err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._SGN_PREFIX]] = \
-                                _sgn_err_mult_series = \
-                                _sgn_err_series / \
-                                df[benchmark_metric_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name]]
-
-                            df[err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._ABS_PREFIX]] = \
-                                _sgn_err_mult_series.abs()
-
-                            df.loc[_neg_chk_series,
-                                   err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._NEG_PREFIX]] = \
-                                _sgn_err_mult_series.loc[_neg_chk_series]
-
-                            df.loc[_pos_chk_series,
-                                   err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name][self._POS_PREFIX]] = \
-                                _sgn_err_mult_series.loc[_pos_chk_series]
+        df('*', *col_exprs, inplace=True)
 
         n_label_vars = len(label_var_names)
 
-        if _is_adf:
-            _row_summ_col_exprs = []
+        _row_summ_col_exprs = []
 
-            for _raw_metric in self._RAW_METRICS:
-                for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
-                    _abs_err_mult_col_names = \
-                        list(abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric].values())
+        for _raw_metric in self._RAW_METRICS:
+            _abs_err_mult_col_names = list(abs_err_mult_col_names[_raw_metric].values())
 
-                    _row_summ_col_name_body = \
-                        self._ABS_PREFIX + _global_or_indiv_prefix + self._ERR_MULT_COLS[_raw_metric]
+            _row_summ_col_name_body = self._ABS_PREFIX + self._ERR_MULT_COLS[_raw_metric]
 
-                    _rowEuclNorm_summ_col_name = self._rowEuclNorm_PREFIX + _row_summ_col_name_body
-                    _rowSumOfLog_summ_col_name = self._rowSumOfLog_PREFIX + _row_summ_col_name_body
-                    _rowHigh_summ_col_name = self._rowHigh_PREFIX + _row_summ_col_name_body
-                    _rowLow_summ_col_name = self._rowLow_PREFIX + _row_summ_col_name_body
-                    _rowMean_summ_col_name = self._rowMean_PREFIX + _row_summ_col_name_body
-                    _rowGMean_summ_col_name = self._rowGMean_PREFIX + _row_summ_col_name_body
+            _rowHigh_summ_col_name = self._rowHigh_PREFIX + _row_summ_col_name_body
 
-                    if n_label_vars > 1:
-                        _row_summ_col_exprs += \
-                            ['POW({}, 0.5) AS {}'.format(
-                                ' + '.join(
-                                    'POW({} - 1, 2)'.format(_abs_err_mult_col_name)
-                                    for _abs_err_mult_col_name in _abs_err_mult_col_names),
-                                _rowEuclNorm_summ_col_name),
+            if n_label_vars > 1:
+                _row_summ_col_exprs.append(
+                    'GREATEST({}) AS {}'.format(
+                        ', '.join(_abs_err_mult_col_names),
+                        _rowHigh_summ_col_name))
 
-                                'LN({}) AS {}'.format(
-                                    ' * '.join(_abs_err_mult_col_names),
-                                    _rowSumOfLog_summ_col_name),
+            else:
+                _abs_err_mult_col_name = _abs_err_mult_col_names[0]
 
-                                'GREATEST({}) AS {}'.format(
-                                    ', '.join(_abs_err_mult_col_names),
-                                    _rowHigh_summ_col_name),
+                _row_summ_col_exprs.append(df[_abs_err_mult_col_name].alias(_rowHigh_summ_col_name))
 
-                                'LEAST({}) AS {}'.format(
-                                    ', '.join(_abs_err_mult_col_names),
-                                    _rowLow_summ_col_name),
-
-                                '(({}) / {}) AS {}'.format(
-                                    ' + '.join(_abs_err_mult_col_names),
-                                    n_label_vars,
-                                    _rowMean_summ_col_name),
-
-                                'POW({}, 1 / {}) AS {}'.format(
-                                    ' * '.join(_abs_err_mult_col_names),
-                                    n_label_vars,
-                                    _rowGMean_summ_col_name)]
-
-                    else:
-                        _abs_err_mult_col_name = _abs_err_mult_col_names[0]
-
-                        _row_summ_col_exprs += \
-                            [df[_abs_err_mult_col_name].alias(_rowEuclNorm_summ_col_name),
-                             pyspark.sql.functions.log(df[_abs_err_mult_col_name]).alias(_rowSumOfLog_summ_col_name),
-                             df[_abs_err_mult_col_name].alias(_rowHigh_summ_col_name),
-                             df[_abs_err_mult_col_name].alias(_rowLow_summ_col_name),
-                             df[_abs_err_mult_col_name].alias(_rowMean_summ_col_name),
-                             df[_abs_err_mult_col_name].alias(_rowGMean_summ_col_name)]
-
-            return df.select('*', *_row_summ_col_exprs)
-
-        else:
-            if isinstance(df, ArrowADF):
-                df = df.toPandas()
-
-            for _raw_metric in self._RAW_METRICS:
-                for _global_or_indiv_prefix in self._GLOBAL_OR_INDIV_PREFIXES:
-                    _row_summ_col_name_body = \
-                        self._ABS_PREFIX + _global_or_indiv_prefix + self._ERR_MULT_COLS[_raw_metric]
-
-                    _rowEuclNorm_summ_col_name = self._rowEuclNorm_PREFIX + _row_summ_col_name_body
-                    _rowSumOfLog_summ_col_name = self._rowSumOfLog_PREFIX + _row_summ_col_name_body
-                    _rowHigh_summ_col_name = self._rowHigh_PREFIX + _row_summ_col_name_body
-                    _rowLow_summ_col_name = self._rowLow_PREFIX + _row_summ_col_name_body
-                    _rowMean_summ_col_name = self._rowMean_PREFIX + _row_summ_col_name_body
-                    _rowGMean_summ_col_name = self._rowGMean_PREFIX + _row_summ_col_name_body
-
-                    if n_label_vars > 1:
-                        abs_err_mults_df = \
-                            df[list(abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric].values())]
-
-                        df[_rowEuclNorm_summ_col_name] = \
-                            ((abs_err_mults_df - 1) ** 2).sum(
-                                axis='columns',
-                                skipna=True,
-                                level=None,
-                                numeric_only=None,
-                                min_count=0) ** .5
-
-                        _prod_series = \
-                            abs_err_mults_df.product(
-                                axis='columns',
-                                skipna=False,
-                                level=None,
-                                numeric_only=True)
-
-                        df[_rowSumOfLog_summ_col_name] = \
-                            numpy.log(_prod_series)
-
-                        df[_rowHigh_summ_col_name] = \
-                            abs_err_mults_df.max(
-                                axis='columns',
-                                skipna=True,
-                                level=None,
-                                numeric_only=True)
-
-                        df[_rowLow_summ_col_name] = \
-                            abs_err_mults_df.min(
-                                axis='columns',
-                                skipna=True,
-                                level=None,
-                                numeric_only=True)
-
-                        df[_rowMean_summ_col_name] = \
-                            abs_err_mults_df.mean(
-                                axis='columns',
-                                skipna=True,
-                                level=None,
-                                numeric_only=True)
-
-                        df[_rowGMean_summ_col_name] = \
-                            _prod_series ** (1 / n_label_vars)
-
-                    else:
-                        _abs_err_mult_col_name = \
-                            abs_err_mult_col_names[_global_or_indiv_prefix][_raw_metric][label_var_name]
-
-                        df[_rowSumOfLog_summ_col_name] = \
-                            numpy.log(df[_abs_err_mult_col_name])
-
-                        df[_rowEuclNorm_summ_col_name] = \
-                            df[_rowHigh_summ_col_name] = \
-                            df[_rowLow_summ_col_name] = \
-                            df[_rowMean_summ_col_name] = \
-                            df[_rowGMean_summ_col_name] = \
-                            df[_abs_err_mult_col_name]
-
-            return df
+        return df.select('*', *_row_summ_col_exprs)
 
     @classmethod
     def daily_err_mults(cls, df_w_err_mults, *label_var_names, **kwargs):
@@ -3348,10 +3055,10 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         cols_to_agg = set(cls._ROW_ERR_MULT_SUMM_COLS)
 
-        for label_var_name, _metric, _global_or_indiv_prefix, _sgn in \
-                itertools.product(label_var_names, cls._RAW_METRICS, cls._GLOBAL_OR_INDIV_PREFIXES, cls._SGN_PREFIXES):
+        for label_var_name, _metric, _sgn in \
+                itertools.product(label_var_names, cls._RAW_METRICS, cls._SGN_PREFIXES):
             if label_var_name in label_var_names:
-                col_to_agg = _sgn + _global_or_indiv_prefix + cls._ERR_MULT_PREFIXES[_metric] + label_var_name
+                col_to_agg = _sgn + cls._ERR_MULT_PREFIXES[_metric] + label_var_name
 
                 if col_to_agg in df_w_err_mults.columns:
                     cols_to_agg.add(col_to_agg)
@@ -3361,33 +3068,22 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         assert label_var_names
 
-        n_label_vars = len(label_var_names)
+        assert isinstance(df_w_err_mults, SparkADF)
 
-        if isinstance(df_w_err_mults, SparkADF):
-            col_strs = []
+        col_strs = \
+            ['AVG(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1}))) AS {2}{0}'
+                .format(col_name, clip, cls._dailyMean_PREFIX)
+             for col_name in cols_to_agg]
 
-            for col_name in cols_to_agg:
-                col_strs += \
-                    ['PERCENTILE_APPROX(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1})), 0.5) AS {2}{0}'
-                         .format(col_name, clip, cls._dailyMed_PREFIX),
-                     'AVG(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1}))) AS {2}{0}'
-                         .format(col_name, clip, cls._dailyMean_PREFIX),
-                     'MAX(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1}))) AS {2}{0}'
-                         .format(col_name, clip, cls._dailyMax_PREFIX),
-                     'MIN(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1}))) AS {2}{0}'
-                         .format(col_name, clip, cls._dailyMin_PREFIX)]
+        for _raw_metric in cls._RAW_METRICS:
+            for label_var_name in label_var_names:
+                if label_var_name in df_w_err_mults.columns:
+                    _metric_col_name = _raw_metric + '__' + label_var_name
+                    if _metric_col_name in df_w_err_mults.columns:
+                        cols_to_agg.add(_metric_col_name)
+                        col_strs.append('AVG({0}) AS {0}'.format(_metric_col_name))
 
-            for _global_or_indiv_prefix in cls._GLOBAL_OR_INDIV_PREFIXES:
-                for _raw_metric in cls._RAW_METRICS:
-                    for label_var_name in label_var_names:
-                        if label_var_name in df_w_err_mults.columns:
-                            _metric_col_name = _global_or_indiv_prefix + _raw_metric + '__' + label_var_name
-
-                            if _metric_col_name in df_w_err_mults.columns:
-                                cols_to_agg.add(_metric_col_name)
-                                col_strs.append('AVG({0}) AS {0}'.format(_metric_col_name))
-
-            adf = df_w_err_mults(
+        adf = df_w_err_mults(
                 'SELECT \
                     {0}, \
                     {1}, \
@@ -3417,208 +3113,32 @@ class _PPPBlueprintABC(_BlueprintABC):
                         else 'TO_DATE({})'.format(time_col)),
                 tCol=None)
 
-            _row_summ_daily_summ_col_exprs = []
+        n_label_vars = len(label_var_names)
+        _row_summ_daily_summ_col_exprs = []
 
-            for _raw_metric in cls._RAW_METRICS:
-                for _global_or_indiv_prefix in cls._GLOBAL_OR_INDIV_PREFIXES:
-                    for _daily_summ_prefix in cls._DAILY_SUMM_PREFIXES:
-                        _row_summ_daily_summ_col_name_body = \
-                            _daily_summ_prefix + cls._ABS_PREFIX + _global_or_indiv_prefix + cls._ERR_MULT_COLS[_raw_metric]
+        for _raw_metric in cls._RAW_METRICS:
+            for _daily_summ_prefix in cls._DAILY_SUMM_PREFIXES:
+                _row_summ_daily_summ_col_name_body = _daily_summ_prefix + cls._ABS_PREFIX + cls._ERR_MULT_COLS[_raw_metric]
 
-                        _daily_summ_abs_err_mult_col_names = \
-                            [(_row_summ_daily_summ_col_name_body + '__' + label_var_name)
-                             for label_var_name in label_var_names]
+                _daily_summ_abs_err_mult_col_names = \
+                    [(_row_summ_daily_summ_col_name_body + '__' + label_var_name)
+                     for label_var_name in label_var_names]
 
-                        _rowEuclNorm_summ_daily_summ_col_name = \
-                            cls._rowEuclNorm_PREFIX + _row_summ_daily_summ_col_name_body
-                        _rowSumOfLog_summ_daily_summ_col_name = \
-                            cls._rowSumOfLog_PREFIX + _row_summ_daily_summ_col_name_body
-                        _rowHigh_summ_daily_summ_col_name = \
-                            cls._rowHigh_PREFIX + _row_summ_daily_summ_col_name_body
-                        _rowLow_summ_daily_summ_col_name = \
-                            cls._rowLow_PREFIX + _row_summ_daily_summ_col_name_body
-                        _rowMean_summ_daily_summ_col_name = \
-                            cls._rowMean_PREFIX + _row_summ_daily_summ_col_name_body
-                        _rowGMean_summ_daily_summ_col_name = \
-                            cls._rowGMean_PREFIX + _row_summ_daily_summ_col_name_body
+                _rowHigh_summ_daily_summ_col_name = cls._rowHigh_PREFIX + _row_summ_daily_summ_col_name_body
 
-                        if n_label_vars > 1:
-                            _row_summ_daily_summ_col_exprs += \
-                                ['POW({}, 0.5) AS {}'.format(
-                                    ' + '.join(
-                                        'POW({} - 1, 2)'.format(_daily_summ_abs_err_mult_col_name)
-                                        for _daily_summ_abs_err_mult_col_name in _daily_summ_abs_err_mult_col_names),
-                                    _rowEuclNorm_summ_daily_summ_col_name),
+                if n_label_vars > 1:
+                    _row_summ_daily_summ_col_exprs.append(
+                        'GREATEST({}) AS {}'.format(
+                            ', '.join(_daily_summ_abs_err_mult_col_names),
+                            _rowHigh_summ_daily_summ_col_name))
 
-                                 'LN({}) AS {}'.format(
-                                    ' * '.join(_daily_summ_abs_err_mult_col_names),
-                                    _rowSumOfLog_summ_daily_summ_col_name),
+                else:
+                    _daily_summ_abs_err_mult_col_name = _daily_summ_abs_err_mult_col_names[0]
 
-                                 'GREATEST({}) AS {}'.format(
-                                    ', '.join(_daily_summ_abs_err_mult_col_names),
-                                    _rowHigh_summ_daily_summ_col_name),
+                    _row_summ_daily_summ_col_exprs.append(
+                        adf[_daily_summ_abs_err_mult_col_name].alias(_rowHigh_summ_daily_summ_col_name))
 
-                                 'LEAST({}) AS {}'.format(
-                                    ', '.join(_daily_summ_abs_err_mult_col_names),
-                                    _rowLow_summ_daily_summ_col_name),
-
-                                 '(({}) / {}) AS {}'.format(
-                                    ' + '.join(_daily_summ_abs_err_mult_col_names),
-                                    n_label_vars,
-                                    _rowMean_summ_daily_summ_col_name),
-
-                                 'POW({}, 1 / {}) AS {}'.format(
-                                    ' * '.join(_daily_summ_abs_err_mult_col_names),
-                                    n_label_vars,
-                                    _rowGMean_summ_daily_summ_col_name)]
-
-                        else:
-                            _daily_summ_abs_err_mult_col_name = _daily_summ_abs_err_mult_col_names[0]
-
-                            _row_summ_daily_summ_col_exprs += \
-                                [adf[_daily_summ_abs_err_mult_col_name].alias(_rowEuclNorm_summ_daily_summ_col_name),
-                                 pyspark.sql.functions.log(adf[_daily_summ_abs_err_mult_col_name]).alias(_rowSumOfLog_summ_daily_summ_col_name),
-                                 adf[_daily_summ_abs_err_mult_col_name].alias(_rowHigh_summ_daily_summ_col_name),
-                                 adf[_daily_summ_abs_err_mult_col_name].alias(_rowLow_summ_daily_summ_col_name),
-                                 adf[_daily_summ_abs_err_mult_col_name].alias(_rowMean_summ_daily_summ_col_name),
-                                 adf[_daily_summ_abs_err_mult_col_name].alias(_rowGMean_summ_daily_summ_col_name)]
-
-            return adf.select('*', *_row_summ_daily_summ_col_exprs)
-
-        else:
-            if df_w_err_mults[time_col].dtype != 'datetime64[ns]':
-                df_w_err_mults[time_col] = pandas.DatetimeIndex(df_w_err_mults[time_col])
-
-            def f(group_df):
-                cols = [id_col, DATE_COL]
-
-                _first_row = group_df.iloc[0]
-
-                d = {id_col: _first_row[id_col],
-                     DATE_COL: _first_row[time_col]}
-
-                for _global_or_indiv_prefix in cls._GLOBAL_OR_INDIV_PREFIXES:
-                    for _raw_metric in cls._RAW_METRICS:
-                        for label_var_name in label_var_names:
-                            if label_var_name in df_w_err_mults.columns:
-                                _metric_col_name = _global_or_indiv_prefix + _raw_metric + '__' + label_var_name
-
-                                d[_metric_col_name] = _first_row[_metric_col_name]
-
-                                cols.append(_metric_col_name)
-
-                for col_to_agg in cols_to_agg:
-                    clipped_series = \
-                        group_df[col_to_agg].clip(
-                            lower=-clip,
-                            upper=clip)
-
-                    _dailyMed_agg_col = cls._dailyMed_PREFIX + col_to_agg
-                    d[_dailyMed_agg_col] = clipped_series.median(skipna=True)
-
-                    _dailyMean_agg_col = cls._dailyMean_PREFIX + col_to_agg
-                    d[_dailyMean_agg_col] = clipped_series.mean(skipna=True)
-
-                    _dailyMax_agg_col = cls._dailyMax_PREFIX + col_to_agg
-                    d[_dailyMax_agg_col] = clipped_series.max(skipna=True)
-
-                    _dailyMin_agg_col = cls._dailyMin_PREFIX + col_to_agg
-                    d[_dailyMin_agg_col] = clipped_series.min(skipna=True)
-
-                    cols += [_dailyMed_agg_col, _dailyMean_agg_col, _dailyMax_agg_col, _dailyMin_agg_col]
-
-                return pandas.Series(d, index=cols)
-
-            df = df_w_err_mults.groupby(
-                    by=[df_w_err_mults[id_col], df_w_err_mults[time_col].dt.date],
-                    axis='index',
-                    level=None,
-                    as_index=False,
-                    sort=True,
-                    group_keys=True,
-                    squeeze=False).apply(f)
-
-            for _raw_metric in cls._RAW_METRICS:
-                for _global_or_indiv_prefix in cls._GLOBAL_OR_INDIV_PREFIXES:
-                    for _daily_summ_prefix in cls._DAILY_SUMM_PREFIXES:
-                        _row_summ_daily_summ_col_name_body = \
-                            _daily_summ_prefix + cls._ABS_PREFIX + _global_or_indiv_prefix + cls._ERR_MULT_COLS[_raw_metric]
-
-                        _rowEuclNorm_summ_daily_summ_col_name = \
-                            cls._rowEuclNorm_PREFIX + _row_summ_daily_summ_col_name_body
-                        _rowSumOfLog_summ_daily_summ_col_name = \
-                            cls._rowSumOfLog_PREFIX + _row_summ_daily_summ_col_name_body
-                        _rowHigh_summ_daily_summ_col_name = \
-                            cls._rowHigh_PREFIX + _row_summ_daily_summ_col_name_body
-                        _rowLow_summ_daily_summ_col_name = \
-                            cls._rowLow_PREFIX + _row_summ_daily_summ_col_name_body
-                        _rowMean_summ_daily_summ_col_name = \
-                            cls._rowMean_PREFIX + _row_summ_daily_summ_col_name_body
-                        _rowGMean_summ_daily_summ_col_name = \
-                            cls._rowGMean_PREFIX + _row_summ_daily_summ_col_name_body
-
-                        if n_label_vars > 1:
-                            _daily_summ_abs_err_mults_df = \
-                                df[[(_row_summ_daily_summ_col_name_body + '__' + label_var_name)
-                                    for label_var_name in label_var_names]]
-
-                            df[_rowEuclNorm_summ_daily_summ_col_name] = \
-                                ((_daily_summ_abs_err_mults_df - 1) ** 2).sum(
-                                    axis='columns',
-                                    skipna=True,
-                                    level=None,
-                                    numeric_only=None,
-                                    min_count=0) ** .5
-
-                            _prod_series = \
-                                _daily_summ_abs_err_mults_df.product(
-                                    axis='columns',
-                                    skipna=False,
-                                    level=None,
-                                    numeric_only=True)
-
-                            df[_rowSumOfLog_summ_daily_summ_col_name] = \
-                                numpy.log(_prod_series)
-
-                            df[_rowHigh_summ_daily_summ_col_name] = \
-                                _daily_summ_abs_err_mults_df.max(
-                                    axis='columns',
-                                    skipna=True,
-                                    level=None,
-                                    numeric_only=True)
-
-                            df[_rowLow_summ_daily_summ_col_name] = \
-                                _daily_summ_abs_err_mults_df.min(
-                                    axis='columns',
-                                    skipna=True,
-                                    level=None,
-                                    numeric_only=True)
-
-                            df[_rowMean_summ_daily_summ_col_name] = \
-                                _daily_summ_abs_err_mults_df.mean(
-                                    axis='columns',
-                                    skipna=True,
-                                    level=None,
-                                    numeric_only=True)
-
-                            df[_rowGMean_summ_daily_summ_col_name] = \
-                                _prod_series ** (1 / n_label_vars)
-
-                        else:
-                            _daily_summ_abs_err_mult_col_name = \
-                                _row_summ_daily_summ_col_name_body + '__' + label_var_name
-
-                            df[_rowSumOfLog_summ_daily_summ_col_name] = \
-                                numpy.log(df[_daily_summ_abs_err_mult_col_name])
-
-                            df[_rowEuclNorm_summ_daily_summ_col_name] = \
-                                df[_rowHigh_summ_daily_summ_col_name] = \
-                                df[_rowLow_summ_daily_summ_col_name] = \
-                                df[_rowMean_summ_daily_summ_col_name] = \
-                                df[_rowGMean_summ_daily_summ_col_name] = \
-                                df[_daily_summ_abs_err_mult_col_name]
-
-            return df
+        return adf.select('*', *_row_summ_daily_summ_col_exprs)
 
     @classmethod
     def ewma_daily_err_mults(cls, daily_err_mults_df, *daily_err_mult_summ_col_names, **kwargs):
