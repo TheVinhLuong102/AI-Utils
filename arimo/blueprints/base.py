@@ -2983,7 +2983,7 @@ class _PPPBlueprintABC(_BlueprintABC):
         assert isinstance(df, SparkADF)
 
         df('*',
-           *(pyspark.sql.functions.lit(self.params.benchmark_metrics[label_var_name][_raw_metric])
+           *(pyspark.sql.functions.lit(self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric])
                 .alias(benchmark_metric_col_names[_raw_metric][label_var_name])
              for label_var_name in label_var_names
              for _raw_metric in self._RAW_METRICS),
