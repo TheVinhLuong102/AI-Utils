@@ -167,6 +167,7 @@ class SparkADF(_ADFABC):
         '__call__',\
         '__getattr__', \
         'fillna', \
+        'join', \
         'prep', \
         'rename', \
         'sample', \
