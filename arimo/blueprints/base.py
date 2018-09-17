@@ -2129,6 +2129,7 @@ class _PPPBlueprintABC(_BlueprintABC):
 
     GOOD_COMPONENT_BLUEPRINT_MIN_R2 = .68
     GOOD_COMPONENT_BLUEPRINT_MAX_MAE_MedAE_RATIO = 3
+    INDIV_REF_MAE_OVER_GLOBAL_REF_MAE_RATIO_COL_PREFIX = '__indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio__'
 
     _SGN_PREFIX = 'sgn__'
     _ABS_PREFIX = 'abs__'
@@ -2912,7 +2913,9 @@ class _PPPBlueprintABC(_BlueprintABC):
                 print('*** {}: {}: R2 = {:.3f} ***'.format(blueprint_obj, label_var_name, r2))
                 return False
 
-    def err_mults(self, df, *label_var_names):
+    def err_mults(self, df, *label_var_names, **kwargs):
+        max_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio = kwargs.pop('max_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio', 1.68)
+
         score_col_names = {}
         lower_outlier_thresholds = {}
         upper_outlier_thresholds = {}
@@ -2966,11 +2969,15 @@ class _PPPBlueprintABC(_BlueprintABC):
                 benchmark_metric_col_names[_raw_metric][label_var_name] = \
                     _raw_metric + '__' + label_var_name
 
+        indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_dfs = []
+
         err_mult_col_names = {}
         abs_err_mult_col_names = {}
+
         for _raw_metric in self._RAW_METRICS:
             err_mult_col_names[_raw_metric] = {}
             abs_err_mult_col_names[_raw_metric] = {}
+
             for label_var_name in label_var_names:
                 err_mult_col_names[_raw_metric][label_var_name] = {}
                 for _sgn_prefix in self._SGN_PREFIXES:
@@ -2980,14 +2987,47 @@ class _PPPBlueprintABC(_BlueprintABC):
                     if _sgn_prefix == self._ABS_PREFIX:
                         abs_err_mult_col_names[_raw_metric][label_var_name] = err_mult_col
 
+                global_metric = \
+                    self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric]
+
+                indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_dfs.append(
+                    pandas.Series(
+                        data={k: v / global_metric
+                              for k, v in self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY].items()},
+                        index=None,
+                        dtype=None,
+                        name=self.INDIV_REF_MAE_OVER_GLOBAL_REF_MAE_RATIO_COL_PREFIX + label_var_name,
+                        copy=False))
+
+        indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_df = \
+            pandas.concat(
+                objs=indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_dfs,
+                axis='columns',
+                join='outer',
+                join_axes=None,
+                ignore_index=False,
+                keys=None,
+                levels=None,
+                names=None,
+                verify_integrity=False,
+                sort=None,
+                copy=False)
+        
+        id_col = self.params.data.id_col
+
+        indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_df[id_col] = \
+            indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_df.index
+
         assert isinstance(df, SparkADF)
 
-        df('*',
-           *(pyspark.sql.functions.lit(self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric])
-                .alias(benchmark_metric_col_names[_raw_metric][label_var_name])
-             for label_var_name in label_var_names
-             for _raw_metric in self._RAW_METRICS),
-           inplace=True)
+        df = df('*',
+                *(pyspark.sql.functions.lit(self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric])
+                    .alias(benchmark_metric_col_names[_raw_metric][label_var_name])
+                for label_var_name in label_var_names
+                for _raw_metric in self._RAW_METRICS)) \
+            .join(other=SparkADF.create(indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_df),
+                  on=id_col,
+                  how='left')
 
         col_exprs = []
 
