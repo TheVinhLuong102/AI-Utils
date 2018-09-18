@@ -3253,16 +3253,34 @@ class _PPPBlueprintABC(_BlueprintABC):
                 )[daily_err_mult_summ_col_names] \
                 .apply(
                     lambda df:
-                        df.ewm(
-                            com=None,
-                            span=None,
-                            halflife=None,
-                            alpha=_alpha,
-                            min_periods=0,
-                            adjust=False,   # ref: http://pandas.pydata.org/pandas-docs/stable/computation.html#exponentially-weighted-windows
-                            ignore_na=False,   # NA should terminate EWMA values
-                            axis='index')
-                        .mean())
+                        df.where(
+                            cond=pandas.isnull(df),
+                            other=df.ewm(
+                                    com=None,
+                                    span=None,
+                                    halflife=None,
+                                    alpha=_alpha,
+                                    min_periods=0,
+                                    adjust=False,
+                                        # ref: http://pandas.pydata.org/pandas-docs/stable/computation.html#exponentially-weighted-windows
+                                    ignore_na=False,
+                                        # When ignore_na is False (default), weights are based on absolute positions.
+                                        # For example, the weights of x and y used in calculating the final weighted average of
+                                        # [x, None, y] are (1-alpha)**2 and 1 (if adjust is True),
+                                        # and (1-alpha)**2 and alpha (if adjust is False).
+                                        # When ignore_na is True (reproducing pre-0.15.0 behavior),
+                                        # weights are based on relative positions.
+                                        # For example, the weights of x and y used in calculating the final weighted average of
+                                        # [x, None, y] are 1-alpha and 1 (if adjust is True),
+                                        # and 1-alpha and alpha (if adjust is False).
+                                    axis='index')
+                                .mean()),
+                            inplace=False,
+                            axis=None,
+                            level=None,
+                            errors='raise',
+                            try_cast=False,
+                            raise_on_error=None)
 
         return daily_err_mults_df
 
