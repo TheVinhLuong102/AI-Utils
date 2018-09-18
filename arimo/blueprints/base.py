@@ -3017,7 +3017,11 @@ class _PPPBlueprintABC(_BlueprintABC):
                 levels=None,
                 names=None,
                 verify_integrity=False,
-                sort=None,
+                sort=False,
+                    # FutureWarning: Sorting because non-concatenation axis is not aligned.
+                    # A future version of pandas will change to not sort by default.
+                    # To accept the future behavior, pass 'sort=False'.
+                    # To retain the current behavior and silence the warning, pass 'sort=True'.
                 copy=False)
         
         id_col = self.params.data.id_col
