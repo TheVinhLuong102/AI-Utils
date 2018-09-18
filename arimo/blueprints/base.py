@@ -3260,7 +3260,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                             alpha=_alpha,
                             min_periods=0,
                             adjust=False,   # ref: http://pandas.pydata.org/pandas-docs/stable/computation.html#exponentially-weighted-windows
-                            ignore_na=True,
+                            ignore_na=False,   # NA should terminate EWMA values
                             axis='index')
                         .mean())
 
