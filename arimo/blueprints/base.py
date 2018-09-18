@@ -2999,7 +2999,7 @@ class _PPPBlueprintABC(_BlueprintABC):
 
                 indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_dfs.append(
                     pandas.Series(
-                        data={k: v / global_metric
+                        data={k: v[_raw_metric] / global_metric
                               for k, v in self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY].items()},
                         index=None,
                         dtype=None,
