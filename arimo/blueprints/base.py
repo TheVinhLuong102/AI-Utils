@@ -2129,7 +2129,8 @@ class _PPPBlueprintABC(_BlueprintABC):
 
     GOOD_COMPONENT_BLUEPRINT_MIN_R2 = .68
     GOOD_COMPONENT_BLUEPRINT_MAX_MAE_MedAE_RATIO = 3
-    INDIV_REF_MAE_OVER_GLOBAL_REF_MAE_RATIO_COL_PREFIX = '__indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio__'
+    INDIV_REF_BENCHMARK_METRIC_OVER_GLOBAL_REF_BENCHMARK_METRIC_RATIO_COL_PREFIX = \
+        '__indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio__'
 
     _SGN_PREFIX = 'sgn__'
     _ABS_PREFIX = 'abs__'
@@ -2963,11 +2964,17 @@ class _PPPBlueprintABC(_BlueprintABC):
                         component_blueprint_params.data.label.upper_outlier_threshold
 
         benchmark_metric_col_names = {}
+        indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_col_names = {}
         for _raw_metric in self._RAW_METRICS:
             benchmark_metric_col_names[_raw_metric] = {}
+            indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_col_names[_raw_metric] = {}
             for label_var_name in label_var_names:
-                benchmark_metric_col_names[_raw_metric][label_var_name] = \
+                benchmark_metric_col_name = \
                     _raw_metric + '__' + label_var_name
+                benchmark_metric_col_names[_raw_metric][label_var_name] = \
+                    benchmark_metric_col_name
+                indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_col_names[_raw_metric][label_var_name] = \
+                    self.INDIV_REF_BENCHMARK_METRIC_OVER_GLOBAL_REF_BENCHMARK_METRIC_RATIO_COL_PREFIX + benchmark_metric_col_name
 
         indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_dfs = []
 
@@ -2996,7 +3003,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                               for k, v in self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY].items()},
                         index=None,
                         dtype=None,
-                        name=self.INDIV_REF_MAE_OVER_GLOBAL_REF_MAE_RATIO_COL_PREFIX + label_var_name,
+                        name=indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_col_names[_raw_metric][label_var_name],
                         copy=False))
 
         indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_df = \
@@ -3042,8 +3049,11 @@ class _PPPBlueprintABC(_BlueprintABC):
 
             for _raw_metric in self._RAW_METRICS:
                 _sgn_err_mult_col_expr = \
-                    _sgn_err_col_expr / \
-                    df[benchmark_metric_col_names[_raw_metric][label_var_name]]
+                    pyspark.sql.functions.when(
+                        condition=
+                            df[indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_col_names[_raw_metric][label_var_name]]
+                            <= max_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio,
+                        value=_sgn_err_col_expr / df[benchmark_metric_col_names[_raw_metric][label_var_name]])
 
                 col_exprs += \
                     [_sgn_err_mult_col_expr
