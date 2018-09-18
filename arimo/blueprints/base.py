@@ -3130,8 +3130,14 @@ class _PPPBlueprintABC(_BlueprintABC):
                 if label_var_name in df_w_err_mults.columns:
                     _metric_col_name = _raw_metric + '__' + label_var_name
                     if _metric_col_name in df_w_err_mults.columns:
-                        cols_to_agg.add(_metric_col_name)
-                        col_strs.append('AVG({0}) AS {0}'.format(_metric_col_name))
+                        _indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_rario_col_name = \
+                            cls.INDIV_REF_BENCHMARK_METRIC_OVER_GLOBAL_REF_BENCHMARK_METRIC_RATIO_COL_PREFIX + _metric_col_name
+                        cols_to_agg.update(
+                            {_metric_col_name,
+                             _indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_rario_col_name})
+                        col_strs += \
+                            ['AVG({0}) AS {0}'.format(_metric_col_name),
+                             'AVG({0}) AS {0}'.format(_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_rario_col_name)]
 
         adf = df_w_err_mults(
                 'SELECT \
