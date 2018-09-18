@@ -2976,7 +2976,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                 indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_col_names[_raw_metric][label_var_name] = \
                     self.INDIV_REF_BENCHMARK_METRIC_OVER_GLOBAL_REF_BENCHMARK_METRIC_RATIO_COL_PREFIX + benchmark_metric_col_name
 
-        indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_dfs = []
+        indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_series = []
 
         err_mult_col_names = {}
         abs_err_mult_col_names = {}
@@ -2997,7 +2997,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                 global_metric = \
                     self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric]
 
-                indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_dfs.append(
+                indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_series.append(
                     pandas.Series(
                         data={k: v[_raw_metric] / global_metric
                               for k, v in self.params.benchmark_metrics[label_var_name][self._BY_ID_EVAL_KEY].items()},
@@ -3008,7 +3008,7 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_df = \
             pandas.concat(
-                objs=indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_dfs,
+                objs=indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_series,
                 axis='columns',
                 join='outer',
                 join_axes=None,
