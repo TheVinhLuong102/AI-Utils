@@ -253,10 +253,11 @@ class SparkADF(_ADFABC):
                     if self._nDetPrePartitions is None:
                         self._nDetPrePartitions = self.nPartitions
 
-                    else:
-                        assert self._nDetPrePartitions >= self.nPartitions, \
-                            '*** Deterministically Pre-Partitioned SparkADF: Set nDetPrePartitions {} < Detected {} Partitions ***'.format(
-                                self._nDetPrePartitions, self.nPartitions)
+                    # *** SKIP BELOW AS IT RESULTS IN POOR PARALLELISM ***
+                    # else:
+                        # assert self._nDetPrePartitions >= self.nPartitions, \
+                        #     '*** Deterministically Pre-Partitioned SparkADF: Set nDetPrePartitions {} < Detected {} Partitions ***'.format(
+                        #         self._nDetPrePartitions, self.nPartitions)
 
                     self._sparkDF = \
                         self._sparkDF.withColumn(
