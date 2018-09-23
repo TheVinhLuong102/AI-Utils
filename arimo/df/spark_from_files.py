@@ -167,28 +167,35 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
 
             if arimo.backend.chkSpark():
                 if kwargs['detPrePartitioned']:
-                    if arimo.debug.ON:
-                        logger.debug(
-                            msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to MAX_JAVA_INTEGER ***')
+                    pass
 
-                    arimo.backend.setSpark1Partition1File(on=True)
+                    # *** SKIP BELOW BECAUSE IT RESULTS IN POOR PARALLELISM ***
+                    # if arimo.debug.ON:
+                    #     logger.debug(
+                    #         msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to MAX_JAVA_INTEGER ***')
+                    # arimo.backend.setSpark1Partition1File(on=True)
 
                 else:
-                    if arimo.debug.ON:
-                        logger.debug(
-                            msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to Defaults ***')
+                    pass
 
-                    arimo.backend.setSpark1Partition1File(on=False)
+                    # *** SKIP BELOW BECAUSE IT RESULTS IN POOR PARALLELISM ***
+                    # if arimo.debug.ON:
+                    #     logger.debug(
+                    #         msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to Defaults ***')
+                    # arimo.backend.setSpark1Partition1File(on=False)
 
             else:
                 sparkConf = kwargs.pop('sparkConf', {})
 
                 if kwargs['detPrePartitioned']:
-                    sparkConf['spark.files.maxPartitionBytes'] = \
-                        sparkConf['spark.sql.files.maxPartitionBytes'] = \
-                        sparkConf['spark.files.openCostInBytes'] = \
-                        sparkConf['spark.sql.files.openCostInBytes'] = \
-                        arimo.backend._MAX_JAVA_INTEGER
+                    pass
+
+                    # *** SKIP BELOW BECAUSE IT RESULTS IN POOR PARALLELISM ***
+                    # sparkConf['spark.files.maxPartitionBytes'] = \
+                    #     sparkConf['spark.sql.files.maxPartitionBytes'] = \
+                    #     sparkConf['spark.files.openCostInBytes'] = \
+                    #     sparkConf['spark.sql.files.openCostInBytes'] = \
+                    #     arimo.backend._MAX_JAVA_INTEGER
 
                 arimo.backend.initSpark(sparkConf=sparkConf)
 
