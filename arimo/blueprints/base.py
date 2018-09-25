@@ -1261,7 +1261,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
 
         __first_train__ = __train__ and (not os.path.isdir(self.data_transforms_dir))
 
-        if isinstance(df, SparkADF):
+        if isinstance(df, SparkADF) or hasattr(df, '_sparkDF'):
             adf = df
 
             adf.tCol = self.params.data.time_col
@@ -1669,7 +1669,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                 adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
 
         else:
-            if isinstance(adf, SparkADF):
+            if isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF'):
                 adf_uuid = clean_uuid(uuid.uuid4())
 
                 adf.alias = \
@@ -1825,7 +1825,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                             __mode__,
                             adf_uuid,
                             self._PREP_ADF_ALIAS_SUFFIX)
-                        if isinstance(adf, SparkADF)
+                        if isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF')
                         else None)
 
             if __train__ or __eval__:
@@ -2268,7 +2268,7 @@ class _PPPBlueprintABC(_BlueprintABC):
            and (self.params.data.time_col in adf.columns)
 
         if __train__:
-            if isinstance(adf, SparkADF):
+            if isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF'):
                 if isinstance(adf, ArrowSparkADF):
                     __vectorize__ = False
 
@@ -2320,7 +2320,7 @@ class _PPPBlueprintABC(_BlueprintABC):
             adf.maxNCats = self.params.data.max_n_cats
 
         else:
-            if isinstance(adf, SparkADF):
+            if isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF'):
                 adf_uuid = clean_uuid(uuid.uuid4())
 
                 adf.filter(
@@ -2377,7 +2377,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                 verbose=verbose)
 
         if __train__:
-            if isinstance(adf, SparkADF):
+            if isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF'):
                 adf.alias = \
                     '{}__{}__{}{}'.format(
                         self.params._uuid,
@@ -2424,7 +2424,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                              if cat_orig_to_prep_col_map['__OHE__']
                              else len(component_blueprint_params.data._cat_prep_cols))
 
-                    if isinstance(adf, SparkADF):
+                    if isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF'):
                         if (__vectorize__ is None) or __vectorize__:
                             component_labeled_adfs[label_var_name] = \
                                 adf(VectorAssembler(
@@ -2476,7 +2476,7 @@ class _PPPBlueprintABC(_BlueprintABC):
 
             return component_labeled_adfs
 
-        elif isinstance(adf, SparkADF):
+        elif isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF'):
             adf.alias = \
                 '{}__{}__{}{}'.format(
                     self.params._uuid,
