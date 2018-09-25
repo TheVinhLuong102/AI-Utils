@@ -2223,7 +2223,7 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         __first_train__ = __train__ and (not os.path.isdir(self.data_transforms_dir))
 
-        if isinstance(df, SparkADF):
+        if isinstance(df, SparkADF) or hasattr(df, '_sparkDF'):
             adf = df
 
             adf.tCol = self.params.data.time_col
