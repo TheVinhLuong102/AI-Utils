@@ -27,7 +27,7 @@ class DLPPPBlueprint(_PPPBlueprintABC):
 
         adf = self.prep_data(*args, **kwargs)
 
-        assert isinstance(adf, SparkADF) and adf.alias
+        assert (isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF')) and adf.alias
 
         if arimo.debug.ON:
             self.stdout_logger.debug(

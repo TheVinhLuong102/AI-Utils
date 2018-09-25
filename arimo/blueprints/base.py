@@ -3029,7 +3029,7 @@ class _PPPBlueprintABC(_BlueprintABC):
         indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_df[id_col] = \
             indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_df.index
 
-        assert isinstance(df, SparkADF)
+        assert isinstance(df, SparkADF) or hasattr(df, '_sparkDF')
 
         df = df('*',
                 *(pyspark.sql.functions.lit(self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric])
