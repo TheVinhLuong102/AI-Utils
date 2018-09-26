@@ -9,7 +9,7 @@ import uuid
 from pyspark.sql.types import DoubleType, StructField, StructType
 
 import arimo.backend
-from arimo.df.spark import SparkADF
+from arimo.data.distributed import DDF
 from arimo.util import fs
 import arimo.debug
 
@@ -27,7 +27,7 @@ class DLPPPBlueprint(_PPPBlueprintABC):
 
         adf = self.prep_data(*args, **kwargs)
 
-        assert (isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF')) and adf.alias
+        assert (isinstance(adf, DDF) or hasattr(adf, '_sparkDF')) and adf.alias
 
         if arimo.debug.ON:
             self.stdout_logger.debug(
@@ -184,7 +184,7 @@ class DLPPPBlueprint(_PPPBlueprintABC):
                                         batch_size=__batch_size__)
                                   for model_path, x in zip(model_paths, tup[1:])))]
 
-        return SparkADF.create(
+        return DDF.create(
                 data=rdd.flatMap(score),
                 schema=StructType(
                     list(adf.schema) +

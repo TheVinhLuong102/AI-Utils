@@ -23,7 +23,7 @@ from arimo.util.log import STDOUT_HANDLER
 import arimo.debug
 
 
-class _ADFABC(object):
+class AbstractDataHandler(object):
     __metaclass__ = abc.ABCMeta
 
     # default identity/entity, timestamp & time order columns

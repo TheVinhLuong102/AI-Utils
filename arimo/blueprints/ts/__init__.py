@@ -11,11 +11,10 @@ import shutil
 import tqdm
 import uuid
 
-from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import ArrayType, DoubleType, IntegerType, StructField, StructType
 
 import arimo.backend
-from arimo.df.spark import SparkADF
+from arimo.data.distributed import DDF
 import arimo.eval.metrics
 from arimo.util import clean_str, clean_uuid, fs, Namespace
 from arimo.util.decor import _docstr_verbose
@@ -133,7 +132,7 @@ class _TimeSerDLSupervisedBlueprintABC(_DLSupervisedBlueprintABC):
                 if self.params.data.label._int_var is None \
                 else self.params.data.label._int_var
 
-        assert isinstance(adf, SparkADF) and adf.alias
+        assert isinstance(adf, DDF) and adf.alias
 
         if __cache_vector_data__:   # *** cache here to potentially speed up window funcs creating sequences below ***
             adf.cache(
@@ -172,7 +171,7 @@ class _TimeSerDLSupervisedBlueprintABC(_DLSupervisedBlueprintABC):
 
         if arimo.debug.ON:
             model.stdout_logger.debug(
-                msg='*** SCORE: PREPARED SparkADF: {} {} ***'
+                msg='*** SCORE: PREPARED DDF: {} {} ***'
                     .format(adf, adf.columns))
 
         id_col = str(self.params.data.id_col)
@@ -306,7 +305,7 @@ class _TimeSerDLSupervisedBlueprintABC(_DLSupervisedBlueprintABC):
                                         verbose=0))]
 
         score_adf = \
-            SparkADF.create(
+            DDF.create(
                 data=rdd.flatMap(score),
                 schema=StructType(
                     [StructField(
@@ -412,7 +411,7 @@ class _TimeSerDLSupervisedBlueprintABC(_DLSupervisedBlueprintABC):
                 verbose=verbose,
                 *args, **kwargs)
 
-        assert isinstance(adf, SparkADF) and adf.alias
+        assert isinstance(adf, DDF) and adf.alias
 
         model = self.model(
             ver=self.params.model.ver
@@ -421,7 +420,7 @@ class _TimeSerDLSupervisedBlueprintABC(_DLSupervisedBlueprintABC):
 
         if arimo.debug.ON:
             model.stdout_logger.debug(
-                msg='*** EVAL: POST-PREP_XY SparkADF: {} {} ***'
+                msg='*** EVAL: POST-PREP_XY DDF: {} {} ***'
                     .format(adf, adf.columns))
 
         score_adf = \
@@ -439,7 +438,7 @@ class _TimeSerDLSupervisedBlueprintABC(_DLSupervisedBlueprintABC):
 
         if arimo.debug.ON:
             model.stdout_logger.debug(
-                msg='*** EVAL: SCORED SparkADF: {} {} ***'
+                msg='*** EVAL: SCORED DDF: {} {} ***'
                     .format(score_adf, score_adf.columns))
 
         label_var = \

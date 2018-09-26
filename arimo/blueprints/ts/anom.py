@@ -9,7 +9,7 @@ import uuid
 from pyspark.sql.types import DoubleType, IntegerType, StructField, StructType
 
 import arimo.backend
-from arimo.df.spark import SparkADF
+from arimo.data.distributed import DDF
 from arimo.util import fs
 from arimo.util.dl import MASK_VAL
 import arimo.debug
@@ -37,7 +37,7 @@ class DLPPPBlueprint(_TimeSerDataPrepMixInABC, _PPPBlueprintABC):
 
         adf = self.prep_data(*args, **kwargs)
 
-        assert isinstance(adf, SparkADF) and adf.alias
+        assert isinstance(adf, DDF) and adf.alias
 
         if arimo.debug.ON:
             self.stdout_logger.debug(
@@ -167,7 +167,7 @@ class DLPPPBlueprint(_TimeSerDataPrepMixInABC, _PPPBlueprintABC):
 
         if arimo.debug.ON:
             self.stdout_logger.debug(
-                msg='*** SCORE: PREPARED SparkADF: {} {} ***\n'
+                msg='*** SCORE: PREPARED DDF: {} {} ***\n'
                     .format(adf, adf.columns))
 
         prep_vec_over_time_cols = {}
@@ -272,7 +272,7 @@ class DLPPPBlueprint(_TimeSerDataPrepMixInABC, _PPPBlueprintABC):
                                for i, label_var_name in enumerate(label_var_names)))
 
         score_adf = \
-            SparkADF.create(
+            DDF.create(
                 data=rdd.flatMap(score),
                 schema=StructType(
                     [StructField(

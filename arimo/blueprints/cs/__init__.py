@@ -11,11 +11,10 @@ import shutil
 import tqdm
 import uuid
 
-from pyspark.sql.functions import pandas_udf, PandasUDFType
 from pyspark.sql.types import ArrayType, DoubleType, StructField, StructType
 
 import arimo.backend
-from arimo.df.spark import SparkADF
+from arimo.data.distributed import DDF
 import arimo.eval.metrics
 from arimo.util import clean_str, clean_uuid, fs
 from arimo.util.log import STDOUT_HANDLER
@@ -77,7 +76,7 @@ class _CrossSectSupervisedBlueprintABC(_SupervisedBlueprintABC):
                 verbose=verbose,
                 *args, **kwargs)
 
-        assert isinstance(adf, SparkADF) and adf.alias
+        assert isinstance(adf, DDF) and adf.alias
         _adf_alias = adf.alias
 
         model = self.model(
@@ -260,7 +259,7 @@ class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSu
                     if self.params.model.ver
                     else 'latest')
 
-        assert isinstance(adf, SparkADF) and adf.alias
+        assert isinstance(adf, DDF) and adf.alias
 
         prep_vec_col = self.params.data._prep_vec_col
 
@@ -387,7 +386,7 @@ class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSu
                                         verbose=0))]
 
         score_adf = \
-            SparkADF.create(
+            DDF.create(
                 data=rdd.flatMap(score),
                 schema=StructType(
                     list(adf.schema) +

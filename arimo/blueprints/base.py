@@ -28,13 +28,13 @@ from pyspark.ml import PipelineModel
 from pyspark.ml.feature import StringIndexer, VectorAssembler
 import pyspark.sql
 from pyspark.sql.functions import pandas_udf, PandasUDFType
-from pyspark.sql.types import DoubleType, IntegerType, StringType, StructField, StructType
+from pyspark.sql.types import DoubleType, IntegerType, StructField, StructType
 
 import arimo.backend
-from arimo.df.from_files import ArrowADF, \
-    _ArrowADF__castType__pandasDFTransform, _ArrowADF__encodeStr__pandasDFTransform
-from arimo.df.spark import SparkADF
-from arimo.df.spark_from_files import ArrowSparkADF
+from arimo.data.parquet import S3ParquetDataFeeder, \
+    _S3ParquetDataFeeder__castType__pandasDFTransform, _S3ParquetDataFeeder__encodeStr__pandasDFTransform
+from arimo.data.distributed import DDF
+from arimo.data.distributed_parquet import S3ParquetDistributedDataFrame
 from arimo.dl.base import DataFramePreprocessor, ModelServingPersistence
 import arimo.eval.metrics
 from arimo.util import clean_str, clean_uuid, date_time, fs, import_obj, Namespace
@@ -1261,7 +1261,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
 
         __first_train__ = __train__ and (not os.path.isdir(self.data_transforms_dir))
 
-        if isinstance(df, SparkADF) or hasattr(df, '_sparkDF'):
+        if isinstance(df, DDF) or hasattr(df, '_sparkDF'):
             adf = df
 
             adf.tCol = self.params.data.time_col
@@ -1276,7 +1276,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                 kwargs['iCol'] = self.params.data.id_col
 
             if isinstance(df, pandas.DataFrame):
-                adf = SparkADF.create(
+                adf = DDF.create(
                         data=df,
                         schema=None,
                         samplingRatio=None,
@@ -1284,12 +1284,12 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                         **kwargs)
 
             elif isinstance(df, pyspark.sql.DataFrame):
-                adf = SparkADF(sparkDF=df, **kwargs)
+                adf = DDF(sparkDF=df, **kwargs)
 
             else:
                 __vectorize__ = False
 
-                if isinstance(df, ArrowADF):
+                if isinstance(df, S3ParquetDataFeeder):
                     adf = df
 
                     adf.tCol = self.params.data.time_col
@@ -1300,9 +1300,9 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                 else:
                     assert isinstance(df, _STR_CLASSES)
 
-                    adf = (ArrowSparkADF
+                    adf = (S3ParquetDistributedDataFrame
                            if arimo.backend._ON_LINUX_CLUSTER_WITH_HDFS
-                           else ArrowADF)(
+                           else S3ParquetDataFeeder)(
                         path=df, **kwargs)
 
         if __train__:
@@ -1310,12 +1310,12 @@ class _SupervisedBlueprintABC(_BlueprintABC):
 
             label_col_type = adf.type(self.params.data.label.var)
 
-            if isinstance(adf, ArrowADF):
+            if isinstance(adf, S3ParquetDataFeeder):
                 sample_label_series = None
 
                 if is_float(label_col_type) and isinstance(self, ClassifEvalMixIn):
                     adf.map(
-                        mapper=_ArrowADF__castType__pandasDFTransform(
+                        mapper=_S3ParquetDataFeeder__castType__pandasDFTransform(
                                 col=self.params.data.label.var,
                                 asType=str,
                                 asCol=None),
@@ -1329,7 +1329,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                         self.params.data.label._int_var = self._INT_LABEL_COL
 
                     adf.map(
-                        mapper=_ArrowADF__castType__pandasDFTransform(
+                        mapper=_S3ParquetDataFeeder__castType__pandasDFTransform(
                                 col=self.params.data.label.var,
                                 asType=int,
                                 asCol=self.params.data.label._int_var),
@@ -1361,7 +1361,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                             .classes_.tolist()
 
                     adf.map(
-                        mapper=_ArrowADF__encodeStr__pandasDFTransform(
+                        mapper=_S3ParquetDataFeeder__encodeStr__pandasDFTransform(
                                 col=self.params.data.label.var,
                                 strs=self.params.data.label._strings,
                                 asCol=self.params.data.label._int_var),
@@ -1482,7 +1482,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                                 self.params.data.label.upper_outlier_threshold = upper_numeric_null
 
             else:
-                if isinstance(adf, ArrowSparkADF):
+                if isinstance(adf, S3ParquetDistributedDataFrame):
                     __vectorize__ = False
 
                 if __from_ppp__:
@@ -1669,7 +1669,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                 adf.alias += self._LABELED_ADF_ALIAS_SUFFIX
 
         else:
-            if isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF'):
+            if isinstance(adf, DDF) or hasattr(adf, '_sparkDF'):
                 adf_uuid = clean_uuid(uuid.uuid4())
 
                 adf.alias = \
@@ -1683,10 +1683,10 @@ class _SupervisedBlueprintABC(_BlueprintABC):
 
                 label_col_type = adf.type(self.params.data.label.var)
 
-                if isinstance(adf, ArrowADF):
+                if isinstance(adf, S3ParquetDataFeeder):
                     if is_float(label_col_type) and isinstance(self, ClassifEvalMixIn):
                         adf.map(
-                            mapper=_ArrowADF__castType__pandasDFTransform(
+                            mapper=_S3ParquetDataFeeder__castType__pandasDFTransform(
                                     col=self.params.data.label.var,
                                     asType=str,
                                     asCol=None),
@@ -1697,7 +1697,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
 
                     if is_boolean(label_col_type):
                         adf.map(
-                            mapper=_ArrowADF__castType__pandasDFTransform(
+                            mapper=_S3ParquetDataFeeder__castType__pandasDFTransform(
                                     col=self.params.data.label.var,
                                     asType=int,
                                     asCol=self.params.data.label._int_var),
@@ -1706,7 +1706,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
 
                     elif is_string(label_col_type):
                         adf.map(
-                            mapper=_ArrowADF__encodeStr__pandasDFTransform(
+                            mapper=_S3ParquetDataFeeder__encodeStr__pandasDFTransform(
                                     col=self.params.data.label.var,
                                     strs=self.params.data.label._strings,
                                     asCol=self.params.data.label._int_var),
@@ -1825,7 +1825,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                             __mode__,
                             adf_uuid,
                             self._PREP_ADF_ALIAS_SUFFIX)
-                        if isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF')
+                        if isinstance(adf, DDF) or hasattr(adf, '_sparkDF')
                         else None)
 
             if __train__ or __eval__:
@@ -1863,7 +1863,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                                if cat_orig_to_prep_col_map['__OHE__']
                                else len(self.params.data._cat_prep_cols)))
 
-                if isinstance(adf, ArrowADF):
+                if isinstance(adf, S3ParquetDataFeeder):
                     adf = adf[
                         [self.params.data.label.var
                          if self.params.data.label._int_var is None
@@ -1873,7 +1873,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
                         list(adf.indexCols + adf.tAuxCols +
                              self.params.data._cat_prep_cols + self.params.data._num_prep_cols)]
 
-                elif isinstance(adf, ArrowSparkADF):
+                elif isinstance(adf, S3ParquetDistributedDataFrame):
                     if __vectorize__:
                         adf(self.params.data.label.var
                                 if self.params.data.label._int_var is None
@@ -2223,7 +2223,7 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         __first_train__ = __train__ and (not os.path.isdir(self.data_transforms_dir))
 
-        if isinstance(df, SparkADF) or hasattr(df, '_sparkDF'):
+        if isinstance(df, DDF) or hasattr(df, '_sparkDF'):
             adf = df
 
             adf.tCol = self.params.data.time_col
@@ -2238,7 +2238,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                 kwargs['iCol'] = self.params.data.id_col
 
             if isinstance(df, pandas.DataFrame):
-                adf = SparkADF.create(
+                adf = DDF.create(
                         data=df,
                         schema=None,
                         samplingRatio=None,
@@ -2246,9 +2246,9 @@ class _PPPBlueprintABC(_BlueprintABC):
                         **kwargs)
 
             elif isinstance(df, pyspark.sql.DataFrame):
-                adf = SparkADF(sparkDF=df, **kwargs)
+                adf = DDF(sparkDF=df, **kwargs)
 
-            elif isinstance(df, ArrowADF):
+            elif isinstance(df, S3ParquetDataFeeder):
                 adf = df
 
                 adf.tCol = self.params.data.time_col
@@ -2259,17 +2259,17 @@ class _PPPBlueprintABC(_BlueprintABC):
             else:
                 assert isinstance(df, _STR_CLASSES)
 
-                adf = (ArrowSparkADF
+                adf = (S3ParquetDistributedDataFrame
                        if arimo.backend._ON_LINUX_CLUSTER_WITH_HDFS
-                       else ArrowADF)(
+                       else S3ParquetDataFeeder)(
                     path=df, **kwargs)
 
         assert (self.params.data.id_col in adf.columns) \
            and (self.params.data.time_col in adf.columns)
 
         if __train__:
-            if isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF'):
-                if isinstance(adf, ArrowSparkADF):
+            if isinstance(adf, DDF) or hasattr(adf, '_sparkDF'):
+                if isinstance(adf, S3ParquetDistributedDataFrame):
                     __vectorize__ = False
 
                 adf_uuid = clean_uuid(uuid.uuid4())
@@ -2320,7 +2320,7 @@ class _PPPBlueprintABC(_BlueprintABC):
             adf.maxNCats = self.params.data.max_n_cats
 
         else:
-            if isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF'):
+            if isinstance(adf, DDF) or hasattr(adf, '_sparkDF'):
                 adf_uuid = clean_uuid(uuid.uuid4())
 
                 adf.filter(
@@ -2377,7 +2377,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                 verbose=verbose)
 
         if __train__:
-            if isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF'):
+            if isinstance(adf, DDF) or hasattr(adf, '_sparkDF'):
                 adf.alias = \
                     '{}__{}__{}{}'.format(
                         self.params._uuid,
@@ -2424,7 +2424,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                              if cat_orig_to_prep_col_map['__OHE__']
                              else len(component_blueprint_params.data._cat_prep_cols))
 
-                    if isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF'):
+                    if isinstance(adf, DDF) or hasattr(adf, '_sparkDF'):
                         if (__vectorize__ is None) or __vectorize__:
                             component_labeled_adfs[label_var_name] = \
                                 adf(VectorAssembler(
@@ -2450,7 +2450,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                                     list((() if self.params.data.id_col in adf.indexCols
                                              else (self.params.data.id_col,)) +
                                          (tuple(set(adf.indexCols) - {adf._PARTITION_ID_COL})
-                                          if isinstance(adf, ArrowSparkADF)
+                                          if isinstance(adf, S3ParquetDistributedDataFrame)
                                           else adf.indexCols) +
                                          adf.tAuxCols +
                                          component_blueprint_params.data._cat_prep_cols +
@@ -2476,7 +2476,7 @@ class _PPPBlueprintABC(_BlueprintABC):
 
             return component_labeled_adfs
 
-        elif isinstance(adf, SparkADF) or hasattr(adf, '_sparkDF'):
+        elif isinstance(adf, DDF) or hasattr(adf, '_sparkDF'):
             adf.alias = \
                 '{}__{}__{}{}'.format(
                     self.params._uuid,
@@ -3029,14 +3029,14 @@ class _PPPBlueprintABC(_BlueprintABC):
         indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_df[id_col] = \
             indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_df.index
 
-        assert isinstance(df, SparkADF) or hasattr(df, '_sparkDF')
+        assert isinstance(df, DDF) or hasattr(df, '_sparkDF')
 
         df = df('*',
                 *(pyspark.sql.functions.lit(self.params.benchmark_metrics[label_var_name][self._GLOBAL_EVAL_KEY][_raw_metric])
                     .alias(benchmark_metric_col_names[_raw_metric][label_var_name])
                 for label_var_name in label_var_names
                 for _raw_metric in self._RAW_METRICS)) \
-            .join(other=SparkADF.create(indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_df),
+            .join(other=DDF.create(indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_df),
                   on=id_col,
                   how='left')
 
@@ -3122,7 +3122,7 @@ class _PPPBlueprintABC(_BlueprintABC):
 
         assert label_var_names
 
-        assert isinstance(df_w_err_mults, SparkADF)
+        assert isinstance(df_w_err_mults, DDF)
 
         col_strs = \
             ['AVG(IF({0} IS NULL, NULL, GREATEST(LEAST({0}, {1}), -{1}))) AS {2}{0}'

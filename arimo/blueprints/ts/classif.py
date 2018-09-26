@@ -7,8 +7,8 @@ import psutil
 import random
 
 import arimo.backend
-from arimo.df.from_files import ArrowADF
-from arimo.df.spark_from_files import ArrowSparkADF
+from arimo.data.parquet import S3ParquetDataFeeder
+from arimo.data.distributed_parquet import S3ParquetDistributedDataFrame
 from arimo.dl.base import LossPlateauLrDecay
 from arimo.util import fs, Namespace
 from arimo.util.decor import _docstr_verbose
@@ -122,7 +122,7 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC, _TimeSerDa
         self._derive_model_train_params(
             data_size=
                 (adf.approxNRows
-                 if isinstance(adf, ArrowADF)
+                 if isinstance(adf, S3ParquetDataFeeder)
                  else adf.nRows)
                 if self.params.model.train.n_samples_max_multiple_of_data_size
                 else None)
@@ -178,7 +178,7 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC, _TimeSerDa
         val_piece_paths = piece_paths[split_idx:]
 
         if isinstance(model, BlueprintedArimoDLModel):
-            assert isinstance(adf, ArrowADF)
+            assert isinstance(adf, S3ParquetDataFeeder)
 
             model.stdout_logger.info(model.config)
 
@@ -225,7 +225,7 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC, _TimeSerDa
         else:
             assert isinstance(model, BlueprintedKerasModel)
 
-            assert isinstance(adf, (ArrowADF, ArrowSparkADF))
+            assert isinstance(adf, (S3ParquetDataFeeder, S3ParquetDistributedDataFrame))
 
             if __n_gpus__ > 1:
                 model._obj = \

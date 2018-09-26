@@ -11,7 +11,7 @@ import pandas
 import psutil
 import random
 import re
-from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, RobustScaler, StandardScaler
+from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 import tempfile
 import time
 import tqdm
@@ -50,11 +50,11 @@ from arimo.util.types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY
 from arimo.util.types.spark_sql import _STR_TYPE
 import arimo.debug
 
-from . import _ADFABC
-from .spark import SparkADF
+from . import AbstractDataHandler
+from .distributed import DDF
 
 
-class _ArrowADFABC(_ADFABC):
+class AbstractS3ParquetDataHandler(AbstractDataHandler):
     __metaclass__ = abc.ABCMeta
 
     _SCHEMA_MIN_N_PIECES = 10
@@ -101,7 +101,7 @@ class _ArrowADFABC(_ADFABC):
 
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
-class _ArrowADF__getattr__pandasDFTransform:
+class _S3ParquetDataFeeder__getattr__pandasDFTransform:
     def __init__(self, col):
         self.col = col
 
@@ -111,7 +111,7 @@ class _ArrowADF__getattr__pandasDFTransform:
 
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
-class _ArrowADF__getitem__pandasDFTransform:
+class _S3ParquetDataFeeder__getitem__pandasDFTransform:
     def __init__(self, item):
         if isinstance(item, _STR_CLASSES):
             self.col = item
@@ -139,7 +139,7 @@ class _ArrowADF__getitem__pandasDFTransform:
 
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
-class _ArrowADF__drop__pandasDFTransform:
+class _S3ParquetDataFeeder__drop__pandasDFTransform:
     def __init__(self, cols):
         self.cols = list(cols)
 
@@ -153,7 +153,7 @@ class _ArrowADF__drop__pandasDFTransform:
 
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
-class _ArrowADF__castType__pandasDFTransform:
+class _S3ParquetDataFeeder__castType__pandasDFTransform:
     def __init__(self, col, asType, asCol=None):
         self.col = col
         self.asType = asType
@@ -177,7 +177,7 @@ class _ArrowADF__castType__pandasDFTransform:
 
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
-class _ArrowADF__encodeStr__pandasDFTransform:
+class _S3ParquetDataFeeder__encodeStr__pandasDFTransform:
     def __init__(self, col, strs, asCol=None):
         self.col = col
         self.strs = strs
@@ -200,7 +200,7 @@ class _ArrowADF__encodeStr__pandasDFTransform:
 
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
-class _ArrowADF__fillna__pandasDFTransform:
+class _S3ParquetDataFeeder__fillna__pandasDFTransform:
     def __init__(self, nullFillDetails):
         self.nullFillDetails = nullFillDetails
 
@@ -222,7 +222,7 @@ class _ArrowADF__fillna__pandasDFTransform:
                 if upperNull is not None:
                     chks &= (series < upperNull)
 
-                pandasDF.loc[:, _ADFABC._NULL_FILL_PREFIX + col + _ADFABC._PREP_SUFFIX] = \
+                pandasDF.loc[:, AbstractDataHandler._NULL_FILL_PREFIX + col + AbstractDataHandler._PREP_SUFFIX] = \
                     series.where(
                         cond=chks,
                         other=nullFill['NullFillValue'],
@@ -240,7 +240,7 @@ class _ArrowADF__fillna__pandasDFTransform:
 
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
-class _ArrowADF__prep__pandasDFTransform:
+class _S3ParquetDataFeeder__prep__pandasDFTransform:
     def __init__(self, addCols, typeStrs, catOrigToPrepColMap, numOrigToPrepColMap, returnNumPyForCols=None):
         self.addCols = addCols
 
@@ -251,7 +251,7 @@ class _ArrowADF__prep__pandasDFTransform:
         self.scaleCat = catOrigToPrepColMap['__SCALE__']
 
         self.numNullFillPandasDFTransform = \
-            _ArrowADF__fillna__pandasDFTransform(
+            _S3ParquetDataFeeder__fillna__pandasDFTransform(
                 nullFillDetails=numOrigToPrepColMap)
 
         self.numNullFillCols = []
@@ -261,7 +261,7 @@ class _ArrowADF__prep__pandasDFTransform:
         for numCol, numPrepColNDetails in numOrigToPrepColMap.items():
             if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and \
                     isinstance(numPrepColNDetails, list) and (len(numPrepColNDetails) == 2):
-                self.numNullFillCols.append(_ADFABC._NULL_FILL_PREFIX + numCol + _ADFABC._PREP_SUFFIX)
+                self.numNullFillCols.append(AbstractDataHandler._NULL_FILL_PREFIX + numCol + AbstractDataHandler._PREP_SUFFIX)
 
                 numPrepCol, numPrepDetails = numPrepColNDetails
                 self.numPrepCols.append(numPrepCol)
@@ -435,7 +435,7 @@ _PIECE_LOCAL_CACHE_PATHS = {}
 
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
-class _ArrowADF__pieceArrowTableFunc:
+class _S3ParquetDataFeeder__pieceArrowTableFunc:
     def __init__(self, aws_access_key_id=None, aws_secret_access_key=None, nThreads=1):
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
@@ -459,7 +459,7 @@ class _ArrowADF__pieceArrowTableFunc:
 
                 _PIECE_LOCAL_CACHE_PATHS[piecePath] = path = \
                     os.path.join(
-                        _ADFABC._TMP_DIR_PATH,
+                        AbstractDataHandler._TMP_DIR_PATH,
                         parsedURL.netloc,
                         parsedURL.path[1:])
 
@@ -496,7 +496,7 @@ class _ArrowADF__pieceArrowTableFunc:
 
 # class with __call__ to serve as pickle-able function for use in multi-processing
 # ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
-class _ArrowADF__gen:
+class _S3ParquetDataFeeder__gen:
     def __init__(
             self, args,
             piecePaths,
@@ -531,7 +531,7 @@ class _ArrowADF__gen:
         self.nThreads = nThreads
 
         self.pieceArrowTableFunc = \
-            _ArrowADF__pieceArrowTableFunc(
+            _S3ParquetDataFeeder__pieceArrowTableFunc(
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
                 nThreads=nThreads)
@@ -597,7 +597,7 @@ class _ArrowADF__gen:
             self.rowFrom_n_rowTo_tups = [None]
 
         if _hasTS:
-            self.filterConditions[_ADFABC._T_ORD_COL] = minTOrd, numpy.inf
+            self.filterConditions[AbstractDataHandler._T_ORD_COL] = minTOrd, numpy.inf
 
         if (not self.anon) and (self.iCol or self.tCol):
             self.colsLists.insert(0, ([self.iCol] if self.iCol else []) + ([self.tCol] if self.tCol else []))
@@ -709,53 +709,53 @@ class _ArrowADF__gen:
 
 
 @enable_inplace
-class ArrowADF(_ArrowADFABC):
+class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     _CACHE = {}
     
     _PIECE_CACHES = {}
 
     _T_AUX_COL_ARROW_TYPES = {
-        _ArrowADFABC._T_ORD_COL: _ARROW_INT_TYPE,
-        _ArrowADFABC._T_DELTA_COL: _ARROW_DOUBLE_TYPE,
+        AbstractS3ParquetDataHandler._T_ORD_COL: _ARROW_INT_TYPE,
+        AbstractS3ParquetDataHandler._T_DELTA_COL: _ARROW_DOUBLE_TYPE,
 
-        _ArrowADFABC._T_HoY_COL: _ARROW_INT_TYPE,   # Half of Year
-        _ArrowADFABC._T_QoY_COL: _ARROW_INT_TYPE,   # Quarter of Year
-        _ArrowADFABC._T_MoY_COL: _ARROW_INT_TYPE,   # Month of Year
-        # _ArrowADFABC._T_WoY_COL: _ARROW_INT_TYPE,   # Week of Year
-        # _ArrowADFABC._T_DoY_COL: _ARROW_INT_TYPE,   # Day of Year
-        _ArrowADFABC._T_PoY_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Year
+        AbstractS3ParquetDataHandler._T_HoY_COL: _ARROW_INT_TYPE,   # Half of Year
+        AbstractS3ParquetDataHandler._T_QoY_COL: _ARROW_INT_TYPE,   # Quarter of Year
+        AbstractS3ParquetDataHandler._T_MoY_COL: _ARROW_INT_TYPE,   # Month of Year
+        # AbstractS3ParquetDataHandler._T_WoY_COL: _ARROW_INT_TYPE,   # Week of Year
+        # AbstractS3ParquetDataHandler._T_DoY_COL: _ARROW_INT_TYPE,   # Day of Year
+        AbstractS3ParquetDataHandler._T_PoY_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Year
 
-        _ArrowADFABC._T_QoH_COL: _ARROW_INT_TYPE,   # Quarter of Half-Year
-        _ArrowADFABC._T_MoH_COL: _ARROW_INT_TYPE,   # Month of Half-Year
-        _ArrowADFABC._T_PoH_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Half-Year
+        AbstractS3ParquetDataHandler._T_QoH_COL: _ARROW_INT_TYPE,   # Quarter of Half-Year
+        AbstractS3ParquetDataHandler._T_MoH_COL: _ARROW_INT_TYPE,   # Month of Half-Year
+        AbstractS3ParquetDataHandler._T_PoH_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Half-Year
 
-        _ArrowADFABC._T_MoQ_COL: _ARROW_INT_TYPE,   # Month of Quarter
-        _ArrowADFABC._T_PoQ_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Quarter
+        AbstractS3ParquetDataHandler._T_MoQ_COL: _ARROW_INT_TYPE,   # Month of Quarter
+        AbstractS3ParquetDataHandler._T_PoQ_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Quarter
 
-        _ArrowADFABC._T_WoM_COL: _ARROW_INT_TYPE,   # Week of Month
-        _ArrowADFABC._T_DoM_COL: _ARROW_INT_TYPE,   # Day of Month
-        _ArrowADFABC._T_PoM_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Month
+        AbstractS3ParquetDataHandler._T_WoM_COL: _ARROW_INT_TYPE,   # Week of Month
+        AbstractS3ParquetDataHandler._T_DoM_COL: _ARROW_INT_TYPE,   # Day of Month
+        AbstractS3ParquetDataHandler._T_PoM_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Month
 
-        _ArrowADFABC._T_DoW_COL: _ARROW_INT_TYPE,   # Day of Week
-        _ArrowADFABC._T_PoW_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Week
+        AbstractS3ParquetDataHandler._T_DoW_COL: _ARROW_INT_TYPE,   # Day of Week
+        AbstractS3ParquetDataHandler._T_PoW_COL: _ARROW_DOUBLE_TYPE,   # Part/Proportion/Fraction of Week
 
-        _ArrowADFABC._T_HoD_COL: _ARROW_INT_TYPE,   # Hour of Day
-        _ArrowADFABC._T_PoD_COL: _ARROW_DOUBLE_TYPE   # Part/Proportion/Fraction of Day
+        AbstractS3ParquetDataHandler._T_HoD_COL: _ARROW_INT_TYPE,   # Hour of Day
+        AbstractS3ParquetDataHandler._T_PoD_COL: _ARROW_DOUBLE_TYPE   # Part/Proportion/Fraction of Day
     }
 
     # default arguments dict
     _DEFAULT_KWARGS = \
         dict(
-            iCol=_ArrowADFABC._DEFAULT_I_COL, tCol=None,
+            iCol=AbstractS3ParquetDataHandler._DEFAULT_I_COL, tCol=None,
 
-            reprSampleMinNPieces=_ArrowADFABC._REPR_SAMPLE_MIN_N_PIECES,
-            reprSampleSize=_ArrowADFABC._DEFAULT_REPR_SAMPLE_SIZE,
+            reprSampleMinNPieces=AbstractS3ParquetDataHandler._REPR_SAMPLE_MIN_N_PIECES,
+            reprSampleSize=AbstractS3ParquetDataHandler._DEFAULT_REPR_SAMPLE_SIZE,
 
             nulls=DefaultDict((None, None)),
-            minNonNullProportion=DefaultDict(_ArrowADFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
-            outlierTailProportion=DefaultDict(_ArrowADFABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
-            maxNCats=DefaultDict(_ArrowADFABC._DEFAULT_MAX_N_CATS),
-            minProportionByMaxNCats=DefaultDict(_ArrowADFABC._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
+            minNonNullProportion=DefaultDict(AbstractS3ParquetDataHandler._DEFAULT_MIN_NON_NULL_PROPORTION),
+            outlierTailProportion=DefaultDict(AbstractS3ParquetDataHandler._DEFAULT_OUTLIER_TAIL_PROPORTION),
+            maxNCats=DefaultDict(AbstractS3ParquetDataHandler._DEFAULT_MAX_N_CATS),
+            minProportionByMaxNCats=DefaultDict(AbstractS3ParquetDataHandler._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
 
     # "inplace-able" methods
     _INPLACE_ABLE = \
@@ -1096,7 +1096,7 @@ class ArrowADF(_ArrowADFABC):
         if isinstance(arrowADF, (tuple, list)):   # just in case we're taking in multiple inputs
             arrowADF = arrowADF[0]
 
-        assert isinstance(arrowADF, ArrowADF)
+        assert isinstance(arrowADF, S3ParquetDataFeeder)
 
         self.path = arrowADF.path
 
@@ -1225,7 +1225,7 @@ class ArrowADF(_ArrowADFABC):
             aws_access_key_id = aws_secret_access_key = None
 
         arrowADF = \
-            ArrowADF(
+            S3ParquetDataFeeder(
                 path=self.path,
                 aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
 
@@ -1399,7 +1399,7 @@ class ArrowADF(_ArrowADFABC):
             aws_access_key_id = aws_secret_access_key = None
 
         arrowADF = \
-            ArrowADF(
+            S3ParquetDataFeeder(
                 path=self.path,
                 aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
 
@@ -1754,17 +1754,17 @@ class ArrowADF(_ArrowADFABC):
         assert col in self.columns
 
         return self.map(
-                mapper=_ArrowADF__getattr__pandasDFTransform(col=col),
+                mapper=_S3ParquetDataFeeder__getattr__pandasDFTransform(col=col),
                 inheritNRows=True)
 
     def __getitem__(self, item):
         return self.map(
-                mapper=_ArrowADF__getitem__pandasDFTransform(item=item),
+                mapper=_S3ParquetDataFeeder__getitem__pandasDFTransform(item=item),
                 inheritNRows=True)
 
     def drop(self, *cols, **kwargs):
         return self.map(
-                mapper=_ArrowADF__drop__pandasDFTransform(cols=cols),
+                mapper=_S3ParquetDataFeeder__drop__pandasDFTransform(cols=cols),
                inheritNRows=True,
                 **kwargs)
 
@@ -2060,7 +2060,7 @@ class ArrowADF(_ArrowADFABC):
                     else:
                         subsetPath = piecePaths[0]
 
-                    return ArrowADF(
+                    return S3ParquetDataFeeder(
                             path=subsetPath,
 
                             aws_access_key_id=self._srcArrowDS.fs.fs.key,
@@ -2080,7 +2080,7 @@ class ArrowADF(_ArrowADFABC):
                             **kwargs)
 
                 else:
-                    return ArrowADF(
+                    return S3ParquetDataFeeder(
                             path=tuple(sorted(piecePaths))
                                 if len(piecePaths) > 1
                                 else piecePaths[0],
@@ -2992,13 +2992,13 @@ class ArrowADF(_ArrowADFABC):
                 Namespace(
                     partition=
                         '{} AS (PARTITION BY {}, {})'
-                            .format(_TS_WINDOW_NAMES.partition, self._iCol, SparkADF._T_CHUNK_COL),
+                            .format(_TS_WINDOW_NAMES.partition, self._iCol, DDF._T_CHUNK_COL),
                     before=
                         '{} AS (PARTITION BY {}, {} ORDER BY {} ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)'
-                            .format(_TS_WINDOW_NAMES.before, self._iCol, SparkADF._T_CHUNK_COL, self._T_ORD_COL),
+                            .format(_TS_WINDOW_NAMES.before, self._iCol, DDF._T_CHUNK_COL, self._T_ORD_COL),
                     after=
                         '{} AS (PARTITION BY {}, {} ORDER BY {} ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)'
-                            .format(_TS_WINDOW_NAMES.after, self._iCol, SparkADF._T_CHUNK_COL, self._T_ORD_COL))
+                            .format(_TS_WINDOW_NAMES.after, self._iCol, DDF._T_CHUNK_COL, self._T_ORD_COL))
 
         returnDetails = kwargs.pop('returnDetails', False)
         returnSQLStatement = kwargs.pop('returnSQLStatement', False)
@@ -3248,7 +3248,7 @@ class ArrowADF(_ArrowADFABC):
 
         arrowADF = \
             self.map(
-                mapper=_ArrowADF__fillna__pandasDFTransform(nullFillDetails=details),
+                mapper=_S3ParquetDataFeeder__fillna__pandasDFTransform(nullFillDetails=details),
                 inheritNRows=True,
                 **kwargs)
 
@@ -3858,7 +3858,7 @@ class ArrowADF(_ArrowADFABC):
 
         arrowADF = \
             self.map(
-                mapper=_ArrowADF__prep__pandasDFTransform(
+                mapper=_S3ParquetDataFeeder__prep__pandasDFTransform(
                     addCols=addCols,
                     typeStrs=
                         {catCol: str(self.type(catCol))
@@ -3907,7 +3907,7 @@ class ArrowADF(_ArrowADFABC):
 
         piecePaths = kwargs.get('piecePaths', self.piecePaths)
 
-        return _ArrowADF__gen(
+        return _S3ParquetDataFeeder__gen(
                 args=args,
                 piecePaths=piecePaths,
                 aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
@@ -4035,7 +4035,3 @@ class ArrowADF(_ArrowADFABC):
             secret_access_key=self._srcArrowDS.fs.fs.secret,
             delete=True, quiet=True,
             verbose=verbose)
-
-
-class AthenaADF(_ADFABC):
-    pass

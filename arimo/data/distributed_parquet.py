@@ -26,10 +26,10 @@ from pyspark.ml.feature import SQLTransformer
 from pyspark.sql import DataFrame
 
 import arimo.backend
-from arimo.df.from_files import _ArrowADFABC, \
-    _ArrowADF__getitem__pandasDFTransform, _ArrowADF__drop__pandasDFTransform, \
-    _ArrowADF__fillna__pandasDFTransform, _ArrowADF__prep__pandasDFTransform, \
-    _ArrowADF__pieceArrowTableFunc, _ArrowADF__gen
+from arimo.df.parquet import AbstractS3ParquetDataHandler, \
+    _S3ParquetDataFeeder__getitem__pandasDFTransform, _S3ParquetDataFeeder__drop__pandasDFTransform, \
+    _S3ParquetDataFeeder__fillna__pandasDFTransform, _S3ParquetDataFeeder__prep__pandasDFTransform, \
+    _S3ParquetDataFeeder__pieceArrowTableFunc, _S3ParquetDataFeeder__gen
 from arimo.util import fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols
@@ -38,11 +38,11 @@ from arimo.util.iterables import to_iterable
 from arimo.util.types.spark_sql import _BINARY_TYPE, _STR_TYPE
 import arimo.debug
 
-from .spark import SparkADF
+from .distributed import DDF
 
 
 @enable_inplace
-class ArrowSparkADF(_ArrowADFABC, SparkADF):
+class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
     # "inplace-able" methods
     _INPLACE_ABLE = \
         '__call__', \
@@ -68,7 +68,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
             self, path, aws_access_key_id=None, aws_secret_access_key=None, reCache=False,
             _srcSparkDFSchema=None, _initSparkDF=None, _sparkDFTransforms=[], _sparkDF=None,
             _pandasDFTransforms=[],
-            reprSampleMinNPieces=_ArrowADFABC._REPR_SAMPLE_MIN_N_PIECES,
+            reprSampleMinNPieces=AbstractS3ParquetDataHandler._REPR_SAMPLE_MIN_N_PIECES,
             verbose=True, **kwargs):
         if verbose or arimo.debug.ON:
             logger = self.class_stdout_logger()
@@ -235,12 +235,12 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
         alias = kwargs.pop('alias', None)
             
         if _initSparkDF:
-            super(ArrowSparkADF, self).__init__(
+            super(S3ParquetDistributedDataFrame, self).__init__(
                 sparkDF=_initSparkDF,
                 **kwargs)
 
         else:
-            super(ArrowSparkADF, self).__init__(
+            super(S3ParquetDistributedDataFrame, self).__init__(
                 sparkDF=self._srcSparkDF,
                 nRows=self._srcNRows,
                 **kwargs)
@@ -300,7 +300,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
         if isinstance(adf, (tuple, list)):   # just in case we're taking in multiple inputs
             adf = adf[0]
 
-        assert isinstance(adf, ArrowSparkADF)
+        assert isinstance(adf, S3ParquetDistributedDataFrame)
 
         self.path = adf.path
 
@@ -337,11 +337,11 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 sparkDFTransform=
                     lambda sparkDF:
                         sparkDF[item],
-                pandasDFTransform=_ArrowADF__getitem__pandasDFTransform(item=list(item)),
+                pandasDFTransform=_S3ParquetDataFeeder__getitem__pandasDFTransform(item=list(item)),
                 inheritCache=True,
                 inheritNRows=True) \
             if isinstance(item, (list, tuple)) \
-          else super(ArrowSparkADF, self).__getitem__(item)
+          else super(S3ParquetDistributedDataFrame, self).__getitem__(item)
 
     def __repr__(self):
         cols = self.columns
@@ -475,8 +475,8 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
         else:
             aws_access_key_id = aws_secret_access_key = None
 
-        arrowSparkADF = \
-            ArrowSparkADF(
+        arrowDDF = \
+            S3ParquetDistributedDataFrame(
                 path=self.path,
                 aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
                 _initSparkDF=self._initSparkDF,
@@ -489,11 +489,11 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 **stdKwArgs.__dict__)
 
         if inheritCache:
-            arrowSparkADF._inheritCache(self)
+            arrowDDF._inheritCache(self)
 
-        arrowSparkADF._cache.pieceADFs = self._cache.pieceADFs
+        arrowDDF._cache.pieceADFs = self._cache.pieceADFs
 
-        return arrowSparkADF
+        return arrowDDF
 
     def select(self, *exprs, **kwargs):
         if exprs:
@@ -556,7 +556,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
             arg = args[0]
 
             if isinstance(arg, Transformer) or \
-                    (callable(arg) and (not isinstance(arg, SparkADF)) and (not isinstance(arg, types.ClassType))):
+                    (callable(arg) and (not isinstance(arg, DDF)) and (not isinstance(arg, types.ClassType))):
                 return self.transform(
                     sparkDFTransform=arg,
                     *(args[1:]
@@ -585,11 +585,11 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
             kwargs['returnSQLTransformer'] = True
 
         adf, nullFillDetails, sqlTransformer = \
-            super(ArrowSparkADF, self).fillna(*cols, **kwargs)
+            super(S3ParquetDistributedDataFrame, self).fillna(*cols, **kwargs)
 
         adf = self.transform(
             sparkDFTransform=sqlTransformer,
-            pandasDFTransform=_ArrowADF__fillna__pandasDFTransform(nullFillDetails=nullFillDetails),
+            pandasDFTransform=_S3ParquetDataFeeder__fillna__pandasDFTransform(nullFillDetails=nullFillDetails),
             _sparkDF=adf._sparkDF,
             inheritCache=True,
             inheritNRows=True,
@@ -615,7 +615,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
             kwargs['returnPipeline'] = True
 
         adf, catOrigToPrepColMap, numOrigToPrepColMap, pipelineModel = \
-            super(ArrowSparkADF, self).prep(*cols, **kwargs)
+            super(S3ParquetDistributedDataFrame, self).prep(*cols, **kwargs)
 
         if arimo.debug.ON:
             self.stdout_logger.debug(
@@ -625,7 +625,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
         adf = self.transform(
             sparkDFTransform=pipelineModel,
             pandasDFTransform=
-                _ArrowADF__prep__pandasDFTransform(
+                _S3ParquetDataFeeder__prep__pandasDFTransform(
                     addCols={},   # TODO
                     typeStrs=
                         {catCol: self._initSparkDF._schema[str(catCol)].dataType.simpleString()
@@ -649,7 +649,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 sparkDFTransform=
                     lambda sparkDF:
                         sparkDF.drop(*cols),
-                pandasDFTransform=_ArrowADF__drop__pandasDFTransform(cols=cols),
+                pandasDFTransform=_S3ParquetDataFeeder__drop__pandasDFTransform(cols=cols),
                 inheritCache=True,
                 inheritNRows=True,
                 **kwargs)
@@ -756,7 +756,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 if stdKwArgs.detPrePartitioned:
                     stdKwArgs.nDetPrePartitions = nPieceSubPaths
 
-                adf = ArrowSparkADF(
+                adf = S3ParquetDistributedDataFrame(
                     path=subsetPath,
                     aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
                     _srcSparkDFSchema=self._srcSparkDFSchema,
@@ -796,7 +796,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
                 piecePath = os.path.join(self.path, pieceSubPath)
 
                 pieceADF = \
-                    ArrowSparkADF(
+                    S3ParquetDistributedDataFrame(
                         path=piecePath,
                         aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
                         _srcSparkDFSchema=self._srcSparkDFSchema,
@@ -834,7 +834,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
         return pieceADF
 
     def _pieceArrowTable(self, pieceSubPath):
-        return _ArrowADF__pieceArrowTableFunc(
+        return _S3ParquetDataFeeder__pieceArrowTableFunc(
                 aws_access_key_id=self._srcArrowDS.fs.fs.key,
                 aws_secret_access_key=self._srcArrowDS.fs.fs.secret)(
             os.path.join(self.path, pieceSubPath))
@@ -960,14 +960,14 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
             if sampleNPieces < self.nPieces \
             else self.pieceSubPaths
 
-        adfs = [super(ArrowSparkADF, self._pieceADF(samplePieceSubPath))
+        adfs = [super(S3ParquetDistributedDataFrame, self._pieceADF(samplePieceSubPath))
                     .sample(n=max(n / sampleNPieces, 1), *args, **kwargs)
                 for samplePieceSubPath in
                     (tqdm.tqdm(samplePieceSubPaths)
                      if verbose
                      else samplePieceSubPaths)]
 
-        adf = SparkADF.unionAllCols(*adfs, **stdKwArgs.__dict__)
+        adf = DDF.unionAllCols(*adfs, **stdKwArgs.__dict__)
 
         adf._cache.colWidth.update(adfs[0]._cache.colWidth)
 
@@ -981,7 +981,7 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
         else:
             aws_access_key_id = aws_secret_access_key = None
 
-        return _ArrowADF__gen(
+        return _S3ParquetDataFeeder__gen(
                 args=args,
                 piecePaths=kwargs.get('piecePaths', self.piecePaths),
                 aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,

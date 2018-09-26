@@ -81,23 +81,23 @@ from arimo.util.types.spark_sql import \
     StructField, StructType
 import arimo.debug
 
-from . import _ADFABC
+from . import AbstractDataHandler
 
 
-# decorator to add standard SparkADF keyword-arguments docstring
+# decorator to add standard DistributedDataFrame keyword-arguments docstring
 def _docstr_adf_kwargs(method):
     def f():
         """
         Keyword Args:
-            alias (str, default = None): name of the ``SparkADF`` to register as a table in its ``SparkSession``
+            alias (str, default = None): name of the ``DistributedDataFrame`` to register as a table in its ``SparkSession``
 
-            iCol (str, default = 'id'): name of the ``SparkADF``'s *identity*/*entity* column, if applicable
+            iCol (str, default = 'id'): name of the ``DistributedDataFrame``'s *identity*/*entity* column, if applicable
 
-            tCol (str, default = None): name of the ``SparkADF``'s *timestamp* column, if applicable
+            tCol (str, default = None): name of the ``DistributedDataFrame``'s *timestamp* column, if applicable
 
             tChunkLen (int, default = None): length of time-series chunks
 
-            reprSampleSize (int, default = 1,000,000): *approximate* number of rows to sample from the ``SparkADF``
+            reprSampleSize (int, default = 1,000,000): *approximate* number of rows to sample from the ``DistributedDataFrame``
                 for profiling purposes
 
             minNonNullProportion (float between 0 and 1, default = .32): minimum proportion of non-``NULL`` values
@@ -117,16 +117,16 @@ def _docstr_adf_kwargs(method):
 
 
 @enable_inplace
-class SparkADF(_ADFABC):
+class DistributedDataFrame(AbstractDataHandler):
     """
-    NOTE: Using `SparkADF` requires a cluster with Apache Spark set up.
+    NOTE: Using `DistributedDataFrame` requires a cluster with Apache Spark set up.
 
-    ``SparkADF`` extends the ``Spark SQL DataFrame``
+    ``DistributedDataFrame`` extends the ``Spark SQL DataFrame``
     while still offering full access to ``Spark DataFrame`` functionalities.
 
-    **IMPORTANT**: Any ``Spark DataFrame`` method not explicitly re-implemented in ``SparkADF``
-    is a valid ``SparkADF`` method and works the same way as it does under ``Spark DataFrame``.
-    If the method's result is a ``Spark DataFrame``, it is up-converted to an ``SparkADF``.
+    **IMPORTANT**: Any ``Spark DataFrame`` method not explicitly re-implemented in ``DistributedDataFrame``
+    is a valid ``DistributedDataFrame`` method and works the same way as it does under ``Spark DataFrame``.
+    If the method's result is a ``Spark DataFrame``, it is up-converted to an ``DistributedDataFrame``.
     """
     # Partition ID col
     _PARTITION_ID_COL = '__PARTITION_ID__'
@@ -135,10 +135,10 @@ class SparkADF(_ADFABC):
     _T_CHUNK_COL = '__tChunk__'
     _T_ORD_IN_CHUNK_COL = '__tOrd_inChunk__'
 
-    _T_REL_AUX_COLS = _ADFABC._T_ORD_COL, _T_CHUNK_COL, _T_ORD_IN_CHUNK_COL, _ADFABC._T_DELTA_COL
-    _T_AUX_COLS = _T_REL_AUX_COLS + _ADFABC._T_COMPONENT_AUX_COLS
+    _T_REL_AUX_COLS = AbstractDataHandler._T_ORD_COL, _T_CHUNK_COL, _T_ORD_IN_CHUNK_COL, AbstractDataHandler._T_DELTA_COL
+    _T_AUX_COLS = _T_REL_AUX_COLS + AbstractDataHandler._T_COMPONENT_AUX_COLS
 
-    # default ordered chunk size for time-series SparkADFs
+    # default ordered chunk size for time-series DistributedDataFrames
     _DEFAULT_T_CHUNK_LEN = 1000
 
     # default arguments dict
@@ -148,16 +148,16 @@ class SparkADF(_ADFABC):
 
             detPrePartitioned=False, nDetPrePartitions=None,
 
-            iCol=_ADFABC._DEFAULT_I_COL, tCol=None,
+            iCol=AbstractDataHandler._DEFAULT_I_COL, tCol=None,
             tChunkLen=_DEFAULT_T_CHUNK_LEN,
 
-            reprSampleSize=_ADFABC._DEFAULT_REPR_SAMPLE_SIZE,
+            reprSampleSize=AbstractDataHandler._DEFAULT_REPR_SAMPLE_SIZE,
 
             nulls=DefaultDict((None, None)),
-            minNonNullProportion=DefaultDict(_ADFABC._DEFAULT_MIN_NON_NULL_PROPORTION),
-            outlierTailProportion=DefaultDict(_ADFABC._DEFAULT_OUTLIER_TAIL_PROPORTION),
-            maxNCats=DefaultDict(_ADFABC._DEFAULT_MAX_N_CATS),
-            minProportionByMaxNCats=DefaultDict(_ADFABC._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
+            minNonNullProportion=DefaultDict(AbstractDataHandler._DEFAULT_MIN_NON_NULL_PROPORTION),
+            outlierTailProportion=DefaultDict(AbstractDataHandler._DEFAULT_OUTLIER_TAIL_PROPORTION),
+            maxNCats=DefaultDict(AbstractDataHandler._DEFAULT_MAX_N_CATS),
+            minProportionByMaxNCats=DefaultDict(AbstractDataHandler._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
 
     # repr sample
     _REPR_SAMPLE_ALIAS_SUFFIX = '__ReprSample'
@@ -191,7 +191,7 @@ class SparkADF(_ADFABC):
     def __init__(self, sparkDF, nRows=None, **kwargs):
         """
         Return:
-            ``SparkADF`` instance
+            ``DistributedDataFrame`` instance
 
         Args:
             sparkDF: a ``Spark DataFrame``
@@ -256,7 +256,7 @@ class SparkADF(_ADFABC):
                     # *** SKIP BELOW AS IT RESULTS IN POOR PARALLELISM ***
                     # else:
                         # assert self._nDetPrePartitions >= self.nPartitions, \
-                        #     '*** Deterministically Pre-Partitioned SparkADF: Set nDetPrePartitions {} < Detected {} Partitions ***'.format(
+                        #     '*** Deterministically Pre-Partitioned DistributedDataFrame: Set nDetPrePartitions {} < Detected {} Partitions ***'.format(
                         #         self._nDetPrePartitions, self.nPartitions)
 
                     self._sparkDF = \
@@ -1177,9 +1177,9 @@ class SparkADF(_ADFABC):
                     self._cache.__dict__[cacheCategory][newCol] = \
                         adf._cache.__dict__[cacheCategory][oldCol]
 
-    # decorator to up-convert any Spark SQL DataFrame result to SparkADF
+    # decorator to up-convert any Spark SQL DataFrame result to DistributedDataFrame
     def _decorate(self, obj, nRows=None, **objKwArgs):
-        def methodReturningSparkADF(method):
+        def methodReturningDistributedDataFrame(method):
             def decoratedMethod(*methodArgs, **methodKwArgs):
                 if 'tCol' in methodKwArgs:
                     tCol_inKwArgs = True
@@ -1209,7 +1209,7 @@ class SparkADF(_ADFABC):
                     if stdKwArgs.alias and (stdKwArgs.alias == self.alias):
                         stdKwArgs.alias = None
                     
-                    return SparkADF(
+                    return DistributedDataFrame(
                         sparkDF=result,
                         nRows=None,   # not sure what the new nRows may be
                         **stdKwArgs.__dict__)
@@ -1220,11 +1220,11 @@ class SparkADF(_ADFABC):
             decoratedMethod.__module__ = method.__module__
             decoratedMethod.__name__ = method.__name__
             decoratedMethod.__doc__ = method.__doc__
-            decoratedMethod.__self__ = self   # real SparkADF __self__ instance, which maybe different to method.__self__
+            decoratedMethod.__self__ = self   # real DistributedDataFrame __self__ instance, which maybe different to method.__self__
             return decoratedMethod
 
-        if callable(obj) and (not isinstance(obj, SparkADF)) and (not isinstance(obj, types.ClassType)):
-            return methodReturningSparkADF(method=obj)
+        if callable(obj) and (not isinstance(obj, DistributedDataFrame)) and (not isinstance(obj, types.ClassType)):
+            return methodReturningDistributedDataFrame(method=obj)
 
         elif isinstance(obj, DataFrame):
             alias = objKwArgs.get('alias')
@@ -1253,10 +1253,10 @@ class SparkADF(_ADFABC):
 
             stdKwArgs.alias = alias
 
-            return SparkADF(sparkDF=obj, nRows=nRows, **stdKwArgs.__dict__)
+            return DistributedDataFrame(sparkDF=obj, nRows=nRows, **stdKwArgs.__dict__)
 
         else:
-            if isinstance(obj, SparkADF) and (nRows is not None):
+            if isinstance(obj, DistributedDataFrame) and (nRows is not None):
                 if obj._cache.nRows is None:
                     obj._cache.nRows = nRows
 
@@ -1273,7 +1273,7 @@ class SparkADF(_ADFABC):
 
         cols = df.columns
 
-        if isinstance(df, SparkADF):
+        if isinstance(df, DistributedDataFrame):
             isADF = True
 
             self._sparkDF = df._sparkDF
@@ -1300,7 +1300,7 @@ class SparkADF(_ADFABC):
             self._cache.nRows = None
 
         else:
-            raise ValueError("*** SparkADF._inplace(...)'s 1st argument must be either SparkADF or Spark SQL DataFrame ***")
+            raise ValueError("*** DistributedDataFrame._inplace(...)'s 1st argument must be either DistributedDataFrame or Spark SQL DataFrame ***")
 
         existingICol = self._iCol
         existingTCol = self._tCol
@@ -1341,7 +1341,7 @@ class SparkADF(_ADFABC):
             else (self._alias if self._alias or (not isADF)
                               else df._alias)
 
-        if isinstance(df, SparkADF):
+        if isinstance(df, DistributedDataFrame):
             self._cache = df._cache
         else:
             self._emptyCache()
@@ -1469,12 +1469,12 @@ class SparkADF(_ADFABC):
     @_docstr_adf_kwargs
     def create(cls, data, schema=None, samplingRatio=None, verifySchema=False, sparkConf={}, **kwargs):
         """
-        Create ``SparkADF`` from an ``RDD``, a *list* or a ``pandas.DataFrame``
+        Create ``DistributedDataFrame`` from an ``RDD``, a *list* or a ``pandas.DataFrame``
 
         (*ref:* http://spark.apache.org/docs/latest/api/python/pyspark.sql.html#pyspark.sql.SparkSession.createDataFrame)
 
         Return:
-            ``SparkADF`` instance
+            ``DistributedDataFrame`` instance
 
         Args:
             data: ``RDD`` of any kind of *SQL* data representation (e.g. *row*, *tuple*, *int*, *boolean*, ...),
@@ -1519,7 +1519,7 @@ class SparkADF(_ADFABC):
             for col in pandasTSCols:
                 data[col] = pandas.to_datetime(data[col])
 
-        return SparkADF(sparkDF=sparkDF, nRows=nRows, **kwargs)
+        return DistributedDataFrame(sparkDF=sparkDF, nRows=nRows, **kwargs)
 
     @classmethod
     def unionAllCols(cls, *adfs_and_or_sparkDFs, **kwargs):
@@ -1527,7 +1527,7 @@ class SparkADF(_ADFABC):
 
         _unionRDDs = kwargs.pop('_unionRDDs', False)
 
-        assert all(isinstance(adfs_and_or_sparkDF, (SparkADF, DataFrame))
+        assert all(isinstance(adfs_and_or_sparkDF, (DistributedDataFrame, DataFrame))
                    for adfs_and_or_sparkDF in adfs_and_or_sparkDFs)
                 
         nDFs = len(adfs_and_or_sparkDFs)
@@ -1541,8 +1541,8 @@ class SparkADF(_ADFABC):
                         colTypes[structField.name] = structField.dataType
 
             adfs = [(adf_or_sparkDF
-                     if isinstance(adf_or_sparkDF, SparkADF)
-                     else SparkADF(sparkDF=adf_or_sparkDF))
+                     if isinstance(adf_or_sparkDF, DistributedDataFrame)
+                     else DistributedDataFrame(sparkDF=adf_or_sparkDF))
                     (*((col
                         if col in adf_or_sparkDF.columns
                         else 'NULL AS {}'.format(col))
@@ -1567,7 +1567,7 @@ class SparkADF(_ADFABC):
                     **kwargs)
 
             else:
-                return SparkADF.create(
+                return DistributedDataFrame.create(
                     data=arimo.backend.spark.sparkContext.union(
                             [adf.rdd for adf in adfs]),
                     schema=StructType(
@@ -1584,14 +1584,14 @@ class SparkADF(_ADFABC):
         else:
             df = adfs_and_or_sparkDFs[0]
 
-            if isinstance(df, SparkADF):
+            if isinstance(df, DistributedDataFrame):
                 return df.copy(**kwargs)
 
             elif isinstance(df, DataFrame):
-                return SparkADF(sparkDF=df, nRows=None, **kwargs)
+                return DistributedDataFrame(sparkDF=df, nRows=None, **kwargs)
 
             else:
-                raise ValueError('*** All input data frames must be SparkADFs or Spark SQL DataFrames ***')
+                raise ValueError('*** All input data frames must be DistributedDataFrames or Spark SQL DataFrames ***')
 
     @classmethod
     def _test_hdfs_load(cls):
@@ -1630,10 +1630,10 @@ class SparkADF(_ADFABC):
     def load(cls, path, format='parquet', schema=None,
              aws_access_key_id=None, aws_secret_access_key=None, verbose=True, sparkConf={}, **options):
         """
-        Load/read tabular data into ``SparkADF``
+        Load/read tabular data into ``DistributedDataFrame``
 
         Return:
-            ``SparkADF`` instance
+            ``DistributedDataFrame`` instance
 
         Args:
             path (str): path to data source
@@ -1734,7 +1734,7 @@ class SparkADF(_ADFABC):
                         colName=colName,
                         col=sparkDF[colName].astype(_STR_TYPE))
 
-            adf = SparkADF(
+            adf = DistributedDataFrame(
                 sparkDF=sparkDF,
                 nRows=None,
                 **stdKwArgs)
@@ -1743,7 +1743,7 @@ class SparkADF(_ADFABC):
             _adfs = []
 
             for _path in path:
-                _adf = SparkADF.load(
+                _adf = DistributedDataFrame.load(
                         path=_path,
                         aws_access_key_id=aws_access_key_id,
                         aws_secret_access_key=aws_secret_access_key,
@@ -1754,7 +1754,7 @@ class SparkADF(_ADFABC):
 
                 _adfs.append(_adf)
 
-            adf = SparkADF.unionAllCols(
+            adf = DistributedDataFrame.unionAllCols(
                 *_adfs,
                 **stdKwArgs)
 
@@ -1769,7 +1769,7 @@ class SparkADF(_ADFABC):
              mode='overwrite', partitionBy=None,
              verbose=True, switch=False, **options):
         """
-        Save/write ``SparkADF``'s content to permanent storage
+        Save/write ``DistributedDataFrame``'s content to permanent storage
 
         Args:
             path (str): path to which to save data
@@ -1785,7 +1785,7 @@ class SparkADF(_ADFABC):
 
             mode (str): behavior when data already exists at specified path:
 
-                - ``append``: append ``SparkADF``'s content to existing data
+                - ``append``: append ``DistributedDataFrame``'s content to existing data
 
                 - ``overwrite``: overwrite existing data
 
@@ -1960,12 +1960,12 @@ class SparkADF(_ADFABC):
                 partitionBy=partitionBy,
                 **options)
 
-        if switch:   # then use the newly-saved file as SparkADF's source
+        if switch:   # then use the newly-saved file as DistributedDataFrame's source
             assert format not in ('jdbc', 'com.databricks.spark.redshift')
             assert mode == 'overwrite'
 
             self._inplace(
-                SparkADF.load(
+                DistributedDataFrame.load(
                     path=path,
                     format=format,
                     aws_access_key_id=aws_access_key_id,
@@ -2077,7 +2077,7 @@ class SparkADF(_ADFABC):
     @_docstr_settable_property
     def alias(self):
         """
-        Name of ``SparkADF`` in the ``SparkSession`` *(str, default = None)*
+        Name of ``DistributedDataFrame`` in the ``SparkSession`` *(str, default = None)*
         """
         return self._alias
 
@@ -2142,7 +2142,7 @@ class SparkADF(_ADFABC):
     @_docstr_settable_property
     def iCol(self):
         """
-        Name of ``SparkADF``'s *identity*/*entity* column *(str, default = 'id')*
+        Name of ``DistributedDataFrame``'s *identity*/*entity* column *(str, default = 'id')*
         """
         return self._iCol
 
@@ -2154,7 +2154,7 @@ class SparkADF(_ADFABC):
         if iCol != self._iCol:
             self._iCol = iCol
             self._organizeTimeSeries(forceGenTRelAuxCols=True)
-            if self.hasTS:   # if newly turned into a time-series SparkADF, then set alias to update underlying table
+            if self.hasTS:   # if newly turned into a time-series DistributedDataFrame, then set alias to update underlying table
                 self.alias = self._alias
                 self._cache.reprSample = None
 
@@ -2166,7 +2166,7 @@ class SparkADF(_ADFABC):
     @_docstr_settable_property
     def tCol(self):
         """
-        Name of ``SparkADF``'s *timestamp* column *(str)*
+        Name of ``DistributedDataFrame``'s *timestamp* column *(str)*
         """
         return self._tCol
 
@@ -2192,14 +2192,14 @@ class SparkADF(_ADFABC):
         Max size of time-series chunks per `id`
         """
         assert not self._detPrePartitioned, \
-            '*** {}.tChunkLen NOT APPLICABLE WITH PRE-PARTITIONED SparkADF ***'.format(type(self))
+            '*** {}.tChunkLen NOT APPLICABLE WITH PRE-PARTITIONED DistributedDataFrame ***'.format(type(self))
         
         return self._tChunkLen
 
     @tChunkLen.setter
     def tChunkLen(self, tChunkLen):
         assert not self._detPrePartitioned, \
-            '*** {}.tChunkLen NOT APPLICABLE WITH PRE-PARTITIONED SparkADF ***'.format(type(self))
+            '*** {}.tChunkLen NOT APPLICABLE WITH PRE-PARTITIONED DistributedDataFrame ***'.format(type(self))
 
         if tChunkLen != self._tChunkLen:
             self._tChunkLen = tChunkLen
@@ -2379,7 +2379,7 @@ class SparkADF(_ADFABC):
     def copy(self, **kwargs):
         """
         Return:
-            A copy of the ``SparkADF``
+            A copy of the ``DistributedDataFrame``
         """
         adf = self._decorate(
             obj=self._sparkDF,
@@ -2394,7 +2394,7 @@ class SparkADF(_ADFABC):
     def select(self, *exprs, **kwargs):
         """
         Return:
-            ``SparkADF`` that is ``SELECT``'ed according to the given expressions
+            ``DistributedDataFrame`` that is ``SELECT``'ed according to the given expressions
 
         Args:
             *exprs: series of strings or ``Spark SQL`` expressions
@@ -2426,13 +2426,13 @@ class SparkADF(_ADFABC):
     def sql(self, query='SELECT * FROM this', tempAlias='this', **kwargs):
         """
         Return:
-            ``SparkADF`` that is ``SELECT``'ed according to the given query
+            ``DistributedDataFrame`` that is ``SELECT``'ed according to the given query
 
         Args:
             query (str, default = 'SELECT * FROM this'): *SQL* query beginning with "``SELECT``"
 
         Keyword Args:
-            tempAlias (str, default = 'this'): name of temporary *SQL* view to refer to original ``SparkADF``
+            tempAlias (str, default = 'this'): name of temporary *SQL* view to refer to original ``DistributedDataFrame``
         """
         origAlias = self._alias
         self.alias = tempAlias
@@ -2474,12 +2474,12 @@ class SparkADF(_ADFABC):
         (**SYNTACTIC SUGAR**)
 
         Return:
-            ``SparkADF`` instance
+            ``DistributedDataFrame`` instance
 
         There are 2 uses of this convenience method:
 
             - ``adf(func, *args, **kwargs)``: equivalent to ``func(adf, *args, **kwargs)``,
-                    with the final result being converted to ``SparkADF`` if it is a ``Spark DataFrame``
+                    with the final result being converted to ``DistributedDataFrame`` if it is a ``Spark DataFrame``
 
             - ``adf(*exprs, **kwargs)``: invokes *SQL* ``SELECT`` query with ``*exprs`` being either:
 
@@ -2490,7 +2490,7 @@ class SparkADF(_ADFABC):
         if args:
             arg = args[0]
 
-            if callable(arg) and (not isinstance(arg, SparkADF)) and (not isinstance(arg, types.ClassType)):
+            if callable(arg) and (not isinstance(arg, DistributedDataFrame)) and (not isinstance(arg, types.ClassType)):
                 args = args[1:] \
                     if (len(args) > 1) \
                     else ()
@@ -2801,7 +2801,7 @@ class SparkADF(_ADFABC):
     def distinct(self, *cols, **kwargs):
         """
         Return:
-            *Approximate* list of distinct values of ``SparkADF``'s column ``col``,
+            *Approximate* list of distinct values of ``DistributedDataFrame``'s column ``col``,
                 with optional descending-sorted counts for those values
 
         Args:
@@ -3337,7 +3337,7 @@ class SparkADF(_ADFABC):
     def profile(self, *cols, **kwargs):
         """
         Return:
-            *dict* of profile of salient statistics on specified columns of ``SparkADF``
+            *dict* of profile of salient statistics on specified columns of ``DistributedDataFrame``
 
         Args:
             *cols (str): names of column(s) to profile
@@ -3528,7 +3528,7 @@ class SparkADF(_ADFABC):
         Fill/interpolate ``NULL``/``NaN`` values
 
         Return:
-            ``SparkADF`` with ``NULL``/``NaN`` values filled/interpolated
+            ``DistributedDataFrame`` with ``NULL``/``NaN`` values filled/interpolated
 
         Args:
             *args (str): names of column(s) to fill/interpolate
@@ -3552,7 +3552,7 @@ class SparkADF(_ADFABC):
                     - ``after`` (**TO-DO**)
                     - ``None`` (do nothing)
 
-                    (*NOTE:* for an ``SparkADF`` with a ``.tCol`` set, ``NumPy/Pandas NaN`` values cannot be filled;
+                    (*NOTE:* for an ``DistributedDataFrame`` with a ``.tCol`` set, ``NumPy/Pandas NaN`` values cannot be filled;
                         it is best that such *Python* values be cleaned up before they get into Spark)
 
                 - **value**: single value, or *dict* of values by column name,
@@ -3701,7 +3701,7 @@ class SparkADF(_ADFABC):
 
                         if len(methodForCol) == 2:
                             assert self.hasTS, \
-                                "NULL-Filling Methods {} Not Supported for Non-Time-Series SparkADFs".format(
+                                "NULL-Filling Methods {} Not Supported for Non-Time-Series DistributedDataFrames".format(
                                     ', '.join(s.upper() for s in _TS_FILL_METHODS))
 
                             methodForCol, window = methodForCol
@@ -3882,12 +3882,12 @@ class SparkADF(_ADFABC):
     @_docstr_verbose
     def prep(self, *cols, **kwargs):
         """
-        Pre-process ``SparkADF``'s selected column(s) in standard ways:
+        Pre-process ``DistributedDataFrame``'s selected column(s) in standard ways:
             - One-hot-encode categorical columns
             - Scale numerical columns
 
         Return:
-            Standard-pre-processed ``SparkADF``
+            Standard-pre-processed ``DistributedDataFrame``
 
         Args:
             *args: column(s) to pre-process
@@ -5066,7 +5066,7 @@ class SparkADF(_ADFABC):
     def sample(self, *args, **kwargs):
         """
         Return:
-            - if ``collect = False / None``: return 1 or a *list* of ``SparkADF`` s
+            - if ``collect = False / None``: return 1 or a *list* of ``DistributedDataFrame`` s
             - if ``collect = 'pandas'``: return 1 or a *list* of ``Pandas DataFrame`` s
             - if ``collect = 'numpy'``: return 1 or a *list* of ``NumPy Array`` s
 
@@ -5093,7 +5093,7 @@ class SparkADF(_ADFABC):
 
                 - **padValue**: *(only applicable to time-series data)* value to pad short extracted series to desired max series length
 
-                - **alias** *(str, default = None)*: name of the resulting sampled ``SparkADF``; only applicable when ``*args`` is empty and ``collect = False``
+                - **alias** *(str, default = None)*: name of the resulting sampled ``DistributedDataFrame``; only applicable when ``*args`` is empty and ``collect = False``
         """
         preparedArgs = self._prepareArgsForSampleOrGenOrPred(*args, **kwargs)
 
@@ -5171,7 +5171,7 @@ class SparkADF(_ADFABC):
         Same as ``.sample(...)``, but produces a **generator**
 
         Keyword Args:
-            - **cache** *(bool, default = True)*: whether to cache the SparkADF before generating samples
+            - **cache** *(bool, default = True)*: whether to cache the DistributedDataFrame before generating samples
         """
         preparedArgs = self._prepareArgsForSampleOrGenOrPred(*args, **kwargs)
 
@@ -5265,7 +5265,7 @@ class SparkADF(_ADFABC):
     def rename(self, **kwargs):
         """
         Return:
-            ``SparkADF`` with new column names
+            ``DistributedDataFrame`` with new column names
 
         Args:
             **kwargs: arguments of the form ``newColName`` = ``existingColName``
@@ -5293,16 +5293,16 @@ class SparkADF(_ADFABC):
 
     def split(self, *weights, **kwargs):
         """
-        Split ``SparkADF`` into sub-``SparkADF``'s according to specified weights (which are normalized to sum to 1)
+        Split ``DistributedDataFrame`` into sub-``DistributedDataFrame``'s according to specified weights (which are normalized to sum to 1)
 
         Return:
-            - If ``SparkADF``'s ``.tCol`` property is set, implying the data contains time series, return deterministic
+            - If ``DistributedDataFrame``'s ``.tCol`` property is set, implying the data contains time series, return deterministic
                 partitions per ``id`` through time
 
-            - If ``SparkADF`` does not contain time series, randomly shuffle the data and return shuffled sub-``SparkADF``'s
+            - If ``DistributedDataFrame`` does not contain time series, randomly shuffle the data and return shuffled sub-``DistributedDataFrame``'s
 
         Args:
-            *weights: weights of sub-``SparkADF``'s to split out
+            *weights: weights of sub-``DistributedDataFrame``'s to split out
 
             **kwargs:
 
@@ -5441,10 +5441,10 @@ class SparkADF(_ADFABC):
                 partPaths.append(pathPath)
 
                 try:
-                    partADFs.append(SparkADF.load(pathPath))
+                    partADFs.append(DistributedDataFrame.load(pathPath))
 
                 except:
-                    SparkADF.load(path=srcPaths[pathFromI:pathToI], **kwargs) \
+                    DistributedDataFrame.load(path=srcPaths[pathFromI:pathToI], **kwargs) \
                             .save(path=pathPath,
                                   partitionBy=partitionBy)
 
@@ -5452,15 +5452,18 @@ class SparkADF(_ADFABC):
                         arimo.backend.spark.stop()
 
                     else:
-                        partADFs.append(SparkADF.load(pathPath))
+                        partADFs.append(DistributedDataFrame.load(pathPath))
 
-            adf = SparkADF.load(path=partPaths) \
+            adf = DistributedDataFrame.load(path=partPaths) \
                 if restartSpark \
-                else SparkADF.unionAllCols(*partADFs)
+                else DistributedDataFrame.unionAllCols(*partADFs)
 
         else:
-            adf = SparkADF.load(path=srcPaths, **kwargs)
+            adf = DistributedDataFrame.load(path=srcPaths, **kwargs)
 
         adf.save(
             path=hdfsDestPath,
             partitionBy=partitionBy)
+
+
+DDF = DistributedDataFrame
