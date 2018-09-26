@@ -66,7 +66,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
 
     def __init__(
             self, path, aws_access_key_id=None, aws_secret_access_key=None, reCache=False,
-            _srcSparkDFSchema=None, _initSparkDF=None, _sparkDFTransforms=[], _sparkDF=None,
+            _initSparkDF=None, _sparkDFTransforms=[], _sparkDF=None,
             _pandasDFTransforms=[],
             reprSampleMinNPieces=AbstractS3ParquetDataHandler._REPR_SAMPLE_MIN_N_PIECES,
             verbose=True, **kwargs):
@@ -208,8 +208,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             _srcSparkDF = \
                 arimo.backend.spark.read.load(
                     path=path,
-                    format='parquet',
-                    schema=_srcSparkDFSchema)
+                    format='parquet')
 
             _schema = _srcSparkDF.schema
 
@@ -223,8 +222,6 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             _cache._srcSparkDF = _srcSparkDF
 
             _cache._srcNRows = _srcSparkDF.count()
-
-            _cache._srcSparkDFSchema = _srcSparkDF.schema
 
             if verbose:
                 toc = time.time()
@@ -759,7 +756,6 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                 adf = S3ParquetDistributedDataFrame(
                     path=subsetPath,
                     aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
-                    # _srcSparkDFSchema=self._srcSparkDFSchema,
                     _sparkDFTransforms=self._sparkDFTransforms,
                     _pandasDFTransforms=self._pandasDFTransforms,
                     verbose=verbose,
@@ -799,7 +795,6 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                     S3ParquetDistributedDataFrame(
                         path=piecePath,
                         aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
-                        # _srcSparkDFSchema=self._srcSparkDFSchema,
                         _sparkDFTransforms=self._sparkDFTransforms,
                         _pandasDFTransforms=self._pandasDFTransforms,
                         verbose=False,
