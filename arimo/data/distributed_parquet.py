@@ -759,7 +759,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                 adf = S3ParquetDistributedDataFrame(
                     path=subsetPath,
                     aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
-                    _srcSparkDFSchema=self._srcSparkDFSchema,
+                    # _srcSparkDFSchema=self._srcSparkDFSchema,
                     _sparkDFTransforms=self._sparkDFTransforms,
                     _pandasDFTransforms=self._pandasDFTransforms,
                     verbose=verbose,
@@ -799,7 +799,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                     S3ParquetDistributedDataFrame(
                         path=piecePath,
                         aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
-                        _srcSparkDFSchema=self._srcSparkDFSchema,
+                        # _srcSparkDFSchema=self._srcSparkDFSchema,
                         _sparkDFTransforms=self._sparkDFTransforms,
                         _pandasDFTransforms=self._pandasDFTransforms,
                         verbose=False,
