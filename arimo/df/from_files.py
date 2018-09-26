@@ -932,7 +932,7 @@ class ArrowADF(_ArrowADFABC):
 
                         srcColsInclPartitionKVs += schema.names
 
-                        for col in schema.names:
+                        for col in set(schema.names).difference(partitionKVs):
                             srcTypesExclPartitionKVs[col] = \
                                 srcTypesInclPartitionKVs[col] = \
                                 schema.field_by_name(col).type
