@@ -26,7 +26,7 @@ from pyspark.ml.feature import SQLTransformer
 from pyspark.sql import DataFrame
 
 import arimo.backend
-from arimo.df.parquet import AbstractS3ParquetDataHandler, \
+from .parquet import AbstractS3ParquetDataHandler, \
     _S3ParquetDataFeeder__getitem__pandasDFTransform, _S3ParquetDataFeeder__drop__pandasDFTransform, \
     _S3ParquetDataFeeder__fillna__pandasDFTransform, _S3ParquetDataFeeder__prep__pandasDFTransform, \
     _S3ParquetDataFeeder__pieceArrowTableFunc, _S3ParquetDataFeeder__gen
