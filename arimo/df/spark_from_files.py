@@ -135,8 +135,9 @@ class ArrowSparkADF(_ArrowADFABC, SparkADF):
 
             else:
                 _cache.nPieces = 1
-                _cache.piecePaths = {path}
-                _cache.pieceSubPaths = {}
+                _cache.path = os.path.dirname(path)
+                _cache.piecePaths = {_cache.path}
+                _cache.pieceSubPaths = {os.path.basename(path)}
                 _cache._partitionedByDateOnly = False
 
             if path.startswith('s3'):
