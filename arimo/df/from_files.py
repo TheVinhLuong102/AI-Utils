@@ -884,7 +884,7 @@ class ArrowADF(_ArrowADFABC):
 
                         pieceCache.srcColsInclPartitionKVs += schema.names
 
-                        for col in schema.names:
+                        for col in set(schema.names).difference(pieceCache.partitionKVs):
                             pieceCache.srcTypesExclPartitionKVs[col] = \
                                 pieceCache.srcTypesInclPartitionKVs[col] = \
                                 schema.field_by_name(col).type
@@ -1479,7 +1479,7 @@ class ArrowADF(_ArrowADFABC):
                 
                 self.srcColsInclPartitionKVs.update(schema.names)
 
-                for col in schema.names:
+                for col in set(schema.names).difference(pieceCache.partitionKVs):
                     pieceCache.srcTypesExclPartitionKVs[col] = \
                         pieceCache.srcTypesInclPartitionKVs[col] = \
                         _arrowType = \
