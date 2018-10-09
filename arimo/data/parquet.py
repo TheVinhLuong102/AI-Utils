@@ -489,7 +489,7 @@ class _S3ParquetDataFeeder__pieceArrowTableFunc:
         return read_table(
                 source=path,
                 columns=None,
-                nthreads=self.nThreads,
+                use_threads=self.nThreads,
                 metadata=None,
                 use_pandas_metadata=False)
 
@@ -1513,7 +1513,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     read_table(
                         source=pieceLocalOrHDFSPath,
                         columns=srcCols,
-                        nthreads=psutil.cpu_count(logical=True),
+                        use_threads=psutil.cpu_count(logical=True),
                         metadata=None,
                         use_pandas_metadata=False)
 
