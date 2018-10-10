@@ -37,7 +37,7 @@ from arimo.data.distributed import DDF
 from arimo.data.distributed_parquet import S3ParquetDistributedDataFrame
 from arimo.dl.base import DataFramePreprocessor, ModelServingPersistence
 import arimo.eval.metrics
-from arimo.util import clean_str, clean_uuid, date_time, fs, import_obj, Namespace
+from arimo.util import clean_uuid, date_time, fs, import_obj, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import DATE_COL, MONTH_COL, \
     _PRED_VARS_INCL_T_AUX_COLS, _PRED_VARS_INCL_T_CAT_AUX_COLS, _PRED_VARS_INCL_T_NUM_AUX_COLS
@@ -718,7 +718,7 @@ class _BlueprintABC(object):
         return blueprint
 
 
-class _BlueprintedModelABC(object):
+class AbstractBlueprintedModel(object):
     """
     Blueprinted Model abstract base class
     """
@@ -870,7 +870,7 @@ class _BlueprintedModelABC(object):
         return model
 
 
-class BlueprintedArimoDLModel(_BlueprintedModelABC):
+class BlueprintedArimoDLModel(AbstractBlueprintedModel):
     _LOADED_MODELS = {}
 
     def load(self, verbose=True):
@@ -932,7 +932,7 @@ class BlueprintedArimoDLModel(_BlueprintedModelABC):
             self.stdout_logger.info(message + ' done!')
 
 
-class BlueprintedKerasModel(_BlueprintedModelABC):
+class BlueprintedKerasModel(AbstractBlueprintedModel):
     _LOADED_MODELS = {}
 
     def load(self, verbose=True):
