@@ -10,7 +10,7 @@ _STR_CLASSES = \
 from arimo.util.date_time import \
     (DATE_COL,
      _T_ORD_COL, _T_DELTA_COL,
-     _T_HoY_COL, _T_QoY_COL, _T_MoY_COL, _T_PoY_COL,   # _T_WoY_COL, _T_DoY_COL,
+     _T_HoY_COL, _T_QoY_COL, _T_MoY_COL, _T_PoY_COL,
      _T_QoH_COL, _T_MoH_COL, _T_PoH_COL,
      _T_MoQ_COL, _T_PoQ_COL,
      _T_WoM_COL, _T_DoM_COL, _T_PoM_COL,
@@ -41,8 +41,6 @@ class AbstractDataHandler(object):
     _T_HoY_COL = _T_HoY_COL   # Half of Year
     _T_QoY_COL = _T_QoY_COL   # Quarter of Year
     _T_MoY_COL = _T_MoY_COL   # Month of Year
-    # _T_WoY_COL = _T_WoY_COL   # Week of Year
-    # _T_DoY_COL = _T_DoY_COL   # Day of Year
     _T_PoY_COL = _T_PoY_COL   # Part/Proportion/Fraction of Year
 
     _T_QoH_COL = _T_QoH_COL   # Quarter of Half-Year

@@ -31,40 +31,7 @@ else:
 import arimo.backend
 
 from pyspark.ml import PipelineModel, Transformer
-
-from pyspark.ml.feature import (
-    Binarizer,
-        # thresholding numerical features to binary (0/1) features
-    Bucketizer,
-        # transforms a column of continuous features to a column of feature buckets
-    QuantileDiscretizer,
-        # takes column with continuous features and outputs a column with binned categorical features
-    StringIndexer,
-        # encodes a string column of labels to a column of label indices
-    IndexToString,
-        # maps a column of label indices back to a column containing the original labels as strings
-    OneHotEncoderEstimator as OneHotEncoder, OneHotEncoderModel,
-        # maps a column of category indices to a column of binary vectors, with at most a single one-value
-    VectorIndexer,
-        # index categorical features in datasets of Vectors, both
-        # automatically decide which features are categorical & convert original values to category indices
-
-    Imputer,
-        # Imputation estimator for completing missing values, either using the mean or the median of the columns in which the missing values are located.
-    MaxAbsScaler,
-        # transforms a dataset of Vector rows, rescaling each feature to range [-1, 1]
-    MinMaxScaler,
-        # transforms a dataset of Vector rows, rescaling each feature to a specific range (often [0, 1]).
-    Normalizer,
-        # transforms a dataset of Vector rows, normalizing each Vector to have unit norm
-    StandardScaler,
-        # transforms dataset of Vector rows, normalizing each feature to have unit stdev and/or zero mean
-
-    VectorAssembler,
-        # combines a given list of columns into a single vector column
-
-    SQLTransformer)
-
+from pyspark.ml.feature import OneHotEncoderEstimator as OneHotEncoder, OneHotEncoderModel, SQLTransformer, VectorAssembler
 from pyspark.ml.linalg import Vector
 from pyspark.sql import DataFrame, functions as sparkSQLFuncs
 from pyspark.sql.window import Window
