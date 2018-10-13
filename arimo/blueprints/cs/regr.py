@@ -2,7 +2,6 @@ from __future__ import absolute_import, division
 
 import copy
 import math
-import os
 import pandas
 import psutil
 import random
@@ -11,7 +10,7 @@ import arimo.backend
 from arimo.data.parquet import S3ParquetDataFeeder
 from arimo.data.distributed_parquet import S3ParquetDistributedDataFrame
 from arimo.dl.base import LossPlateauLrDecay
-from arimo.util import fs, Namespace
+from arimo.util import Namespace
 from arimo.util.decor import _docstr_verbose
 from arimo.util.pkl import pickle_able
 import arimo.debug
@@ -213,11 +212,6 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                          # 'MAPE'   # mean_absolute_percentage_error
                 ])
 
-            open(os.path.join(
-                    model.dir,
-                    self.params.model._persist.struct_file), 'w') \
-                .write(model.to_json())
-
             n_threads = int(math.ceil(psutil.cpu_count(logical=True) / __n_workers__))
 
             train_gen = \
@@ -280,53 +274,9 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                     verbose=2,
                         # Integer. 0, 1, or 2. Verbosity mode. 0 = silent, 1 = progress bar, 2 = one line per epoch.
 
-                    callbacks=[   # list of callbacks to be called during training.
-                        # BaseLogger(stateful_metrics=None),
-                            # Callback that accumulates epoch averages of metrics.
-                            # This callback is automatically applied to every Keras model.
-
-                        # *** DISABLED BECAUSE PROGRESS IS ALREADY DISPLAYED WHEN verbose = True ***
-                        # ProgbarLogger(count_mode='samples', stateful_metrics=None),
-                            # Callback that prints metrics to stdout.
-
-                        # History(),
-                            # Callback that records events into a History object.
-                            # This callback is automatically applied to every Keras model.
-                            # The History object gets returned by the fit method of models.
-
+                    callbacks=[
                         arimo.backend.keras.callbacks.TerminateOnNaN(),
                             # Callback that terminates training when a NaN loss is encountered.
-
-                        arimo.backend.keras.callbacks.ModelCheckpoint(
-                            # Save the model after every epoch.
-
-                            filepath=os.path.join(model.dir, self.params.model._persist.weights_file),
-                                # string, path to save the model file.
-
-                            monitor=self.params.model.train.val_metric.name,
-                                # quantity to monitor.
-
-                            verbose=int(verbose > 0),
-                                # verbosity mode, 0 or 1
-
-                            save_best_only=(self.params.model.train.min_n_val_samples_per_epoch == 'all'),
-                                # if save_best_only=True,
-                                # the latest best model according to the quantity monitored will not be overwritten.
-
-                            save_weights_only=True,
-                                # if True, then only the model's weights will be saved (model.save_weights(filepath)),
-                                # else the full model is saved (model.save(filepath))
-
-                            mode=self.params.model.train.val_metric.mode,
-                                # one of {auto, min, max}.
-                                # If save_best_only=True, the decision to overwrite the current save file is made
-                                # based on either the maximization or the minimization of the monitored quantity.
-                                # For val_acc, this should be max, for val_loss this should be min, etc.
-                                # In auto mode, the direction is automatically inferred from the name of the monitored quantity.
-
-                            period=1
-                                # Interval (number of epochs) between checkpoints.
-                            ),
 
                         arimo.backend.keras.callbacks.ReduceLROnPlateau(
                             # Reduce learning rate when a metric has stopped improving.
