@@ -166,39 +166,8 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                 _cache.s3Client = _cache.s3Bucket = _cache.tmpDirS3Key = None
                 _cache.tmpDirPath = self._TMP_DIR_PATH
 
-            if arimo.backend.chkSpark():
-                if kwargs['detPrePartitioned']:
-                    pass
-
-                    # *** SKIP BELOW BECAUSE IT RESULTS IN POOR PARALLELISM ***
-                    # if arimo.debug.ON:
-                    #     logger.debug(
-                    #         msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to MAX_JAVA_INTEGER ***')
-                    # arimo.backend.setSpark1Partition1File(on=True)
-
-                else:
-                    pass
-
-                    # *** SKIP BELOW BECAUSE IT RESULTS IN POOR PARALLELISM ***
-                    # if arimo.debug.ON:
-                    #     logger.debug(
-                    #         msg='*** SETTING spark(.sql).files.maxPartitionBytes and spark(.sql).files.openCostInBytes to Defaults ***')
-                    # arimo.backend.setSpark1Partition1File(on=False)
-
-            else:
-                sparkConf = kwargs.pop('sparkConf', {})
-
-                if kwargs['detPrePartitioned']:
-                    pass
-
-                    # *** SKIP BELOW BECAUSE IT RESULTS IN POOR PARALLELISM ***
-                    # sparkConf['spark.files.maxPartitionBytes'] = \
-                    #     sparkConf['spark.sql.files.maxPartitionBytes'] = \
-                    #     sparkConf['spark.files.openCostInBytes'] = \
-                    #     sparkConf['spark.sql.files.openCostInBytes'] = \
-                    #     arimo.backend._MAX_JAVA_INTEGER
-
-                arimo.backend.initSpark(sparkConf=sparkConf)
+            if not arimo.backend.chkSpark():
+                arimo.backend.initSpark(sparkConf=kwargs.pop('sparkConf', {}))
 
             if verbose:
                 msg = 'Loading SparkDF from "{}"...'.format(self.path)
