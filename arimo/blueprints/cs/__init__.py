@@ -21,11 +21,11 @@ from arimo.util.log import STDOUT_HANDLER
 from arimo.util.types.spark_sql import _NUM_TYPES, _STR_TYPE, _VECTOR_TYPE
 import arimo.debug
 
-from ..base import _docstr_blueprint, _SupervisedBlueprintABC, _DLSupervisedBlueprintABC, RegrEvalMixIn, \
+from ..base import \
+    _SupervisedBlueprintABC, _DLSupervisedBlueprintABC, RegrEvalMixIn, \
     BlueprintedArimoDLModel, BlueprintedKerasModel
 
 
-@_docstr_blueprint
 class _CrossSectSupervisedBlueprintABC(_SupervisedBlueprintABC):
     __metaclass__ = abc.ABCMeta
 
@@ -221,7 +221,6 @@ class _CrossSectSupervisedBlueprintABC(_SupervisedBlueprintABC):
         return metrics
 
 
-@_docstr_blueprint
 class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSupervisedBlueprintABC):
     __metaclass__ = abc.ABCMeta
 

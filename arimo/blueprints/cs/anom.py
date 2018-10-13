@@ -13,10 +13,9 @@ from arimo.data.distributed import DDF
 from arimo.util import fs
 import arimo.debug
 
-from ..base import _docstr_blueprint, _blueprint_from_params, _PPPBlueprintABC
+from ..base import _blueprint_from_params, _PPPBlueprintABC
 
 
-@_docstr_blueprint
 class DLPPPBlueprint(_PPPBlueprintABC):
     def score(self, *args, **kwargs):
         # scoring batch size

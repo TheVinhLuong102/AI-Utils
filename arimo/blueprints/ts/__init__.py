@@ -17,17 +17,16 @@ import arimo.backend
 from arimo.data.distributed import DDF
 import arimo.eval.metrics
 from arimo.util import clean_str, clean_uuid, fs, Namespace
-from arimo.util.decor import _docstr_verbose
 from arimo.util.dl import MASK_VAL
 from arimo.util.log import STDOUT_HANDLER
 from arimo.util.types.spark_sql import _NUM_TYPES, _STR_TYPE
 import arimo.debug
 
-from ..base import _docstr_blueprint, _DLSupervisedBlueprintABC, RegrEvalMixIn, \
+from ..base import \
+    _DLSupervisedBlueprintABC, RegrEvalMixIn, \
     BlueprintedArimoDLModel, BlueprintedKerasModel
 
 
-@_docstr_blueprint
 class _TimeSerDLSupervisedBlueprintABC(_DLSupervisedBlueprintABC):
     __metaclass__ = abc.ABCMeta
 
@@ -63,7 +62,6 @@ class _TimeSerDLSupervisedBlueprintABC(_DLSupervisedBlueprintABC):
 
     _EVAL_SCORE_ADF_ALIAS = '__EvalScored__'
 
-    @_docstr_verbose
     def score(self, *args, **kwargs):
         # whether scoring for eval purposes
         __eval__ = kwargs.pop(self._MODE_ARG, None) == self._EVAL_MODE
