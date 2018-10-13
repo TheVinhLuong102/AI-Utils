@@ -10,15 +10,13 @@ from arimo.data.parquet import S3ParquetDataFeeder
 from arimo.data.distributed_parquet import S3ParquetDistributedDataFrame
 from arimo.dl.base import LossPlateauLrDecay
 from arimo.util import Namespace
-from arimo.util.decor import _docstr_verbose
 from arimo.util.pkl import pickle_able
 import arimo.debug
 
-from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, _docstr_blueprint, ClassifEvalMixIn
+from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, ClassifEvalMixIn
 from . import _DLCrossSectSupervisedBlueprintABC
 
 
-@_docstr_blueprint
 class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
     _DEFAULT_PARAMS = \
         copy.deepcopy(
@@ -45,7 +43,6 @@ class DLBlueprint(ClassifEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
                 type='boolean',
                 default=True)})
 
-    @_docstr_verbose
     def train(self, *args, **kwargs):
         __gen_queue_size__ = \
             kwargs.pop(

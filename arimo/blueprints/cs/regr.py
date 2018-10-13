@@ -11,15 +11,13 @@ from arimo.data.parquet import S3ParquetDataFeeder
 from arimo.data.distributed_parquet import S3ParquetDistributedDataFrame
 from arimo.dl.base import LossPlateauLrDecay
 from arimo.util import Namespace
-from arimo.util.decor import _docstr_verbose
 from arimo.util.pkl import pickle_able
 import arimo.debug
 
-from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, _docstr_blueprint, RegrEvalMixIn
+from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, RegrEvalMixIn
 from . import _DLCrossSectSupervisedBlueprintABC
 
 
-@_docstr_blueprint
 class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
     _DEFAULT_PARAMS = \
         copy.deepcopy(
@@ -41,7 +39,6 @@ class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
             'model.factory': Namespace(
                 label='Model-Initializing Factory Function Name & Params')})
 
-    @_docstr_verbose
     def train(self, *args, **kwargs):
         __gen_queue_size__ = \
             kwargs.pop(

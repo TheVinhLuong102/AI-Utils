@@ -10,15 +10,13 @@ from arimo.data.parquet import S3ParquetDataFeeder
 from arimo.data.distributed_parquet import S3ParquetDistributedDataFrame
 from arimo.dl.base import LossPlateauLrDecay
 from arimo.util import Namespace
-from arimo.util.decor import _docstr_verbose
 from arimo.util.dl import MASK_VAL
 from arimo.util.pkl import pickle_able
 
-from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, _docstr_blueprint, ClassifEvalMixIn, _TimeSerDataPrepMixInABC
+from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, ClassifEvalMixIn, _TimeSerDataPrepMixInABC
 from . import _TimeSerDLSupervisedBlueprintABC
 
 
-@_docstr_blueprint
 class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC, _TimeSerDataPrepMixInABC):
     _DEFAULT_PARAMS = \
         copy.deepcopy(
@@ -79,7 +77,6 @@ class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC, _TimeSerDa
                 order='05d-00-00',
                 tags=[])})
 
-    @_docstr_verbose
     def train(self, *args, **kwargs):
         __gen_queue_size__ = \
             kwargs.pop(
