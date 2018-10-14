@@ -15,13 +15,13 @@ from arimo.util.pkl import pickle_able
 import arimo.debug
 
 from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, RegrEvalMixIn
-from . import _DLCrossSectSupervisedBlueprintABC
+from . import AbstractDLCrossSectSupervisedBlueprint
 
 
-class DLBlueprint(RegrEvalMixIn, _DLCrossSectSupervisedBlueprintABC):
+class DLBlueprint(RegrEvalMixIn, AbstractDLCrossSectSupervisedBlueprint):
     _DEFAULT_PARAMS = \
         copy.deepcopy(
-            _DLCrossSectSupervisedBlueprintABC._DEFAULT_PARAMS)
+            AbstractDLCrossSectSupervisedBlueprint._DEFAULT_PARAMS)
 
     _DEFAULT_PARAMS.update(
         model=Namespace(

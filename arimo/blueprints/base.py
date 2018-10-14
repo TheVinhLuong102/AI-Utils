@@ -227,7 +227,7 @@ def _docstr_blueprint(BlueprintClass):
 
 
 @_docstr_blueprint
-class _BlueprintABC(object):
+class AbstractBlueprint(object):
     """
     Abstract base class for ``Blueprint``s
     """
@@ -1034,12 +1034,12 @@ class RegrEvalMixIn(_EvalMixInABC):
 
 
 @_docstr_blueprint
-class _SupervisedBlueprintABC(_BlueprintABC):
+class AbstractSupervisedBlueprint(AbstractBlueprint):
     __metaclass__ = abc.ABCMeta
 
     _DEFAULT_PARAMS = \
         copy.deepcopy(
-            _BlueprintABC._DEFAULT_PARAMS)
+            AbstractBlueprint._DEFAULT_PARAMS)
 
     _DEFAULT_PARAMS.update(
         data=Namespace(
@@ -1208,7 +1208,7 @@ class _SupervisedBlueprintABC(_BlueprintABC):
     _LABELED_ADF_ALIAS_SUFFIX = '__Labeled'
 
     def __init__(self, *args, **kwargs):
-        super(_SupervisedBlueprintABC, self).__init__(*args, **kwargs)
+        super(AbstractSupervisedBlueprint, self).__init__(*args, **kwargs)
 
         # set local dir storing all models for Blueprint
         if self.params.persist._models_dir != self._DEFAULT_PARAMS.persist._models_dir:
@@ -1934,12 +1934,12 @@ class _SupervisedBlueprintABC(_BlueprintABC):
 
 
 @_docstr_blueprint
-class _DLSupervisedBlueprintABC(_SupervisedBlueprintABC):
+class AbstractDLSupervisedBlueprint(AbstractSupervisedBlueprint):
     __metaclass__ = abc.ABCMeta
 
     _DEFAULT_PARAMS = \
         copy.deepcopy(
-            _SupervisedBlueprintABC._DEFAULT_PARAMS)
+            AbstractSupervisedBlueprint._DEFAULT_PARAMS)
 
     _DEFAULT_PARAMS.update(
         model=Namespace(
@@ -2108,12 +2108,12 @@ class _DLSupervisedBlueprintABC(_SupervisedBlueprintABC):
 
 
 @_docstr_blueprint
-class _PPPBlueprintABC(_BlueprintABC):
+class AbstractPPPBlueprint(AbstractBlueprint):
     __metaclass__ = abc.ABCMeta
 
     _DEFAULT_PARAMS = \
         copy.deepcopy(
-            _BlueprintABC._DEFAULT_PARAMS)
+            AbstractBlueprint._DEFAULT_PARAMS)
 
     _DEFAULT_PARAMS.update(
         model=Namespace(
@@ -2167,13 +2167,13 @@ class _PPPBlueprintABC(_BlueprintABC):
     def __init__(self, *args, **kwargs):
         model_params = kwargs.pop('__model_params__', {})
 
-        super(_PPPBlueprintABC, self).__init__(*args, **kwargs)
+        super(AbstractPPPBlueprint, self).__init__(*args, **kwargs)
 
         assert self.params.data.id_col and self.params.data.time_col
 
         for label_var_name, component in self.params.model.component_blueprints.items():
-            if isinstance(component, _BlueprintABC):
-                assert isinstance(component, _SupervisedBlueprintABC), \
+            if isinstance(component, AbstractBlueprint):
+                assert isinstance(component, AbstractSupervisedBlueprint), \
                     'All Component Blueprints Must Be Supervised'
 
                 self.params.model.component_blueprints[label_var_name] = \
@@ -2547,14 +2547,14 @@ class _PPPBlueprintABC(_BlueprintABC):
         __gen_queue_size__ = \
             kwargs.pop(
                 '__gen_queue_size__',
-                _DLSupervisedBlueprintABC.DEFAULT_MODEL_TRAIN_MAX_GEN_QUEUE_SIZE)
+                AbstractDLSupervisedBlueprint.DEFAULT_MODEL_TRAIN_MAX_GEN_QUEUE_SIZE)
         assert __gen_queue_size__, \
             '*** __gen_queue_size__ = {} ***'.format(__gen_queue_size__)
 
         __n_workers__ = \
             kwargs.pop(
                 '__n_workers__',
-                _DLSupervisedBlueprintABC.DEFAULT_MODEL_TRAIN_N_WORKERS)
+                AbstractDLSupervisedBlueprint.DEFAULT_MODEL_TRAIN_N_WORKERS)
         assert __n_workers__, \
             '*** __n_workers__ = {} ***'.format(__n_workers__)
 
@@ -2563,7 +2563,7 @@ class _PPPBlueprintABC(_BlueprintABC):
         __n_gpus__ = \
             kwargs.pop(
                 '__n_gpus__',
-                _DLSupervisedBlueprintABC.DEFAULT_MODEL_TRAIN_N_GPUS)
+                AbstractDLSupervisedBlueprint.DEFAULT_MODEL_TRAIN_N_GPUS)
         assert __n_gpus__, \
             '*** __n_gpus__ = {} ***'.format(__n_gpus__)
 
@@ -3165,7 +3165,7 @@ class _PPPBlueprintABC(_BlueprintABC):
                                         .difference(
                                             {id_col, time_col, DATE_COL, MONTH_COL} |
                                             label_var_names |
-                                            {(_SupervisedBlueprintABC._DEFAULT_PARAMS.model.score.raw_score_col_prefix + label_var_name)
+                                            {(AbstractSupervisedBlueprint._DEFAULT_PARAMS.model.score.raw_score_col_prefix + label_var_name)
                                              for label_var_name in label_var_names} |
                                             cols_to_agg)),
                     DATE_COL
@@ -3340,7 +3340,7 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
         s3_file_key = \
             os.path.join(
                 s3_dir_prefix,
-                _BlueprintABC._DEFAULT_PARAMS.persist._file)
+                AbstractBlueprint._DEFAULT_PARAMS.persist._file)
 
         if verbose:
             msg = 'Loading Blueprint Instance from S3 Path "s3://{}/{}..."'.format(s3_bucket, s3_file_key)
@@ -3402,7 +3402,7 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
             if verbose:
                 logger.info(msg + ' done!')
 
-        if isinstance(blueprint, _SupervisedBlueprintABC):
+        if isinstance(blueprint, AbstractSupervisedBlueprint):
             s3_models_dir_prefix = \
                 os.path.join(
                     s3_dir_prefix,
@@ -3451,7 +3451,7 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
         local_file_path = \
             os.path.join(
                 dir_path,
-                _BlueprintABC._DEFAULT_PARAMS.persist._file)
+                AbstractBlueprint._DEFAULT_PARAMS.persist._file)
 
         if verbose:
             msg = 'Loading Blueprint Instance from Local Path "{}"...'.format(local_file_path)

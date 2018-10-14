@@ -22,11 +22,11 @@ from arimo.util.types.spark_sql import _NUM_TYPES, _STR_TYPE, _VECTOR_TYPE
 import arimo.debug
 
 from ..base import \
-    _SupervisedBlueprintABC, _DLSupervisedBlueprintABC, RegrEvalMixIn, \
+    AbstractSupervisedBlueprint, AbstractDLSupervisedBlueprint, RegrEvalMixIn, \
     BlueprintedArimoDLModel, BlueprintedKerasModel
 
 
-class _CrossSectSupervisedBlueprintABC(_SupervisedBlueprintABC):
+class AbstractCrossSectSupervisedBlueprint(AbstractSupervisedBlueprint):
     __metaclass__ = abc.ABCMeta
 
     def eval(self, *args, **kwargs):
@@ -221,16 +221,16 @@ class _CrossSectSupervisedBlueprintABC(_SupervisedBlueprintABC):
         return metrics
 
 
-class _DLCrossSectSupervisedBlueprintABC(_CrossSectSupervisedBlueprintABC, _DLSupervisedBlueprintABC):
+class AbstractDLCrossSectSupervisedBlueprint(AbstractCrossSectSupervisedBlueprint, AbstractDLSupervisedBlueprint):
     __metaclass__ = abc.ABCMeta
 
     _DEFAULT_PARAMS = \
         copy.deepcopy(
-            _CrossSectSupervisedBlueprintABC._DEFAULT_PARAMS)
+            AbstractCrossSectSupervisedBlueprint._DEFAULT_PARAMS)
 
     _DEFAULT_PARAMS.update(
         copy.deepcopy(
-            _DLSupervisedBlueprintABC._DEFAULT_PARAMS))
+            AbstractDLSupervisedBlueprint._DEFAULT_PARAMS))
 
     def score(self, *args, **kwargs):
         # scoring batch size

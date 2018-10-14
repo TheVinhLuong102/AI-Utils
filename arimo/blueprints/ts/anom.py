@@ -14,10 +14,10 @@ from arimo.util import fs
 from arimo.util.dl import MASK_VAL
 import arimo.debug
 
-from ..base import _blueprint_from_params, _PPPBlueprintABC, _TimeSerDataPrepMixInABC
+from ..base import _blueprint_from_params, AbstractPPPBlueprint, AbstractTimeSerDataPrepMixIn
 
 
-class DLPPPBlueprint(_TimeSerDataPrepMixInABC, _PPPBlueprintABC):
+class DLPPPBlueprint(AbstractTimeSerDataPrepMixIn, AbstractPPPBlueprint):
     _SCORE_ADF_ALIAS = '__Scored__'
 
     def score(self, *args, **kwargs):

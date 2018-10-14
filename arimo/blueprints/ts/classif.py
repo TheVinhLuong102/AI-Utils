@@ -13,14 +13,14 @@ from arimo.util import Namespace
 from arimo.util.dl import MASK_VAL
 from arimo.util.pkl import pickle_able
 
-from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, ClassifEvalMixIn, _TimeSerDataPrepMixInABC
-from . import _TimeSerDLSupervisedBlueprintABC
+from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, ClassifEvalMixIn, AbstractTimeSerDataPrepMixIn
+from . import AbstractTimeSerDLSupervisedBlueprint
 
 
-class DLBlueprint(ClassifEvalMixIn, _TimeSerDLSupervisedBlueprintABC, _TimeSerDataPrepMixInABC):
+class DLBlueprint(ClassifEvalMixIn, AbstractTimeSerDLSupervisedBlueprint, AbstractTimeSerDataPrepMixIn):
     _DEFAULT_PARAMS = \
         copy.deepcopy(
-            _TimeSerDLSupervisedBlueprintABC._DEFAULT_PARAMS)
+            AbstractTimeSerDLSupervisedBlueprint._DEFAULT_PARAMS)
 
     _DEFAULT_PARAMS.update(
         model=Namespace(

@@ -23,16 +23,16 @@ from arimo.util.types.spark_sql import _NUM_TYPES, _STR_TYPE
 import arimo.debug
 
 from ..base import \
-    _DLSupervisedBlueprintABC, RegrEvalMixIn, \
+    AbstractDLSupervisedBlueprint, RegrEvalMixIn, \
     BlueprintedArimoDLModel, BlueprintedKerasModel
 
 
-class _TimeSerDLSupervisedBlueprintABC(_DLSupervisedBlueprintABC):
+class AbstractTimeSerDLSupervisedBlueprint(AbstractDLSupervisedBlueprint):
     __metaclass__ = abc.ABCMeta
 
     _DEFAULT_PARAMS = \
         copy.deepcopy(
-            _DLSupervisedBlueprintABC._DEFAULT_PARAMS)
+            AbstractDLSupervisedBlueprint._DEFAULT_PARAMS)
 
     _DEFAULT_PARAMS.update(
         # input series and prediction horizon lengths
