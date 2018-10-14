@@ -3299,52 +3299,6 @@ def _blueprint_from_params(
             verbose=verbose)
 
 
-# utility to validate Blueprint params
-def validate_blueprint_params(blueprint_or_blueprint_params):
-    if isinstance(blueprint_or_blueprint_params, _BlueprintABC):
-        blueprint = blueprint_or_blueprint_params
-        blueprint_params = blueprint.params
-
-    else:
-        blueprint_params = blueprint_or_blueprint_params
-        blueprint = \
-            _blueprint_from_params(
-                blueprint_params=blueprint_params,
-                verbose=False)
-
-    undeclared_params = \
-        {k for k in blueprint_params.keys(all_nested=True)
-         if not (k.startswith('data._cat_prep_cols_metadata.') or
-                 k.startswith('data._num_prep_cols_metadata.'))} \
-            .difference(_BLUEPRINT_PARAMS_ORDERED_LIST)
-
-    component_blueprints = \
-        blueprint_params.model.get('component_blueprints')
-
-    if component_blueprints:
-        component_blueprint_params = \
-            {k for k in undeclared_params
-             if k.startswith('model.component_blueprints.')}
-
-        undeclared_params.difference_update(component_blueprint_params)
-
-        _chk = all(validate_blueprint_params(component_blueprint)
-                   for component_blueprint in component_blueprints.values())
-
-    if undeclared_params:
-        blueprint.stdout_logger.warning(
-            msg='*** UNDECLARED PARAMS: {} ***'
-                .format(undeclared_params))
-
-        return False
-
-    elif component_blueprints:
-        return _chk
-
-    else:
-        return True
-
-
 _LOADED_BLUEPRINTS = {}
 
 
