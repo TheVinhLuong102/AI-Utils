@@ -34,6 +34,7 @@ from pyspark.ml import PipelineModel, Transformer
 from pyspark.ml.feature import OneHotEncoderEstimator as OneHotEncoder, OneHotEncoderModel, SQLTransformer, VectorAssembler
 from pyspark.ml.linalg import Vector
 from pyspark.sql import DataFrame, functions as sparkSQLFuncs
+from pyspark.sql.types import StructField, StructType
 from pyspark.sql.window import Window
 
 from arimo.util import DefaultDict, fs, Namespace
@@ -44,8 +45,7 @@ from arimo.util.types.numpy_pandas import PY_NUM_TYPES
 from arimo.util.types.spark_sql import \
     _INT_TYPE, _BIGINT_TYPE, _INT_TYPES, _DOUBLE_TYPE, _FLOAT_TYPES, _NUM_TYPES, \
     _BOOL_TYPE, _STR_TYPE, _BINARY_TYPE, _POSSIBLE_CAT_TYPES, _DATE_TYPE, _TIMESTAMP_TYPE, \
-    _VECTOR_TYPE, _DECIMAL_TYPE_PREFIX, _ARRAY_TYPE_PREFIX, _MAP_TYPE_PREFIX, _STRUCT_TYPE_PREFIX, \
-    StructField, StructType
+    _VECTOR_TYPE, _DECIMAL_TYPE_PREFIX, _ARRAY_TYPE_PREFIX, _MAP_TYPE_PREFIX, _STRUCT_TYPE_PREFIX
 import arimo.debug
 
 from . import AbstractDataHandler
