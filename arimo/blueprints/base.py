@@ -1004,11 +1004,11 @@ class BlueprintedKerasModel(AbstractBlueprintedModel):
             self.stdout_logger.info(message + ' done!')
 
 
-class _TimeSerDataPrepMixInABC(object):
+class AbstractTimeSerDataPrepMixIn(object):
     pass
 
 
-class _EvalMixInABC(object):
+class AbstractEvalMixIn(object):
     __metaclass__ = abc.ABCMeta
 
     _EVAL_ADF_ALIAS_SUFFIX = '__Eval'
@@ -1019,7 +1019,7 @@ class _EvalMixInABC(object):
         raise NotImplementedError
 
 
-class ClassifEvalMixIn(_EvalMixInABC):
+class ClassifEvalMixIn(AbstractEvalMixIn):
     eval_metrics = \
         'Prevalence', 'ConfMat', 'Acc', \
         'Precision', 'WeightedPrecision', \
@@ -1029,7 +1029,7 @@ class ClassifEvalMixIn(_EvalMixInABC):
         'ROC_AuC', 'Weighted_ROC_AuC'
 
 
-class RegrEvalMixIn(_EvalMixInABC):
+class RegrEvalMixIn(AbstractEvalMixIn):
     eval_metrics = 'MedAE', 'MAE', 'RMSE', 'R2'
 
 
@@ -1266,13 +1266,13 @@ class AbstractSupervisedBlueprint(AbstractBlueprint):
 
             adf.tCol = self.params.data.time_col
 
-            if isinstance(self, _TimeSerDataPrepMixInABC):
+            if isinstance(self, AbstractTimeSerDataPrepMixIn):
                 adf.iCol = self.params.data.id_col
 
         else:
             kwargs['tCol'] = self.params.data.time_col
 
-            if isinstance(self, _TimeSerDataPrepMixInABC):
+            if isinstance(self, AbstractTimeSerDataPrepMixIn):
                 kwargs['iCol'] = self.params.data.id_col
 
             if isinstance(df, pandas.DataFrame):
@@ -1294,7 +1294,7 @@ class AbstractSupervisedBlueprint(AbstractBlueprint):
 
                     adf.tCol = self.params.data.time_col
 
-                    if isinstance(self, _TimeSerDataPrepMixInABC):
+                    if isinstance(self, AbstractTimeSerDataPrepMixIn):
                         adf.iCol = self.params.data.id_col
 
                 else:
@@ -2228,13 +2228,13 @@ class AbstractPPPBlueprint(AbstractBlueprint):
 
             adf.tCol = self.params.data.time_col
 
-            if isinstance(self, _TimeSerDataPrepMixInABC):
+            if isinstance(self, AbstractTimeSerDataPrepMixIn):
                 adf.iCol = self.params.data.id_col
 
         else:
             kwargs['tCol'] = self.params.data.time_col
 
-            if isinstance(self, _TimeSerDataPrepMixInABC):
+            if isinstance(self, AbstractTimeSerDataPrepMixIn):
                 kwargs['iCol'] = self.params.data.id_col
 
             if isinstance(df, pandas.DataFrame):
@@ -2253,7 +2253,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
 
                 adf.tCol = self.params.data.time_col
 
-                if isinstance(self, _TimeSerDataPrepMixInABC):
+                if isinstance(self, AbstractTimeSerDataPrepMixIn):
                     adf.iCol = self.params.data.id_col
 
             else:
