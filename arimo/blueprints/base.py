@@ -3226,62 +3226,49 @@ class AbstractPPPBlueprint(AbstractBlueprint):
             inplace=True,
             na_position='last')
 
-        for _alpha in to_iterable(alpha):
-            _ewma_prefix = cls._EWMA_PREFIX + '{:.3f}'.format(_alpha)[-3:] + '__'
+        ewma_prefix = cls._EWMA_PREFIX + '{:.3f}'.format(alpha)[-3:] + '__'
 
-            # ref: https://stackoverflow.com/questions/44417010/pandas-groupby-weighted-cumulative-sum
-            daily_err_mults_df[
-                [(_ewma_prefix + col_name)
-                 for col_name in daily_err_mult_summ_col_names]] = \
-                daily_err_mults_df.groupby(
-                    by=id_col,
-                        # Used to determine the groups for the groupby
-                    axis='index',
-                    level=None,
-                        # If the axis is a MultiIndex (hierarchical), group by a particular level or levels
-                    as_index=False,
-                        # For aggregated output, return object with group labels as the index.
-                        # Only relevant for DataFrame input. as_index=False is effectively SQL-style grouped output
-                    sort=False,
-                        # Sort group keys. Get better performance by turning this off.
-                        # Note this does not influence the order of observations within each group.
-                        # groupby preserves the order of rows within each group.
-                    group_keys=False,
-                        # When calling apply, add group keys to index to identify pieces
-                    squeeze=False
-                        # reduce the dimensionality of the return type if possible, otherwise return a consistent type
-                )[daily_err_mult_summ_col_names] \
-                .apply(
-                    lambda df:
-                        df.ewm(
-                            com=None,
-                            span=None,
-                            halflife=None,
-                            alpha=_alpha,
-                            min_periods=0,
-                            adjust=False,
-                                # ref: http://pandas.pydata.org/pandas-docs/stable/computation.html#exponentially-weighted-windows
-                            ignore_na=False,
-                                # When ignore_na is False (default), weights are based on absolute positions.
-                                # For example, the weights of x and y used in calculating the final weighted average of
-                                # [x, None, y] are (1-alpha)**2 and 1 (if adjust is True),
-                                # and (1-alpha)**2 and alpha (if adjust is False).
-                                # When ignore_na is True (reproducing pre-0.15.0 behavior),
-                                # weights are based on relative positions.
-                                # For example, the weights of x and y used in calculating the final weighted average of
-                                # [x, None, y] are 1-alpha and 1 (if adjust is True),
-                                # and 1-alpha and alpha (if adjust is False).
-                            axis='index')
-                        .mean()
-                        .where(
-                            cond=df.notnull(),
-                            other=numpy.nan,
-                            inplace=False,
-                            axis=None,
-                            level=None,
-                            errors='raise',
-                            try_cast=False,
-                            raise_on_error=None))
+        daily_err_mults_df[
+            [(ewma_prefix + col_name)
+             for col_name in daily_err_mult_summ_col_names]] = \
+            daily_err_mults_df.groupby(
+                by=id_col,
+                axis='index',
+                level=None,
+                as_index=False,
+                sort=False,
+                group_keys=False,
+                squeeze=False)[daily_err_mult_summ_col_names] \
+            .apply(
+                lambda df:
+                    df.ewm(
+                        com=None,
+                        span=None,
+                        halflife=None,
+                        alpha=alpha,
+                        min_periods=0,
+                        adjust=False,
+                        ignore_na=False,
+                            # When ignore_na is False (default), weights are based on absolute positions.
+                            # For example, the weights of x and y used in calculating the final weighted average of
+                            # [x, None, y] are (1-alpha)**2 and 1 (if adjust is True),
+                            # and (1-alpha)**2 and alpha (if adjust is False).
+                            # When ignore_na is True (reproducing pre-0.15.0 behavior),
+                            # weights are based on relative positions.
+                            # For example, the weights of x and y used in calculating the final weighted average of
+                            # [x, None, y] are 1-alpha and 1 (if adjust is True),
+                            # and 1-alpha and alpha (if adjust is False).
+                        axis='index')
+                    .mean()
+                    .where(
+                        cond=df.notnull(),
+                        other=numpy.nan,
+                        inplace=False,
+                        axis=None,
+                        level=None,
+                        errors='raise',
+                        try_cast=False,
+                        raise_on_error=None))
 
         return daily_err_mults_df
 
