@@ -841,7 +841,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 _cache.tmpDirPath = self._TMP_DIR_PATH
 
             if verbose:
-                msg = 'Loading Arrow Dataset from {}...'.format(self._pathRepr)
+                msg = 'Loading {} by Arrow...'.format(self._pathRepr)
                 logger.info(msg)
                 tic = time.time()
 
