@@ -11,11 +11,13 @@ import pandas
 import psutil
 import random
 import re
+from sklearn.exceptions import DataConversionWarning
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 import tempfile
 import time
 import tqdm
 import uuid
+import warnings
 
 import six
 
@@ -52,6 +54,12 @@ import arimo.debug
 
 from . import AbstractDataHandler
 from .distributed import DDF
+
+
+# filter out DataConversionWarning re: int64 in DL training
+warnings.filterwarnings(
+    action='ignore',
+    category=DataConversionWarning)
 
 
 class AbstractS3ParquetDataHandler(AbstractDataHandler):
