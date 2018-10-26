@@ -2367,7 +2367,7 @@ class DistributedDataFrame(AbstractDataHandler):
             *exprs: series of strings or ``Spark SQL`` expressions
         """
         if exprs:
-            inheritCache = kwargs.pop('inheritCache', '*' in exprs)
+            inheritCache = kwargs.pop('inheritCache', isinstance(exprs[0]) and (exprs[0] == '*'))
 
         else:
             exprs = '*',
