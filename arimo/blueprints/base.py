@@ -3114,7 +3114,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
         for _metric, _sgn in itertools.product(cls._RAW_METRICS, cls._SGN_PREFIXES):
             col_prefix = _sgn + cls._ERR_MULT_PREFIXES[_metric]
 
-            for label_var_name in label_var_names:
+            for label_var_name in label_var_names.copy():
                 col_to_agg = col_prefix + label_var_name
 
                 if col_to_agg in df_w_err_mults.columns:
