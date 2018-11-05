@@ -3109,16 +3109,25 @@ class AbstractPPPBlueprint(AbstractBlueprint):
 
         cols_to_agg = set(cls._ROW_ERR_MULT_SUMM_COLS)
 
-        for label_var_name, _metric, _sgn in \
-                itertools.product(label_var_names, cls._RAW_METRICS, cls._SGN_PREFIXES):
-            if label_var_name in label_var_names:
-                col_to_agg = _sgn + cls._ERR_MULT_PREFIXES[_metric] + label_var_name
+        cols_to_excl = set()
+
+        for _metric, _sgn in itertools.product(cls._RAW_METRICS, cls._SGN_PREFIXES):
+            col_prefix = _sgn + cls._ERR_MULT_PREFIXES[_metric]
+
+            for label_var_name in label_var_names:
+                col_to_agg = col_prefix + label_var_name
 
                 if col_to_agg in df_w_err_mults.columns:
                     cols_to_agg.add(col_to_agg)
 
                 else:
                     label_var_names.remove(label_var_name)
+
+                    cols_to_excl.update(*(col for col in df_w_err_mults.columns
+                                              if col.endswith(label_var_name)))
+
+            cols_to_excl.update(*(col for col in df_w_err_mults.columns
+                                      if col.startswith(col_prefix) and (col not in cols_to_agg)))
 
         assert label_var_names
 
@@ -3140,8 +3149,8 @@ class AbstractPPPBlueprint(AbstractBlueprint):
                             {_metric_col_name,
                              _indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_rario_col_name})
                         col_strs += \
-                            ['AVG({0}) AS {0}'.format(_metric_col_name),
-                             'AVG({0}) AS {0}'.format(_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_rario_col_name)]
+                            ['FIRST_VALUE({0}) AS {0}'.format(_metric_col_name),
+                             'FIRST_VALUE({0}) AS {0}'.format(_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_rario_col_name)]
 
         adf = df_w_err_mults(
                 'SELECT \
@@ -3167,7 +3176,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
                                             label_var_names |
                                             {(AbstractSupervisedBlueprint._DEFAULT_PARAMS.model.score.raw_score_col_prefix + label_var_name)
                                              for label_var_name in label_var_names} |
-                                            cols_to_agg)),
+                                            cols_to_agg | cols_to_excl)),
                     DATE_COL
                         if DATE_COL in df_w_err_mults.columns
                         else 'TO_DATE({})'.format(time_col)),
@@ -3207,7 +3216,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
         alpha = kwargs.pop('alpha', .168)
 
         daily_err_mult_summ_col_names = \
-            list(daily_err_mult_summ_col_names) \
+            list(set(daily_err_mult_summ_col_names).intersection(daily_err_mults_df.columns)) \
             if daily_err_mult_summ_col_names \
             else copy.copy(cls._DAILY_ERR_MULT_SUMM_COLS)
 
