@@ -3109,7 +3109,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
 
         cols_to_agg = set(cls._ROW_ERR_MULT_SUMM_COLS)
 
-        cols_to_excl = set()
+        cols_to_excl = {id_col, time_col, DATE_COL, MONTH_COL}
 
         for _metric, _sgn in itertools.product(cls._RAW_METRICS, cls._SGN_PREFIXES):
             col_prefix = _sgn + cls._ERR_MULT_PREFIXES[_metric]
@@ -3130,6 +3130,13 @@ class AbstractPPPBlueprint(AbstractBlueprint):
                                       if col.startswith(col_prefix) and (col not in cols_to_agg)))
 
         assert label_var_names
+
+        _raw_pred_prefix = AbstractSupervisedBlueprint._DEFAULT_PARAMS.model.score.raw_score_col_prefix
+        _raw_pred_prefix_len = len(_raw_pred_prefix)
+
+        for col in df_w_err_mults.columns:
+            if col.startswith(_raw_pred_prefix):
+                cols_to_excl.update((col, col[_raw_pred_prefix_len:]))
 
         assert isinstance(df_w_err_mults, DDF)
 
@@ -3170,13 +3177,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
                         else 'TO_DATE({}) AS {}'.format(time_col, DATE_COL),
                     ', '.join(col_strs),
                     ', '.join('FIRST_VALUE({0}) AS {0}'.format(col)
-                              for col in set(df_w_err_mults.columns)
-                                        .difference(
-                                            {id_col, time_col, DATE_COL, MONTH_COL} |
-                                            label_var_names |
-                                            {(AbstractSupervisedBlueprint._DEFAULT_PARAMS.model.score.raw_score_col_prefix + label_var_name)
-                                             for label_var_name in label_var_names} |
-                                            cols_to_agg | cols_to_excl)),
+                              for col in set(df_w_err_mults.columns).difference(cols_to_agg | cols_to_excl)),
                     DATE_COL
                         if DATE_COL in df_w_err_mults.columns
                         else 'TO_DATE({})'.format(time_col)),
