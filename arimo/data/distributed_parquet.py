@@ -924,6 +924,10 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             if sampleNPieces < self.nPieces \
             else self.pieceSubPaths
 
+        if verbose:
+            msg = 'Sampling ~{:,} Rows from {:,} Pieces...'.format(n, sampleNPieces)
+            self.stdout_logger.info(msg)
+
         adfs = [super(S3ParquetDistributedDataFrame, self._pieceADF(samplePieceSubPath))
                     .sample(n=max(n / sampleNPieces, 1), *args, **kwargs)
                 for samplePieceSubPath in
@@ -934,6 +938,9 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
         adf = DDF.unionAllCols(*adfs, **stdKwArgs.__dict__)
 
         adf._cache.colWidth.update(adfs[0]._cache.colWidth)
+
+        if verbose:
+            self.stdout_logger.info(msg + ' done!')
 
         return adf
 
