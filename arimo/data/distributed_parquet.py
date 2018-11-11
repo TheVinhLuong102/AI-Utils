@@ -760,14 +760,19 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
 
                 piecePath = os.path.join(self.path, pieceSubPath)
 
-                pieceADF = \
-                    S3ParquetDistributedDataFrame(
-                        path=piecePath,
-                        aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
-                        _sparkDFTransforms=self._sparkDFTransforms,
-                        _pandasDFTransforms=self._pandasDFTransforms,
-                        verbose=False,
-                        **stdKwArgs.__dict__)
+                try:
+                    pieceADF = \
+                        S3ParquetDistributedDataFrame(
+                            path=piecePath,
+                            aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
+                            _sparkDFTransforms=self._sparkDFTransforms,
+                            _pandasDFTransforms=self._pandasDFTransforms,
+                            verbose=False,
+                            **stdKwArgs.__dict__)
+
+                except Exception as err:
+                    print('*** {} ***'.format(piecePath))
+                    raise err
 
                 pieceADF._cache.colWidth.update(self._cache.colWidth)
 
