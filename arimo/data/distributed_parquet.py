@@ -933,12 +933,18 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             msg = 'Sampling ~{:,} Rows from {:,} Pieces...'.format(n, sampleNPieces)
             self.stdout_logger.info(msg)
 
-        adfs = [super(S3ParquetDistributedDataFrame, self._pieceADF(samplePieceSubPath))
-                    .sample(n=max(n / sampleNPieces, 1), *args, **kwargs)
-                for samplePieceSubPath in
-                    (tqdm.tqdm(samplePieceSubPaths)
-                     if verbose
-                     else samplePieceSubPaths)]
+        adfs = []
+
+        for samplePieceSubPath in \
+                (tqdm.tqdm(samplePieceSubPaths)
+                 if verbose
+                else samplePieceSubPaths):
+            try:
+                adfs.append(
+                    super(S3ParquetDistributedDataFrame, self._pieceADF(samplePieceSubPath)) \
+                        .sample(n=max(n / sampleNPieces, 1), *args, **kwargs))
+            except Exception as err:
+                print('*** {} CANNOT BE LOADED: {} ***'.format(samplePieceSubPath, err))
 
         adf = DDF.unionAllCols(*adfs, **stdKwArgs.__dict__)
 
