@@ -2841,8 +2841,8 @@ class DistributedDataFrame(AbstractDataHandler):
                         if v > 1}
 
                 if dups:
-                    assert all(pandas.isnull(k) for k in dups), \
-                        '*** {}.distinct("{}"): POSSIBLE SPARK SQL/HIVEQL BUG: DUPLICATES {} ***'.format(self, col, dups)
+                    self.stdout_logger.debug(
+                        '*** {}.distinct("{}"): POSSIBLE SPARK SQL/HIVEQL BUG: DUPLICATES {} ***'.format(self, col, dups))
 
                     index_of_first_row_with_null = None
                     row_indices_to_delete = []
