@@ -2814,12 +2814,12 @@ class DistributedDataFrame(AbstractDataHandler):
 
             adf = self.reprSample(
                     'SELECT \
-                        {0}, \
+                        `{0}`, \
                         (COUNT(*) / {1}) AS __proportion__ \
                     FROM \
                         this \
                     GROUP BY \
-                        {0} \
+                        `{0}` \
                     ORDER BY \
                         __proportion__ DESC'
                         .format(col, self.reprSampleSize),
@@ -2828,7 +2828,7 @@ class DistributedDataFrame(AbstractDataHandler):
                 else \
                     self.reprSample(
                         'SELECT \
-                            DISTINCT({}) \
+                            DISTINCT(`{}`) \
                         FROM \
                             this'.format(col),
                         **kwargs)
