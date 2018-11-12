@@ -771,7 +771,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                             **stdKwArgs.__dict__)
 
                 except Exception as err:
-                    print('*** {} ***'.format(piecePath))
+                    print('*** {} ***'.format(pieceSubPath))
                     raise err
 
                 pieceADF._cache.colWidth.update(self._cache.colWidth)
@@ -941,8 +941,9 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                 else samplePieceSubPaths):
             try:
                 adfs.append(
-                    super(S3ParquetDistributedDataFrame, self._pieceADF(samplePieceSubPath)) \
+                    super(S3ParquetDistributedDataFrame, self._pieceADF(samplePieceSubPath))
                         .sample(n=max(n / sampleNPieces, 1), *args, **kwargs))
+
             except Exception as err:
                 print('*** {} CANNOT BE LOADED: {} ***'.format(samplePieceSubPath, err))
 
