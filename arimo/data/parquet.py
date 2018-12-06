@@ -1269,7 +1269,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
     @property
     def _pathRepr(self):
-        return '"{}"'.format(self.path) \
+        return self.path \
             if isinstance(self.path, _STR_CLASSES) \
           else '{} Paths e.g. {}'.format(len(self.path), self.path[:3])
 
