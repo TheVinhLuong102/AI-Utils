@@ -90,7 +90,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
 
         else:
             if verbose:
-                msg = 'Loading "{}" by Arrow...'.format(path)
+                msg = 'Loading {} by Arrow...'.format(path)
                 logger.info(msg)
                 tic = time.time()
 
@@ -170,7 +170,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                 arimo.backend.initSpark(sparkConf=kwargs.pop('sparkConf', {}))
 
             if verbose:
-                msg = 'Loading "{}" by Spark...'.format(self.path)
+                msg = 'Loading {} by Spark...'.format(self.path)
                 logger.info(msg)
                 tic = time.time()
 
