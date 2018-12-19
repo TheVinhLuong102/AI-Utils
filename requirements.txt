@@ -1,4 +1,4 @@
-FastParquet >= 0.1.6
+FastParquet >= 0.2.1
 HDFS >= 2.1.0
 HDFS3 >= 0.3.0
 PyHDFS >= 0.2.1
