@@ -86,7 +86,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
 
         if _cache:
             if arimo.debug.ON:
-                logger.debug('*** RETRIEVING CACHE FOR "{}" ***'.format(path))
+                logger.debug('*** RETRIEVING CACHE FOR {} ***'.format(path))
 
         else:
             if verbose:
@@ -830,7 +830,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
 
             except Exception as err:
                 self.stdout_logger.error(
-                    msg='*** "{}": PANDAS TRANSFORM #{} ***'
+                    msg='*** {}: PANDAS TRANSFORM #{} ***'
                         .format(pieceSubPath, i))
                 raise err
 
