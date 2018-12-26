@@ -1,9 +1,0 @@
-FastParquet >= 0.2.1
-HDFS >= 2.1.0
-HDFS3 >= 0.3.0
-PyHDFS >= 0.2.1
-PyWHDFS >= 1.0.3
-PyWebHDFS >= 0.4.1
-# Python-HDFS
-WebHDFS >= 0.2.0
-WebHDFSPy >= 0.3.5
