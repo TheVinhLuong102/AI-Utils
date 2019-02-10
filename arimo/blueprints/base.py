@@ -3070,7 +3070,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
 
         label_var_names = set(label_var_names).intersection(df_w_err_mults.columns)
 
-        cols_to_agg = set(cls._ROW_ERR_MULT_SUMM_COLS)
+        cols_to_agg = set()   # cls._ROW_ERR_MULT_SUMM_COLS
 
         cols_to_excl = {id_col, time_col, DATE_COL, MONTH_COL}
 
@@ -3155,7 +3155,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
         daily_err_mult_summ_col_names = \
             list(set(daily_err_mult_summ_col_names).intersection(daily_err_mults_df.columns)) \
             if daily_err_mult_summ_col_names \
-            else copy.copy(cls._DAILY_ERR_MULT_SUMM_COLS)
+            else copy.copy(cls._DAILY_ERR_MULT_SUMM_COLS)   # TODO: no longer applicable
 
         daily_err_mults_df = \
             daily_err_mults_df[
