@@ -2146,21 +2146,8 @@ class AbstractPPPBlueprint(AbstractBlueprint):
         {k: (v + '__')
          for k, v in _ERR_MULT_COLS.items()}
 
-    _rowHigh_PREFIX = 'rowHigh__'
-    _ROW_SUMM_PREFIXES = _rowHigh_PREFIX,
-
-    _ROW_ERR_MULT_SUMM_COLS = \
-        [(_row_summ_prefix + _ABS_PREFIX + _ERR_MULT_COLS[_metric])
-         for _metric, _row_summ_prefix in
-         itertools.product(_RAW_METRICS, _ROW_SUMM_PREFIXES)]
-
     _dailyMean_PREFIX = 'dailyMean__'
     _DAILY_SUMM_PREFIXES = _dailyMean_PREFIX,
-
-    _DAILY_ERR_MULT_SUMM_COLS = \
-        [(_daily_summ_prefix + _row_err_mult_summ_col)
-         for _row_err_mult_summ_col, _daily_summ_prefix in
-         itertools.product(_ROW_ERR_MULT_SUMM_COLS, _DAILY_SUMM_PREFIXES)]
 
     _EWMA_PREFIX = 'ewma'
 
@@ -3072,31 +3059,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
                      pyspark.sql.functions.when(df[label_var_name] > df[score_col_name], _sgn_err_mult_col_expr)
                         .alias(err_mult_col_names[_raw_metric][label_var_name][self._POS_PREFIX])]
 
-        df('*', *col_exprs, inplace=True)
-
-        n_label_vars = len(label_var_names)
-
-        _row_summ_col_exprs = []
-
-        for _raw_metric in self._RAW_METRICS:
-            _abs_err_mult_col_names = list(abs_err_mult_col_names[_raw_metric].values())
-
-            _row_summ_col_name_body = self._ABS_PREFIX + self._ERR_MULT_COLS[_raw_metric]
-
-            _rowHigh_summ_col_name = self._rowHigh_PREFIX + _row_summ_col_name_body
-
-            if n_label_vars > 1:
-                _row_summ_col_exprs.append(
-                    'GREATEST({}) AS {}'.format(
-                        ', '.join(_abs_err_mult_col_names),
-                        _rowHigh_summ_col_name))
-
-            else:
-                _abs_err_mult_col_name = _abs_err_mult_col_names[0]
-
-                _row_summ_col_exprs.append(df[_abs_err_mult_col_name].alias(_rowHigh_summ_col_name))
-
-        return df.select('*', *_row_summ_col_exprs)
+        return df('*', *col_exprs)
 
     @classmethod
     def daily_err_mults(cls, df_w_err_mults, *label_var_names, **kwargs):
@@ -3159,7 +3122,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
                             ['FIRST_VALUE({0}) AS {0}'.format(_metric_col_name),
                              'FIRST_VALUE({0}) AS {0}'.format(_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_rario_col_name)]
 
-        adf = df_w_err_mults(
+        return df_w_err_mults(
                 'SELECT \
                     {0}, \
                     {1}, \
@@ -3182,33 +3145,6 @@ class AbstractPPPBlueprint(AbstractBlueprint):
                         if DATE_COL in df_w_err_mults.columns
                         else 'TO_DATE({})'.format(time_col)),
                 tCol=None)
-
-        n_label_vars = len(label_var_names)
-        _row_summ_daily_summ_col_exprs = []
-
-        for _raw_metric in cls._RAW_METRICS:
-            for _daily_summ_prefix in cls._DAILY_SUMM_PREFIXES:
-                _row_summ_daily_summ_col_name_body = _daily_summ_prefix + cls._ABS_PREFIX + cls._ERR_MULT_COLS[_raw_metric]
-
-                _daily_summ_abs_err_mult_col_names = \
-                    [(_row_summ_daily_summ_col_name_body + '__' + label_var_name)
-                     for label_var_name in label_var_names]
-
-                _rowHigh_summ_daily_summ_col_name = cls._rowHigh_PREFIX + _row_summ_daily_summ_col_name_body
-
-                if n_label_vars > 1:
-                    _row_summ_daily_summ_col_exprs.append(
-                        'GREATEST({}) AS {}'.format(
-                            ', '.join(_daily_summ_abs_err_mult_col_names),
-                            _rowHigh_summ_daily_summ_col_name))
-
-                else:
-                    _daily_summ_abs_err_mult_col_name = _daily_summ_abs_err_mult_col_names[0]
-
-                    _row_summ_daily_summ_col_exprs.append(
-                        adf[_daily_summ_abs_err_mult_col_name].alias(_rowHigh_summ_daily_summ_col_name))
-
-        return adf.select('*', *_row_summ_daily_summ_col_exprs)
 
     @classmethod
     def ewma_daily_err_mults(cls, daily_err_mults_df, *daily_err_mult_summ_col_names, **kwargs):
