@@ -1921,6 +1921,45 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # types
     # type / typeIsNum / typeIsComplex
 
+    def _read_metadata_and_schema(self, piecePath):
+        pieceLocalOrHDFSPath = \
+            self.pieceLocalOrHDFSPath(
+                piecePath=piecePath)
+
+        pieceCache = self._PIECE_CACHES[piecePath]
+
+        if pieceCache.nRows is None:
+            schema = read_schema(where=pieceLocalOrHDFSPath)
+
+            pieceCache.srcColsExclPartitionKVs = schema.names
+
+            pieceCache.srcColsInclPartitionKVs += schema.names
+
+            self.srcColsInclPartitionKVs.update(schema.names)
+
+            for col in set(schema.names).difference(pieceCache.partitionKVs):
+                pieceCache.srcTypesExclPartitionKVs[col] = \
+                    pieceCache.srcTypesInclPartitionKVs[col] = \
+                    _arrowType = \
+                    schema.field_by_name(col).type
+
+                assert not is_binary(_arrowType), \
+                    '*** {} IS OF BINARY TYPE ***'.format(col)
+
+                if col in self.srcTypesInclPartitionKVs:
+                    assert _arrowType == self.srcTypesInclPartitionKVs[col], \
+                        '*** {} COLUMN {}: DETECTED TYPE {} != {} ***'.format(
+                            piecePath, col, _arrowType, self.srcTypesInclPartitionKVs[col])
+
+                else:
+                    self.srcTypesInclPartitionKVs[col] = _arrowType
+
+            metadata = read_metadata(where=pieceCache.localOrHDFSPath)
+            pieceCache.nCols = metadata.num_columns
+            pieceCache.nRows = metadata.num_rows
+
+        return pieceCache
+
     @property
     def approxNRows(self):
         if self._cache.approxNRows is None:
@@ -1928,7 +1967,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
             self._cache.approxNRows = \
                 self.nPieces \
-                * sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
+                * sum(self._read_metadata_and_schema(piecePath=piecePath).nRows
                       for piecePath in tqdm.tqdm(self.prelimReprSamplePiecePaths)) \
                 / self._reprSampleMinNPieces
 
@@ -1940,7 +1979,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             self.stdout_logger.info('Counting No. of Rows...')
 
             self._cache.nRows = \
-                sum(read_metadata(where=self.pieceLocalOrHDFSPath(piecePath=piecePath)).num_rows
+                sum(self._read_metadata_and_schema(piecePath=piecePath).nRows
                     for piecePath in tqdm.tqdm(self.piecePaths))
 
         return self._cache.nRows
