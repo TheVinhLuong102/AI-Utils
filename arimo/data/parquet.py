@@ -897,7 +897,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                 pieceCache.srcTypesInclPartitionKVs[col] = \
                                 schema.field_by_name(col).type
 
-                        pieceCache.nRows = read_metadata(where=pieceCache.localOrHDFSPath).num_rows
+                        metadata = read_metadata(where=pieceCache.localOrHDFSPath)
+                        pieceCache.nCols = metadata.num_columns
+                        pieceCache.nRows = metadata.num_rows
 
                 else:
                     srcColsInclPartitionKVs = []
@@ -1504,7 +1506,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     else:
                         self.srcTypesInclPartitionKVs[col] = _arrowType
 
-                pieceCache.nRows = read_metadata(where=pieceLocalOrHDFSPath).num_rows
+                metadata = read_metadata(where=pieceCache.localOrHDFSPath)
+                pieceCache.nCols = metadata.num_columns
+                pieceCache.nRows = metadata.num_rows
 
             cols = kwargs.get('cols')
 
