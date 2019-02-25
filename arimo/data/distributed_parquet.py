@@ -85,6 +85,9 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             kwargs['detPrePartitioned'] = True
 
         if _cache:
+            assert _cache._sparkDF, \
+                '*** FAILED to Load SparkDF from {} ***'.format(path)
+
             if arimo.debug.ON:
                 logger.debug('*** RETRIEVING CACHE FOR {} ***'.format(path))
 
