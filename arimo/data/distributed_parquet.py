@@ -331,20 +331,20 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
              for col in self.contentCols]
 
         return '{}{:,}-piece {:,}-partition {}{}{}["{}" + {:,} transform(s)][{}]'.format(
-            '"{}" '.format(self._alias)
-                if self._alias
-                else '',
-            self.nPieces,
-            self.nPartitions,
-            '' if self._cache.nRows is None
-               else '{:,}-row '.format(self._cache.nRows),
-            '(cached) '
-                if self.is_cached
-                else '',
-            type(self).__name__,
-            self.path,
-            len(self._sparkDFTransforms),
-            ', '.join(cols_and_types_str))
+                '"{}" '.format(self._alias)
+                    if self._alias
+                    else '',
+                self.nPieces,
+                self.nPartitions,
+                '' if self._cache.nRows is None
+                   else '{:,}-row '.format(self._cache.nRows),
+                '(cached) '
+                    if self.is_cached
+                    else '',
+                type(self).__name__,
+                self.path,
+                len(self._sparkDFTransforms),
+                ', '.join(cols_and_types_str))
 
     @property
     def __short_repr__(self):
@@ -364,19 +364,19 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
         cols_desc_str += ['{} content col(s)'.format(len(self.contentCols))]
 
         return '{}{:,}-piece {:,}-partition {}{}{}[{:,} transform(s)][{}]'.format(
-            '"{}" '.format(self._alias)
-                if self._alias
-                else '',
-            self.nPieces,
-            self.nPartitions,
-            '' if self._cache.nRows is None
-               else '{:,}-row '.format(self._cache.nRows),
-            '(cached) '
-                if self.is_cached
-                else '',
-            type(self).__name__,
-            len(self._sparkDFTransforms),
-            ', '.join(cols_desc_str))
+                '"{}" '.format(self._alias)
+                    if self._alias
+                    else '',
+                self.nPieces,
+                self.nPartitions,
+                '' if self._cache.nRows is None
+                   else '{:,}-row '.format(self._cache.nRows),
+                '(cached) '
+                    if self.is_cached
+                    else '',
+                type(self).__name__,
+                len(self._sparkDFTransforms),
+                ', '.join(cols_desc_str))
 
     # **********
     # TRANSFORMS
