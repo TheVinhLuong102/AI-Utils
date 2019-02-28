@@ -20,6 +20,7 @@ else:
     _STR_CLASSES = str
 
 from pyarrow.parquet import ParquetDataset
+from s3fs import S3FileSystem
 
 from pyspark.ml import Transformer
 from pyspark.ml.feature import SQLTransformer
@@ -101,7 +102,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                 ParquetDataset(
                     path_or_paths=path,
                     filesystem=
-                        self._s3FS(
+                        S3FileSystem(
                             key=aws_access_key_id,
                             secret=aws_secret_access_key)
                         if path.startswith('s3')

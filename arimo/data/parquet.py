@@ -81,18 +81,6 @@ class AbstractS3ParquetDataHandler(AbstractDataHandler):
         if fs._ON_LINUX_CLUSTER_WITH_HDFS \
         else None
 
-    _S3_FSs = {}
-
-    @classmethod
-    def _s3FS(cls, key=None, secret=None):
-        keyPair = key, secret
-        if keyPair not in cls._S3_FSs:
-            cls._S3_FSs[keyPair] = \
-                S3FileSystem(
-                    key=key,
-                    secret=secret)
-        return cls._S3_FSs[keyPair]
-
     @property
     def reprSampleMinNPieces(self):
         return self._reprSampleMinNPieces
@@ -847,11 +835,12 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
             _cache._srcArrowDS = \
                 ParquetDataset(
-                    path_or_paths=list(path)
+                    path_or_paths=
+                        list(path)
                         if isinstance(path, tuple)
                         else path,
                     filesystem=
-                        self._s3FS(
+                        S3FileSystem(
                             key=aws_access_key_id,
                             secret=aws_secret_access_key)
                         if self.fromS3
