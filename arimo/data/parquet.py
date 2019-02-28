@@ -4078,3 +4078,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             secret_access_key=self._srcArrowDS.fs.fs.secret,
             delete=True, quiet=True,
             verbose=verbose)
+
+    def schemaDiff(self, parquet_data_feeder):
+        return {col: (self.srcTypesInclPartitionKVs[col], parquet_data_feeder.srcTypesInclPartitionKVs[col])
+                for col in set(self.srcTypesInclPartitionKVs).intersection(parquet_data_feeder.srcTypesInclPartitionKVs)
+                    if self.srcTypesInclPartitionKVs[col] != parquet_data_feeder.srcTypesInclPartitionKVs[col]}
