@@ -290,7 +290,6 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
     # **********************
     # PYTHON DEFAULT METHODS
     # __dir__
-    # __getattr__
     # __getitem__
     # __repr__
     # __short_repr__

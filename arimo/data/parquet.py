@@ -95,18 +95,6 @@ class AbstractS3ParquetDataHandler(AbstractDataHandler):
         self._reprSampleMinNPieces = min(self._REPR_SAMPLE_MIN_N_PIECES, self.nPieces)
 
 
-# class with __call__ to serve as pickle-able function for use in multi-processing
-# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
-class _S3ParquetDataFeeder__getattr__pandasDFTransform:
-    def __init__(self, col):
-        self.col = col
-
-    def __call__(self, pandasDF):
-        return getattr(pandasDF, self.col)
-
-
-# class with __call__ to serve as pickle-able function for use in multi-processing
-# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _S3ParquetDataFeeder__getitem__pandasDFTransform:
     def __init__(self, item):
         if isinstance(item, _STR_CLASSES):
@@ -133,8 +121,6 @@ class _S3ParquetDataFeeder__getitem__pandasDFTransform:
                 name=self.col)
 
 
-# class with __call__ to serve as pickle-able function for use in multi-processing
-# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _S3ParquetDataFeeder__drop__pandasDFTransform:
     def __init__(self, cols):
         self.cols = list(cols)
@@ -147,8 +133,6 @@ class _S3ParquetDataFeeder__drop__pandasDFTransform:
             errors='ignore')
 
 
-# class with __call__ to serve as pickle-able function for use in multi-processing
-# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _S3ParquetDataFeeder__castType__pandasDFTransform:
     def __init__(self, col, asType, asCol=None):
         self.col = col
@@ -171,8 +155,6 @@ class _S3ParquetDataFeeder__castType__pandasDFTransform:
         return pandasDF
 
 
-# class with __call__ to serve as pickle-able function for use in multi-processing
-# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _S3ParquetDataFeeder__encodeStr__pandasDFTransform:
     def __init__(self, col, strs, asCol=None):
         self.col = col
@@ -194,8 +176,6 @@ class _S3ParquetDataFeeder__encodeStr__pandasDFTransform:
         return pandasDF
 
 
-# class with __call__ to serve as pickle-able function for use in multi-processing
-# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _S3ParquetDataFeeder__fillna__pandasDFTransform:
     def __init__(self, nullFillDetails):
         self.nullFillDetails = nullFillDetails
@@ -234,8 +214,6 @@ class _S3ParquetDataFeeder__fillna__pandasDFTransform:
         return pandasDF
 
 
-# class with __call__ to serve as pickle-able function for use in multi-processing
-# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _S3ParquetDataFeeder__prep__pandasDFTransform:
     def __init__(self, addCols, typeStrs, catOrigToPrepColMap, numOrigToPrepColMap, returnNumPyForCols=None):
         self.addCols = addCols
@@ -429,8 +407,6 @@ class _S3ParquetDataFeeder__prep__pandasDFTransform:
 _PIECE_LOCAL_CACHE_PATHS = {}
 
 
-# class with __call__ to serve as pickle-able function for use in multi-processing
-# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _S3ParquetDataFeeder__pieceArrowTableFunc:
     def __init__(self, aws_access_key_id=None, aws_secret_access_key=None, nThreads=1):
         self.aws_access_key_id = aws_access_key_id
@@ -490,8 +466,6 @@ class _S3ParquetDataFeeder__pieceArrowTableFunc:
                 use_pandas_metadata=False)
 
 
-# class with __call__ to serve as pickle-able function for use in multi-processing
-# ref: https://stackoverflow.com/questions/1947904/how-can-i-pickle-a-nested-class-in-python
 class _S3ParquetDataFeeder__gen:
     def __init__(
             self, args,
@@ -1376,7 +1350,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # MAP-REDUCE (PARTITIONS)
     # map
     # reduce
-    # __getattr__
     # __getitem__
     # drop
     # rename
@@ -1753,13 +1726,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             results.append(piecePandasDF)
 
         return reducer(results)
-
-    def __getattr__(self, col):
-        assert col in self.columns
-
-        return self.map(
-                mapper=_S3ParquetDataFeeder__getattr__pandasDFTransform(col=col),
-                inheritNRows=True)
 
     def __getitem__(self, item):
         return self.map(
