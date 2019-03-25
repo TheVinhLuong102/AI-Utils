@@ -807,22 +807,38 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 logger.info(msg)
                 tic = time.time()
 
-            _cache._srcArrowDS = \
-                ParquetDataset(
-                    path_or_paths=
-                        list(path)
-                        if isinstance(path, tuple)
-                        else path,
-                    filesystem=
-                        S3FileSystem(
-                            key=aws_access_key_id,
-                            secret=aws_secret_access_key)
-                        if self.fromS3
-                        else (self._HDFS_ARROW_FS
-                              if self.fromHDFS
-                              else self._LOCAL_ARROW_FS),
-                    schema=None, validate_schema=False, metadata=None,
-                    split_row_groups=False)
+            if self.fromS3:
+                s3.rm(
+                    path=path,
+                    dir=True,
+                    globs={'*$folder$*',
+                           '*date=__HIVE_DEFAULT_PARTITION__*'},
+                    quiet=False,
+                    access_key_id=aws_access_key_id, secret_access_key=aws_secret_access_key,
+                    verbose=True)
+
+                _cache._srcArrowDS = \
+                    ParquetDataset(
+                        path_or_paths=path,
+                        filesystem=S3FileSystem(
+                                    key=aws_access_key_id,
+                                    secret=aws_secret_access_key),
+                        schema=None, validate_schema=False, metadata=None,
+                        split_row_groups=False)
+
+            else:
+                _cache._srcArrowDS = \
+                    ParquetDataset(
+                        path_or_paths=
+                            list(path)
+                            if isinstance(path, tuple)
+                            else path,
+                        filesystem=
+                            self._HDFS_ARROW_FS
+                            if self.fromHDFS
+                            else self._LOCAL_ARROW_FS,
+                        schema=None, validate_schema=False, metadata=None,
+                        split_row_groups=False)
 
             if verbose:
                 toc = time.time()
