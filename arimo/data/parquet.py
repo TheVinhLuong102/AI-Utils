@@ -811,8 +811,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 s3.rm(
                     path=path,
                     dir=True,
-                    globs={'*$folder$*',
-                           '*date=__HIVE_DEFAULT_PARTITION__*'},
+                    globs={'*$folder$',
+                           'date=__HIVE_DEFAULT_PARTITION__*'},
                     quiet=False,
                     access_key_id=aws_access_key_id, secret_access_key=aws_secret_access_key,
                     verbose=True)
