@@ -813,9 +813,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     dir=True,
                     globs={'*$folder$',
                            'date=__HIVE_DEFAULT_PARTITION__*'},
-                    quiet=False,
+                    quiet=True,
                     access_key_id=aws_access_key_id, secret_access_key=aws_secret_access_key,
-                    verbose=True)
+                    verbose=False)
 
                 _cache._srcArrowDS = \
                     ParquetDataset(
