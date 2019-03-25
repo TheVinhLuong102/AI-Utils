@@ -1461,7 +1461,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         schema.field_by_name(col).type
 
                     assert not is_binary(_arrowType), \
-                        '*** {} IS OF BINARY TYPE ***'.format(col)
+                        '*** {}: {} IS OF BINARY TYPE ***'.format(piecePath, col)
 
                     if col in self.srcTypesInclPartitionKVs:
                         assert _arrowType == self.srcTypesInclPartitionKVs[col], \
@@ -1899,7 +1899,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     schema.field_by_name(col).type
 
                 assert not is_binary(_arrowType), \
-                    '*** {} IS OF BINARY TYPE ***'.format(col)
+                    '*** {}: {} IS OF BINARY TYPE ***'.format(piecePath, col)
 
                 if col in self.srcTypesInclPartitionKVs:
                     assert _arrowType == self.srcTypesInclPartitionKVs[col], \
