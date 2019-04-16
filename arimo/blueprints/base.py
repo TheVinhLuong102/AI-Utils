@@ -3040,11 +3040,13 @@ class AbstractPPPBlueprint(AbstractBlueprint):
 
             for _raw_metric in self._RAW_METRICS:
                 _sgn_err_mult_col_expr = \
-                    pyspark.sql.functions.when(
-                        condition=
-                            df[indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_col_names[_raw_metric][label_var_name]]
-                            <= max_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio,
-                        value=_sgn_err_col_expr / df[benchmark_metric_col_names[_raw_metric][label_var_name]])
+                    _sgn_err_col_expr / df[benchmark_metric_col_names[_raw_metric][label_var_name]]
+                    # SKIPPING THE BELOW FILTER
+                    # pyspark.sql.functions.when(
+                    #     condition=
+                    #         df[indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio_col_names[_raw_metric][label_var_name]]
+                    #             <= max_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio,
+                    #         value=_sgn_err_col_expr / df[benchmark_metric_col_names[_raw_metric][label_var_name]])
 
                 col_exprs += \
                     [_sgn_err_mult_col_expr
