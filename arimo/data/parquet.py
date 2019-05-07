@@ -1618,7 +1618,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                     # because most modern computers have hyperthreading turned on,
                                     # so doubling the CPU count beyond the number of physical cores does not help
                                 strings_to_categorical=False,
-                                memory_pool=None,
+                                # memory_pool=None,   # *** no such argument in PyArrow 1.13.0 ***
                                 zero_copy_only=None,
                                 categories=[],
                                 integer_object_nulls=False)
@@ -1689,7 +1689,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                 # because most modern computers have hyperthreading turned on,
                                 # so doubling the CPU count beyond the number of physical cores does not help
                             strings_to_categorical=False,
-                            memory_pool=None,
+                            # memory_pool=None,   # *** no such argument in PyArrow 1.13.0 ***
                             zero_copy_only=None,
                             categories=[],
                             integer_object_nulls=False)
