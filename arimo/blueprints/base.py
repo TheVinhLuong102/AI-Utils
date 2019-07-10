@@ -972,9 +972,10 @@ class BlueprintedKerasModel(AbstractBlueprintedModel):
             self.stdout_logger.info(message + '\n')
 
         self._obj.save(
-            filepath=os.path.join(
-                self.dir,
-                self.blueprint.params.model._persist.file),
+            filepath=   # wrap in str(...) to avoid Keras/H5Py bug "Required Group, str or dict. Received: <type 'unicode'>."
+                str(os.path.join(
+                        self.dir,
+                        self.blueprint.params.model._persist.file)),
             overwrite=True,
             include_optimizer=True)
 
