@@ -320,7 +320,7 @@ class AbstractBlueprint(object):
 
             persist=Namespace(
                 local=Namespace(
-                    dir_path='/tmp/.arimo/blueprints'),
+                    dir_path=os.path.join(tempfile.gettempdir(), '.arimo/blueprints'),
 
                 s3=Namespace(
                     bucket=None,
