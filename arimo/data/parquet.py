@@ -791,7 +791,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 _cache.s3Bucket = _parsedURL.netloc
                 _cache.pathS3Key = _parsedURL.path[1:]
 
-                _cache.tmpDirS3Key = self._TMP_DIR_PATH.strip('/')
+                _cache.tmpDirS3Key = '/tmp'
 
                 _cache.tmpDirPath = \
                     os.path.join(
