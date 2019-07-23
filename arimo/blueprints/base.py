@@ -2905,7 +2905,8 @@ class AbstractPPPBlueprint(AbstractBlueprint):
                 return False
 
     def err_mults(self, df, *label_var_names, **kwargs):
-        max_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio = kwargs.pop('max_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio', 1.68)
+        max_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio = \
+            kwargs.pop('max_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_ratio', 1.68)
 
         score_col_names = {}
         lower_outlier_thresholds = {}

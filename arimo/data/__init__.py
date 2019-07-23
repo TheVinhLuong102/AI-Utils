@@ -1,5 +1,7 @@
 import abc
 import logging
+import os
+import tempfile
 
 import six
 _STR_CLASSES = \
@@ -99,7 +101,7 @@ class AbstractDataHandler(object):
     _PREP_SQL_STATEMENT_FILE_NAME = 'prepSQLStatement.json'
 
     # temp dir
-    _TMP_DIR_PATH = '/tmp/.arimo/df'
+    _TMP_DIR_PATH = os.path.join(tempfile.gettempdir(), '.arimo/df')
 
     # data prep cache
     _PREP_CACHE = {}
