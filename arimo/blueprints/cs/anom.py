@@ -13,7 +13,7 @@ from arimo.data.distributed import DDF
 from arimo.util import fs
 import arimo.debug
 
-from ..base import _blueprint_from_params, AbstractPPPBlueprint
+from .. import _blueprint_from_params, AbstractPPPBlueprint
 
 
 class DLPPPBlueprint(AbstractPPPBlueprint):

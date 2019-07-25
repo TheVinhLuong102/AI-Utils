@@ -13,7 +13,7 @@ from arimo.util import Namespace
 from arimo.util.dl import MASK_VAL
 from arimo.util.pkl import pickle_able
 
-from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, ClassifEvalMixIn, AbstractTimeSerDataPrepMixIn
+from .. import BlueprintedArimoDLModel, BlueprintedKerasModel, ClassifEvalMixIn, AbstractTimeSerDataPrepMixIn
 from . import AbstractTimeSerDLSupervisedBlueprint
 
 

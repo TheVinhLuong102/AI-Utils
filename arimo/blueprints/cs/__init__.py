@@ -21,7 +21,7 @@ from arimo.util.log import STDOUT_HANDLER
 from arimo.util.types.spark_sql import _NUM_TYPES, _STR_TYPE, _VECTOR_TYPE
 import arimo.debug
 
-from ..base import \
+from .. import \
     AbstractSupervisedBlueprint, AbstractDLSupervisedBlueprint, RegrEvalMixIn, \
     BlueprintedArimoDLModel, BlueprintedKerasModel
 

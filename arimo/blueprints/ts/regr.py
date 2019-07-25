@@ -15,7 +15,7 @@ from arimo.util.dl import MASK_VAL
 from arimo.util.pkl import pickle_able
 import arimo.debug
 
-from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, RegrEvalMixIn, AbstractTimeSerDataPrepMixIn
+from .. import BlueprintedArimoDLModel, BlueprintedKerasModel, RegrEvalMixIn, AbstractTimeSerDataPrepMixIn
 from . import AbstractTimeSerDLSupervisedBlueprint
 
 

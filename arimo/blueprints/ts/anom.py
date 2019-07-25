@@ -14,7 +14,7 @@ from arimo.util import fs
 from arimo.util.dl import MASK_VAL
 import arimo.debug
 
-from ..base import _blueprint_from_params, AbstractPPPBlueprint, AbstractTimeSerDataPrepMixIn
+from .. import _blueprint_from_params, AbstractPPPBlueprint, AbstractTimeSerDataPrepMixIn
 
 
 class DLPPPBlueprint(AbstractTimeSerDataPrepMixIn, AbstractPPPBlueprint):

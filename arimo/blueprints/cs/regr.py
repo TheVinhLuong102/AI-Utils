@@ -14,7 +14,7 @@ from arimo.util import Namespace
 from arimo.util.pkl import pickle_able
 import arimo.debug
 
-from ..base import BlueprintedArimoDLModel, BlueprintedKerasModel, RegrEvalMixIn
+from .. import BlueprintedArimoDLModel, BlueprintedKerasModel, RegrEvalMixIn
 from . import AbstractDLCrossSectSupervisedBlueprint
 
 
