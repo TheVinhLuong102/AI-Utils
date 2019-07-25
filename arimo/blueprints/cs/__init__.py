@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 
-import abc
 import copy
 import itertools
 import logging
@@ -27,8 +26,6 @@ from .. import \
 
 
 class AbstractCrossSectSupervisedBlueprint(AbstractSupervisedBlueprint):
-    __metaclass__ = abc.ABCMeta
-
     def eval(self, *args, **kwargs):
         # whether to exclude outlying labels
         _lower_outlier_threshold_applicable = \
@@ -222,8 +219,6 @@ class AbstractCrossSectSupervisedBlueprint(AbstractSupervisedBlueprint):
 
 
 class AbstractDLCrossSectSupervisedBlueprint(AbstractCrossSectSupervisedBlueprint, AbstractDLSupervisedBlueprint):
-    __metaclass__ = abc.ABCMeta
-
     _DEFAULT_PARAMS = \
         copy.deepcopy(
             AbstractCrossSectSupervisedBlueprint._DEFAULT_PARAMS)

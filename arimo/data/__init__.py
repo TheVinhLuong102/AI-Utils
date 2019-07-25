@@ -1,24 +1,17 @@
-import abc
 import logging
 import os
 import tempfile
 
-import six
-_STR_CLASSES = \
-    (str, unicode) \
-    if six.PY2 \
-    else str
-
 from arimo.util.date_time import \
-    (DATE_COL,
-     _T_ORD_COL, _T_DELTA_COL,
-     _T_HoY_COL, _T_QoY_COL, _T_MoY_COL, _T_PoY_COL,
-     _T_QoH_COL, _T_MoH_COL, _T_PoH_COL,
-     _T_MoQ_COL, _T_PoQ_COL,
-     _T_WoM_COL, _T_DoM_COL, _T_PoM_COL,
-     _T_DoW_COL, _T_PoW_COL,
-     _T_HoD_COL, _T_PoD_COL,
-     _T_COMPONENT_AUX_COLS, _T_CAT_AUX_COLS, _T_NUM_AUX_COLS)
+    DATE_COL, \
+    _T_ORD_COL, _T_DELTA_COL, \
+    _T_HoY_COL, _T_QoY_COL, _T_MoY_COL, _T_PoY_COL, \
+    _T_QoH_COL, _T_MoH_COL, _T_PoH_COL, \
+    _T_MoQ_COL, _T_PoQ_COL, \
+    _T_WoM_COL, _T_DoM_COL, _T_PoM_COL, \
+    _T_DoW_COL, _T_PoW_COL, \
+    _T_HoD_COL, _T_PoD_COL, \
+    _T_COMPONENT_AUX_COLS, _T_CAT_AUX_COLS, _T_NUM_AUX_COLS
 from arimo.util import Namespace
 from arimo.util.decor import _docstr_settable_property
 from arimo.util.log import STDOUT_HANDLER
@@ -26,8 +19,6 @@ import arimo.debug
 
 
 class AbstractDataHandler(object):
-    __metaclass__ = abc.ABCMeta
-
     # default identity/entity, timestamp & time order columns
     _DEFAULT_I_COL = 'id'
 
@@ -113,11 +104,9 @@ class AbstractDataHandler(object):
     # __str__
     # __unicode__
 
-    @abc.abstractmethod
     def __repr__(self):
         raise NotImplementedError
 
-    @abc.abstractproperty
     def __short_repr__(self):
         raise NotImplementedError
 
@@ -193,7 +182,6 @@ class AbstractDataHandler(object):
     # save / write
 
     @classmethod
-    @abc.abstractproperty
     def load(cls, *args, **kwargs):
         raise NotImplementedError
 
@@ -201,7 +189,6 @@ class AbstractDataHandler(object):
     def read(cls, *args, **kwargs):
         return cls.load(*args, **kwargs)
 
-    @abc.abstractmethod
     def save(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -213,11 +200,9 @@ class AbstractDataHandler(object):
     # _emptyCache
     # _inheritCache
 
-    @abc.abstractmethod
     def _emptyCache(self):
         raise NotImplementedError
 
-    @abc.abstractmethod
     def _inheritCache(self):
         raise NotImplementedError
 
@@ -231,7 +216,6 @@ class AbstractDataHandler(object):
     # maxNCats
     # minProportionByMaxNCats
 
-    @abc.abstractmethod
     def _assignReprSample(self):
         raise NotImplementedError
 
@@ -326,7 +310,6 @@ class AbstractDataHandler(object):
         """
         return self.nRows
 
-    @abc.abstractproperty
     def nRows(self):
         raise NotImplementedError
 
@@ -388,19 +371,15 @@ class AbstractDataHandler(object):
         # Alias for ``.columns``: `list` of column names
         return self.columns
 
-    @abc.abstractproperty
     def types(self):
         raise NotImplementedError
 
-    @abc.abstractmethod
     def type(self, col):
         raise NotImplementedError
 
-    @abc.abstractmethod
     def typeIsNum(self, col):
         raise NotImplementedError
 
-    @abc.abstractmethod
     def typeIsComplex(self, col):
         raise NotImplementedError
 
@@ -421,11 +400,9 @@ class AbstractDataHandler(object):
     # possibleCatCols
     # possibleNumCols
 
-    @abc.abstractproperty
     def indexCols(self):
         raise NotImplementedError
 
-    @abc.abstractproperty
     def tRelAuxCols(self):
         raise NotImplementedError
 
@@ -464,11 +441,9 @@ class AbstractDataHandler(object):
             col for col in self.columns
             if col not in (self.indexCols + self._T_AUX_COLS))
 
-    @abc.abstractproperty
     def possibleFeatureContentCols(self):
         raise NotImplementedError
 
-    @abc.abstractproperty
     def possibleCatContentCols(self):
         raise NotImplementedError
 
@@ -501,11 +476,9 @@ class AbstractDataHandler(object):
     # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
     # profile
 
-    @abc.abstractmethod
     def count(self, *cols, **kwargs):
         raise NotImplementedError
 
-    @abc.abstractmethod
     def nonNullProportion(self, *cols, **kwargs):
         raise NotImplementedError
 
@@ -555,26 +528,21 @@ class AbstractDataHandler(object):
 
             return self._cache.suffNonNull[col]
 
-    @abc.abstractmethod
     def distinct(self, *cols, **kwargs):
         raise NotImplementedError
 
     def unique(self, *cols, **kwargs):
         return self.distinct(*cols, **kwargs)
 
-    @abc.abstractmethod
     def quantile(self, *cols, **kwargs):
         raise NotImplementedError
 
-    @abc.abstractmethod
     def sampleStat(self, *cols, **kwargs):
         raise NotImplementedError
 
-    @abc.abstractmethod
     def outlierRstStat(self, *cols, **kwargs):
         raise NotImplementedError
 
-    @abc.abstractmethod
     def profile(self, *cols, **kwargs):
         raise NotImplementedError
 
@@ -583,7 +551,6 @@ class AbstractDataHandler(object):
     # fillna
     # prep
 
-    @abc.abstractmethod
     def fillna(self, *cols, **kwargs):
         raise NotImplementedError
 
@@ -593,7 +560,6 @@ class AbstractDataHandler(object):
     # *******************************
     # SAMPLING / ITERATIVE GENERATION
 
-    @abc.abstractmethod
     def sample(self, *args, **kwargs):
         raise NotImplementedError
 

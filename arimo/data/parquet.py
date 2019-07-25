@@ -1,6 +1,5 @@
 from __future__ import division, print_function
 
-import abc
 from argparse import Namespace as _Namespace
 import datetime
 import json
@@ -63,8 +62,6 @@ warnings.filterwarnings(
 
 
 class AbstractS3ParquetDataHandler(AbstractDataHandler):
-    __metaclass__ = abc.ABCMeta
-
     _SCHEMA_MIN_N_PIECES = 10
     _REPR_SAMPLE_MIN_N_PIECES = 100
 

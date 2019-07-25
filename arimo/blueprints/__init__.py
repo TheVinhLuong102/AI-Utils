@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, unicode_literals
 
-import abc
 import argparse
 import copy
 import itertools
@@ -231,9 +230,6 @@ class AbstractBlueprint(object):
     """
     Abstract base class for ``Blueprint``s
     """
-    __metaclass__ = abc.ABCMeta
-
-    @abc.abstractproperty
     def __repr__(self):
         raise NotImplementedError
 
@@ -249,28 +245,24 @@ class AbstractBlueprint(object):
 
     _MODEL_PATHS_ON_SPARK_WORKER_NODES = {}
 
-    @abc.abstractmethod
     def prep_data(self, df, **kwargs):
         """
         Required method to prepare / pre-process business data into normalized numerical data for AI modeling
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
     def train(self, df, **kwargs):
         """
         Required method to (re)train AI model(s)
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
     def score(self, df, **kwargs):
         """
         Required method to score new data using trained AI model(s)
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
     def eval(self, df, **kwargs):
         """
         Required method to evaluate AI model metrics on labeled data
@@ -722,16 +714,12 @@ class AbstractBlueprintedModel(object):
     """
     Blueprinted Model abstract base class
     """
-    __metaclass__ = abc.ABCMeta
-
-    @abc.abstractmethod
     def load(self, verbose=True):
         """
         Required method to load model object
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
     def save(self, verbose=True):
         """
         Required method to save model object
@@ -1012,12 +1000,9 @@ class AbstractTimeSerDataPrepMixIn(object):
 
 
 class AbstractEvalMixIn(object):
-    __metaclass__ = abc.ABCMeta
-
     _EVAL_ADF_ALIAS_SUFFIX = '__Eval'
 
     @classmethod
-    @abc.abstractproperty
     def eval_metrics(cls):
         raise NotImplementedError
 
@@ -1038,8 +1023,6 @@ class RegrEvalMixIn(AbstractEvalMixIn):
 
 @_docstr_blueprint
 class AbstractSupervisedBlueprint(AbstractBlueprint):
-    __metaclass__ = abc.ABCMeta
-
     _DEFAULT_PARAMS = \
         copy.deepcopy(
             AbstractBlueprint._DEFAULT_PARAMS)
@@ -1938,8 +1921,6 @@ class AbstractSupervisedBlueprint(AbstractBlueprint):
 
 @_docstr_blueprint
 class AbstractDLSupervisedBlueprint(AbstractSupervisedBlueprint):
-    __metaclass__ = abc.ABCMeta
-
     _DEFAULT_PARAMS = \
         copy.deepcopy(
             AbstractSupervisedBlueprint._DEFAULT_PARAMS)
@@ -2112,8 +2093,6 @@ class AbstractDLSupervisedBlueprint(AbstractSupervisedBlueprint):
 
 @_docstr_blueprint
 class AbstractPPPBlueprint(AbstractBlueprint):
-    __metaclass__ = abc.ABCMeta
-
     _DEFAULT_PARAMS = \
         copy.deepcopy(
             AbstractBlueprint._DEFAULT_PARAMS)
