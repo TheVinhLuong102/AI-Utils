@@ -2065,6 +2065,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                             _to_key = os.path.join(subsetDirS3Key, pieceSubPath)
 
                             try:
+                                print('*** FROM {} TO {} ON S3 ***'.format(_from_key, _to_key))
                                 self.s3Client.copy(
                                     CopySource=dict(
                                         Bucket=self.s3Bucket,
