@@ -310,6 +310,7 @@ class AbstractDataHandler(object):
         """
         return self.nRows
 
+    @property
     def nRows(self):
         raise NotImplementedError
 
