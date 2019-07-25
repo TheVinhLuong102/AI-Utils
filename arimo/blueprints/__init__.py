@@ -225,7 +225,6 @@ def _docstr_blueprint(BlueprintClass):
     return BlueprintClass
 
 
-@_docstr_blueprint
 class AbstractBlueprint(object):
     """
     Abstract base class for ``Blueprint``s
@@ -1021,7 +1020,6 @@ class RegrEvalMixIn(AbstractEvalMixIn):
     eval_metrics = 'MedAE', 'MAE', 'RMSE', 'R2'
 
 
-@_docstr_blueprint
 class AbstractSupervisedBlueprint(AbstractBlueprint):
     _DEFAULT_PARAMS = \
         copy.deepcopy(
@@ -1919,7 +1917,6 @@ class AbstractSupervisedBlueprint(AbstractBlueprint):
                 self.params.model._persist.train_history_file))
 
 
-@_docstr_blueprint
 class AbstractDLSupervisedBlueprint(AbstractSupervisedBlueprint):
     _DEFAULT_PARAMS = \
         copy.deepcopy(
@@ -2091,7 +2088,6 @@ class AbstractDLSupervisedBlueprint(AbstractSupervisedBlueprint):
                           self.params.model.train.val_batch_size))
 
 
-@_docstr_blueprint
 class AbstractPPPBlueprint(AbstractBlueprint):
     _DEFAULT_PARAMS = \
         copy.deepcopy(
