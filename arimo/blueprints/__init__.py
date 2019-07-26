@@ -226,9 +226,6 @@ def _docstr_blueprint(BlueprintClass):
 
 
 class AbstractBlueprint(object):
-    """
-    Abstract base class for ``Blueprint``s
-    """
     def __repr__(self):
         raise NotImplementedError
 
@@ -710,9 +707,6 @@ class AbstractBlueprint(object):
 
 
 class AbstractBlueprintedModel(object):
-    """
-    Blueprinted Model abstract base class
-    """
     def load(self, verbose=True):
         """
         Required method to load model object
