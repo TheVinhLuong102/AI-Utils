@@ -590,7 +590,7 @@ class _S3ParquetDataFeeder__gen:
                 .to_pandas(
                     categories=None,
                     strings_to_categorical=False,
-                    zero_copy_only=True,
+                    zero_copy_only=False,
                     integer_object_nulls=False,
                     date_as_object=False,
                     use_threads=False,
@@ -1548,7 +1548,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                 recordBatch.to_pandas(
                                     categories=None,
                                     strings_to_categorical=False,
-                                    zero_copy_only=True,
+                                    zero_copy_only=False,
                                     integer_object_nulls=False,
                                     date_as_object=False,
                                     use_threads=True,
@@ -1634,7 +1634,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                             pieceArrowTable.to_pandas(
                                 categories=None,
                                 strings_to_categorical=False,
-                                zero_copy_only=True,
+                                zero_copy_only=False,
                                 integer_object_nulls=False,
                                 date_as_object=False,
                                 use_threads=True,
@@ -1704,7 +1704,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         pieceArrowTable.to_pandas(
                             categories=None,
                             strings_to_categorical=False,
-                            zero_copy_only=True,
+                            zero_copy_only=False,
                             integer_object_nulls=False,
                             date_as_object=False,
                             use_threads=True,
