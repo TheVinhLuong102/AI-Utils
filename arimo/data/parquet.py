@@ -458,7 +458,7 @@ class _S3ParquetDataFeeder__pieceArrowTableFunc:
         return read_table(
                 source=path,
                 columns=None,
-                use_threads=False,
+                use_threads=True,
                 metadata=None,
                 use_pandas_metadata=False,
                 memory_map=False,
