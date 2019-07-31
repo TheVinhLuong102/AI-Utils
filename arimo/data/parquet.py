@@ -458,9 +458,12 @@ class _S3ParquetDataFeeder__pieceArrowTableFunc:
         return read_table(
                 source=path,
                 columns=None,
-                use_threads=self.nThreads,
+                use_threads=False,
                 metadata=None,
-                use_pandas_metadata=False)
+                use_pandas_metadata=False,
+                memory_map=False,
+                filesystem=None,
+                filters=None)
 
 
 class _S3ParquetDataFeeder__gen:
@@ -585,7 +588,14 @@ class _S3ParquetDataFeeder__gen:
                     self.pieceArrowTableFunc(piecePath=piecePath)
                         .to_batches(chunksize=self.sampleN)) \
                 .to_pandas(
-                    use_threads=self.nThreads)
+                    categories=None,
+                    strings_to_categorical=False,
+                    zero_copy_only=True,
+                    integer_object_nulls=False,
+                    date_as_object=False,
+                    use_threads=False,
+                    deduplicate_objects=False,
+                    ignore_metadata=False)
 
             if self.partitionKVs:
                 for k, v in self.partitionKVs[piecePath].items():
@@ -1502,9 +1512,12 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     read_table(
                         source=pieceLocalOrHDFSPath,
                         columns=srcCols,
-                        use_threads=psutil.cpu_count(logical=True),
+                        use_threads=True,
                         metadata=None,
-                        use_pandas_metadata=False)
+                        use_pandas_metadata=False,
+                        memory_map=False,
+                        filesystem=None,
+                        filters=None)
 
                 if nSamplesPerPiece and (nSamplesPerPiece < pieceCache.nRows):
                     intermediateN = (nSamplesPerPiece * pieceCache.nRows) ** .5
@@ -1531,7 +1544,16 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                 random.sample(
                                     population=recordBatches,
                                     k=nChunksForIntermediateN):
-                            chunkPandasDF = recordBatch.to_pandas(use_threads=max(1, psutil.cpu_count() // 2))
+                            chunkPandasDF = \
+                                recordBatch.to_pandas(
+                                    categories=None,
+                                    strings_to_categorical=False,
+                                    zero_copy_only=True,
+                                    integer_object_nulls=False,
+                                    date_as_object=False,
+                                    use_threads=True,
+                                    deduplicate_objects=False,
+                                    ignore_metadata=False)
 
                             for k in partitionKeyCols:
                                 chunkPandasDF[k] = pieceCache.partitionKVs[k]
@@ -1610,15 +1632,14 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     else:
                         piecePandasDF = \
                             pieceArrowTable.to_pandas(
-                                use_threads=max(1, psutil.cpu_count(logical=True) // 2),
-                                    # For the default, we divide the CPU count by 2
-                                    # because most modern computers have hyperthreading turned on,
-                                    # so doubling the CPU count beyond the number of physical cores does not help
+                                categories=None,
                                 strings_to_categorical=False,
-                                # memory_pool=None,   # *** no such argument in PyArrow 1.13.0 ***
-                                zero_copy_only=None,
-                                categories=[],
-                                integer_object_nulls=False)
+                                zero_copy_only=True,
+                                integer_object_nulls=False,
+                                date_as_object=False,
+                                use_threads=True,
+                                deduplicate_objects=False,
+                                ignore_metadata=False)
 
                         for k in partitionKeyCols:
                             piecePandasDF[k] = pieceCache.partitionKVs[k]
@@ -1681,15 +1702,14 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 else:
                     piecePandasDF = \
                         pieceArrowTable.to_pandas(
-                            use_threads=max(1, psutil.cpu_count(logical=True) // 2),
-                                # For the default, we divide the CPU count by 2
-                                # because most modern computers have hyperthreading turned on,
-                                # so doubling the CPU count beyond the number of physical cores does not help
+                            categories=None,
                             strings_to_categorical=False,
-                            # memory_pool=None,   # *** no such argument in PyArrow 1.13.0 ***
-                            zero_copy_only=None,
-                            categories=[],
-                            integer_object_nulls=False)
+                            zero_copy_only=True,
+                            integer_object_nulls=False,
+                            date_as_object=False,
+                            use_threads=True,
+                            deduplicate_objects=False,
+                            ignore_metadata=False)
 
                     for k in partitionKeyCols:
                         piecePandasDF[k] = pieceCache.partitionKVs[k]
