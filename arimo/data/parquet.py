@@ -592,7 +592,7 @@ class _S3ParquetDataFeeder__gen:
                     strings_to_categorical=False,
                     zero_copy_only=False,
                     integer_object_nulls=False,
-                    date_as_object=False,
+                    date_as_object=True,
                     use_threads=False,
                     deduplicate_objects=False,
                     ignore_metadata=False)
@@ -1550,7 +1550,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                     strings_to_categorical=False,
                                     zero_copy_only=False,
                                     integer_object_nulls=False,
-                                    date_as_object=False,
+                                    date_as_object=True,
                                     use_threads=True,
                                     deduplicate_objects=False,
                                     ignore_metadata=False)
@@ -1636,7 +1636,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                 strings_to_categorical=False,
                                 zero_copy_only=False,
                                 integer_object_nulls=False,
-                                date_as_object=False,
+                                date_as_object=True,
                                 use_threads=True,
                                 deduplicate_objects=False,
                                 ignore_metadata=False)
@@ -1706,7 +1706,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                             strings_to_categorical=False,
                             zero_copy_only=False,
                             integer_object_nulls=False,
-                            date_as_object=False,
+                            date_as_object=True,
                             use_threads=True,
                             deduplicate_objects=False,
                             ignore_metadata=False)
