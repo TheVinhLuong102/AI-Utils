@@ -54,8 +54,6 @@ class DLBlueprint(RegrEvalMixIn, AbstractDLCrossSectSupervisedBlueprint):
         assert __n_workers__, \
             '*** __n_workers__ = {} ***'.format(__n_workers__)
 
-        __multiproc__ = kwargs.pop('__multiproc__', True)
-
         __n_gpus__ = \
             kwargs.pop(
                 '__n_gpus__',
@@ -111,7 +109,6 @@ class DLBlueprint(RegrEvalMixIn, AbstractDLCrossSectSupervisedBlueprint):
             '\n- Val Batch Size: {:,}'
             '\n- Generator Queue Size: {:,}'
             '\n- Processes/Threads: {:,}'
-            '\n- Multi-Processing: {}'
             '\n- GPUs: {}{}'
             '\n- Filter: {}'
             .format(
@@ -125,7 +122,6 @@ class DLBlueprint(RegrEvalMixIn, AbstractDLCrossSectSupervisedBlueprint):
                 self.params.model.train.val_batch_size,
                 __gen_queue_size__,
                 __n_workers__,
-                __multiproc__,
                 __n_gpus__,
                 ' (CPU Merge: {}; CPU Reloc: {})'.format(__cpu_merge__, __cpu_reloc__)
                     if __n_gpus__ > 1
@@ -276,7 +272,7 @@ class DLBlueprint(RegrEvalMixIn, AbstractDLCrossSectSupervisedBlueprint):
                     class_weight={},
                     max_queue_size=__gen_queue_size__,
                     workers=__n_workers__,
-                    use_multiprocessing=__multiproc__,
+                    use_multiprocessing=True,
                     shuffle=False,
                     initial_epoch=0) \
                 .history

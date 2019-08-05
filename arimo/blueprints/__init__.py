@@ -2517,8 +2517,6 @@ class AbstractPPPBlueprint(AbstractBlueprint):
         assert __n_workers__, \
             '*** __n_workers__ = {} ***'.format(__n_workers__)
 
-        __multiproc__ = kwargs.pop('__multiproc__', True)
-
         __n_gpus__ = \
             kwargs.pop(
                 '__n_gpus__',
@@ -2581,7 +2579,6 @@ class AbstractPPPBlueprint(AbstractBlueprint):
                         df=component_labeled_adf,
                         __from_ppp__=True,
                         __gen_queue_size__=__gen_queue_size__,
-                        __multiproc__=__multiproc__,
                         __n_workers__=__n_workers__,
                         __n_gpus__=__n_gpus__,
                         __cpu_merge__=__cpu_merge__,
