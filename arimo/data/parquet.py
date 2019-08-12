@@ -7,7 +7,6 @@ import math
 import numpy
 import os
 import pandas
-import psutil
 import random
 import re
 from sklearn.exceptions import DataConversionWarning
