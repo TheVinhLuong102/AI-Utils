@@ -2,9 +2,13 @@ from __future__ import absolute_import, division
 
 import copy
 import math
+import keras
+import numpy
 import pandas
 import psutil
+import pyarrow
 import random
+import tensorflow
 
 import arimo.backend
 from arimo.data.parquet import S3ParquetDataFeeder
@@ -111,6 +115,7 @@ class DLBlueprint(RegrEvalMixIn, AbstractDLCrossSectSupervisedBlueprint):
             '\n- Processes/Threads: {:,}'
             '\n- GPUs: {}{}'
             '\n- Filter: {}'
+            '\n- NumPy: {}; Pandas: {}; PyArrow: {}; TensorFlow: {}; Keras: {}'
             .format(
                 self.params.data._prep_vec_size,
                 self.params.model.train._n_train_samples,
@@ -126,7 +131,8 @@ class DLBlueprint(RegrEvalMixIn, AbstractDLCrossSectSupervisedBlueprint):
                 ' (CPU Merge: {}; CPU Reloc: {})'.format(__cpu_merge__, __cpu_reloc__)
                     if __n_gpus__ > 1
                     else '',
-                filter))
+                filter,
+                numpy.__version__, pandas.__version__, pyarrow.__version__, tensorflow.__version__, keras.__version__))
 
         feature_cols = self.params.data._cat_prep_cols + self.params.data._num_prep_cols
 
