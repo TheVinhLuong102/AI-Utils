@@ -457,7 +457,7 @@ class _S3ParquetDataFeeder__pieceArrowTableFunc:
         return read_table(
                 source=path,
                 columns=None,
-                use_threads=False,
+                use_threads=False,   # *** will blow up RAM if True and used in multi-processing ***
                 metadata=None,
                 use_pandas_metadata=False,
                 memory_map=False,
