@@ -113,8 +113,8 @@ class _S3ParquetDataFeeder__getitem__pandasDFTransform:
 
         else:
             return pandas.Series(
-                index=pandasDF.index,
-                name=self.col)
+                    index=pandasDF.index,
+                    name=self.col)
 
 
 class _S3ParquetDataFeeder__drop__pandasDFTransform:
@@ -123,10 +123,10 @@ class _S3ParquetDataFeeder__drop__pandasDFTransform:
 
     def __call__(self, pandasDF):
         return pandasDF.drop(
-            columns=self.cols,
-            level=None,
-            inplace=False,
-            errors='ignore')
+                columns=self.cols,
+                level=None,
+                inplace=False,
+                errors='ignore')
 
 
 class _S3ParquetDataFeeder__castType__pandasDFTransform:
@@ -592,7 +592,7 @@ class _S3ParquetDataFeeder__gen:
                     zero_copy_only=False,
                     integer_object_nulls=False,
                     date_as_object=True,
-                    use_threads=False,
+                    use_threads=False,   # single thread sufficient to process 1 chunk of data
                     deduplicate_objects=False,
                     ignore_metadata=False)
 
