@@ -1651,9 +1651,6 @@ class DistributedDataFrame(AbstractDataHandler):
         if isinstance(path, _STR_CLASSES):
             if path.startswith('s3'):
                 if fs._ON_LINUX_CLUSTER_WITH_HDFS:
-                    if arimo.debug.ON:
-                        cls._test_hdfs_load()
-
                     path = s3.s3a_path_with_auth(
                         s3_path=path,
                         access_key_id=aws_access_key_id,
@@ -1820,9 +1817,6 @@ class DistributedDataFrame(AbstractDataHandler):
 
         if path.startswith('s3'):
             if fs._ON_LINUX_CLUSTER_WITH_HDFS:
-                if arimo.debug.ON:
-                    self._test_hdfs_load()
-
                 if options.pop('getToLocal', True):   # *** HDFS-to-S3 transfers are SLOW ***
                     _path = tempfile.mkdtemp()
 
