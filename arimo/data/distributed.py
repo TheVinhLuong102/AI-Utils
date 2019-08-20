@@ -836,9 +836,6 @@ class DistributedDataFrame(AbstractDataHandler):
                     if contentCols is None:
                         contentCols = self.contentCols
 
-                    print('*** FIRST COLS NEEDED: {} ***'.format(_firstCols))
-                    print('*** CURRENT COLS: {} ***'.format(self._sparkDF.columns))
-
                     self._sparkDF = \
                         self._sparkDF.select(
                             *(_firstCols +
