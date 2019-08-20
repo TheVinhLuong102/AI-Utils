@@ -814,7 +814,10 @@ class DistributedDataFrame(AbstractDataHandler):
 
                     self._sparkDF = \
                         self._sparkDF.select(
-                            *(_dColTup +
+                            *(((self._PARTITION_ID_COL,)
+                               if self._detPrePartitioned
+                               else ()) +
+                              _dColTup +
                               (_tColExpr,) +
                               contentCols))
 
