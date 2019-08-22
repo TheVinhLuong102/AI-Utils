@@ -167,9 +167,7 @@ class DistributedDataFrame(AbstractDataHandler):
         self._sparkDF = sparkDF
 
         # initiate empty cache
-        self._cache = _Namespace(
-            nPartitions=sparkDF.rdd.getNumPartitions(),
-            nRows=nRows)
+        self._cache = _Namespace(nRows=nRows)
 
         # extract standard keyword arguments
         self._extractStdKwArgs(kwargs, resetToClassDefaults=True, inplace=True)
@@ -208,28 +206,6 @@ class DistributedDataFrame(AbstractDataHandler):
 
         if inplace:
             cols = self.columns
-
-            if self._detPrePartitioned:
-                if self._PARTITION_ID_COL in cols:
-                    assert self._nDetPrePartitions
-
-                else:
-                    if self._nDetPrePartitions is None:
-                        self._nDetPrePartitions = self.nPartitions
-
-                    # *** SKIP BELOW AS IT RESULTS IN POOR PARALLELISM ***
-                    # else:
-                        # assert self._nDetPrePartitions >= self.nPartitions, \
-                        #     '*** Deterministically Pre-Partitioned DistributedDataFrame: Set nDetPrePartitions {} < Detected {} Partitions ***'.format(
-                        #         self._nDetPrePartitions, self.nPartitions)
-
-                    self._sparkDF = \
-                        self._sparkDF.withColumn(
-                            colName=self._PARTITION_ID_COL,
-                            col=sparkSQLFuncs.spark_partition_id())
-
-            else:
-                assert self._nDetPrePartitions is None
 
             if self._iCol not in cols:
                 self._iCol = None
@@ -485,45 +461,8 @@ class DistributedDataFrame(AbstractDataHandler):
                 _tOrdColAbsent = self._T_ORD_COL not in self.columns
                 _tDeltaColAbsent = self._T_DELTA_COL not in self.columns
 
-                if self._detPrePartitioned:
-                    _tChunkColAbsent = _genTChunkCol = \
-                        _tOrdInChunkColAbsent = _genTOrdInChunkCol = False
-
-                    if _tOrdColAbsent:
-                        _genTOrdCol = _genTDeltaCol = True
-
-                        window = Window \
-                            .partitionBy(iCol) \
-                            .orderBy(tCol)
-
-                    else:
-                        _genTOrdCol = \
-                            forceGenTRelAuxCols or \
-                            (self.type(self._T_ORD_COL) not in _INT_TYPES)
-
-                        _genTDeltaCol = \
-                            _genTOrdCol or \
-                            _tDeltaColAbsent or \
-                            (self.type(self._T_DELTA_COL) != _tDeltaColType)
-
-                        if _genTDeltaCol:
-                            window = Window \
-                                .partitionBy(iCol) \
-                                .orderBy(tCol if _genTOrdCol else self._T_ORD_COL)
-
-                    if arimo.debug.ON:
-                        if forceGenTRelAuxCols:
-                            self.class_stdout_logger().debug(
-                                msg='*** FORCE-GENERATING AUXILIARY COLUMNS {}, {} ***'
-                                    .format(self._T_ORD_COL, self._T_DELTA_COL))
-
-                        elif not (_genTOrdCol and _genTDeltaCol):
-                            self.class_stdout_logger().debug(
-                                msg='*** SKIP GENERATING ALREADY EXISTING AUXILIARY COLUMN(S) {} ***'
-                                    .format((() if _genTOrdCol
-                                                else (self._T_ORD_COL,)) +
-                                            (() if _genTDeltaCol
-                                                else (self._T_DELTA_COL,))))
+                if False:
+                    pass
 
                 else:
                     _tChunkColAbsent = self._T_CHUNK_COL not in self.columns
@@ -709,14 +648,8 @@ class DistributedDataFrame(AbstractDataHandler):
                 _types[self._T_DELTA_COL] = _type = _schema[self._T_DELTA_COL].dataType.simpleString()
                 assert _type == _tDeltaColType
 
-                if self._detPrePartitioned:
-                    _firstCols = \
-                        (self._PARTITION_ID_COL,
-                         iCol) + \
-                        _dColTup + \
-                        (tCol,
-                         self._T_ORD_COL,
-                         self._T_DELTA_COL)
+                if False:
+                    pass
 
                 else:
                     if _genTChunkCol:
@@ -2055,12 +1988,6 @@ class DistributedDataFrame(AbstractDataHandler):
     @alias.deleter
     def alias(self):
         self.alias = None
-
-    @property
-    def nPartitions(self):
-        if self._cache.nPartitions is None:
-            self._cache.nPartitions = self._sparkDF.rdd.getNumPartitions()
-        return self._cache.nPartitions
 
     @property
     def detPrePartitioned(self):
