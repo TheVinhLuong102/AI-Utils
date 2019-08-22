@@ -3094,7 +3094,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
                             ['FIRST_VALUE({0}) AS {0}'.format(_metric_col_name),
                              'FIRST_VALUE({0}) AS {0}'.format(_indiv_ref_benchmark_metric_over_global_ref_benchmark_metric_rario_col_name)]
 
-        return df_w_err_mults(
+        s = \
                 'SELECT \
                     {0}, \
                     {1}, \
@@ -3104,8 +3104,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
                     this \
                 GROUP BY \
                     {0}, \
-                    {4}'
-                .format(
+                    {4}'.format(
                     id_col,
                     DATE_COL
                         if DATE_COL in df_w_err_mults.columns
@@ -3115,8 +3114,11 @@ class AbstractPPPBlueprint(AbstractBlueprint):
                               for col in set(df_w_err_mults.columns).difference(cols_to_agg | cols_to_excl)),
                     DATE_COL
                         if DATE_COL in df_w_err_mults.columns
-                        else 'TO_DATE({})'.format(time_col)),
-                tCol=None)
+                        else 'TO_DATE({})'.format(time_col))
+
+        print(s)
+
+        return df_w_err_mults(s, tCol=None)
 
     @classmethod
     def ewma_daily_err_mults(cls, daily_err_mults_df, *daily_err_mult_summ_col_names, **kwargs):
