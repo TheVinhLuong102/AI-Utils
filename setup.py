@@ -10,5 +10,4 @@ setup(
     description='Arimo BAI dev',
     long_description='Arimo BAI dev',
     keywords='Arimo BAI dev',
-    packages=find_packages(),
-    include_package_data=True)
+    packages=find_packages())
