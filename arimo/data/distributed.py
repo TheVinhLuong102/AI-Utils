@@ -92,9 +92,6 @@ class DistributedDataFrame(AbstractDataHandler):
     is a valid ``DistributedDataFrame`` method and works the same way as it does under ``Spark DataFrame``.
     If the method's result is a ``Spark DataFrame``, it is up-converted to an ``DistributedDataFrame``.
     """
-    # Partition ID col
-    _PARTITION_ID_COL = '__PARTITION_ID__'
-
     # extra aux cols
     _T_CHUNK_COL = '__tChunk__'
     _T_ORD_IN_CHUNK_COL = '__tOrd_inChunk__'
@@ -109,8 +106,6 @@ class DistributedDataFrame(AbstractDataHandler):
     _DEFAULT_KWARGS = \
         dict(
             alias=None,
-
-            detPrePartitioned=False, nDetPrePartitions=None,
 
             iCol=AbstractDataHandler._DEFAULT_I_COL, tCol=None,
             tChunkLen=_DEFAULT_T_CHUNK_LEN,
@@ -578,8 +573,6 @@ class DistributedDataFrame(AbstractDataHandler):
                     else ()
 
                 if _castTColType or _genTOrdCol or _genTDeltaCol:
-                    self._cache.nPartitions = None
-
                     if self._cache.nRows is None:
                         if arimo.debug.ON:
                             tic = time.time()
@@ -596,11 +589,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
                     self._sparkDF = \
                         self._sparkDF.select(
-                            *(((self._PARTITION_ID_COL,)
-                               if self._detPrePartitioned
-                               else ()) +
-
-                              (iCol,) +
+                            *((iCol,) +
 
                               _dColTup +
 
@@ -612,7 +601,7 @@ class DistributedDataFrame(AbstractDataHandler):
                                if _genTOrdCol
                                else self._T_ORD_COL) +
 
-                              (() if self._detPrePartitioned or _genTChunkCol
+                              (() if _genTChunkCol
                                   else (self._T_CHUNK_COL,)) +
 
                               ((sparkSQLFuncs.datediff(
@@ -633,7 +622,7 @@ class DistributedDataFrame(AbstractDataHandler):
                                if _genTDeltaCol
                                else self._T_DELTA_COL,) +
 
-                              (() if self._detPrePartitioned or _genTOrdInChunkCol
+                              (() if _genTOrdInChunkCol
                                   else (self._T_ORD_IN_CHUNK_COL,)) +
 
                               _tComponentExprs +
@@ -673,7 +662,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
                                    self._T_DELTA_COL) +
 
-                                  (() if self._detPrePartitioned or _genTOrdInChunkCol
+                                  (() if _genTOrdInChunkCol
                                       else (self._T_ORD_IN_CHUNK_COL,)) +
 
                                   _tComponentExprs +
@@ -681,8 +670,6 @@ class DistributedDataFrame(AbstractDataHandler):
                                   contentCols))
 
                     if _genTOrdInChunkCol:
-                        self._cache.nPartitions = None
-
                         if self._cache.nRows is None:
                             if arimo.debug.ON:
                                 tic = time.time()
@@ -747,18 +734,11 @@ class DistributedDataFrame(AbstractDataHandler):
 
                     self._sparkDF = \
                         self._sparkDF.select(
-                            *(((self._PARTITION_ID_COL,)
-                               if self._detPrePartitioned
-                               else ()) +
-                              _dColTup +
+                            *(_dColTup +
                               (_tColExpr,) +
                               contentCols))
 
-                _firstCols = \
-                    ((self._PARTITION_ID_COL,)
-                     if self._detPrePartitioned
-                     else ()) + \
-                    _dColTup + (tCol,)
+                _firstCols = _dColTup + (tCol,)
 
             if _tComponentColsApplicable:
                 if (_genTHoYCol or _genTQoYCol or _genTMoYCol or _genTPoYCol or   # _genTWoYCol or _genTDoYCol or
@@ -1024,7 +1004,6 @@ class DistributedDataFrame(AbstractDataHandler):
     def _emptyCache(self):
         self._cache = \
             _Namespace(
-                nPartitions=self._cache.nPartitions,
                 nRows=self._cache.nRows,
 
                 type=Namespace(**dict(self.dtypes)),
@@ -1094,10 +1073,6 @@ class DistributedDataFrame(AbstractDataHandler):
                 if isinstance(result, DataFrame):
                     cols = result.columns
 
-                    if self._detPrePartitioned and (self._PARTITION_ID_COL not in cols):
-                        stdKwArgs.detPrePartitioned = False
-                        stdKwArgs.nDetPrePartitions = None
-
                     if stdKwArgs.iCol not in cols:
                         stdKwArgs.iCol = self._iCol if self._iCol in cols else self._DEFAULT_I_COL
 
@@ -1139,10 +1114,6 @@ class DistributedDataFrame(AbstractDataHandler):
 
             cols = obj.columns
 
-            if self._detPrePartitioned and (self._PARTITION_ID_COL not in cols):
-                stdKwArgs.detPrePartitioned = False
-                stdKwArgs.nDetPrePartitions = None
-
             if stdKwArgs.iCol not in cols:
                 stdKwArgs.iCol = self._iCol if self._iCol in cols else self._DEFAULT_I_COL
 
@@ -1178,24 +1149,12 @@ class DistributedDataFrame(AbstractDataHandler):
 
             self._sparkDF = df._sparkDF
 
-            if df._detPrePartitioned:
-                self._detPrePartitioned = True
-                self._nDetPrePartitions = df._nDetPrePartitions
-
-            elif df._PARTITION_ID_COL not in cols:
-                self._detPrePartitioned = False
-                self._nDetPrePartitions = None
-
             self._cache.nRows = df._cache.nRows
 
         elif isinstance(df, DataFrame):
             isADF = False
 
             self._sparkDF = df
-
-            if self._PARTITION_ID_COL not in cols:
-                self._detPrePartitioned = False
-                self._nDetPrePartitions = None
 
             self._cache.nRows = None
 
@@ -1291,27 +1250,17 @@ class DistributedDataFrame(AbstractDataHandler):
             ['{}: {}'.format(col, self._cache.type[col])
              for col in self.contentCols]
 
-        return '{}{:,}-partition{} {}{}{}[{}]'.format(
-            '"{}" '.format(self._alias)
-                if self._alias
-                else '',
-
-            self.nPartitions,
-
-            ' (from {:,} deterministic partitions)'.format(self.nDetPrePartitions)
-                if self._detPrePartitioned
-                else '',
-
-            '' if self._cache.nRows is None
-               else '{:,}-row '.format(self._cache.nRows),
-
-            '(cached) '
-                if self.is_cached
-                else '',
-
-            type(self).__name__,
-
-            ', '.join(cols_and_types_str))
+        return '{}{}{}{}[{}]'.format(
+                '"{}" '.format(self._alias)
+                    if self._alias
+                    else '',
+                '' if self._cache.nRows is None
+                   else '{:,}-row '.format(self._cache.nRows),
+                '(cached) '
+                    if self.is_cached
+                    else '',
+                type(self).__name__,
+                ', '.join(cols_and_types_str))
 
     @property
     def __short_repr__(self):
@@ -1328,27 +1277,17 @@ class DistributedDataFrame(AbstractDataHandler):
 
         cols_desc_str += ['{} content col(s)'.format(len(self.contentCols))]
 
-        return '{}{:,}-partition{} {}{}{}[{}]'.format(
-            '"{}" '.format(self._alias)
-                if self._alias
-                else '',
-
-            self.nPartitions,
-
-            ' (from {:,} deterministic partitions)'.format(self.nDetPrePartitions)
-                if self._detPrePartitioned
-                else '',
-
-            '' if self._cache.nRows is None
-               else '{:,}-row '.format(self._cache.nRows),
-
-            '(cached) '
-                if self.is_cached
-                else '',
-
-            type(self).__name__,
-
-            ', '.join(cols_desc_str))
+        return '{}{}{}{}[{}]'.format(
+                '"{}" '.format(self._alias)
+                    if self._alias
+                    else '',
+                '' if self._cache.nRows is None
+                   else '{:,}-row '.format(self._cache.nRows),
+                '(cached) '
+                    if self.is_cached
+                    else '',
+                type(self).__name__,
+                ', '.join(cols_desc_str))
 
     # **********
     # IO METHODS
@@ -1698,7 +1637,7 @@ class DistributedDataFrame(AbstractDataHandler):
         if ('compression' in options) and (options['compression'] is None):
             options['compression'] = 'none'
 
-        sparkDF = self._sparkDF[self.indexCols + self.contentCols].drop(self._PARTITION_ID_COL)
+        sparkDF = self._sparkDF[self.indexCols + self.contentCols]
 
         if (partitionBy is None) and self._dCol and (self._dCol != self._tCol):
             partitionBy = self._dCol
@@ -1946,10 +1885,6 @@ class DistributedDataFrame(AbstractDataHandler):
     # KEY (SETTABLE) PROPERTIES
     # sparkDF
     # alias
-    # nPartitions
-    # detPrePartitioned
-    # nDetPrePartitions
-    # _maxPartitionId
     # iCol
     # tCol
     # tChunkLen
@@ -1988,43 +1923,6 @@ class DistributedDataFrame(AbstractDataHandler):
     @alias.deleter
     def alias(self):
         self.alias = None
-
-    @property
-    def detPrePartitioned(self):
-        return self._detPrePartitioned
-
-    @detPrePartitioned.setter
-    def detPrePartitioned(self, detPrePartitioned):
-        if detPrePartitioned != self._detPrePartitioned:
-            self._detPrePartitioned = detPrePartitioned
-
-            if detPrePartitioned:
-                assert self._PARTITION_ID_COL not in self.columns
-                self.withColumn(
-                    colName=self._PARTITION_ID_COL,
-                    col=sparkSQLFuncs.spark_partition_id(),
-                    detPrePartitioned=True,
-                    inplace=True)
-
-            else:
-                self.drop(
-                    self._PARTITION_ID_COL,
-                    detPrePartitioned=False,
-                    inplace=True)
-
-    @detPrePartitioned.deleter
-    def detPrePartitioned(self):
-        self.detPrePartitioned = False
-
-    @property
-    def nDetPrePartitions(self):
-        return self._nDetPrePartitions
-
-    @property
-    def _maxPartitionId(self):
-        return self._sparkDF.select(
-            sparkSQLFuncs.max(self._PARTITION_ID_COL)) \
-            .first()[0]
 
     @property
     @_docstr_settable_property
@@ -2079,16 +1977,10 @@ class DistributedDataFrame(AbstractDataHandler):
         """
         Max size of time-series chunks per `id`
         """
-        assert not self._detPrePartitioned, \
-            '*** {}.tChunkLen NOT APPLICABLE WITH PRE-PARTITIONED DistributedDataFrame ***'.format(type(self))
-        
         return self._tChunkLen
 
     @tChunkLen.setter
     def tChunkLen(self, tChunkLen):
-        assert not self._detPrePartitioned, \
-            '*** {}.tChunkLen NOT APPLICABLE WITH PRE-PARTITIONED DistributedDataFrame ***'.format(type(self))
-
         if tChunkLen != self._tChunkLen:
             self._tChunkLen = tChunkLen
 
@@ -2222,17 +2114,13 @@ class DistributedDataFrame(AbstractDataHandler):
     @property
     def indexCols(self):
         cols = self.columns
-        return \
-            ((self._PARTITION_ID_COL,) if self._detPrePartitioned and (self._PARTITION_ID_COL in cols) else ()) + \
-            ((self._iCol,) if self._iCol in cols else ()) + \
-            ((self._dCol,) if (self._dCol in cols) and (self._dCol != self._tCol) else ()) + \
-            ((self._tCol,) if self._tCol in cols else ())
+        return ((self._iCol,) if self._iCol in cols else ()) \
+             + ((self._dCol,) if (self._dCol in cols) and (self._dCol != self._tCol) else ()) \
+             + ((self._tCol,) if self._tCol in cols else ())
 
     @property
     def tRelAuxCols(self):
-        return ((self._T_ORD_COL, self._T_DELTA_COL)
-                if self._detPrePartitioned
-                else self._T_REL_AUX_COLS) \
+        return self._T_REL_AUX_COLS \
             if self.hasTS \
           else ()
 
@@ -3706,12 +3594,6 @@ class DistributedDataFrame(AbstractDataHandler):
                     _tsWindowClause = \
                     'WINDOW {}'.format(', '.join(tsWindowDefs))
 
-                if self._detPrePartitioned:
-                    _tsWindowClause = \
-                        _tsWindowClause.replace(
-                            'PARTITION BY {}, {}'.format(self._iCol, self._T_CHUNK_COL),
-                            'PARTITION BY {}'.format(self._iCol))
-
             else:
                 _tsWindowClause = ''
 
@@ -4411,19 +4293,6 @@ class DistributedDataFrame(AbstractDataHandler):
                     catOHETransformer=catOHETransformer,
                     pipelineModelWithoutVectors=pipelineModelWithoutVectors)
 
-        if self._detPrePartitioned and self.hasTS:
-            _partitionBy_str = 'PARTITION BY {}, {}'.format(self._iCol, self._T_CHUNK_COL)
-
-            statement = sqlTransformer.getStatement()
-
-            if _partitionBy_str in statement:
-                sqlTransformer = \
-                    SQLTransformer(
-                        statement=
-                            statement.replace(
-                                _partitionBy_str,
-                                'PARTITION BY {}'.format(self._iCol)))
-
         pipelineModelStages = \
             [sqlTransformer] + \
             ([catOHETransformer]
@@ -4800,13 +4669,12 @@ class DistributedDataFrame(AbstractDataHandler):
                                 windowRowStr(rowTo, sep=''))
 
                         windowDefs.add(
-                            '{} AS (PARTITION BY {}{} ORDER BY {} ROWS BETWEEN {} AND {})'
+                            '{} AS (PARTITION BY {}, {} ORDER BY {} ROWS BETWEEN {} AND {})'
                                 .format(
                                     windowName,
 
                                     self._iCol,
-                                    '' if self._detPrePartitioned
-                                        else ', {}'.format(self._T_CHUNK_COL),
+                                    self._T_CHUNK_COL,
 
                                     self._T_ORD_COL,
 
@@ -5209,12 +5077,8 @@ class DistributedDataFrame(AbstractDataHandler):
                 '*',
                 "CONCAT(STRING({}), '---', STRING({})) AS {}"
                     .format(
-                        self._PARTITION_ID_COL
-                            if self._detPrePartitioned
-                            else self._iCol,
-                        self._iCol
-                            if self._detPrePartitioned
-                            else self._T_CHUNK_COL,
+                        self._iCol,
+                        self._T_CHUNK_COL,
                         _TS_CHUNK_ID_COL),
                 inheritCache=True,
                 inheritNRows=True)
