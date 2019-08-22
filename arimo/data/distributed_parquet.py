@@ -82,6 +82,9 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
         else:
             self._CACHE[path] = _cache = Namespace()
 
+        if 'detPrePartitioned' not in kwargs:
+            kwargs['detPrePartitioned'] = True
+
         if _cache:
             assert _cache._srcSparkDF, \
                 '*** FAILED to Load SparkDF from {} ***'.format(path)
@@ -327,11 +330,12 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             ['{}: {}'.format(col, self._cache.type[col])
              for col in self.contentCols]
 
-        return '{}{:,}-piece {}{}{}["{}" + {:,} transform(s)][{}]'.format(
+        return '{}{:,}-piece {:,}-partition {}{}{}["{}" + {:,} transform(s)][{}]'.format(
                 '"{}" '.format(self._alias)
                     if self._alias
                     else '',
                 self.nPieces,
+                self.nPartitions,
                 '' if self._cache.nRows is None
                    else '{:,}-row '.format(self._cache.nRows),
                 '(cached) '
@@ -359,11 +363,12 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
 
         cols_desc_str += ['{} content col(s)'.format(len(self.contentCols))]
 
-        return '{}{:,}-piece {}{}{}[{:,} transform(s)][{}]'.format(
+        return '{}{:,}-piece {:,}-partition {}{}{}[{:,} transform(s)][{}]'.format(
                 '"{}" '.format(self._alias)
                     if self._alias
                     else '',
                 self.nPieces,
+                self.nPartitions,
                 '' if self._cache.nRows is None
                    else '{:,}-row '.format(self._cache.nRows),
                 '(cached) '
@@ -717,6 +722,9 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                 if stdKwArgs.alias and (stdKwArgs.alias == self.alias):
                     stdKwArgs.alias = None
 
+                if stdKwArgs.detPrePartitioned:
+                    stdKwArgs.nDetPrePartitions = nPieceSubPaths
+
                 adf = S3ParquetDistributedDataFrame(
                     path=subsetPath,
                     aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
@@ -749,6 +757,9 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                 if stdKwArgs.alias:
                     assert stdKwArgs.alias == self.alias
                     stdKwArgs.alias = None
+
+                if stdKwArgs.detPrePartitioned:
+                    stdKwArgs.nDetPrePartitions = 1
 
                 piecePath = os.path.join(self.path, pieceSubPath)
 
@@ -897,6 +908,9 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
 
         if stdKwArgs.alias and (stdKwArgs.alias == self.alias):
             stdKwArgs.alias = None
+
+        stdKwArgs.detPrePartitioned = False
+        stdKwArgs.nDetPrePartitions = None
 
         n = kwargs.pop('n', self._DEFAULT_REPR_SAMPLE_SIZE)
         minNPieces = kwargs.pop('minNPieces', self._reprSampleMinNPieces)
