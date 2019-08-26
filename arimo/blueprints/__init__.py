@@ -932,7 +932,7 @@ class BlueprintedKerasModel(AbstractBlueprintedModel):
 
             self._obj = self._LOADED_MODELS[local_file_path] = \
                 arimo.backend.keras.models.load_model(
-                    filepath=str(local_file_path),   # avoid Unicode bug in loading models in Keras 2.2.4
+                    str(local_file_path),
                     custom_objects=None,
                     compile=True)
 
