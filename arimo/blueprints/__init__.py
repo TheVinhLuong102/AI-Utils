@@ -3407,7 +3407,7 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
                      aws_secret_access_key=blueprint.auth.aws.secret_access_key,
                      verbose=verbose)
 
-            except:
+            except Exception as err:
                 if _from_s3:
                     component_blueprint.params.persist.s3.bucket = s3_bucket
                     component_blueprint.params.persist.s3.dir_prefix = s3_parent_dir_prefix
@@ -3422,15 +3422,15 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
 
                         component_blueprint.save()
 
-                    except:
+                    except Exception as err:
                         blueprint.stdout_logger.warning(
-                            msg='*** COMPONENT BLUEPRINT {} FAILS TO LOAD ***'
-                                .format(component_blueprint))
+                            msg='*** COMPONENT BLUEPRINT {} FAILS TO LOAD: {} ***'
+                                .format(component_blueprint, err))
 
                 else:
                     blueprint.stdout_logger.warning(
-                        msg='*** COMPONENT BLUEPRINT {} FAILS TO LOAD ***'
-                            .format(component_blueprint))
+                        msg='*** COMPONENT BLUEPRINT {} FAILS TO LOAD: {} ***'
+                            .format(component_blueprint, err))
 
     if dir_path:
         _LOADED_BLUEPRINTS[dir_path] = blueprint
