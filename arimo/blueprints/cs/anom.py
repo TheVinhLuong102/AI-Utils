@@ -75,7 +75,7 @@ class DLPPPBlueprint(AbstractPPPBlueprint):
 
                             _tmp_local_file_path = \
                                 os.path.join(
-                                    '/tmp',
+                                    '/tmp/.arimo',
                                     _tmp_local_file_name)
 
                             shutil.copyfile(
@@ -86,7 +86,8 @@ class DLPPPBlueprint(AbstractPPPBlueprint):
                                 path=_tmp_local_file_path,
                                 recursive=False)
 
-                            os.remove(_tmp_local_file_path)
+                            # *** NOT-REMOVED TEMP MODEL OBJECTS WILL ACCUMULATE ON DISK ***
+                            # os.remove(_tmp_local_file_path)
 
                             self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path] = \
                                 _tmp_local_file_name   # SparkFiles.get(filename=_tmp_local_file_name)
