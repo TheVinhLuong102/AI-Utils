@@ -3245,82 +3245,61 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
                 _tmp_dir_path,
                 _TMP_FILE_NAME)
 
-        s3_client.download_file(
-            Bucket=s3_bucket,
-            Key=s3_file_key,
-            Filename=_tmp_file_path)
+        try:
+            s3_client.download_file(
+                Bucket=s3_bucket,
+                Key=s3_file_key,
+                Filename=_tmp_file_path)
 
-        params = joblib.load(filename=_tmp_file_path)
+            _s3_download_successful = True
 
-        params.uuid = os.path.basename(s3_dir_prefix)
+        except:
+            _s3_download_successful = False
 
-        blueprint = \
-            _blueprint_from_params(
-                blueprint_params=params,
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key,
-                verbose=verbose)
+        if _s3_download_successful:
+            params = joblib.load(filename=_tmp_file_path)
 
-        if verbose:
-            logger.info('{} {}'.format(msg, blueprint))
+            params.uuid = os.path.basename(s3_dir_prefix)
 
-        fs.mv(from_path=_tmp_file_path,
-              to_path=blueprint.file,
-              is_dir=False,
-              hdfs=False)
-
-        shutil.rmtree(
-            _tmp_dir_path,
-            ignore_errors=False)
-
-        s3_data_transforms_dir_prefix = \
-            os.path.join(
-                s3_dir_prefix,
-                blueprint.params.data._transform_pipeline_dir)
-
-        s3_data_transforms_dir_path = \
-            's3://{}/{}'.format(
-                s3_bucket, s3_data_transforms_dir_prefix)
-
-        if 'Contents' in \
-                s3_client.list_objects_v2(
-                    Bucket=s3_bucket,
-                    Prefix=s3_data_transforms_dir_prefix):
-            if verbose:
-                msg = 'Downloading Data Transforms for {} from S3 Path "{}"...'.format(blueprint, s3_data_transforms_dir_path)
-                logger.info(msg)
-
-            s3.sync(
-                from_dir_path=s3_data_transforms_dir_path,
-                to_dir_path=blueprint.data_transforms_dir,
-                access_key_id=aws_access_key_id,
-                secret_access_key=aws_secret_access_key,
-                delete=True, quiet=False)
+            blueprint = \
+                _blueprint_from_params(
+                    blueprint_params=params,
+                    aws_access_key_id=aws_access_key_id,
+                    aws_secret_access_key=aws_secret_access_key,
+                    verbose=verbose)
 
             if verbose:
-                logger.info(msg + ' done!')
+                logger.info('{} {}'.format(msg, blueprint))
 
-        if isinstance(blueprint, AbstractSupervisedBlueprint):
-            s3_models_dir_prefix = \
+            fs.mv(from_path=_tmp_file_path,
+                  to_path=blueprint.file,
+                  is_dir=False,
+                  hdfs=False)
+
+            shutil.rmtree(
+                _tmp_dir_path,
+                ignore_errors=False)
+
+            s3_data_transforms_dir_prefix = \
                 os.path.join(
                     s3_dir_prefix,
-                    blueprint.params.persist._models_dir)
+                    blueprint.params.data._transform_pipeline_dir)
 
-            s3_models_dir_path = \
+            s3_data_transforms_dir_path = \
                 's3://{}/{}'.format(
-                    s3_bucket, s3_models_dir_prefix)
+                    s3_bucket, s3_data_transforms_dir_prefix)
 
             if 'Contents' in \
                     s3_client.list_objects_v2(
                         Bucket=s3_bucket,
-                        Prefix=s3_models_dir_prefix):
+                        Prefix=s3_data_transforms_dir_prefix):
                 if verbose:
-                    msg = 'Downloading All Models Trained by {} from S3 Path "{}"...'.format(blueprint, s3_models_dir_path)
+                    msg = 'Downloading Data Transforms for {} from S3 Path "{}"...'.format(blueprint, s3_data_transforms_dir_path)
                     logger.info(msg)
 
                 s3.sync(
-                    from_dir_path=s3_models_dir_path,
-                    to_dir_path=blueprint.models_dir,
+                    from_dir_path=s3_data_transforms_dir_path,
+                    to_dir_path=blueprint.data_transforms_dir,
                     access_key_id=aws_access_key_id,
                     secret_access_key=aws_secret_access_key,
                     delete=True, quiet=False)
@@ -3328,20 +3307,55 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
                 if verbose:
                     logger.info(msg + ' done!')
 
-        if (params.persist.s3.bucket != s3_bucket) or (params.persist.s3.dir_prefix != s3_parent_dir_prefix):
-            if verbose:
-                msg = 'Re-Saving {} with Corrected S3 Path "s3://{}/{}"...'.format(blueprint, s3_bucket, s3_parent_dir_prefix)
-                logger.info(msg)
+            if isinstance(blueprint, AbstractSupervisedBlueprint):
+                s3_models_dir_prefix = \
+                    os.path.join(
+                        s3_dir_prefix,
+                        blueprint.params.persist._models_dir)
 
-            blueprint.params.persist.s3.bucket = s3_bucket
-            blueprint.params.persist.s3.dir_prefix = s3_parent_dir_prefix
-            blueprint.auth.aws.access_key_id = aws_access_key_id
-            blueprint.auth.aws.secret_access_key = aws_secret_access_key
+                s3_models_dir_path = \
+                    's3://{}/{}'.format(
+                        s3_bucket, s3_models_dir_prefix)
 
-            blueprint.save()
+                if 'Contents' in \
+                        s3_client.list_objects_v2(
+                            Bucket=s3_bucket,
+                            Prefix=s3_models_dir_prefix):
+                    if verbose:
+                        msg = 'Downloading All Models Trained by {} from S3 Path "{}"...'.format(blueprint, s3_models_dir_path)
+                        logger.info(msg)
 
-            if verbose:
-                logger.info(msg + ' done!')
+                    s3.sync(
+                        from_dir_path=s3_models_dir_path,
+                        to_dir_path=blueprint.models_dir,
+                        access_key_id=aws_access_key_id,
+                        secret_access_key=aws_secret_access_key,
+                        delete=True, quiet=False)
+
+                    if verbose:
+                        logger.info(msg + ' done!')
+
+            if (params.persist.s3.bucket != s3_bucket) or (params.persist.s3.dir_prefix != s3_parent_dir_prefix):
+                if verbose:
+                    msg = 'Re-Saving {} with Corrected S3 Path "s3://{}/{}"...'.format(blueprint, s3_bucket, s3_parent_dir_prefix)
+                    logger.info(msg)
+
+                blueprint.params.persist.s3.bucket = s3_bucket
+                blueprint.params.persist.s3.dir_prefix = s3_parent_dir_prefix
+                blueprint.auth.aws.access_key_id = aws_access_key_id
+                blueprint.auth.aws.secret_access_key = aws_secret_access_key
+
+                blueprint.save()
+
+                if verbose:
+                    logger.info(msg + ' done!')
+
+        else:
+            shutil.rmtree(
+                _tmp_dir_path,
+                ignore_errors=False)
+
+            raise IOError(dir_path)
 
     else:
         _from_s3 = False
