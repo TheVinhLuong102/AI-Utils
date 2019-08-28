@@ -3238,6 +3238,7 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
             logger.info(msg)
 
         _tmp_dir_path = tempfile.mkdtemp()
+        print('*** {} CREATED ***'.format(_tmp_dir_path))
 
         _tmp_file_path = \
             os.path.join(
