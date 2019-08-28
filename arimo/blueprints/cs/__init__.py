@@ -279,8 +279,7 @@ class AbstractDLCrossSectSupervisedBlueprint(AbstractCrossSectSupervisedBlueprin
 
             if fs._ON_LINUX_CLUSTER_WITH_HDFS:
                 if model_path not in self._MODEL_PATHS_ON_SPARK_WORKER_NODES:
-                    _tmp_local_file_name = \
-                        str(uuid.uuid4())
+                    _tmp_local_file_name = str(uuid.uuid4())
 
                     _tmp_local_file_path = \
                         os.path.join(
@@ -294,6 +293,8 @@ class AbstractDLCrossSectSupervisedBlueprint(AbstractCrossSectSupervisedBlueprin
                     arimo.backend.spark.sparkContext.addFile(
                         path=_tmp_local_file_path,
                         recursive=False)
+
+                    os.remove(path=_tmp_local_file_path)
 
                     self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path] = \
                         _tmp_local_file_name   # SparkFiles.get(filename=_tmp_local_file_name)
