@@ -10,6 +10,7 @@ import math
 import numpy
 import os
 import pandas
+import shutil
 from sklearn.metrics import mean_absolute_error, median_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import LabelEncoder
 import tempfile
@@ -3236,9 +3237,11 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
             msg = 'Loading Blueprint Instance from S3 Path "s3://{}/{}..."'.format(s3_bucket, s3_file_key)
             logger.info(msg)
 
+        _tmp_dir_path = tempfile.mkdtemp()
+
         _tmp_file_path = \
             os.path.join(
-                tempfile.mkdtemp(),
+                _tmp_dir_path,
                 _TMP_FILE_NAME)
 
         s3_client.download_file(
@@ -3264,6 +3267,10 @@ def load(dir_path=None, s3_bucket=None, s3_dir_prefix=None,
               to_path=blueprint.file,
               is_dir=False,
               hdfs=False)
+
+        shutil.rmtree(
+            _tmp_dir_path,
+            ignore_errors=False)
 
         s3_data_transforms_dir_prefix = \
             os.path.join(
