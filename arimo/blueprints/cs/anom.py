@@ -86,6 +86,8 @@ class DLPPPBlueprint(AbstractPPPBlueprint):
                                 path=_tmp_local_file_path,
                                 recursive=False)
 
+                            os.remove(path=_tmp_local_file_path)
+
                             self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path] = \
                                 _tmp_local_file_name   # SparkFiles.get(filename=_tmp_local_file_name)
 
