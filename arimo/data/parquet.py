@@ -817,7 +817,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 s3.rm(
                     path=path,
                     dir=True,
-                    globs='*$folder$',   # *** redundant HDFS-generated files ***
+                    globs='*_$folder$',   # *** redundant HDFS-generated files ***
                     quiet=True,
                     access_key_id=aws_access_key_id, secret_access_key=aws_secret_access_key,
                     verbose=False)
