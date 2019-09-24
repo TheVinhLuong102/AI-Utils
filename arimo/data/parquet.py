@@ -907,17 +907,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                             srcTypesInclPartitionKVs[k] = _ARROW_STR_TYPE
                             partitionKVs[k] = v[:-1]
 
-                    if i:
-                        localOrHDFSPath = \
-                            None \
-                            if self.fromS3 \
-                            else piecePath
-
-                        srcColsExclPartitionKVs = None
-
-                        nRows = None
-
-                    else:
+                    if i < self._SCHEMA_MIN_N_PIECES:
                         localOrHDFSPath = self.pieceLocalOrHDFSPath(piecePath=piecePath)
 
                         schema = read_schema(where=localOrHDFSPath)
@@ -934,6 +924,16 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         metadata = read_metadata(where=localOrHDFSPath)
                         nCols = metadata.num_columns
                         nRows = metadata.num_rows
+
+                    else:
+                        localOrHDFSPath = \
+                            None \
+                            if self.fromS3 \
+                            else piecePath
+
+                        srcColsExclPartitionKVs = None
+
+                        nCols = nRows = None
 
                     self._PIECE_CACHES[piecePath] = \
                         pieceCache = \
