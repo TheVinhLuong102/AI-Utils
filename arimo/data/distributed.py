@@ -2600,73 +2600,56 @@ class DistributedDataFrame(AbstractDataHandler):
         else:
             col = cols[0]
 
-            count = kwargs.get('count', True)
-
-            collect = kwargs.get('collect', True)
-
             if col in self._cache.distinct:
-                series = self._cache.distinct[col]
+                result = self._cache.distinct[col]
 
-                assert isinstance(series, pandas.Series)
+            else:
+                verbose = True \
+                    if arimo.debug.ON \
+                    else kwargs.get('verbose')
 
-                if (series.dtype in PY_NUM_TYPES) or not count:
-                    return series
+                if verbose:
+                    msg = 'Profiling Distinct Values of Column "{}"...'.format(col)
+                    self.stdout_logger.info(msg)
+                    tic = time.time()
 
-            verbose = True \
-                if arimo.debug.ON \
-                else kwargs.get('verbose')
-
-            if verbose:
-                msg = 'Profiling Distinct Values of Column "{}"...'.format(col)
-                self.stdout_logger.info(msg)
-                tic = time.time()
-
-            adf = self.reprSample(
-                    'SELECT \
-                        `{0}`, \
-                        (COUNT(*) / {1}) AS __proportion__ \
-                    FROM \
-                        this \
-                    GROUP BY \
-                        `{0}` \
-                    ORDER BY \
-                        __proportion__ DESC'
-                        .format(col, self.reprSampleSize),
-                    **kwargs) \
-                if count \
-                else \
-                    self.reprSample(
+                df = self.reprSample(
                         'SELECT \
-                            DISTINCT(`{}`) \
+                            `{0}`, \
+                            (COUNT(*) / {1}) AS __proportion__ \
                         FROM \
-                            this'.format(col),
-                        **kwargs)
+                            this \
+                        GROUP BY \
+                            `{0}` \
+                        ORDER BY \
+                            __proportion__ DESC'
+                            .format(col, self.reprSampleSize),
+                        **kwargs) \
+                    .toPandas()
 
-            if collect:
-                df = adf.toPandas()
+                df[col] = df[col].map(lambda v: None if pandas.isnull(v) else v)
 
-                dups = {k: v
-                        for k, v in Counter(df[col]).items()
-                        if v > 1}
+                dups = {v: cnt
+                        for v, cnt in Counter(df[col]).items()
+                        if cnt > 1}
 
                 if dups:
                     self.stdout_logger.debug(
                         '*** {}.distinct("{}"): POSSIBLE SPARK SQL/HIVEQL BUG: DUPLICATES {} ***'.format(self, col, dups))
 
-                    index_of_first_row_with_null = None
+                    first_row_indices = {}
                     row_indices_to_delete = []
 
                     for i, row in df.iterrows():
-                        if pandas.isnull(row[col]):
-                            if index_of_first_row_with_null is None:
-                                index_of_first_row_with_null = i
+                        value = row[col]
 
-                            else:
+                        if value in dups:
+                            if value in first_row_indices:
+                                df.at[first_row_indices[value], '__proportion__'] += df.at[i, '__proportion__']
                                 row_indices_to_delete.append(i)
 
-                                if count:
-                                    df.at[index_of_first_row_with_null, '__sample_count__'] += df.at[i, '__sample_count__']
-                                    df.at[index_of_first_row_with_null, '__proportion__'] += df.at[i, '__proportion__']
+                            else:
+                                first_row_indices[value] = i
 
                     df.drop(
                         index=row_indices_to_delete,
@@ -2674,20 +2657,19 @@ class DistributedDataFrame(AbstractDataHandler):
                         inplace=True,
                         errors='raise')
 
-                    if count:
-                        df.sort_values(
-                            by='__proportion__',
-                            ascending=False,
-                            inplace=True,
-                            kind='quicksort',
-                            na_position='last')
+                    df.sort_values(
+                        by='__proportion__',
+                        ascending=False,
+                        inplace=True,
+                        kind='quicksort',
+                        na_position='last')
 
-                        df.reset_index(
-                            level=None,
-                            drop=True,
-                            inplace=True,
-                            col_level=0,
-                            col_fill='')
+                    df.reset_index(
+                        level=None,
+                        drop=True,
+                        inplace=True,
+                        col_level=0,
+                        col_fill='')
 
                 self._cache.distinct[col] = \
                     result = \
@@ -2696,12 +2678,7 @@ class DistributedDataFrame(AbstractDataHandler):
                             drop=True,
                             append=False,
                             inplace=False,
-                            verify_integrity=False).__proportion__ \
-                        if count \
-                        else df[col]
-
-            else:
-                result = adf
+                            verify_integrity=False).__proportion__
 
             if verbose:
                 toc = time.time()

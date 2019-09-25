@@ -2431,25 +2431,14 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         else:
             col = cols[0]
 
-            count = kwargs.get('count', True)
-
-            if col in self._cache.distinct:
-                series = self._cache.distinct[col]
-
-                assert isinstance(series, (numpy.ndarray, pandas.Series))
-
-                if (series.dtype in PY_NUM_TYPES) or (not count):
-                    return series
-
-            self._cache.distinct[col] = \
-                self.reprSample[col].value_counts(
-                    normalize=True,
-                    sort=True,
-                    ascending=False,
-                    bins=None,
-                    dropna=False) \
-                if count \
-                else self.reprSample[col].unique()
+            if col not in self._cache.distinct:
+                self._cache.distinct[col] = \
+                    self.reprSample[col].value_counts(
+                        normalize=True,
+                        sort=True,
+                        ascending=False,
+                        bins=None,
+                        dropna=False)
 
             return Namespace(**{col: self._cache.distinct[col]}) \
                 if asDict \
