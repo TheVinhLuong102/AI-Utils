@@ -2681,9 +2681,9 @@ class DistributedDataFrame(AbstractDataHandler):
                             inplace=False,
                             verify_integrity=False).__proportion__
 
-            if verbose:
-                toc = time.time()
-                self.stdout_logger.info(msg + ' done!   <{:,.1f} s>'.format(toc - tic))
+                if verbose:
+                    toc = time.time()
+                    self.stdout_logger.info(msg + ' done!   <{:,.1f} s>'.format(toc - tic))
 
             return result
 
