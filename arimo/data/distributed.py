@@ -10,6 +10,7 @@ import numpy
 import os
 import pandas
 import random
+from sys import maxint
 import tempfile
 import time
 import types
@@ -2634,8 +2635,8 @@ class DistributedDataFrame(AbstractDataHandler):
                         if cnt > 1}
 
                 if dups:
-                    self.stdout_logger.debug(
-                        '*** {}.distinct("{}"): POSSIBLE SPARK SQL/HIVEQL BUG: DUPLICATES {} ***'.format(self, col, dups))
+                    assert {None, - maxint - 1}.issuperset(dups), \
+                        '*** {}.distinct("{}"): DUPLICATES {} ***'.format(self, col, dups))
 
                     first_row_indices = {}
                     row_indices_to_delete = []
