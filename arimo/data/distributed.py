@@ -2636,7 +2636,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
                 if dups:
                     assert {None, - maxint - 1}.issuperset(dups), \
-                        '*** {}.distinct("{}"): DUPLICATES {} ***'.format(self, col, dups))
+                        '*** {}.distinct("{}"): DUPLICATES {} ***'.format(self, col, dups)
 
                     first_row_indices = {}
                     row_indices_to_delete = []
