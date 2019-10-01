@@ -36,8 +36,6 @@ from pyarrow.hdfs import HadoopFileSystem
 from pyarrow.parquet import ParquetDataset, read_metadata, read_schema, read_table
 from s3fs import S3FileSystem
 
-from arimo.dl.base import DataFramePreprocessor
-from arimo.dl.reader import S3ParquetDatasetQueueReader
 from arimo.util import DefaultDict, fs, Namespace
 from arimo.util.aws import s3
 from arimo.util.date_time import gen_aux_cols, DATE_COL
@@ -3952,81 +3950,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 pad=kwargs.get('pad', numpy.nan),
                 anon=kwargs.get('anon', True),
                 nThreads=kwargs.get('nThreads', 1))
-
-    def _CrossSectDLDF(
-            self, feature_cols, target_col,
-            piecePaths=None,
-            nThreads=1,
-            filter={},
-            n=512,
-            sampleN=10 ** 5,
-            isRegression=False):
-        os.environ['AWS_ACCESS_KEY_ID'] = self._srcArrowDS.fs.fs.key
-        os.environ['AWS_SECRET_ACCESS_KEY'] = self._srcArrowDS.fs.fs.secret
-
-        feature_cols = to_iterable(feature_cols, iterable_type=list)
-
-        piecePaths = \
-            to_iterable(piecePaths, iterable_type=list) \
-            if piecePaths \
-            else list(self.piecePaths)
-
-        def process_chunk_fn(chunkPandasDF):
-            if self.tCol:
-                chunkPandasDF = \
-                    gen_aux_cols(
-                        df=chunkPandasDF,
-                        i_col=self.iCol,
-                        t_col=self.tCol)
-
-            for pandasDFTransform in self._mappers:
-                chunkPandasDF = pandasDFTransform(chunkPandasDF)
-
-            cols = feature_cols + [target_col]
-
-            return chunkPandasDF.loc[
-                    sum(# *** AVOID INCLUDING EXTREMES EQUALLING MEDIAN ***
-                        (chunkPandasDF[filterCol]
-                            .between(
-                                left=left,
-                                right=right,
-                                inclusive=False)
-                         if pandas.notnull(left) and pandas.notnull(right)
-                         else ((chunkPandasDF[filterCol] > left)
-                               if pandas.notnull(left)
-                               else ((chunkPandasDF[filterCol] < right))))
-                        for filterCol, (left, right) in filter.items())
-                    == len(filter),
-                    cols] \
-                if filter \
-              else chunkPandasDF[cols]
-
-        preprocessor = \
-            DataFramePreprocessor(
-                feature_cols=feature_cols,
-                target_col=target_col,
-                num_targets=1,
-                embedding_col=None,
-                normalization=None)
-
-        dldf = S3ParquetDatasetQueueReader(
-                filepaths=piecePaths,
-                columns=None,
-                num_read_threads=nThreads,
-                chunksize=sampleN,
-                sampling_rate=1,
-                with_replacement=False,
-                process_chunk_fn=process_chunk_fn,
-                preprocessor=preprocessor)
-
-        dldf.config(
-            batch_size=n,
-            is_regression=isRegression,
-            shuffle=True,
-            has_y_values=True,
-            allow_smaller_final_batch=True)
-
-        return dldf
 
     # ****
     # MISC
