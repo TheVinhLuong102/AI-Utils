@@ -8,11 +8,10 @@ import random
 import arimo.backend
 from arimo.data.parquet import S3ParquetDataFeeder
 from arimo.data.distributed_parquet import S3ParquetDistributedDataFrame
-from arimo.dl.base import LossPlateauLrDecay
 from arimo.util import Namespace
 import arimo.debug
 
-from .. import BlueprintedArimoDLModel, BlueprintedKerasModel, RegrEvalMixIn
+from .. import BlueprintedKerasModel, RegrEvalMixIn
 from . import AbstractDLCrossSectSupervisedBlueprint
 
 
@@ -134,130 +133,83 @@ class DLBlueprint(RegrEvalMixIn, AbstractDLCrossSectSupervisedBlueprint):
         train_piece_paths = piece_paths[:split_idx]
         val_piece_paths = piece_paths[split_idx:]
 
-        if isinstance(model, BlueprintedArimoDLModel):
-            assert isinstance(adf, S3ParquetDataFeeder)
+        assert isinstance(model, BlueprintedKerasModel)
+        assert isinstance(adf, (S3ParquetDataFeeder, S3ParquetDistributedDataFrame))
 
-            model.stdout_logger.info(model.config)
+        model.summary()
 
-            n_threads = psutil.cpu_count(logical=True) - 2
+        if __n_gpus__ > 1:
+            model._obj = \
+                arimo.backend.keras.utils.multi_gpu_model(
+                    model._obj,
+                    gpus=__n_gpus__,
+                    cpu_merge=__cpu_merge__,
+                    cpu_relocation=__cpu_reloc__)
 
-            model.train_with_queue_reader_inputs(
-                train_input=
-                    adf._CrossSectDLDF(
+        model.compile(
+            loss=self.params.model.train.objective
+                if self.params.model.train.objective
+                else 'MAE',   # mae / mean_absolute_error (more resilient to outliers)
+            optimizer=arimo.backend.keras.optimizers.Nadam(),
+            metrics=[# 'MSE',   # mean_squared_error,
+                         # 'MAPE'   # mean_absolute_percentage_error
+                    ])
+
+        model.fit_generator(
+            generator=adf.gen(
                         feature_cols,
                         self.params.data.label.var,
                         piecePaths=train_piece_paths,
-                        n=self.params.model.train.batch_size,
-                        filter=filter,
-                        nThreads=n_threads,
-                        isRegression=True),
-
-                val_input=
-                    adf._CrossSectDLDF(
-                        feature_cols,
-                        self.params.data.label.var,
-                        piecePaths=val_piece_paths,
-                        n=self.params.model.train.val_batch_size,
-                        filter=filter,
-                        nThreads=n_threads,
-                        isRegression=True),
-
-                lr_scheduler=
-                    LossPlateauLrDecay(
-                        learning_rate=model.config.learning_rate,
-                        decay_rate=model.config.lr_decay,
-                        patience=self.params.model.train.reduce_lr_on_plateau.patience_n_epochs),
-
-                max_epoch=self.params.model.train._n_epochs,
-
-                early_stopping_patience=
-                    max(self.params.model.train.early_stop.patience_min_n_epochs,
-                        int(math.ceil(self.params.model.train.early_stop.patience_proportion_total_n_epochs *
-                                      self.params.model.train._n_epochs))),
-
-                num_train_batches_per_epoch=self.params.model.train._n_train_batches_per_epoch,
-
-                num_test_batches_per_epoch=self.params.model.train._n_val_batches_per_epoch)
-
-        else:
-            assert isinstance(model, BlueprintedKerasModel)
-
-            assert isinstance(adf, (S3ParquetDataFeeder, S3ParquetDistributedDataFrame))
-
-            model.summary()
-
-            if __n_gpus__ > 1:
-                model._obj = \
-                    arimo.backend.keras.utils.multi_gpu_model(
-                        model._obj,
-                        gpus=__n_gpus__,
-                        cpu_merge=__cpu_merge__,
-                        cpu_relocation=__cpu_reloc__)
-
-            model.compile(
-                loss=self.params.model.train.objective
-                    if self.params.model.train.objective
-                    else 'MAE',   # mae / mean_absolute_error (more resilient to outliers)
-                optimizer=arimo.backend.keras.optimizers.Nadam(),
-                metrics=[# 'MSE',   # mean_squared_error,
-                         # 'MAPE'   # mean_absolute_percentage_error
-                ])
-
-            model.fit_generator(
-                generator=adf.gen(
-                            feature_cols,
-                            self.params.data.label.var,
-                            piecePaths=train_piece_paths,
-                            n=__n_gpus__ * self.params.model.train.batch_size,
-                            withReplacement=False,
-                            seed=None,
-                            anon=True,
-                            collect='numpy',
-                            pad=None,
-                            cache=False,
-                            filter=filter)(),
-                steps_per_epoch=self.params.model.train._n_train_batches_per_epoch,
-                epochs=self.params.model.train._n_epochs,
-                verbose=2,
-                callbacks=[
-                    arimo.backend.keras.callbacks.TerminateOnNaN(),
-                    arimo.backend.keras.callbacks.ReduceLROnPlateau(
-                        monitor=self.params.model.train.val_metric.name,
-                        factor=self.params.model.train.reduce_lr_on_plateau.factor,
-                        patience=self.params.model.train.reduce_lr_on_plateau.patience_n_epochs,
-                        verbose=int(verbose > 0),
-                        mode=self.params.model.train.val_metric.mode,
-                        min_delta=self.params.model.train.val_metric.significance,
-                        cooldown=0,
-                        min_lr=0),
-                    arimo.backend.keras.callbacks.EarlyStopping(
-                        monitor=self.params.model.train.val_metric.name,
-                        min_delta=self.params.model.train.val_metric.significance,
-                        patience=max(self.params.model.train.early_stop.patience_min_n_epochs,
-                                     int(math.ceil(self.params.model.train.early_stop.patience_proportion_total_n_epochs *
-                                                   self.params.model.train._n_epochs))),
-                        verbose=int(verbose),
-                        mode=self.params.model.train.val_metric.mode,
-                        baseline=None)],
-                validation_data=adf.gen(
-                                    feature_cols,
-                                    self.params.data.label.var,
-                                    piecePaths=val_piece_paths,
-                                    n=__n_gpus__ * self.params.model.train.val_batch_size,
-                                    withReplacement=False,
-                                    seed=None,
-                                    anon=True,
-                                    collect='numpy',
-                                    pad=None,
-                                    cache=False,
-                                    filter=filter)(),
-                validation_steps=self.params.model.train._n_val_batches_per_epoch,
-                class_weight={},
-                max_queue_size=__gen_queue_size__,
-                workers=__n_workers__,
-                use_multiprocessing=True,
-                shuffle=False,
-                initial_epoch=0)
+                        n=__n_gpus__ * self.params.model.train.batch_size,
+                        withReplacement=False,
+                        seed=None,
+                        anon=True,
+                        collect='numpy',
+                        pad=None,
+                        cache=False,
+                        filter=filter)(),
+            steps_per_epoch=self.params.model.train._n_train_batches_per_epoch,
+            epochs=self.params.model.train._n_epochs,
+            verbose=2,
+            callbacks=[
+                arimo.backend.keras.callbacks.TerminateOnNaN(),
+                arimo.backend.keras.callbacks.ReduceLROnPlateau(
+                    monitor=self.params.model.train.val_metric.name,
+                    factor=self.params.model.train.reduce_lr_on_plateau.factor,
+                    patience=self.params.model.train.reduce_lr_on_plateau.patience_n_epochs,
+                    verbose=int(verbose > 0),
+                    mode=self.params.model.train.val_metric.mode,
+                    min_delta=self.params.model.train.val_metric.significance,
+                    cooldown=0,
+                    min_lr=0),
+                arimo.backend.keras.callbacks.EarlyStopping(
+                    monitor=self.params.model.train.val_metric.name,
+                    min_delta=self.params.model.train.val_metric.significance,
+                    patience=max(self.params.model.train.early_stop.patience_min_n_epochs,
+                                 int(math.ceil(self.params.model.train.early_stop.patience_proportion_total_n_epochs *
+                                               self.params.model.train._n_epochs))),
+                    verbose=int(verbose),
+                    mode=self.params.model.train.val_metric.mode,
+                    baseline=None)],
+            validation_data=adf.gen(
+                                feature_cols,
+                                self.params.data.label.var,
+                                piecePaths=val_piece_paths,
+                                n=__n_gpus__ * self.params.model.train.val_batch_size,
+                                withReplacement=False,
+                                seed=None,
+                                anon=True,
+                                collect='numpy',
+                                pad=None,
+                                cache=False,
+                                filter=filter)(),
+            validation_steps=self.params.model.train._n_val_batches_per_epoch,
+            class_weight={},
+            max_queue_size=__gen_queue_size__,
+            workers=__n_workers__,
+            use_multiprocessing=True,
+            shuffle=False,
+            initial_epoch=0)
 
         model.save()
 

@@ -22,7 +22,7 @@ import arimo.debug
 
 from .. import \
     AbstractSupervisedBlueprint, AbstractDLSupervisedBlueprint, RegrEvalMixIn, \
-    BlueprintedArimoDLModel, BlueprintedKerasModel
+    BlueprintedKerasModel
 
 
 class AbstractCrossSectSupervisedBlueprint(AbstractSupervisedBlueprint):
@@ -257,53 +257,40 @@ class AbstractDLCrossSectSupervisedBlueprint(AbstractCrossSectSupervisedBlueprin
 
         prep_vec_col = self.params.data._prep_vec_col
 
-        if isinstance(model, BlueprintedArimoDLModel):
-            model_path = _model_path = model.dir
+        assert isinstance(model, BlueprintedKerasModel)
 
-            if fs._ON_LINUX_CLUSTER_WITH_HDFS and (model_path not in self._MODEL_PATHS_ON_SPARK_WORKER_NODES):
-                fs.put(
-                    from_local=model_path,
-                    to_hdfs=model_path,
-                    is_dir=True,
-                    _mv=False)
+        model_path = \
+            os.path.join(
+                model.dir,
+                self.params.model._persist.file)
 
-                self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path] = model_path
+        if fs._ON_LINUX_CLUSTER_WITH_HDFS:
+            if model_path not in self._MODEL_PATHS_ON_SPARK_WORKER_NODES:
+                _tmp_local_file_name = str(uuid.uuid4())
+
+                _tmp_local_file_path = \
+                    os.path.join(
+                        '/tmp/.arimo',
+                        _tmp_local_file_name)
+
+                shutil.copyfile(
+                    src=model_path,
+                    dst=_tmp_local_file_path)
+
+                arimo.backend.spark.sparkContext.addFile(
+                    path=_tmp_local_file_path,
+                    recursive=False)
+
+                # *** NOT-REMOVED TEMP MODEL OBJECTS WILL ACCUMULATE ON DISK ***
+                # os.remove(_tmp_local_file_path)
+
+                self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path] = \
+                    _tmp_local_file_name   # SparkFiles.get(filename=_tmp_local_file_name)
+
+            _model_path = self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path]
 
         else:
-            assert isinstance(model, BlueprintedKerasModel)
-
-            model_path = \
-                os.path.join(
-                    model.dir,
-                    self.params.model._persist.file)
-
-            if fs._ON_LINUX_CLUSTER_WITH_HDFS:
-                if model_path not in self._MODEL_PATHS_ON_SPARK_WORKER_NODES:
-                    _tmp_local_file_name = str(uuid.uuid4())
-
-                    _tmp_local_file_path = \
-                        os.path.join(
-                            '/tmp/.arimo',
-                            _tmp_local_file_name)
-
-                    shutil.copyfile(
-                        src=model_path,
-                        dst=_tmp_local_file_path)
-
-                    arimo.backend.spark.sparkContext.addFile(
-                        path=_tmp_local_file_path,
-                        recursive=False)
-
-                    # *** NOT-REMOVED TEMP MODEL OBJECTS WILL ACCUMULATE ON DISK ***
-                    # os.remove(_tmp_local_file_path)
-
-                    self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path] = \
-                        _tmp_local_file_name   # SparkFiles.get(filename=_tmp_local_file_name)
-
-                _model_path = self._MODEL_PATHS_ON_SPARK_WORKER_NODES[model_path]
-
-            else:
-                _model_path = model_path
+            _model_path = model_path
 
         raw_score_col = self.params.model.score.raw_score_col_prefix + self.params.data.label.var
 
@@ -336,50 +323,31 @@ class AbstractDLCrossSectSupervisedBlueprint(AbstractCrossSectSupervisedBlueprin
         n_classes = self.params.data.label._n_classes
         binary = (n_classes == 2)
 
-        if isinstance(model, BlueprintedArimoDLModel):
-            def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
-                from arimo.util.dl import _load_arimo_dl_model
+        assert isinstance(model, BlueprintedKerasModel)
 
-                return [(r +
-                         (float(s[0])
-                          if (n_classes is None) or binary
-                          else s.tolist(),))
-                        for r, s in
-                            zip(tup[0],
-                                _load_arimo_dl_model(
-                                        dir_path=_model_path,
-                                        hdfs=cluster)
-                                    .predict(
-                                        data=tup[1],
-                                        input_tensor_transform_fn=None,
-                                        batch_size=__batch_size__))]
-
-        else:
-            assert isinstance(model, BlueprintedKerasModel)
-
-            def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
-                if cluster:
-                    try:
-                        from arimo.util.dl import _load_keras_model
-
-                    except ImportError:
-                        from dl import _load_keras_model
-
-                else:
+        def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
+            if cluster:
+                try:
                     from arimo.util.dl import _load_keras_model
 
-                return [(r +
-                         (float(s[0])
-                          if (n_classes is None) or binary
-                          else s.tolist(),))
-                        for r, s in
-                            zip(tup[0],
-                                _load_keras_model(
-                                        file_path=_model_path)
-                                    .predict(
-                                        x=tup[1],
-                                        batch_size=__batch_size__,
-                                        verbose=0))]
+                except ImportError:
+                    from dl import _load_keras_model
+
+            else:
+                from arimo.util.dl import _load_keras_model
+
+            return [(r +
+                     (float(s[0])
+                      if (n_classes is None) or binary
+                      else s.tolist(),))
+                    for r, s in
+                        zip(tup[0],
+                            _load_keras_model(
+                                file_path=_model_path)
+                            .predict(
+                                x=tup[1],
+                                batch_size=__batch_size__,
+                                verbose=0))]
 
         score_adf = \
             DDF.create(
