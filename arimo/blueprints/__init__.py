@@ -35,7 +35,6 @@ from arimo.data.parquet import S3ParquetDataFeeder, \
     _S3ParquetDataFeeder__castType__pandasDFTransform, _S3ParquetDataFeeder__encodeStr__pandasDFTransform
 from arimo.data.distributed import DDF
 from arimo.data.distributed_parquet import S3ParquetDistributedDataFrame
-from arimo.dl.base import DataFramePreprocessor, ModelServingPersistence
 import arimo.eval.metrics
 from arimo.util import clean_uuid, date_time, fs, import_obj, Namespace
 from arimo.util.aws import s3
@@ -852,68 +851,6 @@ class AbstractBlueprintedModel(object):
         return model
 
 
-class BlueprintedArimoDLModel(AbstractBlueprintedModel):
-    _LOADED_MODELS = {}
-
-    def load(self, verbose=True):
-        if self.dir in self._LOADED_MODELS:
-            self._obj = self._LOADED_MODELS[self.dir]
-
-        elif os.path.isdir(self.dir):
-            if verbose:
-                msg = 'Loading Model from Local Directory {}...'.format(self.dir)
-                self.stdout_logger.info(msg)
-
-            self._obj = ModelServingPersistence.load(path=self.dir).model
-
-            if verbose:
-                self.stdout_logger.info(msg + ' done!')
-
-        elif verbose:
-            self.stdout_logger.info(
-                'No Existing Model Object to Load at "{}"'
-                    .format(self.dir))
-
-    def save(self, verbose=True):
-        # save Blueprint
-        self.blueprint.save(verbose=verbose)
-
-        if verbose:
-            message = 'Saving Model to Local Directory {}...'.format(self.dir)
-            self.stdout_logger.info(message + '\n')
-
-        ModelServingPersistence(
-            model=self._obj,
-            preprocessor=
-                DataFramePreprocessor(
-                    feature_cols=self.blueprint.params.data._cat_prep_cols + self.blueprint.params.data._num_prep_cols,
-                    target_col=self.blueprint.params.data.label.var,
-                    num_targets=1,
-                    embedding_col=None,
-                    normalization=None),
-            extra_artifacts=None) \
-        .save(path=self.dir)
-
-        if self.blueprint._persist_on_s3:
-            if verbose:
-                msg = 'Uploading All Trained Models to S3 Path "{}"...'.format(self.blueprint.params.persist.s3._models_dir_path)
-                self.blueprint.stdout_logger.info(msg)
-
-            s3.sync(
-                from_dir_path=self.blueprint.models_dir,
-                to_dir_path=self.blueprint.params.persist.s3._models_dir_path,
-                access_key_id=self.blueprint.auth.aws.access_key_id,
-                secret_access_key=self.blueprint.auth.aws.secret_access_key,
-                delete=False,   # to allow multiple training jobs to upload new models to S3 at same time
-                quiet=False)
-
-            if verbose:
-                self.blueprint.stdout_logger.info(msg + ' done!')
-
-        if verbose:
-            self.stdout_logger.info(message + ' done!')
-
-
 class BlueprintedKerasModel(AbstractBlueprintedModel):
     _LOADED_MODELS = {}
 
@@ -1198,14 +1135,8 @@ class AbstractSupervisedBlueprint(AbstractBlueprint):
                 self.dir,
                 self.params.persist._models_dir)
 
-        # set __BlueprintedModelClass__
-        self.__BlueprintedModelClass__ = \
-            BlueprintedKerasModel \
-            if self.params.model.factory.name.startswith('arimo.dl.experimental.keras') \
-            else BlueprintedArimoDLModel
-
-        self.params.__BlueprintedModelClass__ = \
-            self.__BlueprintedModelClass__.__qual_name__()
+        self.__BlueprintedModelClass__ = BlueprintedKerasModel
+        self.params.__BlueprintedModelClass__ = self.__BlueprintedModelClass__.__qual_name__()
 
     def __repr__(self):
         return '{} Instance "{}" (Label: "{}")'.format(
