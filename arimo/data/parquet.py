@@ -583,7 +583,7 @@ class _S3ParquetDataFeeder__gen:
             chunkPandasDF = \
                 random.choice(
                     self.pieceArrowTableFunc(piecePath=piecePath)
-                        .to_batches(max_chunksize=self.sampleN)) \
+                        .to_batches(chunksize=self.sampleN)) \
                 .to_pandas(
                     categories=None,
                     strings_to_categorical=False,
@@ -877,7 +877,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         for col in set(schema.names).difference(pieceCache.partitionKVs):
                             pieceCache.srcTypesExclPartitionKVs[col] = \
                                 pieceCache.srcTypesInclPartitionKVs[col] = \
-                                schema.field(col).type
+                                schema.field_by_name(col).type
 
                         metadata = read_metadata(where=pieceCache.localOrHDFSPath)
                         pieceCache.nCols = metadata.num_columns
@@ -917,7 +917,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         for col in set(schema.names).difference(partitionKVs):
                             srcTypesExclPartitionKVs[col] = \
                                 srcTypesInclPartitionKVs[col] = \
-                                schema.field(col).type
+                                schema.field_by_name(col).type
 
                         metadata = read_metadata(where=localOrHDFSPath)
                         nCols = metadata.num_columns
@@ -1477,7 +1477,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     pieceCache.srcTypesExclPartitionKVs[col] = \
                         pieceCache.srcTypesInclPartitionKVs[col] = \
                         _arrowType = \
-                        schema.field(col).type
+                        schema.field_by_name(col).type
 
                     assert not is_binary(_arrowType), \
                         '*** {}: {} IS OF BINARY TYPE ***'.format(piecePath, col)
@@ -1525,7 +1525,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     nSamplesPerChunk = int(math.ceil(nSamplesPerPiece / nChunksForIntermediateN))
 
                     if nChunksForIntermediateN < nChunks:
-                        recordBatches = pieceArrowTable.to_batches(max_chunksize=_CHUNK_SIZE)
+                        recordBatches = pieceArrowTable.to_batches(chunksize=_CHUNK_SIZE)
 
                         nRecordBatches = len(recordBatches)
 
@@ -1925,7 +1925,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 pieceCache.srcTypesExclPartitionKVs[col] = \
                     pieceCache.srcTypesInclPartitionKVs[col] = \
                     _arrowType = \
-                    schema.field(col).type
+                    schema.field_by_name(col).type
 
                 assert not is_binary(_arrowType), \
                     '*** {}: {} IS OF BINARY TYPE ***'.format(piecePath, col)
