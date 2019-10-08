@@ -141,46 +141,28 @@ class DLPPPBlueprint(AbstractPPPBlueprint):
 
         rdd = adf.rdd.mapPartitions(batch)
 
-        if component_blueprint_params.model.factory.name.startswith('arimo.dl.experimental.keras'):
-            def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
-                if cluster:
-                    from dl import _load_keras_model
+        assert component_blueprint_params.model.factory.name.startswith('arimo.dl.experimental.keras')
 
-                else:
-                    from arimo.util.dl import _load_keras_model
+        def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
+            if cluster:
+                from dl import _load_keras_model
 
-                return [(row[0] +
-                            tuple(
-                                float(s[0])
-                                for s in row[1:]))
-                        for row in
-                            zip(tup[0],
-                                *[_load_keras_model(
-                                        file_path=model_path)
-                                    .predict(
-                                        x=x,
-                                        batch_size=__batch_size__,
-                                        verbose=0)
-                                  for model_path, x in zip(model_paths, tup[1:])])]
+            else:
+                from arimo.util.dl import _load_keras_model
 
-        else:
-            def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
-                from arimo.util.dl import _load_arimo_dl_model
-
-                return [(row[0] +
-                            tuple(
-                                float(s[0])
-                                for s in row[1:]))
-                        for row in
-                            zip(tup[0],
-                                *(_load_arimo_dl_model(
-                                        dir_path=model_path,
-                                        hdfs=cluster)
-                                    .predict(
-                                        data=x,
-                                        input_tensor_transform_fn=None,
-                                        batch_size=__batch_size__)
-                                  for model_path, x in zip(model_paths, tup[1:])))]
+            return [(row[0] +
+                     tuple(
+                        float(s[0])
+                        for s in row[1:]))
+                    for row in
+                        zip(tup[0],
+                            *[_load_keras_model(
+                                    file_path=model_path)
+                                .predict(
+                                    x=x,
+                                    batch_size=__batch_size__,
+                                    verbose=0)
+                              for model_path, x in zip(model_paths, tup[1:])])]
 
         return DDF.create(
                 data=rdd.flatMap(score),
