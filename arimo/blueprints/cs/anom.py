@@ -159,13 +159,13 @@ class DLPPPBlueprint(AbstractPPPBlueprint):
                                 for s in row[1:]))
                         for row in
                             zip(tup[0],
-                                *[_load_keras_model(
+                                *(_load_keras_model(
                                         file_path=model_path)
                                     .predict(
                                         x=x,
                                         batch_size=__batch_size__,
                                         verbose=0)
-                                  for model_path, x in zip(model_paths, tup[1:])])]
+                                  for model_path, x in zip(model_paths, tup[1:])))]
 
         else:
             def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
