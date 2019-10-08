@@ -328,7 +328,6 @@ class AbstractDLCrossSectSupervisedBlueprint(AbstractCrossSectSupervisedBlueprin
         def score(tup, cluster=fs._ON_LINUX_CLUSTER_WITH_HDFS):
             if cluster:
                 from dl import _load_keras_model
-
             else:
                 from arimo.util.dl import _load_keras_model
 
