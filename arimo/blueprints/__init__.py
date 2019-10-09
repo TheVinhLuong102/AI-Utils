@@ -15,7 +15,7 @@ from sklearn.metrics import mean_absolute_error, median_absolute_error, mean_squ
 from sklearn.preprocessing import LabelEncoder
 import tempfile
 import time
-import tqdm
+from tqdm import tqdm
 import uuid
 
 import six
@@ -2473,7 +2473,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
 
         models = Namespace()
 
-        for label_var_name, component_labeled_adf in tqdm.tqdm(component_labeled_adfs.items()):
+        for label_var_name, component_labeled_adf in tqdm(component_labeled_adfs.items()):
             blueprint_params = self.params.model.component_blueprints[label_var_name]
 
             if blueprint_params.model.ver and __retrain_components__:
@@ -2593,7 +2593,7 @@ class AbstractPPPBlueprint(AbstractBlueprint):
 
         id_col = self.params.data.id_col
 
-        for label_var_name, blueprint_params in label_var_names_n_blueprint_params.items():
+        for label_var_name, blueprint_params in tqdm(label_var_names_n_blueprint_params.items()):
             score_col_name = blueprint_params.model.score.raw_score_col_prefix + label_var_name
 
             _per_label_adf_pre_cached = \
