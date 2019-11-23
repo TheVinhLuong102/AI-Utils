@@ -29,7 +29,7 @@ else:
 import arimo.backend
 
 from pyspark.ml import PipelineModel, Transformer
-from pyspark.ml.feature import OneHotEncoderEstimator as OneHotEncoder, OneHotEncoderModel, SQLTransformer, VectorAssembler
+from pyspark.ml.feature import OneHotEncoder, OneHotEncoderModel, SQLTransformer, VectorAssembler
 from pyspark.ml.linalg import Vector
 from pyspark.sql import DataFrame, functions as sparkSQLFuncs
 from pyspark.sql.types import StructField, StructType
