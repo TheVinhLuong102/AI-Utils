@@ -35,7 +35,7 @@ def nested_map(func, iterable):
 def to_iterable(x, iterable_type=tuple):
     if isinstance(x, iterable_type):
         return x
-    elif isinstance(x, collections.Iterable) and (not isinstance(x, str + (tensorflow.Tensor,))):
+    elif isinstance(x, collections.Iterable) and (not isinstance(x, (str, tensorflow.Tensor))):
         return iterable_type(x)
     elif iterable_type is tuple:
         return x,
