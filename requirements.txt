@@ -1,0 +1,20 @@
+# base
+Cython >= 0.29.15
+Python-DateUtil >= 2.8.1
+
+# data libraries involved in util
+NumPy
+Pandas
+PyArrow
+
+Ray   # *** NO Py3.8 ***
+
+PySpark
+
+# ML/DL libraries involved in util
+Keras
+
+# misc
+JobLib >= 0.14.1
+PSUtil >= 5.7.0
+Tqdm >= 4.43.0
