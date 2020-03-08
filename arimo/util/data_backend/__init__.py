@@ -243,7 +243,7 @@ _SPARK_PKGS = \
      'databricks:tensorframes:0.8.1-s_2.11',
 
      # JPMML-SparkML
-     'org.jpmml:jpmml-sparkml:1.3.3'
+     'org.jpmml:jpmml-sparkml:1.3.3',
      
      # MLeap
      'ml.combust.mleap:mleap-spark_2.11:0.9.0'}
