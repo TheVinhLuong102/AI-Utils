@@ -2,7 +2,6 @@ import logging
 import os
 import psutil
 import subprocess
-from ruamel import yaml
 import sys
 
 import ray
@@ -25,67 +24,45 @@ from clouds.aws.ec2.instance_types import INSTANCE_TYPES_INFO, MEMORY_GiB_KEY, N
 from .yarn.alloc import optim_alloc
 
 
-_METADATA_FILE_NAME = 'metadata.yml'
-
-
-_metadata = \
-    yaml.safe_load(
-        stream=open(os.path.join(
-                        os.path.dirname(
-                            os.path.dirname(
-                                os.path.abspath(__file__))),
-                        _METADATA_FILE_NAME)))
-
-
-_PKG_VER = '{} {}'.format(_metadata['PACKAGE'], _metadata['VERSION'])
-
-
 # verify Python version
 _MIN_PY_VER = 3, 7
 
 assert sys.version_info >= _MIN_PY_VER, \
-    '*** {} requires Python >= {}.{} ***'.format(
-        _PKG_VER, _MIN_PY_VER[0], _MIN_PY_VER[1])
+    f'*** Python >= {_MIN_PY_VER[0]}.{_MIN_PY_VER[1]} required ***'
 
 
 _MIN_ARROW_VER = '0.16.0'
-_current_arrow_ver = pyarrow.__version__
-assert _current_arrow_ver >= _MIN_ARROW_VER, \
-    '*** {} requires PyArrow >= {}. Currently PyArrow {} is installed ***'.format(
-        _PKG_VER, _MIN_ARROW_VER, _current_arrow_ver)
+assert pyarrow.__version__ >= _MIN_ARROW_VER, \
+    f'*** PyArrow >= {_MIN_ARROW_VER} required, but {pyarrow.__version__} installed ***'
 
 
 _MIN_SPARK_VER = '2.4.5'
 
 
 _MIN_TF_VER = '2.0.1'
-_current_tf_ver = tensorflow.__version__
-assert _current_tf_ver >= _MIN_TF_VER, \
-    '*** InfX {} requires TensorFlow >= {}. Currently TensorFlow {} is installed ***'.format(
-        _PKG_VER, _MIN_TF_VER, _current_tf_ver)
+assert tensorflow.__version__ >= _MIN_TF_VER, \
+    f'*** TensorFlow >= {_MIN_TF_VER} required, but {tensorflow.__version__} installed ***'
 
 
 _MIN_KERAS_VER = '2.3.1'
-_current_keras_ver = keras.__version__
-assert _current_keras_ver >= _MIN_KERAS_VER, \
-    '*** InfX {} requires Keras >= {}. Currently Keras {} is installed ***'.format(
-        _PKG_VER, _MIN_KERAS_VER, _current_keras_ver)
+assert keras.__version__ >= _MIN_KERAS_VER, \
+    f'*** Keras >= {_MIN_KERAS_VER} required, but Currently {keras.__version__} installed ***'
 
 
 # Java Home
 _JAVA_HOME_ENV_VAR_NAME = 'JAVA_HOME'
 
 if _ON_LINUX_CLUSTER:
-    _JAVA_HOME_ON_INFX_LINUX_CLUSTER = '/usr/lib/jvm/java-9-openjdk-amd64'
+    _JAVA_HOME_ON_ARIMO_LINUX_CLUSTER = '/usr/lib/jvm/java-9-openjdk-amd64'
 
-    if not os.path.isdir(_JAVA_HOME_ON_INFX_LINUX_CLUSTER):
-        _JAVA_HOME_ON_INFX_LINUX_CLUSTER = '/usr/lib/jvm/java-8-openjdk-amd64'
-        # assert os.path.isdir(_JAVA_HOME_ON_INFX_LINUX_CLUSTER)   # TODO
+    if not os.path.isdir(_JAVA_HOME_ON_ARIMO_LINUX_CLUSTER):
+        _JAVA_HOME_ON_ARIMO_LINUX_CLUSTER = '/usr/lib/jvm/java-8-openjdk-amd64'
+        # assert os.path.isdir(_JAVA_HOME_ON_ARIMO_LINUX_CLUSTER)   # TODO
 
 _JAVA_HOME = \
     os.environ.get(
         'JAVA_HOME',
-        _JAVA_HOME_ON_INFX_LINUX_CLUSTER
+        _JAVA_HOME_ON_ARIMO_LINUX_CLUSTER
             if _ON_LINUX_CLUSTER
             else os.popen('echo $(/usr/libexec/java_home)').read()[:-1])
 
@@ -93,8 +70,8 @@ _JAVA_HOME = \
 # optimized default Spark configs
 _SPARK_HOME_ENV_VAR_NAME = 'SPARK_HOME'
 
-_SPARK_HOME_ON_INFX_LINUX_CLUSTER = '/opt/spark'
-_SPARK_JARS_DIR_PATH_ON_INFX_LINUX_CLUSTER = os.path.join(_SPARK_HOME_ON_INFX_LINUX_CLUSTER, 'jars')
+_SPARK_HOME_ON_ARIMO_LINUX_CLUSTER = '/opt/spark'
+_SPARK_JARS_DIR_PATH_ON_ARIMO_LINUX_CLUSTER = os.path.join(_SPARK_HOME_ON_ARIMO_LINUX_CLUSTER, 'jars')
 
 _SPARK_FILES_MAX_PARTITION_BYTES_CONFIG_KEY = 'spark.files.maxPartitionBytes'
 _SPARK_SQL_FILES_MAX_PARTITION_BYTES_CONFIG_KEY = 'spark.sql.files.maxPartitionBytes'
@@ -491,7 +468,7 @@ _SPARK_PY_FILES_DIR_PATH = \
         'PyFiles')
 
 arimo_util_path = arimo_util_paths[0]
-_SPARK_INFX_PACKAGE_PY_FILE_PATHS = \
+_SPARK_ARIMO_PACKAGE_PY_FILE_PATHS = \
     os.path.join(arimo_util_path, 'dl.py'), \
     os.path.join(arimo_util_path, 'fs.py')
 
@@ -608,7 +585,7 @@ def chkSpark():
 
 def updateYARNJARs():
     if _ON_LINUX_CLUSTER_WITH_HDFS:
-        put(from_local=_SPARK_JARS_DIR_PATH_ON_INFX_LINUX_CLUSTER,
+        put(from_local=_SPARK_JARS_DIR_PATH_ON_ARIMO_LINUX_CLUSTER,
             to_hdfs=_YARN_JARS_DIR_NAME,
             is_dir=True,
             _mv=False,
@@ -628,7 +605,7 @@ def rmSparkCkPts():
 @_docstr_verbose
 def initSpark(
         sparkApp=None,
-        sparkHome=os.environ.get(_SPARK_HOME_ENV_VAR_NAME, _SPARK_HOME_ON_INFX_LINUX_CLUSTER),
+        sparkHome=os.environ.get(_SPARK_HOME_ENV_VAR_NAME, _SPARK_HOME_ON_ARIMO_LINUX_CLUSTER),
         sparkConf={},
         sparkRepos=(),
         sparkPkgs=(),
@@ -660,7 +637,7 @@ def initSpark(
         dataIO (set): additional data IO support options
     """
     assert (pyspark.__version__ >= _MIN_SPARK_VER), \
-        '*** {} requires Spark >= v{} ***'.format(_PKG_VER, _MIN_SPARK_VER)
+        f'*** Spark >= {_MIN_SPARK_VER} required, but {pyspark.__version__} installed ***'
 
     # initialize logger
     logger = logging.getLogger(__name__)
@@ -702,7 +679,7 @@ def initSpark(
             #     for jar_file_name in os.listdir(_SPARK_JARS_DIR_PATH)
             #     if jar_file_name.endswith('.jar')),
 
-            ','.join(_SPARK_INFX_PACKAGE_PY_FILE_PATHS),
+            ','.join(_SPARK_ARIMO_PACKAGE_PY_FILE_PATHS),
 
             ','.join(_SPARK_REPOS.union(sparkRepos)),
 
@@ -726,7 +703,7 @@ def initSpark(
         .setAppName(
             sparkApp
             if sparkApp
-            else '{} @ {}'.format(_PKG_VER, os.getcwd()))
+            else os.getcwd())
 
     _sparkConf = _SPARK_CONF.copy()
 
@@ -825,7 +802,7 @@ def initSpark(
 
     if yarnUpdateJARs:
         msg = 'Putting JARs from {} to {}...'.format(
-            _SPARK_JARS_DIR_PATH_ON_INFX_LINUX_CLUSTER,
+            _SPARK_JARS_DIR_PATH_ON_ARIMO_LINUX_CLUSTER,
             _YARN_JARS_DIR_PATH)
         logger.info(msg)
         updateYARNJARs()
