@@ -1,13 +1,13 @@
-from setuptools import find_packages, setup
+from setuptools import find_namespace_packages, setup
 
 
 setup(
-    name='Arimo-BAI-dev',
+    name='Arimo-SDK-dev',
     author='Arimo LLC (a Panasonic company)',
-    author_email='info@arimo.com',
-    url='https://github.com/adatao/BAI-dev',
+    author_email='DSAR@Arimo.com',
+    url='https://github.com/adatao/SDK-dev',
     version='0.0.0',
-    description='Arimo BAI dev',
-    long_description='Arimo BAI dev',
-    keywords='Arimo BAI dev',
-    packages=find_packages())
+    description='Arimo Software Development Kit (SDK)',
+    long_description='Arimo Software Development Kit (SDK)',
+    keywords='Arimo Software Development Kit (SDK)',
+    packages=find_namespace_packages(include=['arimo.*']))
