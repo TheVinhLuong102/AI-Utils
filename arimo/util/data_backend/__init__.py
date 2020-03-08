@@ -22,7 +22,7 @@ from arimo.util.log import STDOUT_HANDLER
 
 from clouds.aws.ec2.instance_types import INSTANCE_TYPES_INFO, MEMORY_GiB_KEY, N_CPUS_KEY
 
-from .yarn.util import optim_alloc
+from .yarn.alloc import optim_alloc
 
 
 _METADATA_FILE_NAME = 'metadata.yml'
