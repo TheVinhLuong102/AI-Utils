@@ -19,8 +19,7 @@ from arimo.util.fs import hdfs_client as hdfs, exist, put, rm, \
     _ON_LINUX_CLUSTER, _ON_LINUX_CLUSTER_WITH_HDFS
 from arimo.util.log import STDOUT_HANDLER
 
-from clouds.aws.ec2.instance_types import INSTANCE_TYPES_INFO, MEMORY_GiB_KEY, N_CPUS_KEY
-
+from ..aws.ec2.instance_types import INSTANCE_TYPES_INFO, MEMORY_GiB_KEY, N_CPUS_KEY
 from .yarn.alloc import optim_alloc
 
 
