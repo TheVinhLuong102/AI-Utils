@@ -1,8 +1,8 @@
 import os
 import time
 
-from . import client as aws_client
 from ..iterables import to_iterable
+from . import client as aws_client
 
 
 _AWS_ACCESS_KEY_ID_ENV_VAR_NAME = 'AWS_ACCESS_KEY_ID'
