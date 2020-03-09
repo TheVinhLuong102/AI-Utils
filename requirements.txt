@@ -14,6 +14,10 @@ PySpark
 # ML/DL libraries involved in util
 Keras
 
+# cloud
+AWSCLI >= 1.18.17
+Boto3 >= 1.12.17
+
 # misc
 JobLib >= 0.14.1
 PSUtil >= 5.7.0
