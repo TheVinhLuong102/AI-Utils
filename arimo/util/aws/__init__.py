@@ -18,44 +18,30 @@ else:
 _CLIENTS = {}
 
 
-def key_pair(profile='arimo'):
+def key_pair(profile='default'):
     if CREDS:
         if profile in CREDS:
             return CREDS[profile]['aws_access_key_id'], \
                 CREDS[profile]['aws_secret_access_key']
 
-        elif (profile != 'arimo') and ('arimo' in CREDS):
-            warnings.warn(
-                message='*** "{}" PROFILE DOES NOT EXIST in {}; FALLING BACK TO "arimo" PROFILE ***'
-                    .format(profile, CREDS_FILE_PATH))
-
-            return CREDS['arimo']['aws_access_key_id'], \
-                   CREDS['arimo']['aws_secret_access_key']
-
         elif (profile != 'default') and ('default' in CREDS):
             warnings.warn(
-                message='*** {} PROFILE DOES NOT EXIST in {}; FALLING BACK TO DEFAULT PROFILE ***'.format(
-                    '"arimo"'
-                        if profile == 'arimo'
-                        else 'NEITHER "{}" NOR "arimo"'.format(profile),
-                    CREDS_FILE_PATH))
+                message='*** "{}" PROFILE DOES NOT EXIST in "{}"; FALLING BACK TO DEFAULT PROFILE ***'
+                    .format(profile, CREDS_FILE_PATH))
 
             return CREDS['default']['aws_access_key_id'], \
                CREDS['default']['aws_secret_access_key']
 
         else:
             warnings.warn(
-                message='*** NEITHER {} NOR "default" PROFILE EXISTS IN {}; FALLING BACK TO EC2 INSTANCE PROFILE ***'.format(
-                    '"arimo"'
-                        if profile == 'arimo'
-                        else '"{}", "arimo"'.format(profile),
-                    CREDS_FILE_PATH))
+                message='*** NEITHER "{}" NOR "default" PROFILE EXISTS IN "{}"; FALLING BACK TO EC2 INSTANCE PROFILE ***'
+                    .format(profile, CREDS_FILE_PATH))
 
             return None, None
 
     else:
         warnings.warn(
-            message='*** {} DOES NOT EXIST; FALLING BACK TO EC2 INSTANCE PROFILE ***'
+            message='*** "{}" DOES NOT EXIST; FALLING BACK TO EC2 INSTANCE PROFILE ***'
                 .format(CREDS_FILE_PATH))
 
         return None, None

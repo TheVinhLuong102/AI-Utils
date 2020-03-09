@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import os
 import time
 
@@ -13,21 +11,21 @@ _AWS_SECRET_ACCESS_KEY_ENV_VAR_NAME = 'AWS_SECRET_ACCESS_KEY'
 
 def client(access_key_id=None, secret_access_key=None):
     return aws_client(
-        service='s3',
-        access_key_id=access_key_id,
-        secret_access_key=secret_access_key)
+            service='s3',
+            access_key_id=access_key_id,
+            secret_access_key=secret_access_key)
 
 
 def s3a_path_with_auth(
-        s3_path,
-        access_key_id=None, secret_access_key=None):
+        s3_path,   # TODO: /,
+        *, access_key_id=None, secret_access_key=None):
     return 's3a://{}{}'.format(
-        '{}:{}@'.format(
-            access_key_id,
-            secret_access_key)
-        if access_key_id and secret_access_key
-        else '',
-        s3_path.split('://')[1])
+            '{}:{}@'.format(
+                access_key_id,
+                secret_access_key)
+            if access_key_id and secret_access_key
+            else '',
+            s3_path.split('://')[1])
 
 
 def cp(from_path, to_path, is_dir=True,
@@ -42,8 +40,8 @@ def cp(from_path, to_path, is_dir=True,
         os.environ[_AWS_SECRET_ACCESS_KEY_ENV_VAR_NAME] = secret_access_key
 
     if verbose:
-        msg = 'Copying {} to {}...'.format(from_path, to_path)
-        print(msg)
+        msg = 'Copying "{}" to "{}"...'.format(from_path, to_path)
+        print(msg + '\n')
         tic = time.time()
 
     os.system(
@@ -54,7 +52,7 @@ def cp(from_path, to_path, is_dir=True,
 
     if verbose:
         toc = time.time()
-        print(msg + ' done!   <{:,.1f} s>'.format(toc - tic))
+        print(msg + ' done!   <{:,.1f} s>\n'.format(toc - tic))
 
     if access_key_id and secret_access_key:
         if _ORIG_AWS_ACCESS_KEY_ID:
@@ -80,8 +78,8 @@ def mv(from_path, to_path, is_dir=True,
         os.environ[_AWS_SECRET_ACCESS_KEY_ENV_VAR_NAME] = secret_access_key
 
     if verbose:
-        msg = 'Moving {} to {}...'.format(from_path, to_path)
-        print(msg)
+        msg = 'Moving "{}" to "{}"...'.format(from_path, to_path)
+        print(msg + '\n')
         tic = time.time()
 
     os.system(
@@ -92,7 +90,7 @@ def mv(from_path, to_path, is_dir=True,
 
     if verbose:
         toc = time.time()
-        print(msg + ' done!   <{:,.1f} s>'.format(toc - tic))
+        print(msg + ' done!   <{:,.1f} s>\n'.format(toc - tic))
 
     if access_key_id and secret_access_key:
         if _ORIG_AWS_ACCESS_KEY_ID:
@@ -116,7 +114,19 @@ def rm(path, dir=True, globs=None, quiet=True,
         os.environ[_AWS_ACCESS_KEY_ID_ENV_VAR_NAME] = access_key_id
         os.environ[_AWS_SECRET_ACCESS_KEY_ENV_VAR_NAME] = secret_access_key
 
-    cmd = 'aws s3 rm {}{}{}'.format(
+    if verbose:
+        msg = 'Deleting {}"{}"...'.format(
+                ('Globs "{}" @ '.format(globs)
+                 if globs
+                 else 'Directory ')
+                    if dir
+                    else '',
+                path)
+
+        print(msg)
+
+    os.system(
+        'aws s3 rm {}{}{}'.format(
             path,
             ' --recursive{}'.format(
                     ' --exclude "*" {}'.format(
@@ -126,13 +136,7 @@ def rm(path, dir=True, globs=None, quiet=True,
                     else '')
                 if dir
                 else '',
-            ' --quiet' if quiet else '')
-
-    if verbose:
-        msg = '{} ...'.format(cmd)
-        print(msg)
-
-    os.system(cmd)
+            ' --quiet' if quiet else ''))
 
     if verbose:
         print(msg + ' done!')
@@ -161,8 +165,8 @@ def sync(from_dir_path, to_dir_path,
         os.environ[_AWS_SECRET_ACCESS_KEY_ENV_VAR_NAME] = secret_access_key
 
     if verbose:
-        msg = 'Syncing {} to {}...'.format(from_dir_path, to_dir_path)
-        print(msg)
+        msg = 'Syncing "{}" to "{}"...'.format(from_dir_path, to_dir_path)
+        print(msg + '\n')
         tic = time.time()
 
     os.system(
@@ -173,7 +177,7 @@ def sync(from_dir_path, to_dir_path,
 
     if verbose:
         toc = time.time()
-        print(msg + ' done!   <{:,.1f} s>'.format(toc - tic))
+        print(msg + ' done!   <{:,.1f} s>\n'.format(toc - tic))
 
     if access_key_id and secret_access_key:
         if _ORIG_AWS_ACCESS_KEY_ID:
