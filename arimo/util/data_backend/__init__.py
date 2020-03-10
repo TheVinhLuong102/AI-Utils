@@ -743,9 +743,6 @@ def initSpark(
                 # _sparkConf['spark.yarn.jars'] = _YARN_JARS_DIR_NAME
                 pass
 
-        else:
-            yarnUpdateJARs = True
-
     else:
         yarnUpdateJARs = False
 
