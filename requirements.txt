@@ -19,6 +19,7 @@ AWSCLI >= 1.18.17
 Boto3 >= 1.12.17
 
 # misc
+ConfigParser >= 4.0.2
 JobLib >= 0.14.1
 PSUtil >= 5.7.0
 Tqdm >= 4.43.0
