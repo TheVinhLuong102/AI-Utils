@@ -1,5 +1,3 @@
-from __future__ import division
-
 import abc
 import numpy
 import pandas
@@ -9,7 +7,6 @@ from pyspark.ml.evaluation import BinaryClassificationEvaluator, RegressionEvalu
 import pyspark.sql
 from pyspark.sql import functions
 
-from arimo.data.distributed import DDF
 from arimo.util import Namespace
 from arimo.util.types.spark_sql import _INT_TYPES, _NUM_TYPES, _STR_TYPE
 
@@ -61,14 +58,15 @@ class _RegrMetricABC(_MetricABC):
                 df._eval_metrics[key_tuple][self.name] = \
                     self._eval_pandas_df(df)
 
-            elif isinstance(df, DDF):
+            elif isinstance(getattr(df, '_sparkDF', None), pyspark.sql.DataFrame):
                 assert ((df.type(self.label_col) in _NUM_TYPES) or df.type(self.label_col).startswith('decimal')) \
                    and ((df.type(self.score_col) in _NUM_TYPES) or df.type(self.score_col).startswith('decimal'))
 
                 df._eval_metrics[key_tuple][self.name] = \
                     self._eval_spark_df(df)
 
-            elif isinstance(df, (pyspark.sql.DataFrame, DDF)):
+            elif isinstance(df, pyspark.sql.DataFrame) or \
+                    isinstance(getattr(df, '_sparkDF', None), pyspark.sql.DataFrame):
                 label_col_type = df.schema[str(self.label_col)].dataType.simpleString()
                 score_col_type = df.schema[str(self.score_col)].dataType.simpleString()
 
@@ -79,7 +77,7 @@ class _RegrMetricABC(_MetricABC):
                     self._eval_spark_df(df)
 
             else:
-                raise ValueError('*** Type of data to evaluate must be one of Pandas.DataFrame, PySpark.SQL.DataFrame or DDF ***')
+                raise ValueError('*** Type of data to evaluate must be one of Pandas.DataFrame, PySpark.SQL.DataFrame or inheritor of PySpark.SQL.DataFrame ***')
 
         return df._eval_metrics[key_tuple][self.name]
 
@@ -154,7 +152,7 @@ class _ClassifMetricABC(_MetricABC):
                 df._eval_metrics[key_tuple][self.name] = \
                     self._eval_pandas_df(df, *class_thresholds)
 
-            elif isinstance(df, DDF):
+            elif isinstance(getattr(df, '_sparkDF', None), pyspark.sql.DataFrame):
                 if df.type(self.label_col) == _STR_TYPE:
                     assert self.labels[0] != 0
 
@@ -169,7 +167,7 @@ class _ClassifMetricABC(_MetricABC):
                     self._eval_spark_df(df, *class_thresholds)
 
             else:
-                raise ValueError('*** Type of data to evaluate must be one of Pandas.DataFrame, PySpark.SQL.DataFrame or DDF ***')
+                raise ValueError('*** Type of data to evaluate must be one of Pandas.DataFrame, PySpark.SQL.DataFrame or inheritor of PySpark.SQL.DataFrame ***')
 
         return df._eval_metrics[key_tuple][self.name]
 
@@ -236,7 +234,7 @@ def n(df):
     else:
         df._N = \
             df.nRows \
-            if isinstance(df, DDF) \
+            if isinstance(getattr(df, '_sparkDF', None), pyspark.sql.DataFrame) \
             else (df.count()
                   if isinstance(df, pyspark.sql.DataFrame)
                   else len(df))
@@ -311,7 +309,7 @@ class MedAE(_RegrMetricABC):
 
         spark_df = \
             df._sparkDF \
-            if isinstance(df, DDF) \
+            if isinstance(getattr(df, '_sparkDF', None), pyspark.sql.DataFrame) \
             else df
 
         return spark_df.select(
@@ -379,7 +377,7 @@ class Prevalence(_ClassifMetricABC):
                 df._eval_metrics[self.label_col][self.name] = \
                     self._eval_pandas_df(df)
 
-            elif isinstance(df, DDF):
+            elif isinstance(getattr(df, '_sparkDF', None), pyspark.sql.DataFrame):
                 if df.type(self.label_col) == _STR_TYPE:
                     assert self.labels[0] != 0
 
@@ -394,7 +392,7 @@ class Prevalence(_ClassifMetricABC):
                     self._eval_spark_df(df)
 
             else:
-                raise ValueError('*** Type of data to evaluate must be one of Pandas.DataFrame, PySpark.SQL.DataFrame or DDF ***')
+                raise ValueError('*** Type of data to evaluate must be one of Pandas.DataFrame, PySpark.SQL.DataFrame or inheritor of PySpark.SQL.DataFrame ***')
 
         return df._eval_metrics[self.label_col][self.name]
 
@@ -1122,7 +1120,7 @@ class PR_AuC(_ClassifMetricABC):
     def _eval_spark_df(self, df, *class_thresholds):
         _int_label_type = \
             ((df.type(self.label_col)
-              if isinstance(df, DDF)
+              if isinstance(getattr(df, '_sparkDF', None), pyspark.sql.DataFrame)
               else df.schema[str(self.label_col)].dataType.simpleString()) in _INT_TYPES)
 
         evaluator = \
@@ -1223,7 +1221,7 @@ class ROC_AuC(_ClassifMetricABC):
     def _eval_spark_df(self, df, *class_thresholds):
         _int_label_type = \
             ((df.type(self.label_col)
-             if isinstance(df, DDF)
+             if isinstance(getattr(df, '_sparkDF', None), pyspark.sql.DataFrame)
              else df.schema[str(self.label_col)].dataType.simpleString()) in _INT_TYPES)
 
         evaluator = \
