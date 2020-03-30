@@ -15,11 +15,11 @@ PySpark
 Keras
 
 # cloud
-AWSCLI >= 1.18.31
-Boto3 >= 1.12.31
+AWSCLI >= 1.18.32
+Boto3 >= 1.12.32
 
 # misc
 ConfigParser >= 5.0.0
 JobLib >= 0.14.1
 PSUtil >= 5.7.0
-Tqdm >= 4.43.0
+Tqdm >= 4.44.1
