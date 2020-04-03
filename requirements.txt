@@ -11,8 +11,13 @@ Ray>= 0.8.4
 
 PySpark >= 2.4.5
 
+S3FS >= 0.4.2
+
 # ML/DL libraries involved in util
 Keras >= 2.3.1
+H5Py >= 2.10.0
+
+SciKit-Learn >= 0.22.2
 
 # cloud
 AWSCLI >= 1.18.36
