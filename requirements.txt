@@ -3,23 +3,23 @@ Cython >= 0.29.16
 Python-DateUtil >= 2.8.1
 
 # data libraries involved in util
-NumPy
-Pandas
-PyArrow
+NumPy >= 1.18.2
+Pandas >= 1.0.3
+PyArrow >= 0.16.0
 
-Ray   # *** NO Py3.8 ***
+Ray>= 0.8.4
 
-PySpark
+PySpark >= 2.4.5
 
 # ML/DL libraries involved in util
-Keras
+Keras >= 2.3.1
 
 # cloud
-AWSCLI >= 1.18.33
-Boto3 >= 1.12.33
+AWSCLI >= 1.18.36
+Boto3 >= 1.12.36
 
 # misc
 ConfigParser >= 5.0.0
 JobLib >= 0.14.1
 PSUtil >= 5.7.0
-Tqdm >= 4.44.1
+Tqdm >= 4.45.0
