@@ -1,5 +1,5 @@
 # base
-Cython >= 0.29.16
+Cython >= 0.29.17
 Python-DateUtil >= 2.8.1
 
 # data libraries involved in util
