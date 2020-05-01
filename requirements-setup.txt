@@ -1,4 +1,4 @@
-PIP >= 20.0.2
+PIP >= 20.1
 PyYAML >= 5.3.1
 Ruamel.YAML >= 0.16.10
 SetUpTools >= 46.1.3
