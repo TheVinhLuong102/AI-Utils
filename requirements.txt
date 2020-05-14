@@ -13,7 +13,7 @@ Ray>= 0.8.5
 Keras >= 2.3.1
 H5Py >= 2.10.0
 
-SciKit-Learn >= 0.23
+SciKit-Learn >= 0.23.0
 
 # cloud
 AWSCLI >= 1.18.59
