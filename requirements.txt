@@ -16,8 +16,8 @@ H5Py >= 2.10.0
 SciKit-Learn >= 0.23.1
 
 # cloud
-AWSCLI >= 1.18.66
-Boto3 >= 1.13.16
+AWSCLI >= 1.18.69
+Boto3 >= 1.13.19
 S3FS >= 0.4.2
 
 # misc
