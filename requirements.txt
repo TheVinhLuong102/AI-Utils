@@ -4,7 +4,7 @@ Python-DateUtil >= 2.8.1
 
 # data libraries involved in util
 NumPy >= 1.18.4
-Pandas >= 1.0.3
+Pandas >= 1.0.4
 PyArrow >= 0.17.1
 PySpark >= 2.4.5
 Ray>= 0.8.5
