@@ -3,11 +3,11 @@ Cython >= 0.29.19
 Python-DateUtil >= 2.8.1
 
 # data libraries involved in util
-NumPy >= 1.18.4
+NumPy >= 1.18.5
 Pandas >= 1.0.4
 PyArrow >= 0.17.1
-PySpark >= 2.4.5
-Ray>= 0.8.5
+PySpark >= 2.4.6
+Ray >= 0.8.5
 
 # ML/DL libraries involved in util
 Keras >= 2.3.1
@@ -24,4 +24,4 @@ S3FS >= 0.4.2
 ConfigParser >= 5.0.0
 JobLib >= 0.15.1
 PSUtil >= 5.7.0
-Tqdm >= 4.46.0
+Tqdm >= 4.46.1
