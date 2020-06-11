@@ -1,5 +1,5 @@
 # base
-Cython >= 0.29.19
+Cython >= 0.29.20
 Python-DateUtil >= 2.8.1
 
 # data libraries involved in util
@@ -16,8 +16,8 @@ H5Py >= 2.10.0
 SciKit-Learn >= 0.23.1
 
 # cloud
-AWSCLI >= 1.18.76
-Boto3 >= 1.13.26
+AWSCLI >= 1.18.77
+Boto3 >= 1.13.27
 S3FS >= 0.4.2
 
 # misc
