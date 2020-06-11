@@ -315,6 +315,9 @@ class _S3ParquetDataFeeder__prep__pandasDFTransform:
         else:
             assert self.numScaler is None
 
+        if self.numScaler is not None:
+            self.numScaler.n_features_in_ = len(self.numPrepDetails)
+
     def __call__(self, pandasDF):
         _FLOAT_ABS_TOL = 1e-9
 
