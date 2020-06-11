@@ -17,7 +17,7 @@ SciKit-Learn >= 0.23.1
 
 # cloud
 AWSCLI >= 1.18.77
-Boto3 >= 1.13.27
+Boto3 >= 1.14.0
 S3FS >= 0.4.2
 
 # misc
