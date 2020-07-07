@@ -7,21 +7,21 @@ NumPy >= 1.19.0
 Pandas >= 1.0.5
 PyArrow >= 0.17.1
 PySpark >= 3.0.0
-Ray >= 0.8.5
+Ray >= 0.8.6
 
 # ML/DL libraries involved in util
-Keras >= 2.4.2
+Keras >= 2.4.3
 H5Py >= 2.10.0
 
 SciKit-Learn >= 0.23.1
 
 # cloud
-AWSCLI >= 1.18.88
-Boto3 >= 1.14.11
+AWSCLI >= 1.18.94
+Boto3 >= 1.14.17
 S3FS >= 0.4.2
 
 # misc
 ConfigParser >= 5.0.0
-JobLib >= 0.15.1
+JobLib >= 0.16.0
 PSUtil >= 5.7.0
-Tqdm >= 4.46.1
+Tqdm >= 4.47.0
