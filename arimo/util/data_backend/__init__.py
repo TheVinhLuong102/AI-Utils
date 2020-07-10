@@ -644,9 +644,9 @@ def initSpark(
     logger.addHandler(STDOUT_HANDLER)
 
     # driver Python executable path
-    os.environ['PYSPARK_DRIVER_PYTHON'] = 'python3.7'
+    os.environ['PYSPARK_DRIVER_PYTHON'] = 'python3.8'
     # worker Python executable path
-    os.environ['PYSPARK_PYTHON'] = '/opt/miniconda3/bin/python3.7'   # TODO: make generic 'python3.7'
+    os.environ['PYSPARK_PYTHON'] = '/opt/miniconda3.8/bin/python3.8'   # TODO: make generic 'python3.7'
 
     # set relevant environment variables for Java, Spark, Hadoop & YARN
     if javaHome:
