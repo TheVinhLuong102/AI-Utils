@@ -192,6 +192,8 @@ _SPARK_CONF = \
      'spark.sql.inMemoryColumnarStorage.compressed': True,
      'spark.sql.inMemoryColumnarStorage.batchSize': 30000,
 
+     'spark.sql.legacy.timeParserPolicy': 'LEGACY',
+     
      # https://community.hortonworks.com/articles/148917/orc-improvements-for-apache-spark-22.html
      'spark.sql.orc.enabled': True,
      'spark.sql.hive.convertMetastoreOrc': True,
