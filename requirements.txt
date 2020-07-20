@@ -16,12 +16,12 @@ H5Py >= 2.10.0
 SciKit-Learn >= 0.23.1
 
 # cloud
-AWSCLI >= 1.18.98
-Boto3 >= 1.14.21
+AWSCLI >= 1.18.100
+Boto3 >= 1.14.23
 S3FS >= 0.4.2
 
 # misc
 ConfigParser >= 5.0.0
 JobLib >= 0.16.0
-PSUtil >= 5.7.0
-Tqdm >= 4.47.0
+PSUtil >= 5.7.2
+Tqdm >= 4.48.0
