@@ -5,7 +5,7 @@ Python-DateUtil >= 2.8.1
 # data libraries involved in util
 NumPy >= 1.19.1
 Pandas >= 1.0.5
-PyArrow >= 0.17.1
+PyArrow >= 1.0.0
 PySpark >= 3.0.0
 Ray >= 0.8.6
 
@@ -16,8 +16,8 @@ H5Py >= 2.10.0
 SciKit-Learn >= 0.23.1
 
 # cloud
-AWSCLI >= 1.18.104
-Boto3 >= 1.14.27
+AWSCLI >= 1.18.105
+Boto3 >= 1.14.28
 S3FS >= 0.4.2
 
 # misc
