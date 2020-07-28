@@ -234,20 +234,21 @@ _SPARK_CONF = \
 _SPARK_REPOS = \
     {'http://redshift-maven-repository.s3-website-us-east-1.amazonaws.com/release'}
 
-_SPARK_PKGS = \
-    {# AWS-related dependencies
-     'com.amazonaws:aws-java-sdk:1.11.823',
-     'org.apache.hadoop:hadoop-aws:2.7.7',   # consistent with Hadoop 2.7
+_SPARK_PKGS = {
+    # AWS-related dependencies
+    # 'com.amazonaws:aws-java-sdk:1.11.823',   # DISABLED FOR NOW
+    'org.apache.hadoop:hadoop-aws:2.7.7',   # consistent with Hadoop 2.7
 
-     # Spark DL Pipelines & TensorFrames
-     'databricks:spark-deep-learning:1.5.0-spark2.4-s_2.11',
-     'databricks:tensorframes:0.8.1-s_2.11',
+    # Spark DL Pipelines & TensorFrames
+    # 'databricks:spark-deep-learning:1.5.0-spark2.4-s_2.11',
+    # 'databricks:tensorframes:0.8.1-s_2.11',
 
-     # JPMML-SparkML
-     'org.jpmml:jpmml-sparkml:1.3.3',
+    # JPMML-SparkML
+    # 'org.jpmml:jpmml-sparkml:1.3.3',
      
-     # MLeap
-     'ml.combust.mleap:mleap-spark_2.11:0.9.0'}
+    # MLeap
+    # 'ml.combust.mleap:mleap-spark_2.11:0.9.0'
+}
 
 _DATA_IO_SPARK_PKGS = \
     dict(avro=
