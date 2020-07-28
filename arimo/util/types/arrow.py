@@ -24,7 +24,7 @@ from pyarrow.lib import \
     time64, Time64Type, Type_TIME64, \
     list_, ListType, Type_LIST, \
     struct, StructType, Type_STRUCT, \
-    union, UnionType, Type_UNION, \
+    union, UnionType, \
     dictionary, DictionaryType, Type_DICTIONARY, \
     Type_MAP, \
     is_boolean_value, is_float_value, is_integer_value, is_named_tuple
