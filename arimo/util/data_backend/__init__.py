@@ -237,7 +237,7 @@ _SPARK_REPOS = \
 _SPARK_PKGS = \
     {# AWS-related dependencies
      'com.amazonaws:aws-java-sdk:1.11.823',
-     'org.apache.hadoop:hadoop-aws:2.7.2',   # consistent with Hadoop 2.7
+     'org.apache.hadoop:hadoop-aws:2.7.7',   # consistent with Hadoop 2.7
 
      # Spark DL Pipelines & TensorFrames
      'databricks:spark-deep-learning:1.5.0-spark2.4-s_2.11',
