@@ -1,6 +1,6 @@
 from pyarrow.lib import \
     DataType, \
-    NA, NAType, Type_NA, _NULL, null, NullType, \
+    NA, Type_NA, _NULL, null, NullType, \
     bool_, Type_BOOL, \
     string, Type_STRING, \
     binary, Type_BINARY, \
