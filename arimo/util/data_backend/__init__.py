@@ -614,7 +614,7 @@ def initSpark(
         hadoopConfDir=None,
         yarnConfDir=None,
         yarnUpdateJARs=False,
-        dataIO={'avro', 'pg', 'redshift', 'sftp'},
+        dataIO=(),
         executor_aws_ec2_instance_type='c5n.9xlarge'):
     """
     Launch new ``SparkSession`` or connect to existing one, and binding it to ``arimo.data_backend.spark``
