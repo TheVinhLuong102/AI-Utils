@@ -780,9 +780,9 @@ def initSpark(
     spark.sparkContext.setCheckpointDir(dirName=_SPARK_CKPT_DIR)
 
     # set Hadoop Conf in Spark Context
-    # if os.environ.get('AWS_ACCESS_KEY_ID'):
-    #     spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.awsAccessKeyId", os.environ.get('AWS_ACCESS_KEY_ID'))
-    #     spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.awsSecretAccessKey", os.environ.get('AWS_SECRET_ACCESS_KEY'))
+    if os.environ.get('AWS_ACCESS_KEY_ID'):
+        spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.awsAccessKeyId", os.environ.get('AWS_ACCESS_KEY_ID'))
+        spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.awsSecretAccessKey", os.environ.get('AWS_SECRET_ACCESS_KEY'))
 
     # register Uder-Defined Functions (UDFs)
     from pyspark.ml.linalg import DenseVector, VectorUDT
