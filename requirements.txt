@@ -4,7 +4,9 @@ Python-DateUtil >= 2.8.1
 
 # data libraries involved in util
 NumPy >= 1.19.1
-Pandas >= 1.1.0
+Pandas >= 1.0.5, < 1.1.0
+    # *** BUG in 1.1.0 ***
+    # TypeError: incompatible index of inserted column with frame index
 PyArrow >= 0.17.1, < 1.0.0
     # *** BUG in 1.0.0 ***
     # pyarrow.lib.ArrowInvalid: Unable to merge: Field date has incompatible types: date32[day] vs dictionary<values=string, indices=int32, ordered=0>
