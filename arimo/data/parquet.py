@@ -1499,7 +1499,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 pieceArrowTable = \
                     read_table(
                         source=pieceLocalOrHDFSPath,
-                        columns=srcCols,
+                        columns=list(srcCols),
                         use_threads=True,
                         metadata=None,
                         use_pandas_metadata=False,
