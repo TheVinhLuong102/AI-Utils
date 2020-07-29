@@ -5,7 +5,9 @@ Python-DateUtil >= 2.8.1
 # data libraries involved in util
 NumPy >= 1.19.1
 Pandas >= 1.1.0
-PyArrow >= 1.0.0
+PyArrow >= 0.17.1, < 1.0.0
+    # *** BUG in 1.0.0 ***
+    # pyarrow.lib.ArrowInvalid: Unable to merge: Field date has incompatible types: date32[day] vs dictionary<values=string, indices=int32, ordered=0>
 PySpark >= 3.0.0
 Ray >= 0.8.6
 
