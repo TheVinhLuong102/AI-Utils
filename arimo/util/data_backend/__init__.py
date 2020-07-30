@@ -236,7 +236,7 @@ _SPARK_REPOS = \
 
 _SPARK_PKGS = {
     # AWS-related dependencies
-    # 'com.amazonaws:aws-java-sdk:1.11.823',   # DISABLED FOR NOW
+    'com.amazonaws:aws-java-sdk:1.11.828',
     'org.apache.hadoop:hadoop-aws:2.7.7',   # consistent with Hadoop 2.7
 
     # Spark DL Pipelines & TensorFrames
