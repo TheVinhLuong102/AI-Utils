@@ -616,7 +616,7 @@ def initSpark(
         yarnConfDir=None,
         yarnUpdateJARs=False,
         dataIO=(),
-        executor_aws_ec2_instance_type='c5n.9xlarge'):
+        executor_aws_ec2_instance_type='x1e.32xlarge'):
     """
     Launch new ``SparkSession`` or connect to existing one, and binding it to ``arimo.data_backend.spark``
 
