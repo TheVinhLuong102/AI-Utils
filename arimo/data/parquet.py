@@ -646,8 +646,8 @@ class _S3ParquetDataFeeder__gen:
             for i in range(n_batches):
                 rowIndicesSubset = rowIndices[(i * self.n):((i + 1) * self.n)]
 
-                arrays = \
-                    [(numpy.vstack(
+                arrays = tuple(
+                    (numpy.vstack(
                         numpy.expand_dims(
                             numpy.vstack(
                                 (numpy.full(
@@ -661,10 +661,11 @@ class _S3ParquetDataFeeder__gen:
                                 )),
                             axis=0)
                         for rowIdx in rowIndicesSubset)
-                      if overTime
-                      else chunkPandasDF.loc[rowIndicesSubset, cols].values)
-                     for cols, nCols, overTime, rowFrom_n_rowTo in
-                        zip(self.colsLists, self.nColsList, self.colsOverTime, self.rowFrom_n_rowTo_tups)]
+                     if overTime
+                     else chunkPandasDF.loc[rowIndicesSubset, cols].values)
+                    for cols, nCols, overTime, rowFrom_n_rowTo in
+                        zip(self.colsLists, self.nColsList, self.colsOverTime, self.rowFrom_n_rowTo_tups)
+                )
 
                 if arimo.debug.ON:
                     for array in arrays:
