@@ -14,7 +14,8 @@ PySpark >= 3.0.0
 Ray >= 0.8.7
 
 # ML/DL libraries involved in util
-Keras >= 2.4.3
+Keras >= 2.3.1, < 2.4.0
+    # *** Keras >= 2.4.0 has memory leaks when using MultiProcessing ***
 H5Py >= 2.10.0
 
 SciKit-Learn >= 0.23.2
