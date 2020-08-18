@@ -20,12 +20,14 @@ NUMPY_INT_TYPES = \
     numpy.int8, \
     numpy.int16, \
     numpy.int32, \
+    numpy.longlong, \
     numpy.uint64, \
     numpy.uint, \
     numpy.uint8, \
     numpy.uint16, \
     numpy.uint32, \
-    numpy.uint64
+    numpy.uint64, \
+    numpy.ulonglong
 
 NUMPY_NUM_TYPES = NUMPY_FLOAT_TYPES + NUMPY_INT_TYPES
 
