@@ -26,12 +26,14 @@ def _load_keras_model(file_path):
     global _LOADED_MODELS
 
     if file_path not in _LOADED_MODELS:
+        assert os.path.isfile(file_path), \
+            f'*** {file_path} FILE DOES NOT EXIST ***'
+
         _LOADED_MODELS[file_path] = \
             keras.models.load_model(
                 file_path,
-                    # skipping "filepath=..." to avoid bug introduced by Keras 2.2.5 allow_read_from_gcs wrapper:
-                    # TypeError: load_model() missing 1 required positional argument: 'filepath'
                 custom_objects=None,
-                compile=True)
+                compile=True,
+                options=None)
 
     return _LOADED_MODELS[file_path]

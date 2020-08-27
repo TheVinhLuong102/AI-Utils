@@ -341,6 +341,16 @@ INSTANCE_TYPES_INFO = \
                 EBS_BANDWIDTH_Gbps_KEY: 14,
 
                 NETWORK_Gbps_KEY: 100
+            },
+
+            'x1e.32xlarge': {
+                N_CPUS_KEY: 128,
+                MEMORY_GiB_KEY: 3904,
+
+                STORAGE_KEY: 'EBS-Only',
+                EBS_BANDWIDTH_Gbps_KEY: '',
+
+                NETWORK_Gbps_KEY: 25
             }
         },
         orient='index',
