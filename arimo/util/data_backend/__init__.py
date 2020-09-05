@@ -649,7 +649,7 @@ def initSpark(
     # driver Python executable path
     os.environ['PYSPARK_DRIVER_PYTHON'] = 'python3'
     # worker Python executable path
-    os.environ['PYSPARK_PYTHON'] = 'python3'
+    os.environ['PYSPARK_PYTHON'] = '/opt/miniconda3/bin/python3'
 
     # set relevant environment variables for Java, Spark, Hadoop & YARN
     if javaHome:
