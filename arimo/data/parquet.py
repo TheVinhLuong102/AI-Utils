@@ -511,7 +511,7 @@ class _S3ParquetDataFeeder__pieceArrowTableFunc:
                     # By default, read_table uses the new Arrow Datasets API since pyarrow 1.0.0.
                     # Among other things, this allows to pass filters for all columns and not only the partition keys,
                     # enables different partitioning schemes, etc.
-                    # Set to False to use the legacy behaviour.
+                    # Set to True to use the legacy behaviour.
                 ignore_prefixes=None
                     # list, optional
                     # Files matching any of these prefixes will be ignored by the discovery process
@@ -1631,7 +1631,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                             # By default, read_table uses the new Arrow Datasets API since pyarrow 1.0.0.
                             # Among other things, this allows to pass filters for all columns and not only the partition keys,
                             # enables different partitioning schemes, etc
-                            # Set to False to use the legacy behaviour.
+                            # Set to True to use the legacy behaviour.
                         ignore_prefixes=None
                             # list, optional
                             # Files matching any of these prefixes will be ignored
