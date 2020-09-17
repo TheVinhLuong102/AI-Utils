@@ -5,6 +5,7 @@ import subprocess
 import sys
 
 import ray
+from ray import ray_constants
 import pyarrow
 
 import tensorflow
@@ -484,100 +485,162 @@ def chkRay() -> bool:
 
 def initRay(*, verbose: bool = False) -> None:
     ray.init(
-        redis_address=None,
-            # The address of the Redis server to connect to.
-            # If this address is not provided, then this command will start Redis, a raylet, a plasma store,
-            # a plasma manager, and some workers.
+        address=None,
+            # str
+            # The address of the Ray cluster to connect to.
+            # If this address is not provided, then this command will start Redis,
+            # a raylet, a plasma store, a plasma manager, and some workers.
             # It will also kill these processes when Python exits.
+            # If the driver is running on a node in a Ray cluster,
+            # using auto as the value tells the driver to detect the the cluster,
+            # removing the need to specify a specific node address.
+
+        redis_port=None,
+            # int
+            # The port that the primary Redis shard should listen to.
+            # If None, then a random port will be chosen.
 
         num_cpus=psutil.cpu_count(logical=True),
-            # Number of cpus the user wishes all raylets to be configured with
+            # int
+            # Number of CPUs the user wishes to assign to each raylet.
 
         num_gpus=0,
-            # Number of gpus the user wishes all raylets to be configured with
+            # int
+            # Number of GPUs the user wishes to assign to each raylet.
 
-        resources=None,
-            # A dictionary mapping the name of a resource to the quantity of that resource available
-
+        memory=None,
+            # The amount of memory (in bytes) that is available for use by workers requesting memory resources.
+            # By default, this is automatically set based on available system memory.
+        
         object_store_memory=None,
             # The amount of memory (in bytes) to start the object store with.
-            # By default, this is capped at 20GB but can be set higher.
+            # By default, this is automatically set based on available system memory, subject to a 20GB cap.
+
+        resources=None,
+            # A dictionary mapping the names of custom resources to the quantities for them available.
+
+        driver_object_store_memory=None,
+            # int
+            # Limit the amount of memory the driver can use in the object store for creating objects.
+            # By default, this is autoset based on available system memory, subject to a 20GB cap.
 
         redis_max_memory=None,
             # The max amount of memory (in bytes) to allow each redis shard to use.
             # Once the limit is exceeded, redis will start LRU eviction of entries.
             # This only applies to the sharded redis tables (task, object, and profile tables).
-            # By default, this is capped at 10GB but can be set higher.
+            # By default, this is autoset based on available system memory, subject to a 10GB cap.
 
         log_to_driver=verbose,   # reduce verbosity
-            # If true, then output from all of the worker processes on all nodes will be directed to the driver
+            # bool
+            # If true, the output from all of the worker processes on all nodes will be directed to the driver.
 
-        node_ip_address=None,
-            # The IP address of the node that we are on
+        node_ip_address=ray_constants.NODE_DEFAULT_IP,
+            # str
+            # The IP address of the node that we are on.
 
-        object_id_seed=None,
-            # Used to seed the deterministic generation of object IDs.
+        object_ref_seed=None,
+            # int
+            # Used to seed the deterministic generation of object refs.
             # The same value can be used across multiple runs of the same driver
-            # in order to generate the object IDs in a consistent manner.
+            # in order to generate the object refs in a consistent manner.
             # However, the same ID should not be used for different drivers.
 
         local_mode=False,
-            # True if the code should be executed serially without Ray. This is useful for debugging.
+            # bool
+            # If true, the code will be executed serially.
+            # This is useful for debugging.
 
         redirect_worker_output=None,
+
         redirect_output=None,
 
         ignore_reinit_error=False,
-            # True if we should suppress errors from calling ray.init() a second time
+            # If true, Ray suppresses errors from calling ray.init() a second time.
+            # Ray won’t be restarted.
 
         num_redis_shards=None,
-            # The number of Redis shards to start in addition to the primary Redis shard
+            # The number of Redis shards to start in addition to the primary Redis shard.
 
         redis_max_clients=None,
-            # If provided, attempt to configure Redis with this maxclients number
+            # If provided, attempt to configure Redis with this maxclients number.
 
-        redis_password=None,
-            # Prevents external clients without the password from connecting to Redis if provided
+        # redis_password=ray_constant.REDIS_DEFAULT_PASSWORD,
+            # str
+            # Prevents external clients without the password from connecting to Redis if provided.
 
         plasma_directory=None,
-            # A directory where the Plasma memory mapped files will be created
+            # A directory where the Plasma memory mapped files will be created.
 
         huge_pages=False,
             # Boolean flag indicating whether to start the Object Store with hugetlbfs support.
             # Requires plasma_directory.
 
-        include_webui=False,
-            # Boolean flag indicating whether to start the web UI, which displays the status of the Ray cluster
+        include_java=False,
+            # Boolean flag indicating whether or not to enable java workers.
 
-        # job_id=None,   # unexpected keyword argument
-            # The ID of this job
+        include_dashboard=None,
+            # Boolean flag indicating whether or not to start the Ray dashboard,
+            # which displays the status of the Ray cluster.
+            # If this argument is None, then the UI will be started if the relevant dependencies are present.
+
+        dashboard_host='localhost',
+            # The host to bind the dashboard server to.
+            # Can either be localhost (127.0.0.1) or 0.0.0.0 (available from all interfaces).
+            # By default, this is set to localhost to prevent access from external machines.
+
+        dashboard_port=ray_constants.DEFAULT_DASHBOARD_PORT,
+            # The port to bind the dashboard server to.
+            # Defaults to 8265.
+
+        job_id=None,   # unexpected keyword argument
+            # The ID of this job.
 
         configure_logging=True,
-            # True if allow the logging cofiguration here.
-            # Otherwise, the users may want to configure it by their own.
+            # True (default) if configuration of logging is allowed here.
+            # Otherwise, the user may want to configure it separately.
 
         logging_level=logging.INFO,
-            # Logging level, default will be logging.INFO
+            # Logging level, defaults to logging.INFO.
+            # Ignored unless “configure_logging” is true.
 
-        logging_format='%(asctime)s\t%(levelname)s %(filename)s:%(lineno)s -- %(message)s',
-            # Logging format, default contains a timestamp, filename, line number, and message.
-            # See ray_constants.py.
+        logging_format=ray_constants.LOGGER_FORMAT,
+            # Logging format, defaults to string containing a timestamp, filename, line number, and message.
+            # See the source file ray_constants.py for details. Ignored unless “configure_logging” is true.
 
         plasma_store_socket_name=None,
-            # If provided, it will specify the socket name used by the plasma store
+            # If provided, specifies the socket name used by the plasma store.
 
         raylet_socket_name=None,
-            # If provided, it will specify the socket path used by the raylet process
+            # If provided, specifies the socket path used by the raylet process.
 
         temp_dir=None,
-            # If provided, it will specify the root temporary directory for the Ray process
+            # If provided, specifies the root temporary directory for the Ray process.
+            # Defaults to an OS-specific conventional location, e.g., “/tmp/ray”.
 
         load_code_from_local=False,
-            # Whether code should be loaded from a local module or from the GCS
+            # Whether code should be loaded from a local module or from the GCS.
 
-        _internal_config=None
+        java_worker_options=None,
+            # Overwrite the options to start Java workers.
+
+        _internal_config=None,
+            # str
             # JSON configuration for overriding RayConfig defaults.
             # For testing purposes ONLY.
+
+        lru_evict=False,
+            # bool
+            # If True, when an object store is full, it will evict objects in LRU order
+            # to make more space and when under memory pressure, ray.UnreconstructableError may be thrown.
+            # If False, then reference counting will be used to decide which objects are safe to evict
+            # and when under memory pressure, ray.ObjectStoreFullError may be thrown.
+
+        enable_object_reconstruction=False
+            # bool
+            # If True, when an object stored in the distributed plasma store is lost due to node failure,
+            # Ray will attempt to reconstruct the object by re-executing the task that created the object.
+            # Arguments to the task will be recursively reconstructed.
+            # If False, then ray.UnreconstructableError will be thrown.
     )
 
 
