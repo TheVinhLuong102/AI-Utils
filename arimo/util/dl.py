@@ -20,6 +20,7 @@ def _load_keras_model(file_path):
                 file_path,
                 custom_objects=None,
                 compile=True,
-                options=None)
+                # options=None
+            )
 
     return _LOADED_MODELS[file_path]
