@@ -1,8 +1,11 @@
 import os
 import keras
 
-# use relative import to avoid "ValueError: Attempted relative import in non-package" in Spark workers
-import fs
+try:
+    from . import fs
+except:
+    # use relative import to avoid "ValueError: Attempted relative import in non-package" in Spark workers
+    import fs
 
 
 MASK_VAL = .13 ** 3
