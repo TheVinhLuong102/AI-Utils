@@ -187,6 +187,7 @@ _SPARK_CONF = \
      'spark.sql.execution.arrow.pyspark.enabled': True,
      'spark.sql.execution.arrow.pyspark.fallback.enabled': True,
      'spark.sql.execution.pandas.convertToArrowArraySafely': False,
+        # Arrow safe type check can be disabled by using SQL config `spark.sql.execution.pandas.convertToArrowArraySafely`
 
      'spark.sql.hive.convertMetastoreParquet': True,
      'spark.sql.hive.filesourcePartitionFileCacheSize': 6 * 10 ** 9,   # default 262144000 bytes = 262 MB
