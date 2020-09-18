@@ -471,10 +471,7 @@ _SPARK_PY_FILES_DIR_PATH = \
         _SPARK_DEPS_DIR_PATH,
         'PyFiles')
 
-arimo_util_path = arimo_util_paths[0]
-_SPARK_ARIMO_PACKAGE_PY_FILE_PATHS = \
-    os.path.join(arimo_util_path, 'dl.py'), \
-    os.path.join(arimo_util_path, 'fs.py')
+_SPARK_ARIMO_PACKAGE_PY_FILE_PATHS = os.path.join(arimo_util_paths[0], 'dl.py'),
 
 _SPARK_CKPT_DIR = '/tmp/.spark/ckpt'
 
