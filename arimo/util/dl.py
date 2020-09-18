@@ -1,22 +1,8 @@
 import os
 import keras
 
-try:
-    from . import fs
-except:
-    # use relative import to avoid "ValueError: Attempted relative import in non-package" in Spark workers
-    import fs
-
 
 MASK_VAL = .13 ** 3
-
-
-_LOCAL_MODELS_DIR = '/tmp/.arimo/models'
-
-if not os.path.isdir(_LOCAL_MODELS_DIR):
-    fs.mkdir(
-        dir=_LOCAL_MODELS_DIR,
-        hdfs=False)
 
 
 _LOADED_MODELS = {}
