@@ -186,7 +186,7 @@ _SPARK_CONF = \
      'spark.sql.execution.arrow.maxRecordsPerBatch': 10 ** 4,
      'spark.sql.execution.arrow.pyspark.enabled': True,
      'spark.sql.execution.arrow.pyspark.fallback.enabled': True,
-     'spark.sql.execution.pandas.convertToArrowArraySafely': False,
+     'spark.sql.execution.pandas.convertToArrowArraySafely': True,
         # Arrow safe type check can be disabled by using SQL config `spark.sql.execution.pandas.convertToArrowArraySafely`
 
      'spark.sql.hive.convertMetastoreParquet': True,
