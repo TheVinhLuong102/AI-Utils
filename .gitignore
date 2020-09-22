@@ -105,3 +105,6 @@ ENV/
 # IntelliJ IDEA files
 *.iml
 .idea/
+
+# Visual Studio Code
+.vscode/
