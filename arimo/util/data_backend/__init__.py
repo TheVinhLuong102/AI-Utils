@@ -36,10 +36,10 @@ assert pyarrow.__version__ >= _MIN_ARROW_VER, \
     f'*** PyArrow >= {_MIN_ARROW_VER} required, but {pyarrow.__version__} installed ***'
 
 
-_MIN_SPARK_VER = '3.0.0'
+_MIN_SPARK_VER = '3.0.1'
 
 
-_MIN_TF_VER = '2.3.0'
+_MIN_TF_VER = '2.3.1'
 assert tensorflow.__version__ >= _MIN_TF_VER, \
     f'*** TensorFlow >= {_MIN_TF_VER} required, but {tensorflow.__version__} installed ***'
 
