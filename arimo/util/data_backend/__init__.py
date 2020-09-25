@@ -25,7 +25,7 @@ from .yarn.alloc import optim_alloc
 
 
 # verify Python version
-_MIN_PY_VER = 3, 8
+_MIN_PY_VER = 3, 7
 
 assert sys.version_info >= _MIN_PY_VER, \
     f'*** Python >= {_MIN_PY_VER[0]}.{_MIN_PY_VER[1]} required ***'
