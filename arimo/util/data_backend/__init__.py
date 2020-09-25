@@ -39,12 +39,12 @@ assert pyarrow.__version__ >= _MIN_ARROW_VER, \
 _MIN_SPARK_VER = '3.0.1'
 
 
-_MIN_TF_VER = '2.3.1'
+_MIN_TF_VER = '2.2.1'   # works with multiprocessing training
 assert tensorflow.__version__ >= _MIN_TF_VER, \
     f'*** TensorFlow >= {_MIN_TF_VER} required, but {tensorflow.__version__} installed ***'
 
 
-_MIN_KERAS_VER = '2.4.3'
+_MIN_KERAS_VER = '2.3.1'   # works with multiprocessing training
 assert keras.__version__ >= _MIN_KERAS_VER, \
     f'*** Keras >= {_MIN_KERAS_VER} required, but Currently {keras.__version__} installed ***'
 
