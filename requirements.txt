@@ -24,8 +24,8 @@ S3FS >= 0.4.2, < 0.5.0
 # misc
 ConfigParser >= 5.0.1
 JobLib >= 0.17.0
-PSUtil >= 5.7.2
-Tqdm >= 4.50.2
+PSUtil >= 5.7.3
+Tqdm >= 4.51.0
 
 HyperOpt >= 0.2.5
     # for Arimo.DL
