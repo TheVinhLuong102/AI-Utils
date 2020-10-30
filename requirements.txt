@@ -19,7 +19,7 @@ SciKit-Learn >= 0.23.2
 AWSCLI >= 1.18.169
 Boto3 >= 1.16.9
 S3FS >= 0.4.2, < 0.5.0
-    # *** 0.5.0 causes PIP Install to hang/fail ***
+    # *** >= 0.5.0 causes PIP Install to hang/fail ***
 
 # misc
 ConfigParser >= 5.0.1
