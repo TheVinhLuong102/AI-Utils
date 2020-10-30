@@ -4,14 +4,14 @@ Python-DateUtil >= 2.8.1
 
 # data libraries involved in util
 NumPy >= 1.19.3
-Pandas >= 1.1.3
+Pandas >= 1.1.4
 PyArrow >= 2.0.0
 PySpark >= 3.0.1
 Ray >= 1.0.0
 
 # ML/DL libraries involved in util
 Keras >= 2.4.3
-H5Py >= 2.10.0
+H5Py >= 3.0.0
 
 SciKit-Learn >= 0.23.2
 
