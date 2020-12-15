@@ -1,22 +1,17 @@
+import json
 import os
-from ruamel import yaml
 from setuptools import find_namespace_packages, setup
 
 
 _PACKAGE_NAMESPACE_NAME = 'arimo'
 
-_METADATA_FILE_NAME = 'metadata.yml'
+_METADATA_FILE_NAME = 'metadata.json'
 
 _SETUP_REQUIREMENTS_FILE_NAME = 'requirements-setup.txt'
 _INSTALL_REQUIREMENTS_FILE_NAME = 'requirements.txt'
 
 
-_metadata = \
-    yaml.safe_load(
-        stream=open(os.path.join(
-                os.path.dirname(__file__),
-                _PACKAGE_NAMESPACE_NAME,
-                _METADATA_FILE_NAME)))
+_metadata = json.load(open(_METADATA_FILE_NAME))
 
 
 def parse_requirements(requirements_file_name):
