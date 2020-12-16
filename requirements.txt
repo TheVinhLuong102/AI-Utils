@@ -8,7 +8,8 @@ NumPy
 Pandas >= 1.1.5
 PyArrow >= 2.0.0
 PySpark >= 3.0.1
-Ray >= 1.0.1
+Ray
+    # avoid version clashing with H1st
 
 # ML/DL libraries involved in util
 Keras >= 2.4.3
