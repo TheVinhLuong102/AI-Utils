@@ -19,15 +19,15 @@ H5Py >= 2.10.0, < 3.0.0
 SciKit-Learn >= 0.23.2
 
 # cloud
-AWSCLI >= 1.18.197
-Boto3 >= 1.16.37
+AWSCLI >= 1.18.200
+Boto3 >= 1.16.40
 S3FS >= 0.4.2, < 0.5.0
     # *** >= 0.5.0 causes PIP Install to hang/fail ***
 
 # misc
 ConfigParser >= 5.0.1
 JobLib >= 1.0.0
-PSUtil >= 5.7.3
+PSUtil >= 5.8.0
 Tqdm >= 4.54.1
 
 HyperOpt >= 0.2.5
