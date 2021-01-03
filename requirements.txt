@@ -5,7 +5,7 @@ Python-DateUtil >= 2.8.1
 # data libraries involved in util
 NumPy
     # avoid version clashing with H1st
-Pandas >= 1.1.5
+Pandas >= 1.2.0
 PyArrow >= 2.0.0
 PySpark >= 3.0.1
 Ray
@@ -19,8 +19,8 @@ H5Py >= 2.10.0, < 3.0.0
 SciKit-Learn >= 0.24.0
 
 # cloud
-AWSCLI >= 1.18.203
-Boto3 >= 1.16.43
+AWSCLI >= 1.18.207
+Boto3 >= 1.16.47
 S3FS >= 0.4.2, < 0.5.0
     # *** >= 0.5.0 causes PIP Install to hang/fail ***
 
@@ -28,7 +28,7 @@ S3FS >= 0.4.2, < 0.5.0
 ConfigParser >= 5.0.1
 JobLib >= 1.0.0
 PSUtil >= 5.8.0
-Tqdm >= 4.54.1
+Tqdm >= 4.55.1
 
 HyperOpt >= 0.2.5
     # for Arimo.DL
