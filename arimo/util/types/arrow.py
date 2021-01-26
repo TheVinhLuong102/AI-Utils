@@ -16,7 +16,8 @@ from pyarrow.lib import \
     float16, Type_HALF_FLOAT, \
     float32, Type_FLOAT, \
     float64, Type_DOUBLE, \
-    decimal128, Decimal128Type, Type_DECIMAL, \
+    decimal128, Decimal128Type, Type_DECIMAL128, \
+    decimal256, Decimal128Type, Type_DECIMAL256, \
     date32, Type_DATE32, \
     date64, Type_DATE64, \
     timestamp, TimestampType, Type_TIMESTAMP, \
