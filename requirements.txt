@@ -3,7 +3,7 @@ Cython >= 0.29.21
 Python-DateUtil >= 2.8.1
 
 # data libraries involved in util
-NumPy >= 0.19.5
+NumPy >= 1.20.0
 Pandas >= 1.2.1
 PyArrow >= 3.0.0
 PySpark >= 3.0.1
@@ -17,8 +17,8 @@ H5Py >= 2.10.0, < 3.0.0
 SciKit-Learn >= 0.24.1
 
 # cloud
-AWSCLI >= 1.18.220
-Boto3 >= 1.16.60
+AWSCLI >= 1.18.223
+Boto3 >= 1.16.63
 S3FS >= 0.4.2, < 0.5.0
     # *** >= 0.5.0 causes PIP Install to hang/fail ***
 
