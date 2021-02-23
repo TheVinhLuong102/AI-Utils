@@ -7,7 +7,7 @@ NumPy >= 1.20.1
 Pandas >= 1.2.2
 PyArrow >= 3.0.0
 PySpark >= 3.0.2
-Ray >= 1.2.0
+Ray >= 1.2.0; python_version < '3.9'
 
 # ML/DL libraries involved in util
 Keras >= 2.4.3
