@@ -3,7 +3,7 @@ import os
 from setuptools import find_namespace_packages, setup
 
 
-_PACKAGE_NAMESPACE_NAME = 'arimo'
+_PACKAGE_NAMESPACE_NAME = 'h1st'
 
 _METADATA_FILE_NAME = 'metadata.json'
 

@@ -2,7 +2,7 @@ import logging
 import os
 import tempfile
 
-from arimo.util.date_time import \
+from h1st.util.date_time import \
     DATE_COL, \
     _T_ORD_COL, _T_DELTA_COL, \
     _T_HoY_COL, _T_QoY_COL, _T_MoY_COL, _T_PoY_COL, \
@@ -12,10 +12,10 @@ from arimo.util.date_time import \
     _T_DoW_COL, _T_PoW_COL, \
     _T_HoD_COL, _T_PoD_COL, \
     _T_COMPONENT_AUX_COLS, _T_CAT_AUX_COLS, _T_NUM_AUX_COLS
-from arimo.util import Namespace
-from arimo.util.decor import _docstr_settable_property
-from arimo.util.log import STDOUT_HANDLER
-import arimo.debug
+from h1st.util import Namespace
+from h1st.util.decor import _docstr_settable_property
+from h1st.util.log import STDOUT_HANDLER
+import h1st.debug
 
 
 class AbstractDataHandler:
@@ -92,7 +92,7 @@ class AbstractDataHandler:
     _PREP_SQL_STATEMENT_FILE_NAME = 'prepSQLStatement.json'
 
     # temp dir
-    _TMP_DIR_PATH = os.path.join(tempfile.gettempdir(), '.arimo/df')
+    _TMP_DIR_PATH = os.path.join(tempfile.gettempdir(), '.h1st/df')
 
     # data prep cache
     _PREP_CACHE = {}
@@ -131,7 +131,7 @@ class AbstractDataHandler:
 
         if level is None:
             level = logging.DEBUG \
-                if arimo.debug.ON \
+                if h1st.debug.ON \
                 else logging.INFO
 
         logger.setLevel(level)
@@ -157,7 +157,7 @@ class AbstractDataHandler:
 
         if level is None:
             level = logging.DEBUG \
-                if arimo.debug.ON \
+                if h1st.debug.ON \
                 else logging.INFO
 
         logger.setLevel(level)

@@ -15,7 +15,7 @@ import time
 import types
 import uuid
 
-import arimo.util.data_backend
+import h1st.util.data_backend
 
 from pyspark.ml import PipelineModel, Transformer
 from pyspark.ml.feature import OneHotEncoder, OneHotEncoderModel, SQLTransformer, VectorAssembler
@@ -24,16 +24,16 @@ from pyspark.sql import DataFrame, functions as sparkSQLFuncs
 from pyspark.sql.types import StructField, StructType
 from pyspark.sql.window import Window
 
-from arimo.util import DefaultDict, fs, Namespace
-from arimo.util.aws import rds, s3
-from arimo.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
-from arimo.util.iterables import flatten, to_iterable
-from arimo.util.types.numpy_pandas import PY_NUM_TYPES
-from arimo.util.types.spark_sql import \
+from h1st.util import DefaultDict, fs, Namespace
+from h1st.util.aws import rds, s3
+from h1st.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
+from h1st.util.iterables import flatten, to_iterable
+from h1st.util.types.numpy_pandas import PY_NUM_TYPES
+from h1st.util.types.spark_sql import \
     _INT_TYPE, _BIGINT_TYPE, _INT_TYPES, _DOUBLE_TYPE, _FLOAT_TYPES, _NUM_TYPES, \
     _BOOL_TYPE, _STR_TYPE, _BINARY_TYPE, _POSSIBLE_CAT_TYPES, _DATE_TYPE, _TIMESTAMP_TYPE, \
     _VECTOR_TYPE, _DECIMAL_TYPE_PREFIX, _ARRAY_TYPE_PREFIX, _MAP_TYPE_PREFIX, _STRUCT_TYPE_PREFIX
-import arimo.debug
+import h1st.debug
 
 from . import AbstractDataHandler
 
@@ -149,7 +149,7 @@ class DistributedDataFrame(AbstractDataHandler):
             sparkDF: a ``Spark DataFrame``
         """
         # set Spark Session
-        self._sparkSession = arimo.util.data_backend.spark
+        self._sparkSession = h1st.util.data_backend.spark
 
         # set underlying Spark SQL DataFrame
         self._sparkDF = sparkDF
@@ -488,7 +488,7 @@ class DistributedDataFrame(AbstractDataHandler):
                                 .partitionBy(iCol) \
                                 .orderBy(tCol if _genTOrdCol else self._T_ORD_COL)
 
-                    if arimo.debug.ON:
+                    if h1st.debug.ON:
                         if forceGenTRelAuxCols:
                             self.class_stdout_logger().debug(
                                 msg='*** FORCE-GENERATING AUXILIARY COLUMNS {}, {}, {}, {} ***'
@@ -567,12 +567,12 @@ class DistributedDataFrame(AbstractDataHandler):
 
                 if _castTColType or _genTOrdCol or _genTDeltaCol:
                     if self._cache.nRows is None:
-                        if arimo.debug.ON:
+                        if h1st.debug.ON:
                             tic = time.time()
 
                         self._cache.nRows = self._sparkDF.count()
 
-                        if arimo.debug.ON:
+                        if h1st.debug.ON:
                             toc = time.time()
                             self.class_stdout_logger().debug(
                                 msg='*** nRows = {:,}   <{:,.1f} s> ***'.format(self._cache.nRows, toc - tic))
@@ -664,12 +664,12 @@ class DistributedDataFrame(AbstractDataHandler):
 
                     if _genTOrdInChunkCol:
                         if self._cache.nRows is None:
-                            if arimo.debug.ON:
+                            if h1st.debug.ON:
                                 tic = time.time()
 
                             self._cache.nRows = self._sparkDF.count()
 
-                            if arimo.debug.ON:
+                            if h1st.debug.ON:
                                 toc = time.time()
                                 self.stdout_logger.debug(
                                     msg='*** nRows = {:,}   <{:,.1f} s> ***'.format(self._cache.nRows, toc - tic))
@@ -1316,8 +1316,8 @@ class DistributedDataFrame(AbstractDataHandler):
 
             samplingRatio: ratio of rows sampled for type inference
         """
-        if not arimo.util.data_backend.chkSpark():
-            arimo.util.data_backend.initSpark(
+        if not h1st.util.data_backend.chkSpark():
+            h1st.util.data_backend.initSpark(
                 sparkConf=sparkConf)
 
         pandasTSCols = []
@@ -1335,7 +1335,7 @@ class DistributedDataFrame(AbstractDataHandler):
             nRows = None
 
         sparkDF = \
-            arimo.util.data_backend.spark.createDataFrame(
+            h1st.util.data_backend.spark.createDataFrame(
                 data=data,
                 schema=schema,
                 samplingRatio=samplingRatio,
@@ -1400,7 +1400,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
             else:
                 return DistributedDataFrame.create(
-                    data=arimo.util.data_backend.spark.sparkContext.union(
+                    data=h1st.util.data_backend.spark.sparkContext.union(
                             [adf.rdd for adf in adfs]),
                     schema=StructType(
                             [StructField(
@@ -1433,7 +1433,7 @@ class DistributedDataFrame(AbstractDataHandler):
             _TEST_PARQUET_LOCAL_PATH = \
                 os.path.join(
                     os.path.dirname(
-                        os.path.dirname(arimo.debug.__file__)),
+                        os.path.dirname(h1st.debug.__file__)),
                     'resources',
                     _TEST_PARQUET_NAME)
 
@@ -1484,8 +1484,8 @@ class DistributedDataFrame(AbstractDataHandler):
             **options: and any data format-specific loading/reading options
                 (*ref:* http://spark.apache.org/docs/latest/api/python/pyspark.sql.html#pyspark.sql.DataFrameReader)
         """
-        if not arimo.util.data_backend.chkSpark():
-            arimo.util.data_backend.initSpark(
+        if not h1st.util.data_backend.chkSpark():
+            h1st.util.data_backend.initSpark(
                 sparkConf=sparkConf)
         
         if verbose:
@@ -1548,7 +1548,7 @@ class DistributedDataFrame(AbstractDataHandler):
                     secret_access_key=aws_secret_access_key)
 
             sparkDF = \
-                arimo.util.data_backend.spark.read.load(
+                h1st.util.data_backend.spark.read.load(
                     path=path,
                     format=format,
                     schema=schema,
@@ -1809,7 +1809,7 @@ class DistributedDataFrame(AbstractDataHandler):
     # checkpoint
 
     def cache(self, eager=True, verbose=True):
-        if arimo.debug.ON:
+        if h1st.debug.ON:
             eager = verbose = True
         elif not eager:
             verbose = False
@@ -1819,10 +1819,10 @@ class DistributedDataFrame(AbstractDataHandler):
             tic = time.time()
 
         if self._alias:
-            assert not arimo.util.data_backend.spark.catalog.isCached(tableName=self._alias), \
+            assert not h1st.util.data_backend.spark.catalog.isCached(tableName=self._alias), \
                 '*** Spark SQL Table "{}" Already Cached ***'.format(self._alias)
 
-            arimo.util.data_backend.spark.catalog.cacheTable(tableName=self._alias)
+            h1st.util.data_backend.spark.catalog.cacheTable(tableName=self._alias)
 
         self._sparkDF = self._sparkDF.cache()
 
@@ -1842,7 +1842,7 @@ class DistributedDataFrame(AbstractDataHandler):
         if format:
             self.save(
                 path=os.path.join(
-                    arimo.util.data_backend._SPARK_CKPT_DIR,
+                    h1st.util.data_backend._SPARK_CKPT_DIR,
                     str(uuid.uuid4())),
                 format=format,
                 partitionBy=None,
@@ -1851,7 +1851,7 @@ class DistributedDataFrame(AbstractDataHandler):
                 switch=True)
 
         else:
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 eager = verbose = True
             elif not eager:
                 verbose = False
@@ -1907,7 +1907,7 @@ class DistributedDataFrame(AbstractDataHandler):
     def alias(self, alias):
         # *** DON'T DO THE BELOW BECAUSE IT UNCACHES THE DATAFRAME IF THE DATAFRAME IS CACHED ***
         # if self._alias:
-        #     arimo.util.data_backend.spark.catalog.dropTempView(viewName=self._alias)
+        #     h1st.util.data_backend.spark.catalog.dropTempView(viewName=self._alias)
 
         self._alias = alias
         if alias:
@@ -2210,7 +2210,7 @@ class DistributedDataFrame(AbstractDataHandler):
             _lower_query = query.strip().lower()
             assert _lower_query.startswith('select')
 
-            sparkDF = arimo.util.data_backend.spark.sql(query)
+            sparkDF = h1st.util.data_backend.spark.sql(query)
             self.alias = origAlias
 
             inheritCache = \
@@ -2362,12 +2362,12 @@ class DistributedDataFrame(AbstractDataHandler):
     @property
     def first(self):
         if self._cache.firstRow is None:
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 tic = time.time()
 
             self._cache.firstRow = row = self._sparkDF.first()
 
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 toc = time.time()
                 self.stdout_logger.debug(
                     msg='*** FIRST ROW OF COLUMNS {}: {}   <{:,.1f} s> ***'
@@ -2506,7 +2506,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
             if col not in self._cache.count:
                 verbose = True \
-                    if arimo.debug.ON \
+                    if h1st.debug.ON \
                     else kwargs.get('verbose')
 
                 if verbose:
@@ -2598,7 +2598,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
             else:
                 verbose = True \
-                    if arimo.debug.ON \
+                    if h1st.debug.ON \
                     else kwargs.get('verbose')
 
                 if verbose:
@@ -2758,7 +2758,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
                     if col not in cache:
                         verbose = True \
-                            if arimo.debug.ON \
+                            if h1st.debug.ON \
                             else kwargs.get('verbose')
 
                         if verbose:
@@ -2805,7 +2805,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
                 if col not in self._cache.sampleMedian:
                     verbose = True \
-                        if arimo.debug.ON \
+                        if h1st.debug.ON \
                         else kwargs.get('verbose')
 
                     if verbose:
@@ -2863,7 +2863,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
                     if col not in cache:
                         verbose = True \
-                            if arimo.debug.ON \
+                            if h1st.debug.ON \
                             else kwargs.get('verbose')
 
                         if verbose:
@@ -2926,7 +2926,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
                 if col not in self._cache.outlierRstMin:
                     verbose = True \
-                        if arimo.debug.ON \
+                        if h1st.debug.ON \
                         else kwargs.get('verbose')
 
                     if verbose:
@@ -2987,7 +2987,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
                 if col not in self._cache.outlierRstMax:
                     verbose = True \
-                        if arimo.debug.ON \
+                        if h1st.debug.ON \
                         else kwargs.get('verbose')
                     
                     if verbose:
@@ -3110,7 +3110,7 @@ class DistributedDataFrame(AbstractDataHandler):
             col = cols[0]
 
             verbose = True \
-                if arimo.debug.ON \
+                if h1st.debug.ON \
                 else kwargs.get('verbose')
 
             if verbose:
@@ -3355,7 +3355,7 @@ class DistributedDataFrame(AbstractDataHandler):
         savePath = kwargs.pop('savePath', None)
 
         verbose = kwargs.pop('verbose', False)
-        if arimo.debug.ON:
+        if h1st.debug.ON:
             verbose = True
 
         if loadPath:
@@ -3586,9 +3586,9 @@ class DistributedDataFrame(AbstractDataHandler):
 
             fs.rm(
                 path=savePath,
-                hdfs=arimo.util.data_backend._ON_LINUX_CLUSTER_WITH_HDFS,
+                hdfs=h1st.util.data_backend._ON_LINUX_CLUSTER_WITH_HDFS,
                 is_dir=True,
-                hadoop_home=arimo.util.data_backend._HADOOP_HOME)
+                hadoop_home=h1st.util.data_backend._HADOOP_HOME)
 
             sqlTransformer.save(   # *** NEED TO ENHANCE TO ALLOW OVERWRITING ***
                 path=savePath)
@@ -3732,7 +3732,7 @@ class DistributedDataFrame(AbstractDataHandler):
         savePath = kwargs.pop('savePath', None)
 
         verbose = kwargs.pop('verbose', False)
-        if arimo.debug.ON:
+        if h1st.debug.ON:
             verbose = True
 
         if loadPath:
@@ -3768,7 +3768,7 @@ class DistributedDataFrame(AbstractDataHandler):
                     localDirExists = os.path.isdir(loadPath)
 
                     hdfsDirExists = \
-                        arimo.util.data_backend.hdfs.isdir(path=loadPath)
+                        h1st.util.data_backend.hdfs.isdir(path=loadPath)
 
                     if localDirExists and (not hdfsDirExists):
                         fs.put(
@@ -4037,7 +4037,7 @@ class DistributedDataFrame(AbstractDataHandler):
                                 # so when dropLast is true, invalid values are encoded as all-zeros vector
                             dropLast=True) \
                         .fit(dataset=self.reprSample._sparkDF[catCols].union(
-                                        arimo.util.data_backend.spark.sql(
+                                        h1st.util.data_backend.spark.sql(
                                             'VALUES ({})'.format(', '.join(len(catCols) * ('NULL',)))))
                                     .selectExpr(*('{} AS {}'.format(catSqlItem, strIdxCol)
                                                   for strIdxCol, catSqlItem in prepSqlItems.items())))
@@ -4215,13 +4215,13 @@ class DistributedDataFrame(AbstractDataHandler):
             # *** NEED TO ENHANCE TO ALLOW OVERWRITING ***
             fs.rm(
                 path=savePath,
-                hdfs=arimo.util.data_backend._ON_LINUX_CLUSTER_WITH_HDFS,
+                hdfs=h1st.util.data_backend._ON_LINUX_CLUSTER_WITH_HDFS,
                 is_dir=True,
-                hadoop_home=arimo.util.data_backend._HADOOP_HOME)
+                hadoop_home=h1st.util.data_backend._HADOOP_HOME)
 
             pipelineModelWithoutVectors.save(path=savePath)
 
-            if arimo.util.data_backend._ON_LINUX_CLUSTER_WITH_HDFS:
+            if h1st.util.data_backend._ON_LINUX_CLUSTER_WITH_HDFS:
                 fs.get(
                     from_hdfs=savePath,
                     to_local=savePath,
@@ -4304,7 +4304,7 @@ class DistributedDataFrame(AbstractDataHandler):
                 ['__TS_WINDOW_CLAUSE__', '__SCALER__'])
 
         if missingCatCols or missingNumCols:
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 self.stdout_logger.debug(
                     msg='*** FILLING MISSING COLS {} ***'
                         .format(missingCatCols | missingNumCols))
@@ -4581,7 +4581,7 @@ class DistributedDataFrame(AbstractDataHandler):
         filterCondition = kwargs.get('filter')
 
         if filterCondition:
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 self.stdout_logger.debug(
                     '*** FILTER CONDITION: {} ***'.format(filterCondition))
 
@@ -4923,13 +4923,13 @@ class DistributedDataFrame(AbstractDataHandler):
 
                 adf = preparedArgs.adf
 
-                if arimo.debug.ON:
+                if h1st.debug.ON:
                     self.stdout_logger.debug(msg='*** .gen(...): NOT TRIGGERING SAMPLING: sampleN >= Data Size ***')
 
         else:
             adf = preparedArgs.adf
 
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 self.stdout_logger.debug(msg='*** .gen(...): NOT TRIGGERING SAMPLING: sampleN not set ***')
 
         alias = kwargs.get('alias')
@@ -4942,13 +4942,13 @@ class DistributedDataFrame(AbstractDataHandler):
         cache = kwargs.get('cache', True)
 
         if cache:
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 self.stdout_logger.debug(msg='*** CACHING FOR STREAMING... ***')
                 tic = time.time()
 
             adf.cache(eager=True)
 
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 toc = time.time()
                 self.stdout_logger.debug(
                     msg='*** CACHED FOR STREAMING: {} ROWS   <{:,.1f} m> ***'.format(adf.nRows, (toc - tic) / 60))
@@ -5062,7 +5062,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
             nTSChunkIDs = len(tsChunkIDs)
 
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 self.stdout_logger.debug(
                     msg='*** SPLITTING BY ID-AND-CHUNK-NUMBER / PARTITION-AND-ID COMBOS ({} COMBOS IN TOTAL) ***'
                         .format(nTSChunkIDs))
@@ -5168,7 +5168,7 @@ class DistributedDataFrame(AbstractDataHandler):
                                   partitionBy=partitionBy)
 
                     if restartSpark:
-                        arimo.util.data_backend.spark.stop()
+                        h1st.util.data_backend.spark.stop()
 
                     else:
                         partADFs.append(DistributedDataFrame.load(pathPath))

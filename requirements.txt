@@ -29,4 +29,4 @@ PSUtil >= 5.8.0
 Tqdm >= 4.59.0
 
 HyperOpt >= 0.2.5
-    # for Arimo.DL
+    # for H1st.DL

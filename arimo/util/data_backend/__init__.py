@@ -13,12 +13,12 @@ import keras
 
 import pyspark
 
-from arimo.util import __path__ as arimo_util_paths
-from arimo.util.decor import _docstr_verbose
-from arimo.util.fs import hdfs_client as hdfs, exist, put, rm, \
+from h1st.util import __path__ as h1st_util_paths
+from h1st.util.decor import _docstr_verbose
+from h1st.util.fs import hdfs_client as hdfs, exist, put, rm, \
     _HADOOP_HOME, _HADOOP_CONF_DIR_ENV_VAR_NAME, \
     _ON_LINUX_CLUSTER, _ON_LINUX_CLUSTER_WITH_HDFS
-from arimo.util.log import STDOUT_HANDLER
+from h1st.util.log import STDOUT_HANDLER
 
 from ..aws.ec2.instance_types import INSTANCE_TYPES_INFO, MEMORY_GiB_KEY, N_CPUS_KEY
 from .yarn.alloc import optim_alloc
@@ -53,16 +53,16 @@ assert keras.__version__ >= _MIN_KERAS_VER, \
 _JAVA_HOME_ENV_VAR_NAME = 'JAVA_HOME'
 
 if _ON_LINUX_CLUSTER:
-    _JAVA_HOME_ON_ARIMO_LINUX_CLUSTER = '/usr/lib/jvm/java-9-openjdk-amd64'
+    _JAVA_HOME_ON_H1ST_LINUX_CLUSTER = '/usr/lib/jvm/java-9-openjdk-amd64'
 
-    if not os.path.isdir(_JAVA_HOME_ON_ARIMO_LINUX_CLUSTER):
-        _JAVA_HOME_ON_ARIMO_LINUX_CLUSTER = '/usr/lib/jvm/java-8-openjdk-amd64'
-        # assert os.path.isdir(_JAVA_HOME_ON_ARIMO_LINUX_CLUSTER)   # TODO
+    if not os.path.isdir(_JAVA_HOME_ON_H1ST_LINUX_CLUSTER):
+        _JAVA_HOME_ON_H1ST_LINUX_CLUSTER = '/usr/lib/jvm/java-8-openjdk-amd64'
+        # assert os.path.isdir(_JAVA_HOME_ON_H1ST_LINUX_CLUSTER)   # TODO
 
 _JAVA_HOME = \
     os.environ.get(
         'JAVA_HOME',
-        _JAVA_HOME_ON_ARIMO_LINUX_CLUSTER
+        _JAVA_HOME_ON_H1ST_LINUX_CLUSTER
             if _ON_LINUX_CLUSTER
             else os.popen('echo $(/usr/libexec/java_home)').read()[:-1])
 
@@ -70,8 +70,8 @@ _JAVA_HOME = \
 # optimized default Spark configs
 _SPARK_HOME_ENV_VAR_NAME = 'SPARK_HOME'
 
-_SPARK_HOME_ON_ARIMO_LINUX_CLUSTER = '/opt/spark'
-_SPARK_JARS_DIR_PATH_ON_ARIMO_LINUX_CLUSTER = os.path.join(_SPARK_HOME_ON_ARIMO_LINUX_CLUSTER, 'jars')
+_SPARK_HOME_ON_H1ST_LINUX_CLUSTER = '/opt/spark'
+_SPARK_JARS_DIR_PATH_ON_H1ST_LINUX_CLUSTER = os.path.join(_SPARK_HOME_ON_H1ST_LINUX_CLUSTER, 'jars')
 
 _SPARK_FILES_MAX_PARTITION_BYTES_CONFIG_KEY = 'spark.files.maxPartitionBytes'
 _SPARK_SQL_FILES_MAX_PARTITION_BYTES_CONFIG_KEY = 'spark.sql.files.maxPartitionBytes'
@@ -309,12 +309,12 @@ _DATA_IO_SPARK_PKGS = \
             {# https://spark-packages.org/package/potix2/spark-google-spreadsheets
              'com.github.potix2:spark-google-spreadsheets_2.11:0.5.0'},
 
-         # *** java.io.FileNotFoundException: File file:/home/arimo/.ivy2/jars/org.apache.zookeeper_zookeeper-3.4.6.jar does not exist ***
+         # *** java.io.FileNotFoundException: File file:/home/h1st/.ivy2/jars/org.apache.zookeeper_zookeeper-3.4.6.jar does not exist ***
          # hadoopcryptoledger=
          #    {# https://spark-packages.org/package/ZuInnoTe/spark-hadoopcryptoledger-ds
          #     'com.github.zuinnote:spark-hadoopcryptoledger-ds_2.11:1.2.0'},
 
-         # *** java.io.FileNotFoundException: File file:/home/arimo/.ivy2/jars/org.apache.zookeeper_zookeeper-3.4.6.jar does not exist ***
+         # *** java.io.FileNotFoundException: File file:/home/h1st/.ivy2/jars/org.apache.zookeeper_zookeeper-3.4.6.jar does not exist ***
          # hadoopoffice=
          #    {# https://spark-packages.org/package/ZuInnoTe/spark-hadoopoffice-ds
          #     'com.github.zuinnote:spark-hadoopoffice-ds_2.11:1.1.1'},
@@ -427,7 +427,7 @@ _DATA_IO_SPARK_PKGS = \
             {# https://spark-packages.org/package/HyukjinKwon/spark-xml
              'HyukjinKwon:spark-xml:0.1.1-s_2.10'},
 
-         # *** java.io.FileNotFoundException: File file:/home/arimo/.ivy2/jars/net.java.dev.jna_jna-3.3.0.jar does not exist ***
+         # *** java.io.FileNotFoundException: File file:/home/h1st/.ivy2/jars/net.java.dev.jna_jna-3.3.0.jar does not exist ***
          # zzz=
          #    {# https://spark-packages.org/package/Stratio/spark-crossdata
          #     'Stratio:spark-crossdata:1.4.0',
@@ -472,7 +472,7 @@ _SPARK_PY_FILES_DIR_PATH = \
         _SPARK_DEPS_DIR_PATH,
         'PyFiles')
 
-_SPARK_ARIMO_PACKAGE_PY_FILE_PATHS = os.path.join(arimo_util_paths[0], 'dl.py'),
+_SPARK_H1ST_PACKAGE_PY_FILE_PATHS = os.path.join(h1st_util_paths[0], 'dl.py'),
 
 _SPARK_CKPT_DIR = '/tmp/.spark/ckpt'
 
@@ -649,7 +649,7 @@ def chkSpark():
 
 def updateYARNJARs():
     if _ON_LINUX_CLUSTER_WITH_HDFS:
-        put(from_local=_SPARK_JARS_DIR_PATH_ON_ARIMO_LINUX_CLUSTER,
+        put(from_local=_SPARK_JARS_DIR_PATH_ON_H1ST_LINUX_CLUSTER,
             to_hdfs=_YARN_JARS_DIR_NAME,
             is_dir=True,
             _mv=False,
@@ -669,7 +669,7 @@ def rmSparkCkPts():
 @_docstr_verbose
 def initSpark(
         sparkApp=None,
-        sparkHome=os.environ.get(_SPARK_HOME_ENV_VAR_NAME, _SPARK_HOME_ON_ARIMO_LINUX_CLUSTER),
+        sparkHome=os.environ.get(_SPARK_HOME_ENV_VAR_NAME, _SPARK_HOME_ON_H1ST_LINUX_CLUSTER),
         sparkConf={},
         sparkRepos=(),
         sparkPkgs=(),
@@ -680,7 +680,7 @@ def initSpark(
         dataIO={'avro', 'pg', 'redshift', 'sftp'},
         executor_aws_ec2_instance_type='c5n.9xlarge'):
     """
-    Launch new ``SparkSession`` or connect to existing one, and binding it to ``arimo.data_backend.spark``
+    Launch new ``SparkSession`` or connect to existing one, and binding it to ``h1st.data_backend.spark``
 
     Args:
         sparkApp (str): name to give to the ``SparkSession`` to be launched
@@ -743,7 +743,7 @@ def initSpark(
             #     for jar_file_name in os.listdir(_SPARK_JARS_DIR_PATH)
             #     if jar_file_name.endswith('.jar')),
 
-            ','.join(_SPARK_ARIMO_PACKAGE_PY_FILE_PATHS),
+            ','.join(_SPARK_H1ST_PACKAGE_PY_FILE_PATHS),
 
             ','.join(_SPARK_REPOS.union(sparkRepos)),
 
@@ -863,7 +863,7 @@ def initSpark(
 
     if yarnUpdateJARs:
         msg = 'Putting JARs from {} to {}...'.format(
-            _SPARK_JARS_DIR_PATH_ON_ARIMO_LINUX_CLUSTER,
+            _SPARK_JARS_DIR_PATH_ON_H1ST_LINUX_CLUSTER,
             _YARN_JARS_DIR_PATH)
         logger.info(msg)
         updateYARNJARs()

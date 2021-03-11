@@ -115,7 +115,7 @@ class SparkXDFonS3CacheDecor(_CacheDecorABC):
                 if verbose:
                     print('Reading Cached Data from {}... '.format(s3_path), end='')
 
-                from arimo.df.spark import SparkXDF
+                from h1st.df.spark import SparkXDF
 
                 result = SparkXDF.load(
                     path=s3_path,

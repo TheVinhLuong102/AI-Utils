@@ -17,18 +17,18 @@ from pyspark.ml import Transformer
 from pyspark.ml.feature import SQLTransformer
 from pyspark.sql import DataFrame
 
-import arimo.util.data_backend
+import h1st.util.data_backend
 from .parquet import AbstractS3ParquetDataHandler, \
     _S3ParquetDataFeeder__getitem__pandasDFTransform, _S3ParquetDataFeeder__drop__pandasDFTransform, \
     _S3ParquetDataFeeder__fillna__pandasDFTransform, _S3ParquetDataFeeder__prep__pandasDFTransform, \
     _S3ParquetDataFeeder__pieceArrowTableFunc, _S3ParquetDataFeeder__gen
-from arimo.util import fs, Namespace
-from arimo.util.aws import s3
-from arimo.util.date_time import gen_aux_cols
-from arimo.util.decor import enable_inplace
-from arimo.util.iterables import to_iterable
-from arimo.util.types.spark_sql import _BINARY_TYPE, _STR_TYPE
-import arimo.debug
+from h1st.util import fs, Namespace
+from h1st.util.aws import s3
+from h1st.util.date_time import gen_aux_cols
+from h1st.util.decor import enable_inplace
+from h1st.util.iterables import to_iterable
+from h1st.util.types.spark_sql import _BINARY_TYPE, _STR_TYPE
+import h1st.debug
 
 from .distributed import DDF
 
@@ -62,7 +62,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             _pandasDFTransforms=[],
             reprSampleMinNPieces=AbstractS3ParquetDataHandler._REPR_SAMPLE_MIN_N_PIECES,
             verbose=True, **kwargs):
-        if verbose or arimo.debug.ON:
+        if verbose or h1st.debug.ON:
             logger = self.class_stdout_logger()
 
         self.path = path
@@ -77,7 +77,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             assert _cache._srcSparkDF, \
                 '*** FAILED to Load SparkDF from {} ***'.format(path)
 
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 logger.debug('*** RETRIEVING CACHE FOR {} ***'.format(path))
 
         else:
@@ -158,8 +158,8 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                 _cache.s3Client = _cache.s3Bucket = _cache.tmpDirS3Key = None
                 _cache.tmpDirPath = self._TMP_DIR_PATH
 
-            if not arimo.util.data_backend.chkSpark():
-                arimo.util.data_backend.initSpark(sparkConf=kwargs.pop('sparkConf', {}))
+            if not h1st.util.data_backend.chkSpark():
+                h1st.util.data_backend.initSpark(sparkConf=kwargs.pop('sparkConf', {}))
 
             if verbose:
                 msg = 'Loading {} by Spark...'.format(self.path)
@@ -167,7 +167,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                 tic = time.time()
 
             _srcSparkDF = \
-                arimo.util.data_backend.spark.read.load(
+                h1st.util.data_backend.spark.read.load(
                     path=path,
                     format='parquet')
 
@@ -478,7 +478,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             _lower_query = query.strip().lower()
             assert _lower_query.startswith('select')
 
-            _sparkDF = arimo.util.data_backend.spark.sql(query)
+            _sparkDF = h1st.util.data_backend.spark.sql(query)
             self.alias = origAlias
 
             inheritCache = \
@@ -572,7 +572,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
         adf, catOrigToPrepColMap, numOrigToPrepColMap, pipelineModel = \
             super(S3ParquetDistributedDataFrame, self).prep(*cols, **kwargs)
 
-        if arimo.debug.ON:
+        if h1st.debug.ON:
             self.stdout_logger.debug(
                 msg='*** ORIG-TO-PREP METADATA: ***\n{}\n{}'
                     .format(catOrigToPrepColMap, numOrigToPrepColMap))
@@ -873,7 +873,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             assert pieceSubPaths, \
                 '*** {}: NO PIECE PATHS SATISFYING FILTER CRITERIA {} ***'.format(self, filterCriteria)
 
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 self.stdout_logger.debug(
                     msg='*** {} PIECES SATISFYING FILTERING CRITERIA: {} ***'
                         .format(len(pieceSubPaths), filterCriteria))

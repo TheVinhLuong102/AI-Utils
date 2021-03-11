@@ -22,17 +22,17 @@ from pyarrow.hdfs import HadoopFileSystem
 from pyarrow.parquet import ParquetDataset, read_metadata, read_schema, read_table
 from s3fs import S3FileSystem
 
-from arimo.util import DefaultDict, fs, Namespace
-from arimo.util.aws import s3
-from arimo.util.date_time import gen_aux_cols, DATE_COL
-from arimo.util.decor import enable_inplace, _docstr_verbose
-from arimo.util.iterables import to_iterable
-from arimo.util.types.arrow import \
+from h1st.util import DefaultDict, fs, Namespace
+from h1st.util.aws import s3
+from h1st.util.date_time import gen_aux_cols, DATE_COL
+from h1st.util.decor import enable_inplace, _docstr_verbose
+from h1st.util.iterables import to_iterable
+from h1st.util.types.arrow import \
     _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE, \
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string
-from arimo.util.types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY_NUM_TYPES
-from arimo.util.types.spark_sql import _STR_TYPE
-import arimo.debug
+from h1st.util.types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY_NUM_TYPES
+from h1st.util.types.spark_sql import _STR_TYPE
+import h1st.debug
 
 from . import AbstractDataHandler
 from .distributed import DDF
@@ -564,7 +564,7 @@ class _S3ParquetDataFeeder__gen:
 
         self.filterConditions = filterConditions
 
-        if filterConditions and arimo.debug.ON:
+        if filterConditions and h1st.debug.ON:
             print('*** FILTER CONDITION: {} ***'.format(filterConditions))
 
         self.n = n
@@ -633,7 +633,7 @@ class _S3ParquetDataFeeder__gen:
         self.nColsList = [len(cols) for cols in self.colsLists]
 
     def __call__(self):
-        if arimo.debug.ON:
+        if h1st.debug.ON:
             print('*** GENERATING BATCHES OF {} ***'.format(self.colsLists))
 
         while True:
@@ -734,7 +734,7 @@ class _S3ParquetDataFeeder__gen:
                         zip(self.colsLists, self.nColsList, self.colsOverTime, self.rowFrom_n_rowTo_tups)
                 )
 
-                if arimo.debug.ON:
+                if h1st.debug.ON:
                     for array in arrays:
                         nNaNs = numpy.isnan(array).sum()
                         assert not nNaNs, '*** {}: {} NaNs ***'.format(array.shape, nNaNs)
@@ -813,7 +813,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             _mappers=[],
             verbose=True,
             **kwargs):
-        if verbose or arimo.debug.ON:
+        if verbose or h1st.debug.ON:
             logger = self.class_stdout_logger()
 
         if isinstance(path, str):
@@ -840,7 +840,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             self._CACHE[path] = _cache = Namespace()
 
         if _cache:
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 logger.debug('*** RETRIEVING CACHE FOR "{}" ***'.format(path))
 
         else:
@@ -2320,7 +2320,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             assert piecePaths, \
                 '*** {}: NO PIECE PATHS SATISFYING FILTER CRITERIA {} ***'.format(self, filterCriteria)
 
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 self.stdout_logger.debug(
                     msg='*** {} PIECES SATISFYING FILTERING CRITERIA: {} ***'
                         .format(len(piecePaths), filterCriteria))
@@ -2364,7 +2364,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 nSamplePieces = self.nPieces
                 piecePaths = self.piecePaths
 
-        if verbose or arimo.debug.ON:
+        if verbose or h1st.debug.ON:
             self.stdout_logger.info(
                 'Sampling {:,} Rows{} from {:,} Pieces...'.format(
                     n,
@@ -2423,7 +2423,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             if pandasDF is None:
                 if col not in self._cache.count:
                     verbose = True \
-                        if arimo.debug.ON \
+                        if h1st.debug.ON \
                         else kwargs.get('verbose')
 
                     if verbose:
@@ -2627,7 +2627,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                     if col not in cache:
                         verbose = True \
-                            if arimo.debug.ON \
+                            if h1st.debug.ON \
                             else kwargs.get('verbose')
 
                         if verbose:
@@ -2693,7 +2693,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                     if col not in cache:
                         verbose = True \
-                            if arimo.debug.ON \
+                            if h1st.debug.ON \
                             else kwargs.get('verbose')
 
                         if verbose:
@@ -2771,7 +2771,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                 if col not in self._cache.outlierRstMin:
                     verbose = True \
-                        if arimo.debug.ON \
+                        if h1st.debug.ON \
                         else kwargs.get('verbose')
 
                     if verbose:
@@ -2837,7 +2837,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                 if col not in self._cache.outlierRstMax:
                     verbose = True \
-                        if arimo.debug.ON \
+                        if h1st.debug.ON \
                         else kwargs.get('verbose')
 
                     if verbose:
@@ -2916,7 +2916,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             col = cols[0]
 
             verbose = True \
-                if arimo.debug.ON \
+                if h1st.debug.ON \
                 else kwargs.get('verbose')
 
             if verbose:
@@ -3157,7 +3157,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         savePath = kwargs.pop('savePath', None)
 
         verbose = kwargs.pop('verbose', False)
-        if arimo.debug.ON:
+        if h1st.debug.ON:
             verbose = True
 
         if loadPath:
@@ -3530,7 +3530,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         savePath = kwargs.pop('savePath', None)
 
         verbose = kwargs.pop('verbose', False)
-        if arimo.debug.ON:
+        if h1st.debug.ON:
             verbose = True
 
         if loadPath:
@@ -3557,7 +3557,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     localDirExists = os.path.isdir(loadPath)
 
                     hdfsDirExists = \
-                        arimo.util.data_backend.hdfs.test(
+                        h1st.util.data_backend.hdfs.test(
                             path=loadPath,
                             exists=True,
                             directory=True)
@@ -3993,7 +3993,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         addCols = {}
 
         if missingCols:
-            if arimo.debug.ON:
+            if h1st.debug.ON:
                 self.stdout_logger.debug(
                     msg='*** FILLING MISSING COLS {} ***'
                         .format())
