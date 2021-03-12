@@ -1,3 +1,4 @@
+from inspect import isclass
 import math
 import numpy
 import os
@@ -511,7 +512,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             arg = args[0]
 
             if isinstance(arg, Transformer) or \
-                    (callable(arg) and (not isinstance(arg, DDF)) and (not isinstance(arg, types.ClassType))):
+                    (callable(arg) and (not isinstance(arg, DDF)) and (not isclass(arg))):
                 return self.transform(
                     sparkDFTransform=arg,
                     *(args[1:]

@@ -1,8 +1,6 @@
 import inspect
 
 import six
-if six.PY2:
-    from types import ClassType
 
 from . import iterables
 
@@ -52,7 +50,7 @@ def enable_inplace(Class):
 
             elif callable(result) \
                     and (not isinstance(result, Class)) \
-                    and (not isinstance(result, type if six.PY3 else ClassType)) \
+                    and (not inspect.isclass(result)) \
                     and (_arg_spec(result) != _SELF_ONLY_METHOD_ARG_SPEC):
                 result.__self__ = self
                 return enable_inplace(result)

@@ -2,6 +2,7 @@ from argparse import Namespace as _Namespace
 from collections import Counter
 import copy
 from functools import lru_cache
+from inspect import isclass
 import itertools
 import json
 import math
@@ -1091,7 +1092,7 @@ class DistributedDataFrame(AbstractDataHandler):
             decoratedMethod.__self__ = self   # real DistributedDataFrame __self__ instance, which maybe different to method.__self__
             return decoratedMethod
 
-        if callable(obj) and (not isinstance(obj, DistributedDataFrame)) and (not isinstance(obj, types.ClassType)):
+        if callable(obj) and (not isinstance(obj, DistributedDataFrame)) and (not isclass(obj)):
             return methodReturningDistributedDataFrame(method=obj)
 
         elif isinstance(obj, DataFrame):
@@ -2259,7 +2260,7 @@ class DistributedDataFrame(AbstractDataHandler):
         if args:
             arg = args[0]
 
-            if callable(arg) and (not isinstance(arg, DistributedDataFrame)) and (not isinstance(arg, types.ClassType)):
+            if callable(arg) and (not isinstance(arg, DistributedDataFrame)) and (not isclass(arg)):
                 args = args[1:] \
                     if (len(args) > 1) \
                     else ()
