@@ -24,7 +24,8 @@ def parse_requirements(requirements_file_name):
 setup(
     name=_metadata['PACKAGE'],
     version=_metadata['VERSION'],
-    namespace_packages=[_PACKAGE_NAMESPACE_NAME],
-    packages=find_namespace_packages(include=[f'{_PACKAGE_NAMESPACE_NAME}.*']),
+    namespace_packages=[_PACKAGE_NAMESPACE_NAME, 'arimo'],
+    packages=find_namespace_packages(include=[f'{_PACKAGE_NAMESPACE_NAME}.*',
+                                              'arimo.*']),
     setup_requires=parse_requirements(_SETUP_REQUIREMENTS_FILE_NAME),
     install_requires=parse_requirements(_INSTALL_REQUIREMENTS_FILE_NAME))
