@@ -3,7 +3,7 @@ Cython >= 0.29.22
 Python-DateUtil >= 2.8.1
 
 # data libraries involved in util
-NumPy >= 1.20.1
+NumPy >= 1.20.2
 Pandas >= 1.2.3
 PyArrow >= 3.0.0
 PySpark >= 3.1.1
