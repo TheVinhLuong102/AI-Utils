@@ -1,6 +1,6 @@
 PIP >= 21.0.1
 PyYAML >= 5.4.1
-Ruamel.YAML >= 0.17.0
-SetUpTools >= 54.2.0
+Ruamel.YAML >= 0.17.4
+SetUpTools >= 56.0.0
 Twine >= 3.4.1
 Wheel >= 0.36.2
