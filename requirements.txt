@@ -19,8 +19,7 @@ SciKit-Learn >= 0.24.1
 # cloud
 AWSCLI >= 1.19.56
 Boto3 >= 1.17.56
-S3FS >= 0.4.2, < 0.5.0
-    # *** >= 0.5.0 causes PIP Install to hang/fail ***
+S3FS >= 2021.4.0
 
 # misc
 ConfigParser >= 5.0.2
