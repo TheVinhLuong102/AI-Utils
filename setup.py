@@ -7,17 +7,8 @@ _PACKAGE_NAMESPACE_NAME = 'h1st'
 
 _METADATA_FILE_NAME = 'metadata.json'
 
-_INSTALL_REQUIREMENTS_FILE_NAME = 'requirements.txt'
-
 
 _metadata = json.load(open(_METADATA_FILE_NAME))
-
-
-def parse_requirements(requirements_file_name):
-    return [s for s in
-                {i.strip()
-                 for i in open(requirements_file_name).readlines()}
-            if not s.startswith('#')]
 
 
 setup(
@@ -26,4 +17,4 @@ setup(
     namespace_packages=[_PACKAGE_NAMESPACE_NAME, 'arimo'],
     packages=find_namespace_packages(include=[f'{_PACKAGE_NAMESPACE_NAME}.*',
                                               'arimo.*']),
-    install_requires=parse_requirements(_INSTALL_REQUIREMENTS_FILE_NAME))
+    install_requires=open('requirements.txt').readlines())
