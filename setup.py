@@ -7,7 +7,6 @@ _PACKAGE_NAMESPACE_NAME = 'h1st'
 
 _METADATA_FILE_NAME = 'metadata.json'
 
-_SETUP_REQUIREMENTS_FILE_NAME = 'requirements-setup.txt'
 _INSTALL_REQUIREMENTS_FILE_NAME = 'requirements.txt'
 
 
@@ -27,5 +26,4 @@ setup(
     namespace_packages=[_PACKAGE_NAMESPACE_NAME, 'arimo'],
     packages=find_namespace_packages(include=[f'{_PACKAGE_NAMESPACE_NAME}.*',
                                               'arimo.*']),
-    setup_requires=parse_requirements(_SETUP_REQUIREMENTS_FILE_NAME),
     install_requires=parse_requirements(_INSTALL_REQUIREMENTS_FILE_NAME))
