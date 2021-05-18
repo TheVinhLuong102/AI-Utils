@@ -10,5 +10,5 @@ H5Py >= 2.10.0, < 3.0.0
     # *** 3.0.0 leads to bug in loading Keras model ***
 
 # AWS
-AWSCLI >= 1.19.67
-Boto3 >= 1.17.67
+AWSCLI >= 1.19.74
+Boto3 >= 1.17.74
