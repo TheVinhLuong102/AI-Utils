@@ -1,4 +1,0 @@
-include requirements*.txt
-include h1st/metadata.yml
-
-recursive-exclude *.pyc

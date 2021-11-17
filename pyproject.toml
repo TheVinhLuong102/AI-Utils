@@ -1,0 +1,21 @@
+[tool.poetry]
+name = 'H1st-Util'
+version = '0.0.0.dev0'
+description = 'H1st Utilities'
+authors = ['Aitomatic, Inc. <Engineering@Aitomatic.com>']
+license = 'Apache-2.0'
+readme = 'README.md'
+homepage = 'https://GitHub.com/H1st-AI/H1st-Util'
+repository = 'https://GitHub.com/H1st-AI/H1st-Util'
+packages = [
+  {include = 'h1st_util'}
+]
+
+
+[tool.poetry.dependencies]
+Python = '>= 3.8, < 3.10'
+
+
+[build-system]
+requires = ['Poetry-Core >= 1.0.0']
+build-backend = 'poetry.core.masonry.api'
