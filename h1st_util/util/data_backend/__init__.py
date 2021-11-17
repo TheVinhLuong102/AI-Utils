@@ -13,9 +13,9 @@ import keras
 
 import pyspark
 
-from h1st.util import __path__ as h1st_util_paths
-from h1st.util.decor import _docstr_verbose
-from h1st.util.fs import hdfs_client as hdfs, exist, put, rm, \
+from h1st_util.util import __path__ as h1st_util_paths
+from h1st_util.util.decor import _docstr_verbose
+from h1st_util.util.fs import hdfs_client as hdfs, exist, put, rm, \
     _HADOOP_HOME, _HADOOP_CONF_DIR_ENV_VAR_NAME, \
     _ON_LINUX_CLUSTER, _ON_LINUX_CLUSTER_WITH_HDFS
 from h1st.util.log import STDOUT_HANDLER

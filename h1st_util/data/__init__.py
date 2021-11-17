@@ -2,7 +2,7 @@ import logging
 import os
 import tempfile
 
-from h1st.util.date_time import \
+from h1st_util.util.date_time import \
     DATE_COL, \
     _T_ORD_COL, _T_DELTA_COL, \
     _T_HoY_COL, _T_QoY_COL, _T_MoY_COL, _T_PoY_COL, \
@@ -12,9 +12,9 @@ from h1st.util.date_time import \
     _T_DoW_COL, _T_PoW_COL, \
     _T_HoD_COL, _T_PoD_COL, \
     _T_COMPONENT_AUX_COLS, _T_CAT_AUX_COLS, _T_NUM_AUX_COLS
-from h1st.util import Namespace
-from h1st.util.decor import _docstr_settable_property
-from h1st.util.log import STDOUT_HANDLER
+from h1st_util.util import Namespace
+from h1st_util.util.decor import _docstr_settable_property
+from h1st_util.util.log import STDOUT_HANDLER
 import h1st.debug
 
 

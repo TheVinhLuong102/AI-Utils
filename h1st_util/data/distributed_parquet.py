@@ -18,17 +18,17 @@ from pyspark.ml import Transformer
 from pyspark.ml.feature import SQLTransformer
 from pyspark.sql import DataFrame
 
-import h1st.util.data_backend
+import h1st_util.util.data_backend
 from .parquet import AbstractS3ParquetDataHandler, \
     _S3ParquetDataFeeder__getitem__pandasDFTransform, _S3ParquetDataFeeder__drop__pandasDFTransform, \
     _S3ParquetDataFeeder__fillna__pandasDFTransform, _S3ParquetDataFeeder__prep__pandasDFTransform, \
     _S3ParquetDataFeeder__pieceArrowTableFunc, _S3ParquetDataFeeder__gen
-from h1st.util import fs, Namespace
-from h1st.util.aws import s3
-from h1st.util.date_time import gen_aux_cols
-from h1st.util.decor import enable_inplace
-from h1st.util.iterables import to_iterable
-from h1st.util.types.spark_sql import _BINARY_TYPE, _STR_TYPE
+from h1st_util.util import fs, Namespace
+from h1st_util.util.aws import s3
+from h1st_util.util.date_time import gen_aux_cols
+from h1st_util.util.decor import enable_inplace
+from h1st_util.util.iterables import to_iterable
+from h1st_util.util.types.spark_sql import _BINARY_TYPE, _STR_TYPE
 import h1st.debug
 
 from .distributed import DDF
@@ -159,8 +159,8 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                 _cache.s3Client = _cache.s3Bucket = _cache.tmpDirS3Key = None
                 _cache.tmpDirPath = self._TMP_DIR_PATH
 
-            if not h1st.util.data_backend.chkSpark():
-                h1st.util.data_backend.initSpark(sparkConf=kwargs.pop('sparkConf', {}))
+            if not h1st_util.util.data_backend.chkSpark():
+                h1st_util.util.data_backend.initSpark(sparkConf=kwargs.pop('sparkConf', {}))
 
             if verbose:
                 msg = 'Loading {} by Spark...'.format(self.path)
@@ -168,7 +168,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
                 tic = time.time()
 
             _srcSparkDF = \
-                h1st.util.data_backend.spark.read.load(
+                h1st_util.util.data_backend.spark.read.load(
                     path=path,
                     format='parquet')
 
@@ -479,7 +479,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             _lower_query = query.strip().lower()
             assert _lower_query.startswith('select')
 
-            _sparkDF = h1st.util.data_backend.spark.sql(query)
+            _sparkDF = h1st_util.util.data_backend.spark.sql(query)
             self.alias = origAlias
 
             inheritCache = \

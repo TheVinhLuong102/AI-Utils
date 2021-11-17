@@ -16,7 +16,7 @@ import time
 import types
 import uuid
 
-import h1st.util.data_backend
+import h1st_util.util.data_backend
 
 from pyspark.ml import PipelineModel, Transformer
 from pyspark.ml.feature import OneHotEncoder, OneHotEncoderModel, SQLTransformer, VectorAssembler
@@ -25,12 +25,12 @@ from pyspark.sql import DataFrame, functions as sparkSQLFuncs
 from pyspark.sql.types import StructField, StructType
 from pyspark.sql.window import Window
 
-from h1st.util import DefaultDict, fs, Namespace
-from h1st.util.aws import rds, s3
-from h1st.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
-from h1st.util.iterables import flatten, to_iterable
-from h1st.util.types.numpy_pandas import PY_NUM_TYPES
-from h1st.util.types.spark_sql import \
+from h1st_util.util import DefaultDict, fs, Namespace
+from h1st_util.util.aws import rds, s3
+from h1st_util.util.decor import enable_inplace, _docstr_settable_property, _docstr_verbose
+from h1st_util.util.iterables import flatten, to_iterable
+from h1st_util.util.types.numpy_pandas import PY_NUM_TYPES
+from h1st_util.util.types.spark_sql import \
     _INT_TYPE, _BIGINT_TYPE, _INT_TYPES, _DOUBLE_TYPE, _FLOAT_TYPES, _NUM_TYPES, \
     _BOOL_TYPE, _STR_TYPE, _BINARY_TYPE, _POSSIBLE_CAT_TYPES, _DATE_TYPE, _TIMESTAMP_TYPE, \
     _VECTOR_TYPE, _DECIMAL_TYPE_PREFIX, _ARRAY_TYPE_PREFIX, _MAP_TYPE_PREFIX, _STRUCT_TYPE_PREFIX
@@ -150,7 +150,7 @@ class DistributedDataFrame(AbstractDataHandler):
             sparkDF: a ``Spark DataFrame``
         """
         # set Spark Session
-        self._sparkSession = h1st.util.data_backend.spark
+        self._sparkSession = h1st_util.util.data_backend.spark
 
         # set underlying Spark SQL DataFrame
         self._sparkDF = sparkDF
@@ -1317,8 +1317,8 @@ class DistributedDataFrame(AbstractDataHandler):
 
             samplingRatio: ratio of rows sampled for type inference
         """
-        if not h1st.util.data_backend.chkSpark():
-            h1st.util.data_backend.initSpark(
+        if not h1st_util.util.data_backend.chkSpark():
+            h1st_util.util.data_backend.initSpark(
                 sparkConf=sparkConf)
 
         pandasTSCols = []
@@ -1336,7 +1336,7 @@ class DistributedDataFrame(AbstractDataHandler):
             nRows = None
 
         sparkDF = \
-            h1st.util.data_backend.spark.createDataFrame(
+            h1st_util.util.data_backend.spark.createDataFrame(
                 data=data,
                 schema=schema,
                 samplingRatio=samplingRatio,
@@ -1401,7 +1401,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
             else:
                 return DistributedDataFrame.create(
-                    data=h1st.util.data_backend.spark.sparkContext.union(
+                    data=h1st_util.util.data_backend.spark.sparkContext.union(
                             [adf.rdd for adf in adfs]),
                     schema=StructType(
                             [StructField(
@@ -1485,8 +1485,8 @@ class DistributedDataFrame(AbstractDataHandler):
             **options: and any data format-specific loading/reading options
                 (*ref:* http://spark.apache.org/docs/latest/api/python/pyspark.sql.html#pyspark.sql.DataFrameReader)
         """
-        if not h1st.util.data_backend.chkSpark():
-            h1st.util.data_backend.initSpark(
+        if not h1st_util.util.data_backend.chkSpark():
+            h1st_util.util.data_backend.initSpark(
                 sparkConf=sparkConf)
         
         if verbose:
@@ -1549,7 +1549,7 @@ class DistributedDataFrame(AbstractDataHandler):
                     secret_access_key=aws_secret_access_key)
 
             sparkDF = \
-                h1st.util.data_backend.spark.read.load(
+                h1st_util.util.data_backend.spark.read.load(
                     path=path,
                     format=format,
                     schema=schema,
@@ -1820,10 +1820,10 @@ class DistributedDataFrame(AbstractDataHandler):
             tic = time.time()
 
         if self._alias:
-            assert not h1st.util.data_backend.spark.catalog.isCached(tableName=self._alias), \
+            assert not h1st_util.util.data_backend.spark.catalog.isCached(tableName=self._alias), \
                 '*** Spark SQL Table "{}" Already Cached ***'.format(self._alias)
 
-            h1st.util.data_backend.spark.catalog.cacheTable(tableName=self._alias)
+            h1st_util.util.data_backend.spark.catalog.cacheTable(tableName=self._alias)
 
         self._sparkDF = self._sparkDF.cache()
 
@@ -1843,7 +1843,7 @@ class DistributedDataFrame(AbstractDataHandler):
         if format:
             self.save(
                 path=os.path.join(
-                    h1st.util.data_backend._SPARK_CKPT_DIR,
+                    h1st_util.util.data_backend._SPARK_CKPT_DIR,
                     str(uuid.uuid4())),
                 format=format,
                 partitionBy=None,
@@ -1908,7 +1908,7 @@ class DistributedDataFrame(AbstractDataHandler):
     def alias(self, alias):
         # *** DON'T DO THE BELOW BECAUSE IT UNCACHES THE DATAFRAME IF THE DATAFRAME IS CACHED ***
         # if self._alias:
-        #     h1st.util.data_backend.spark.catalog.dropTempView(viewName=self._alias)
+        #     h1st_util.util.data_backend.spark.catalog.dropTempView(viewName=self._alias)
 
         self._alias = alias
         if alias:
@@ -2211,7 +2211,7 @@ class DistributedDataFrame(AbstractDataHandler):
             _lower_query = query.strip().lower()
             assert _lower_query.startswith('select')
 
-            sparkDF = h1st.util.data_backend.spark.sql(query)
+            sparkDF = h1st_util.util.data_backend.spark.sql(query)
             self.alias = origAlias
 
             inheritCache = \
@@ -3587,9 +3587,9 @@ class DistributedDataFrame(AbstractDataHandler):
 
             fs.rm(
                 path=savePath,
-                hdfs=h1st.util.data_backend._ON_LINUX_CLUSTER_WITH_HDFS,
+                hdfs=h1st_util.util.data_backend._ON_LINUX_CLUSTER_WITH_HDFS,
                 is_dir=True,
-                hadoop_home=h1st.util.data_backend._HADOOP_HOME)
+                hadoop_home=h1st_util.util.data_backend._HADOOP_HOME)
 
             sqlTransformer.save(   # *** NEED TO ENHANCE TO ALLOW OVERWRITING ***
                 path=savePath)
@@ -3769,7 +3769,7 @@ class DistributedDataFrame(AbstractDataHandler):
                     localDirExists = os.path.isdir(loadPath)
 
                     hdfsDirExists = \
-                        h1st.util.data_backend.hdfs.isdir(path=loadPath)
+                        h1st_util.util.data_backend.hdfs.isdir(path=loadPath)
 
                     if localDirExists and (not hdfsDirExists):
                         fs.put(
@@ -4038,7 +4038,7 @@ class DistributedDataFrame(AbstractDataHandler):
                                 # so when dropLast is true, invalid values are encoded as all-zeros vector
                             dropLast=True) \
                         .fit(dataset=self.reprSample._sparkDF[catCols].union(
-                                        h1st.util.data_backend.spark.sql(
+                                        h1st_util.util.data_backend.spark.sql(
                                             'VALUES ({})'.format(', '.join(len(catCols) * ('NULL',)))))
                                     .selectExpr(*('{} AS {}'.format(catSqlItem, strIdxCol)
                                                   for strIdxCol, catSqlItem in prepSqlItems.items())))
@@ -4216,13 +4216,13 @@ class DistributedDataFrame(AbstractDataHandler):
             # *** NEED TO ENHANCE TO ALLOW OVERWRITING ***
             fs.rm(
                 path=savePath,
-                hdfs=h1st.util.data_backend._ON_LINUX_CLUSTER_WITH_HDFS,
+                hdfs=h1st_util.util.data_backend._ON_LINUX_CLUSTER_WITH_HDFS,
                 is_dir=True,
-                hadoop_home=h1st.util.data_backend._HADOOP_HOME)
+                hadoop_home=h1st_util.util.data_backend._HADOOP_HOME)
 
             pipelineModelWithoutVectors.save(path=savePath)
 
-            if h1st.util.data_backend._ON_LINUX_CLUSTER_WITH_HDFS:
+            if h1st_util.util.data_backend._ON_LINUX_CLUSTER_WITH_HDFS:
                 fs.get(
                     from_hdfs=savePath,
                     to_local=savePath,
@@ -5169,7 +5169,7 @@ class DistributedDataFrame(AbstractDataHandler):
                                   partitionBy=partitionBy)
 
                     if restartSpark:
-                        h1st.util.data_backend.spark.stop()
+                        h1st_util.util.data_backend.spark.stop()
 
                     else:
                         partADFs.append(DistributedDataFrame.load(pathPath))
