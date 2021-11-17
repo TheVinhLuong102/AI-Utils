@@ -1,4 +1,4 @@
-"""H1st ML Blueprints package metadata."""
+"""H1st Util package metadata."""
 
 
 from importlib.metadata import version
