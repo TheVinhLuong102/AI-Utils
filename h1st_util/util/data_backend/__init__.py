@@ -18,7 +18,7 @@ from h1st_util.util.decor import _docstr_verbose
 from h1st_util.util.fs import hdfs_client as hdfs, exist, put, rm, \
     _HADOOP_HOME, _HADOOP_CONF_DIR_ENV_VAR_NAME, \
     _ON_LINUX_CLUSTER, _ON_LINUX_CLUSTER_WITH_HDFS
-from h1st.util.log import STDOUT_HANDLER
+from h1st_util.util.log import STDOUT_HANDLER
 
 from ..aws.ec2.instance_types import INSTANCE_TYPES_INFO, MEMORY_GiB_KEY, N_CPUS_KEY
 from .yarn.alloc import optim_alloc

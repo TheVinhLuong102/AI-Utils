@@ -34,7 +34,7 @@ from h1st_util.util.types.spark_sql import \
     _INT_TYPE, _BIGINT_TYPE, _INT_TYPES, _DOUBLE_TYPE, _FLOAT_TYPES, _NUM_TYPES, \
     _BOOL_TYPE, _STR_TYPE, _BINARY_TYPE, _POSSIBLE_CAT_TYPES, _DATE_TYPE, _TIMESTAMP_TYPE, \
     _VECTOR_TYPE, _DECIMAL_TYPE_PREFIX, _ARRAY_TYPE_PREFIX, _MAP_TYPE_PREFIX, _STRUCT_TYPE_PREFIX
-import h1st.debug
+import h1st_util.debug
 
 from . import AbstractDataHandler
 
@@ -489,7 +489,7 @@ class DistributedDataFrame(AbstractDataHandler):
                                 .partitionBy(iCol) \
                                 .orderBy(tCol if _genTOrdCol else self._T_ORD_COL)
 
-                    if h1st.debug.ON:
+                    if h1st_util.debug.ON:
                         if forceGenTRelAuxCols:
                             self.class_stdout_logger().debug(
                                 msg='*** FORCE-GENERATING AUXILIARY COLUMNS {}, {}, {}, {} ***'
@@ -568,12 +568,12 @@ class DistributedDataFrame(AbstractDataHandler):
 
                 if _castTColType or _genTOrdCol or _genTDeltaCol:
                     if self._cache.nRows is None:
-                        if h1st.debug.ON:
+                        if h1st_util.debug.ON:
                             tic = time.time()
 
                         self._cache.nRows = self._sparkDF.count()
 
-                        if h1st.debug.ON:
+                        if h1st_util.debug.ON:
                             toc = time.time()
                             self.class_stdout_logger().debug(
                                 msg='*** nRows = {:,}   <{:,.1f} s> ***'.format(self._cache.nRows, toc - tic))
@@ -665,12 +665,12 @@ class DistributedDataFrame(AbstractDataHandler):
 
                     if _genTOrdInChunkCol:
                         if self._cache.nRows is None:
-                            if h1st.debug.ON:
+                            if h1st_util.debug.ON:
                                 tic = time.time()
 
                             self._cache.nRows = self._sparkDF.count()
 
-                            if h1st.debug.ON:
+                            if h1st_util.debug.ON:
                                 toc = time.time()
                                 self.stdout_logger.debug(
                                     msg='*** nRows = {:,}   <{:,.1f} s> ***'.format(self._cache.nRows, toc - tic))
@@ -1434,7 +1434,7 @@ class DistributedDataFrame(AbstractDataHandler):
             _TEST_PARQUET_LOCAL_PATH = \
                 os.path.join(
                     os.path.dirname(
-                        os.path.dirname(h1st.debug.__file__)),
+                        os.path.dirname(h1st_util.debug.__file__)),
                     'resources',
                     _TEST_PARQUET_NAME)
 
@@ -1810,7 +1810,7 @@ class DistributedDataFrame(AbstractDataHandler):
     # checkpoint
 
     def cache(self, eager=True, verbose=True):
-        if h1st.debug.ON:
+        if h1st_util.debug.ON:
             eager = verbose = True
         elif not eager:
             verbose = False
@@ -1852,7 +1852,7 @@ class DistributedDataFrame(AbstractDataHandler):
                 switch=True)
 
         else:
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 eager = verbose = True
             elif not eager:
                 verbose = False
@@ -2363,12 +2363,12 @@ class DistributedDataFrame(AbstractDataHandler):
     @property
     def first(self):
         if self._cache.firstRow is None:
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 tic = time.time()
 
             self._cache.firstRow = row = self._sparkDF.first()
 
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 toc = time.time()
                 self.stdout_logger.debug(
                     msg='*** FIRST ROW OF COLUMNS {}: {}   <{:,.1f} s> ***'
@@ -2507,7 +2507,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
             if col not in self._cache.count:
                 verbose = True \
-                    if h1st.debug.ON \
+                    if h1st_util.debug.ON \
                     else kwargs.get('verbose')
 
                 if verbose:
@@ -2599,7 +2599,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
             else:
                 verbose = True \
-                    if h1st.debug.ON \
+                    if h1st_util.debug.ON \
                     else kwargs.get('verbose')
 
                 if verbose:
@@ -2759,7 +2759,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
                     if col not in cache:
                         verbose = True \
-                            if h1st.debug.ON \
+                            if h1st_util.debug.ON \
                             else kwargs.get('verbose')
 
                         if verbose:
@@ -2806,7 +2806,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
                 if col not in self._cache.sampleMedian:
                     verbose = True \
-                        if h1st.debug.ON \
+                        if h1st_util.debug.ON \
                         else kwargs.get('verbose')
 
                     if verbose:
@@ -2864,7 +2864,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
                     if col not in cache:
                         verbose = True \
-                            if h1st.debug.ON \
+                            if h1st_util.debug.ON \
                             else kwargs.get('verbose')
 
                         if verbose:
@@ -2927,7 +2927,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
                 if col not in self._cache.outlierRstMin:
                     verbose = True \
-                        if h1st.debug.ON \
+                        if h1st_util.debug.ON \
                         else kwargs.get('verbose')
 
                     if verbose:
@@ -2988,7 +2988,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
                 if col not in self._cache.outlierRstMax:
                     verbose = True \
-                        if h1st.debug.ON \
+                        if h1st_util.debug.ON \
                         else kwargs.get('verbose')
                     
                     if verbose:
@@ -3111,7 +3111,7 @@ class DistributedDataFrame(AbstractDataHandler):
             col = cols[0]
 
             verbose = True \
-                if h1st.debug.ON \
+                if h1st_util.debug.ON \
                 else kwargs.get('verbose')
 
             if verbose:
@@ -3356,7 +3356,7 @@ class DistributedDataFrame(AbstractDataHandler):
         savePath = kwargs.pop('savePath', None)
 
         verbose = kwargs.pop('verbose', False)
-        if h1st.debug.ON:
+        if h1st_util.debug.ON:
             verbose = True
 
         if loadPath:
@@ -3733,7 +3733,7 @@ class DistributedDataFrame(AbstractDataHandler):
         savePath = kwargs.pop('savePath', None)
 
         verbose = kwargs.pop('verbose', False)
-        if h1st.debug.ON:
+        if h1st_util.debug.ON:
             verbose = True
 
         if loadPath:
@@ -4305,7 +4305,7 @@ class DistributedDataFrame(AbstractDataHandler):
                 ['__TS_WINDOW_CLAUSE__', '__SCALER__'])
 
         if missingCatCols or missingNumCols:
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 self.stdout_logger.debug(
                     msg='*** FILLING MISSING COLS {} ***'
                         .format(missingCatCols | missingNumCols))
@@ -4582,7 +4582,7 @@ class DistributedDataFrame(AbstractDataHandler):
         filterCondition = kwargs.get('filter')
 
         if filterCondition:
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 self.stdout_logger.debug(
                     '*** FILTER CONDITION: {} ***'.format(filterCondition))
 
@@ -4924,13 +4924,13 @@ class DistributedDataFrame(AbstractDataHandler):
 
                 adf = preparedArgs.adf
 
-                if h1st.debug.ON:
+                if h1st_util.debug.ON:
                     self.stdout_logger.debug(msg='*** .gen(...): NOT TRIGGERING SAMPLING: sampleN >= Data Size ***')
 
         else:
             adf = preparedArgs.adf
 
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 self.stdout_logger.debug(msg='*** .gen(...): NOT TRIGGERING SAMPLING: sampleN not set ***')
 
         alias = kwargs.get('alias')
@@ -4943,13 +4943,13 @@ class DistributedDataFrame(AbstractDataHandler):
         cache = kwargs.get('cache', True)
 
         if cache:
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 self.stdout_logger.debug(msg='*** CACHING FOR STREAMING... ***')
                 tic = time.time()
 
             adf.cache(eager=True)
 
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 toc = time.time()
                 self.stdout_logger.debug(
                     msg='*** CACHED FOR STREAMING: {} ROWS   <{:,.1f} m> ***'.format(adf.nRows, (toc - tic) / 60))
@@ -5063,7 +5063,7 @@ class DistributedDataFrame(AbstractDataHandler):
 
             nTSChunkIDs = len(tsChunkIDs)
 
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 self.stdout_logger.debug(
                     msg='*** SPLITTING BY ID-AND-CHUNK-NUMBER / PARTITION-AND-ID COMBOS ({} COMBOS IN TOTAL) ***'
                         .format(nTSChunkIDs))

@@ -15,7 +15,7 @@ from h1st_util.util.date_time import \
 from h1st_util.util import Namespace
 from h1st_util.util.decor import _docstr_settable_property
 from h1st_util.util.log import STDOUT_HANDLER
-import h1st.debug
+import h1st_util.debug
 
 
 class AbstractDataHandler:
@@ -131,7 +131,7 @@ class AbstractDataHandler:
 
         if level is None:
             level = logging.DEBUG \
-                if h1st.debug.ON \
+                if h1st_util.debug.ON \
                 else logging.INFO
 
         logger.setLevel(level)
@@ -157,7 +157,7 @@ class AbstractDataHandler:
 
         if level is None:
             level = logging.DEBUG \
-                if h1st.debug.ON \
+                if h1st_util.debug.ON \
                 else logging.INFO
 
         logger.setLevel(level)

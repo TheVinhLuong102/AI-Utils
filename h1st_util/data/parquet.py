@@ -32,7 +32,7 @@ from h1st_util.util.types.arrow import \
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string
 from h1st_util.util.types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY_NUM_TYPES
 from h1st_util.util.types.spark_sql import _STR_TYPE
-import h1st.debug
+import h1st_util.debug
 
 from . import AbstractDataHandler
 from .distributed import DDF
@@ -564,7 +564,7 @@ class _S3ParquetDataFeeder__gen:
 
         self.filterConditions = filterConditions
 
-        if filterConditions and h1st.debug.ON:
+        if filterConditions and h1st_util.debug.ON:
             print('*** FILTER CONDITION: {} ***'.format(filterConditions))
 
         self.n = n
@@ -633,7 +633,7 @@ class _S3ParquetDataFeeder__gen:
         self.nColsList = [len(cols) for cols in self.colsLists]
 
     def __call__(self):
-        if h1st.debug.ON:
+        if h1st_util.debug.ON:
             print('*** GENERATING BATCHES OF {} ***'.format(self.colsLists))
 
         while True:
@@ -734,7 +734,7 @@ class _S3ParquetDataFeeder__gen:
                         zip(self.colsLists, self.nColsList, self.colsOverTime, self.rowFrom_n_rowTo_tups)
                 )
 
-                if h1st.debug.ON:
+                if h1st_util.debug.ON:
                     for array in arrays:
                         nNaNs = numpy.isnan(array).sum()
                         assert not nNaNs, '*** {}: {} NaNs ***'.format(array.shape, nNaNs)
@@ -813,7 +813,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             _mappers=[],
             verbose=True,
             **kwargs):
-        if verbose or h1st.debug.ON:
+        if verbose or h1st_util.debug.ON:
             logger = self.class_stdout_logger()
 
         if isinstance(path, str):
@@ -840,7 +840,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             self._CACHE[path] = _cache = Namespace()
 
         if _cache:
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 logger.debug('*** RETRIEVING CACHE FOR "{}" ***'.format(path))
 
         else:
@@ -2320,7 +2320,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             assert piecePaths, \
                 '*** {}: NO PIECE PATHS SATISFYING FILTER CRITERIA {} ***'.format(self, filterCriteria)
 
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 self.stdout_logger.debug(
                     msg='*** {} PIECES SATISFYING FILTERING CRITERIA: {} ***'
                         .format(len(piecePaths), filterCriteria))
@@ -2364,7 +2364,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 nSamplePieces = self.nPieces
                 piecePaths = self.piecePaths
 
-        if verbose or h1st.debug.ON:
+        if verbose or h1st_util.debug.ON:
             self.stdout_logger.info(
                 'Sampling {:,} Rows{} from {:,} Pieces...'.format(
                     n,
@@ -2423,7 +2423,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             if pandasDF is None:
                 if col not in self._cache.count:
                     verbose = True \
-                        if h1st.debug.ON \
+                        if h1st_util.debug.ON \
                         else kwargs.get('verbose')
 
                     if verbose:
@@ -2627,7 +2627,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                     if col not in cache:
                         verbose = True \
-                            if h1st.debug.ON \
+                            if h1st_util.debug.ON \
                             else kwargs.get('verbose')
 
                         if verbose:
@@ -2693,7 +2693,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                     if col not in cache:
                         verbose = True \
-                            if h1st.debug.ON \
+                            if h1st_util.debug.ON \
                             else kwargs.get('verbose')
 
                         if verbose:
@@ -2771,7 +2771,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                 if col not in self._cache.outlierRstMin:
                     verbose = True \
-                        if h1st.debug.ON \
+                        if h1st_util.debug.ON \
                         else kwargs.get('verbose')
 
                     if verbose:
@@ -2837,7 +2837,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                 if col not in self._cache.outlierRstMax:
                     verbose = True \
-                        if h1st.debug.ON \
+                        if h1st_util.debug.ON \
                         else kwargs.get('verbose')
 
                     if verbose:
@@ -2916,7 +2916,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             col = cols[0]
 
             verbose = True \
-                if h1st.debug.ON \
+                if h1st_util.debug.ON \
                 else kwargs.get('verbose')
 
             if verbose:
@@ -3157,7 +3157,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         savePath = kwargs.pop('savePath', None)
 
         verbose = kwargs.pop('verbose', False)
-        if h1st.debug.ON:
+        if h1st_util.debug.ON:
             verbose = True
 
         if loadPath:
@@ -3530,7 +3530,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         savePath = kwargs.pop('savePath', None)
 
         verbose = kwargs.pop('verbose', False)
-        if h1st.debug.ON:
+        if h1st_util.debug.ON:
             verbose = True
 
         if loadPath:
@@ -3993,7 +3993,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         addCols = {}
 
         if missingCols:
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 self.stdout_logger.debug(
                     msg='*** FILLING MISSING COLS {} ***'
                         .format())

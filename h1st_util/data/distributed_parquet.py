@@ -29,7 +29,7 @@ from h1st_util.util.date_time import gen_aux_cols
 from h1st_util.util.decor import enable_inplace
 from h1st_util.util.iterables import to_iterable
 from h1st_util.util.types.spark_sql import _BINARY_TYPE, _STR_TYPE
-import h1st.debug
+import h1st_util.debug
 
 from .distributed import DDF
 
@@ -63,7 +63,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             _pandasDFTransforms=[],
             reprSampleMinNPieces=AbstractS3ParquetDataHandler._REPR_SAMPLE_MIN_N_PIECES,
             verbose=True, **kwargs):
-        if verbose or h1st.debug.ON:
+        if verbose or h1st_util.debug.ON:
             logger = self.class_stdout_logger()
 
         self.path = path
@@ -78,7 +78,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             assert _cache._srcSparkDF, \
                 '*** FAILED to Load SparkDF from {} ***'.format(path)
 
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 logger.debug('*** RETRIEVING CACHE FOR {} ***'.format(path))
 
         else:
@@ -573,7 +573,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
         adf, catOrigToPrepColMap, numOrigToPrepColMap, pipelineModel = \
             super(S3ParquetDistributedDataFrame, self).prep(*cols, **kwargs)
 
-        if h1st.debug.ON:
+        if h1st_util.debug.ON:
             self.stdout_logger.debug(
                 msg='*** ORIG-TO-PREP METADATA: ***\n{}\n{}'
                     .format(catOrigToPrepColMap, numOrigToPrepColMap))
@@ -874,7 +874,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             assert pieceSubPaths, \
                 '*** {}: NO PIECE PATHS SATISFYING FILTER CRITERIA {} ***'.format(self, filterCriteria)
 
-            if h1st.debug.ON:
+            if h1st_util.debug.ON:
                 self.stdout_logger.debug(
                     msg='*** {} PIECES SATISFYING FILTERING CRITERIA: {} ***'
                         .format(len(pieceSubPaths), filterCriteria))
