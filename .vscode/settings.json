@@ -20,9 +20,7 @@
 
   "python.linting.mypyEnabled": true,
 
-  "python.linting.pydocstyleEnabled": true,
-  "python.linting.pydocstyleArgs": [
-  ],
+  "python.linting.pydocstyleEnabled": false,
 
   "python.linting.pycodestyleEnabled": true,
   "python.linting.pycodestyleArgs": [

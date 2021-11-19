@@ -61,7 +61,6 @@ from .spark_sql import \
 
 
 _ARROW_NULL_TYPE = null()
-assert str(_ARROW_NULL_TYPE) == _NULL_TYPE
 
 
 _ARROW_BOOL_TYPE = bool_()
