@@ -953,6 +953,10 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         if verbose or h1st_util.debug.ON:
             logger = self.class_stdout_logger()
 
+        self.aws_access_key_id = aws_access_key_id
+        self.aws_secret_access_key = aws_secret_access_key
+        self.aws_region = aws_region
+
         assert isinstance(path, str) and path.startswith('s3://')
         self.path = path
 
@@ -1310,7 +1314,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
     def save(self, dir_path, collect=False, verbose=True):
         if dir_path.startswith('s3://'):
-            assert self.fromS3
             _s3 = True
             _dir_path = tempfile.mkdtemp()
 
@@ -1378,8 +1381,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             s3.sync(
                 from_dir_path=_dir_path,
                 to_dir_path=dir_path,
-                access_key_id=self._srcArrowDS.fs.key,
-                secret_access_key=self._srcArrowDS.fs.secret,
+                access_key_id=self.aws_access_key_id,
+                secret_access_key=self.aws_secret_access_key,
                 delete=True, quiet=True,
                 verbose=verbose)
 
@@ -1393,18 +1396,12 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         inheritCache = kwargs.pop('inheritCache', not resetMappers)
         inheritNRows = kwargs.pop('inheritNRows', inheritCache)
 
-        if self.fromS3:
-            aws_access_key_id = self._srcArrowDS.fs.key
-            aws_secret_access_key = self._srcArrowDS.fs.secret
-
-        else:
-            aws_access_key_id = aws_secret_access_key = None
-
         arrowADF = \
             S3ParquetDataFeeder(
                 path=self.path,
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key,
+                aws_access_key_id=self.aws_access_key_id,
+                aws_secret_access_key=self.aws_secret_access_key,
+                aws_region=self.aws_region,
 
                 iCol=self._iCol, tCol=self._tCol,
 
@@ -1547,18 +1544,12 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             if isinstance(mapper, list) \
             else [mapper]
 
-        if self.fromS3:
-            aws_access_key_id = self._srcArrowDS.fs.key
-            aws_secret_access_key = self._srcArrowDS.fs.secret
-
-        else:
-            aws_access_key_id = aws_secret_access_key = None
-
         arrowADF = \
             S3ParquetDataFeeder(
                 path=self.path,
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key,
+                aws_access_key_id=self.aws_access_key_id,
+                aws_secret_access_key=self.aws_secret_access_key,
+                aws_region=self.aws_region,
 
                 iCol=self._iCol, tCol=self._tCol,
                 _mappers=self._mappers + additionalMappers,
@@ -2415,74 +2406,46 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             if nPiecePaths == self.nPieces:
                 return self
 
-            if self.fromS3:
-                if nPiecePaths > 1:
-                    verbose = kwargs.pop('verbose', True)
+            if nPiecePaths > 1:
+                verbose = kwargs.pop('verbose', True)
 
-                    subsetDirS3Key = \
-                        os.path.join(
-                            self.tmpDirS3Key,
-                            str(uuid.uuid4()))
+                subsetDirS3Key = os.path.join(self.tmpDirS3Key,
+                                              str(uuid.uuid4()))
 
-                    _pathPlusSepLen = len(self.path) + 1
+                _pathPlusSepLen = len(self.path) + 1
 
-                    for piecePath in (tqdm.tqdm(piecePaths)
-                                      if verbose
-                                      else piecePaths):
-                        pieceSubPath = piecePath[_pathPlusSepLen:]
+                for piecePath in (tqdm.tqdm(piecePaths)
+                                  if verbose
+                                  else piecePaths):
+                    pieceSubPath = piecePath[_pathPlusSepLen:]
 
-                        _from_key = os.path.join(self.pathS3Key,
-                                                 pieceSubPath)
-                        _to_key = os.path.join(subsetDirS3Key,
-                                               pieceSubPath)
+                    _from_key = os.path.join(self.pathS3Key, pieceSubPath)
+                    _to_key = os.path.join(subsetDirS3Key, pieceSubPath)
 
-                        try:
-                            self.s3Client.copy(
-                                CopySource=dict(
-                                    Bucket=self.s3Bucket,
-                                    Key=_from_key),
-                                Bucket=self.s3Bucket,
-                                Key=_to_key)
+                    try:
+                        self.s3Client.copy(
+                            CopySource=dict(Bucket=self.s3Bucket,
+                                            Key=_from_key),
+                            Bucket=self.s3Bucket,
+                            Key=_to_key)
 
-                        except Exception as err:
-                            print(f'*** FAILED TO COPY FROM "{_from_key}" '
-                                  f'TO "{_to_key}" ***')
+                    except Exception as err:
+                        print(f'*** FAILED TO COPY FROM "{_from_key}" '
+                              f'TO "{_to_key}" ***')
 
-                            raise err
+                        raise err
 
-                    subsetPath = \
-                        os.path.join(
-                            f's3://{self.s3Bucket}',
-                            subsetDirS3Key)
+                subsetPath = os.path.join(f's3://{self.s3Bucket}',
+                                          subsetDirS3Key)
 
-                else:
-                    subsetPath = piecePaths[0]
-
-                return S3ParquetDataFeeder(
-                    path=subsetPath,
-
-                    aws_access_key_id=self._srcArrowDS.fs.key,
-                    aws_secret_access_key=self._srcArrowDS.fs.secret,
-
-                    iCol=self._iCol, tCol=self._tCol,
-                    _mappers=self._mappers,
-
-                    reprSampleMinNPieces=self._reprSampleMinNPieces,
-                    reprSampleSize=self._reprSampleSize,
-
-                    minNonNullProportion=self._minNonNullProportion,
-                    outlierTailProportion=self._outlierTailProportion,
-                    maxNCats=self._maxNCats,
-                    minProportionByMaxNCats=self._minProportionByMaxNCats,
-
-                    **kwargs)
+            else:
+                subsetPath = piecePaths[0]
 
             return S3ParquetDataFeeder(
-                path=(tuple(sorted(piecePaths))
-                      if len(piecePaths) > 1
-                      else piecePaths[0]),
-
-                aws_access_key_id=None, aws_secret_access_key=None,
+                path=subsetPath,
+                aws_access_key_id=self.aws_access_key_id,
+                aws_secret_access_key=self.aws_secret_access_key,
+                aws_region=self.aws_region,
 
                 iCol=self._iCol, tCol=self._tCol,
                 _mappers=self._mappers,
@@ -4403,20 +4366,13 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # _CrossSectDLDF
 
     def gen(self, *args, **kwargs):
-        if self.fromS3:
-            aws_access_key_id = self._srcArrowDS.fs.key
-            aws_secret_access_key = self._srcArrowDS.fs.secret
-
-        else:
-            aws_access_key_id = aws_secret_access_key = None
-
         piecePaths = kwargs.get('piecePaths', self.piecePaths)
 
         return _S3ParquetDataFeeder__gen(
             args=args,
             piecePaths=piecePaths,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key,
             partitionKVs={piecePath: self._PIECE_CACHES[piecePath].partitionKVs
                           for piecePath in piecePaths},
             iCol=self._iCol, tCol=self._tCol,
@@ -4462,8 +4418,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         s3.sync(
             from_dir_path=self.path,
             to_dir_path=path,
-            access_key_id=self._srcArrowDS.fs.key,
-            secret_access_key=self._srcArrowDS.fs.secret,
+            access_key_id=self.aws_access_key_id,
+            secret_access_key=self.aws_secret_access_key,
             delete=True, quiet=True,
             verbose=verbose)
 
