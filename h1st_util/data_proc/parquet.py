@@ -1011,7 +1011,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
             if _cache.nPieces:
                 _cache.piecePaths = {f's3://{file_path}'
-                                     for file_path in _cache._srcArrowDS.files}
+                                     for file_path in _cache._srcArrowDS.files
+                                     if not file_path.endswith('_$folder$')}
 
             else:
                 _cache.nPieces = 1
@@ -1151,12 +1152,11 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # _inheritCache
     # _inplace
 
+    # pylint: disable=inconsistent-return-statements
     def _extractStdKwArgs(self,
                           kwargs,
                           resetToClassDefaults=False,
                           inplace=False):
-        # pylint: disable=inconsistent-return-statements
-
         nameSpace = self \
             if inplace \
             else _Namespace()
