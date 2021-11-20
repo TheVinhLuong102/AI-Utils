@@ -1090,10 +1090,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         nRows = metadata.num_rows
 
                     else:
-                        localPath = \
-                            None \
-                            if self.fromS3 \
-                            else piecePath
+                        localPath = piecePath
 
                         srcColsExclPartitionKVs = None
 
