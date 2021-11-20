@@ -6,8 +6,10 @@ import math
 import os
 import random
 import re
+import sys
 import tempfile
 import time
+from typing import Optional, Union
 from urllib.parse import urlparse
 import uuid
 import warnings
@@ -18,9 +20,9 @@ from sklearn.exceptions import DataConversionWarning
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 import tqdm
 
-from pyarrow.fs import LocalFileSystem, HadoopFileSystem, S3FileSystem
-from pyarrow.parquet import (ParquetDataset,
-                             read_metadata, read_schema, read_table)
+from pyarrow.dataset import dataset
+from pyarrow.fs import S3FileSystem
+from pyarrow.parquet import read_metadata, read_schema, read_table
 
 from h1st_util.util import DefaultDict, fs, Namespace
 from h1st_util.util.aws import s3
@@ -38,6 +40,11 @@ import h1st_util.debug
 
 from . import AbstractDataHandler
 from .distributed import DDF
+
+if sys.version_info >= (3, 9):
+    from collections.abc import Sequence
+else:
+    from typing import Sequence
 
 
 _NUM_CLASSES = int, float
@@ -57,20 +64,6 @@ class AbstractS3ParquetDataHandler(AbstractDataHandler):
 
     _SCHEMA_MIN_N_PIECES = 10
     _REPR_SAMPLE_MIN_N_PIECES = 100
-
-    # file systems
-    _LOCAL_ARROW_FS = LocalFileSystem()
-
-    # pylint: disable=protected-access
-    _HDFS_ARROW_FS = \
-        HadoopFileSystem(
-            host='default',
-            port=0,
-            user=None,
-            kerb_ticket=None,
-            driver='libhdfs') \
-        if fs._ON_LINUX_CLUSTER_WITH_HDFS \
-        else None
 
     @property
     def reprSampleMinNPieces(self):
@@ -836,6 +829,8 @@ class _S3ParquetDataFeeder__gen:
 
 @enable_inplace
 class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
+    # pylint: disable=too-many-instance-attributes,too-many-public-methods
+
     _CACHE = {}
 
     _PIECE_CACHES = {}
@@ -901,8 +896,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
     # default arguments dict
     _DEFAULT_KWARGS = dict(
-        iCol=   # noqa: E251
-        AbstractS3ParquetDataHandler._DEFAULT_I_COL, tCol=None,
+        iCol=AbstractS3ParquetDataHandler._DEFAULT_I_COL,
+        tCol=None,
 
         reprSampleMinNPieces=   # noqa: E251
         AbstractS3ParquetDataHandler._REPR_SAMPLE_MIN_N_PIECES,
@@ -942,12 +937,15 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # __init__
     # load
 
-    def __init__(
-            self, path=None, reCache=False,
-            aws_access_key_id=None, aws_secret_access_key=None,
-            _mappers=None,
-            verbose=True,
-            **kwargs):
+    def __init__(self,
+                 path: Optional[Union[str, Sequence[str]]] = None,
+                 reCache: bool = False,
+                 aws_access_key_id: Optional[str] = None,
+                 aws_secret_access_key: Optional[str] = None,
+                 _mappers: Optional[Sequence[callable]] = None,
+                 verbose: bool = True,
+                 **kwargs):
+        # pylint: disable=too-many-arguments,too-many-branches
         # pylint: disable=too-many-locals,too-many-statements
 
         if _mappers is None:
@@ -960,7 +958,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             _aPath = path
 
         else:
-            if isinstance(path, list):
+            if isinstance(path, Sequence):
                 path = tuple(path)
 
             _aPath = path[0]
@@ -970,8 +968,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         self.fromS3 = _aPath.startswith('s3://')
         if self.fromS3:
             assert isinstance(path, str)
-
-        self.fromHDFS = _aPath.startswith('hdfs:')
 
         if (not reCache) and (path in self._CACHE):
             _cache = self._CACHE[path]
@@ -1013,35 +1009,26 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 logger.info(msg)
                 tic = time.time()
 
-            if self.fromS3:
-                s3.rm(
-                    path=path,
-                    dir=True,
-                    globs='*_$folder$',   # redundant HDFS-generated files
-                    quiet=True,
-                    access_key_id=aws_access_key_id,
-                    secret_access_key=aws_secret_access_key,
-                    verbose=False)
+            s3.rm(
+                path=path,
+                dir=True,
+                globs='*_$folder$',   # redundant HDFS-generated files
+                quiet=True,
+                access_key_id=aws_access_key_id,
+                secret_access_key=aws_secret_access_key,
+                verbose=False)
 
-                _cache._srcArrowDS = \
-                    ParquetDataset(
-                        path_or_paths=path,
-                        filesystem=S3FileSystem(key=aws_access_key_id,
-                                                secret=aws_secret_access_key),
-                        schema=None, validate_schema=False, metadata=None,
-                        split_row_groups=False)
-
-            else:
-                _cache._srcArrowDS = \
-                    ParquetDataset(
-                        path_or_paths=(list(path)
-                                       if isinstance(path, tuple)
-                                       else path),
-                        filesystem=(self._HDFS_ARROW_FS
-                                    if self.fromHDFS
-                                    else self._LOCAL_ARROW_FS),
-                        schema=None, validate_schema=False, metadata=None,
-                        split_row_groups=False)
+            _cache._srcArrowDS = \
+                dataset(source=path,
+                        schema=None,
+                        format='parquet',
+                        filesystem=S3FileSystem(
+                            access_key=aws_access_key_id,
+                            secret_key=aws_secret_access_key),
+                        partitioning=None,
+                        partition_base_dir=None,
+                        exclude_invalid_files=None,
+                        ignore_prefixes=None)
 
             if verbose:
                 toc = time.time()
