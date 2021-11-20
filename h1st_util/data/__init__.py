@@ -67,7 +67,7 @@ class AbstractDataHandler:
     # default profiling settings
     _DEFAULT_MIN_NON_NULL_PROPORTION = .32
     _DEFAULT_OUTLIER_TAIL_PROPORTION = 1e-3   # 0.1% each tail
-    _DEFAULT_MAX_N_CATS = 12   # Month of Year is probably most numerous-category cat var
+    _DEFAULT_MAX_N_CATS = 12   # MoY is probably most numerous-category cat var
     _DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS = .9
 
     # NULL-filling
@@ -125,7 +125,7 @@ class AbstractDataHandler:
 
     @classmethod
     def class_logger(cls, *handlers, **kwargs):
-        logger = logging.getLogger(name='{}'.format(cls.__name__))
+        logger = logging.getLogger(name=cls.__name__)
 
         level = kwargs.get('level')
 
@@ -223,7 +223,8 @@ class AbstractDataHandler:
     @_docstr_settable_property
     def reprSampleSize(self):
         """
-        *Approximate* number of rows to sample for profiling purposes *(int, default = 1,000,000)*
+        *Approximate* number of rows to sample for profiling purposes
+        *(int, default = 1,000,000)*
         """
         if self._cache.reprSample is None:
             self._assignReprSample()
@@ -247,8 +248,10 @@ class AbstractDataHandler:
     @_docstr_settable_property
     def minNonNullProportion(self):
         """
-        Minimum proportion of non-``NULL`` values in each column to qualify it as a valid feature
-            to use in downstream data analyses *(float between 0 and 1, default = .32)*
+        Minimum proportion of non-``NULL`` values in each column
+        to qualify it as a valid feature
+        to use in downstream data analyses
+        *(float between 0 and 1, default = .32)*
         """
         return self._minNonNullProportion.default
 
@@ -262,8 +265,9 @@ class AbstractDataHandler:
     @_docstr_settable_property
     def outlierTailProportion(self):
         """
-        Proportion in each tail end of each numerical column's distribution to exclude
-            when computing outlier-resistant statistics *(float between 0 and .1, default = .005)*
+        Proportion in each tail end of each numerical column's distribution
+        to exclude when computing outlier-resistant statistics
+        *(float between 0 and .1, default = .005)*
         """
         return self._outlierTailProportion.default
 
@@ -275,7 +279,8 @@ class AbstractDataHandler:
     @_docstr_settable_property
     def maxNCats(self):
         """
-        Maximum number of categorical levels to consider for each possible categorical column *(int, default = 12)*
+        Maximum number of categorical levels to consider for each possible
+        categorical column *(int, default = 12)*
         """
         return self._maxNCats.default
 
@@ -287,8 +292,10 @@ class AbstractDataHandler:
     @_docstr_settable_property
     def minProportionByMaxNCats(self):
         """
-        Minimum total proportion accounted for by the most common ``maxNCats`` of each possible categorical column
-            to consider the column truly categorical *(float between 0 and 1, default = .9)*
+        Minimum total proportion accounted for by the most common ``maxNCats``
+        of each possible categorical column
+        to consider the column truly categorical
+        *(float between 0 and 1, default = .9)*
         """
         return self._minProportionByMaxNCats.default
 
@@ -356,7 +363,7 @@ class AbstractDataHandler:
         return self.shape
 
     @property
-    def colNames (self):   # R style
+    def colNames(self):   # R style
         # Alias for ``.columns``: `list` of column names
         return self.columns
 
@@ -409,7 +416,8 @@ class AbstractDataHandler:
 
     @property
     def tComponentAuxCols(self):
-        return tuple(tComponentAuxCol for tComponentAuxCol in self._T_COMPONENT_AUX_COLS
+        return tuple(tComponentAuxCol
+                     for tComponentAuxCol in self._T_COMPONENT_AUX_COLS
                      if tComponentAuxCol in self.columns)
 
     @property
@@ -420,21 +428,21 @@ class AbstractDataHandler:
     def possibleFeatureTAuxCols(self):
         return ((self._T_DELTA_COL,)
                 if self.hasTS
-                else ()) + \
-               self.tComponentAuxCols
+                else ()) + self.tComponentAuxCols
 
     @property
     def possibleCatTAuxCols(self):
-        return tuple(tComponentAuxCol for tComponentAuxCol in self.tComponentAuxCols
+        return tuple(tComponentAuxCol
+                     for tComponentAuxCol in self.tComponentAuxCols
                      if tComponentAuxCol in self._T_CAT_AUX_COLS)
 
     @property
     def possibleNumTAuxCols(self):
         return ((self._T_DELTA_COL,)
                 if self.hasTS
-                else ()) + \
-               tuple(tComponentAuxCol for tComponentAuxCol in self.tComponentAuxCols
-                     if tComponentAuxCol in self._T_NUM_AUX_COLS)
+                else ()) + tuple(tComponentAuxCol
+                                 for tComponentAuxCol in self.tComponentAuxCols
+                                 if tComponentAuxCol in self._T_NUM_AUX_COLS)
 
     @property
     def contentCols(self):
@@ -485,14 +493,17 @@ class AbstractDataHandler:
 
     def suffNonNull(self, *cols, **kwargs):
         """
-        Check whether the columns has at least ``.minNonNullProportion`` of non-``NULL`` values
+        Check whether the columns has at least ``.minNonNullProportion``
+        of non-``NULL`` values
 
         Return:
             - If 1 column name is given, return ``True``/``False``
 
-            - If multiple column names are given, return a {``col``: ``True`` or ``False``} *dict*
+            - If multiple column names are given,
+            return a {``col``: ``True`` or ``False``} *dict*
 
-            - If no column names are given, return a {``col``: ``True`` or ``False``} *dict* for all columns
+            - If no column names are given,
+            return a {``col``: ``True`` or ``False``} *dict* for all columns
 
         Args:
             *cols (str): column names
@@ -503,31 +514,33 @@ class AbstractDataHandler:
             cols = self.contentCols
 
         if len(cols) > 1:
-            return Namespace(**
-                {col: self.suffNonNull(col, **kwargs)
-                 for col in cols})
+            return Namespace(**{col: self.suffNonNull(col, **kwargs)
+                                for col in cols})
+
+        col = cols[0]
+
+        minNonNullProportion = self._minNonNullProportion[col]
+
+        outdatedSuffNonNullProportionThreshold = False
+
+        if col in self._cache.suffNonNullProportionThreshold:
+            if self._cache.suffNonNullProportionThreshold[col] != \
+                    minNonNullProportion:
+                outdatedSuffNonNullProportionThreshold = True
+                self._cache.suffNonNullProportionThreshold[col] = \
+                    minNonNullProportion
 
         else:
-            col = cols[0]
+            self._cache.suffNonNullProportionThreshold[col] = \
+                minNonNullProportion
 
-            minNonNullProportion = self._minNonNullProportion[col]
+        if (col not in self._cache.suffNonNull) or \
+                outdatedSuffNonNullProportionThreshold:
+            self._cache.suffNonNull[col] = (
+                self.nonNullProportion(col) >=   # noqa: W504
+                self._cache.suffNonNullProportionThreshold[col])
 
-            outdatedSuffNonNullProportionThreshold = False
-
-            if col in self._cache.suffNonNullProportionThreshold:
-                if self._cache.suffNonNullProportionThreshold[col] != minNonNullProportion:
-                    outdatedSuffNonNullProportionThreshold = True
-                    self._cache.suffNonNullProportionThreshold[col] = minNonNullProportion
-
-            else:
-                self._cache.suffNonNullProportionThreshold[col] = minNonNullProportion
-
-            if (col not in self._cache.suffNonNull) or outdatedSuffNonNullProportionThreshold:
-                self._cache.suffNonNull[col] = \
-                    (self.nonNullProportion(col) >=
-                     self._cache.suffNonNullProportionThreshold[col])
-
-            return self._cache.suffNonNull[col]
+        return self._cache.suffNonNull[col]
 
     def distinct(self, *cols, **kwargs):
         raise NotImplementedError

@@ -1,0 +1,20 @@
+pylint:
+  disable:
+    - arguments-differ
+    - consider-using-f-string
+    - inconsistent-return-statements
+    - invalid-overridden-method
+    - logging-fstring-interpolation
+    - logging-not-lazy
+    - protected-access
+    - too-many-arguments
+    - too-many-boolean-expressions
+    - too-many-branches
+    - too-many-locals
+    - too-many-nested-blocks
+    - too-many-statements
+    - useless-suppression
+
+mccabe:
+  disable:
+    - MC0001

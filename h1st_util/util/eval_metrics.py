@@ -77,7 +77,10 @@ class _RegrMetricABC(_MetricABC):
                     self._eval_spark_df(df)
 
             else:
-                raise ValueError('*** Type of data to evaluate must be one of Pandas.DataFrame, PySpark.SQL.DataFrame or inheritor of PySpark.SQL.DataFrame ***')
+                raise ValueError(
+                    '*** Type of data to evaluate must be one of '
+                    'Pandas.DataFrame, PySpark.SQL.DataFrame or '
+                    'inheritor of PySpark.SQL.DataFrame ***')
 
         return df._eval_metrics[key_tuple][self.name]
 
