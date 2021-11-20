@@ -942,12 +942,12 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                  reCache: bool = False,
                  aws_access_key_id: Optional[str] = None,
                  aws_secret_access_key: Optional[str] = None,
+                 aws_region: Optional[str] = None,
                  _mappers: Optional[Sequence[callable]] = None,
                  verbose: bool = True,
                  **kwargs):
         # pylint: disable=too-many-arguments,too-many-branches
         # pylint: disable=too-many-locals,too-many-statements
-
 
         if verbose or h1st_util.debug.ON:
             logger = self.class_stdout_logger()
@@ -978,7 +978,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             _cache.tmpDirPath = f's3://{_cache.s3Bucket}/{_cache.tmpDirS3Key}'
 
             if verbose:
-                msg = f'Loading {self.path} by Arrow...'
+                msg = f'Loading "{self.path}" by Arrow...'
                 logger.info(msg)
                 tic = time.time()
 
@@ -996,7 +996,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         format='parquet',
                         filesystem=S3FileSystem(
                             access_key=aws_access_key_id,
-                            secret_key=aws_secret_access_key),
+                            secret_key=aws_secret_access_key,
+                            region=aws_region),
                         partitioning=None,
                         partition_base_dir=None,
                         exclude_invalid_files=None,
@@ -1006,12 +1007,11 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 toc = time.time()
                 logger.info(msg + f' done!   <{toc - tic:,.1f} s>')
 
-            _cache.nPieces = len(_cache._srcArrowDS.pieces)
+            _cache.nPieces = len(_cache._srcArrowDS.files)
 
             if _cache.nPieces:
-                _cache.piecePaths = \
-                    {piece.path
-                     for piece in _cache._srcArrowDS.pieces}
+                _cache.piecePaths = {f's3://{file_path}'
+                                     for file_path in _cache._srcArrowDS.files}
 
             else:
                 _cache.nPieces = 1
@@ -1026,10 +1026,10 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                     if (pieceCache.nRows is None) and \
                             (i < self._SCHEMA_MIN_N_PIECES):
-                        pieceCache.localOrHDFSPath = \
-                            self.pieceLocalOrHDFSPath(piecePath=piecePath)
+                        pieceCache.localPath = \
+                            self.pieceLocalPath(piecePath=piecePath)
 
-                        schema = read_schema(where=pieceCache.localOrHDFSPath)
+                        schema = read_schema(where=pieceCache.localPath)
 
                         pieceCache.srcColsExclPartitionKVs = schema.names
 
@@ -1042,7 +1042,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                 schema.field(col).type
 
                         metadata = read_metadata(
-                            where=pieceCache.localOrHDFSPath)
+                            where=pieceCache.localPath)
                         pieceCache.nCols = metadata.num_columns
                         pieceCache.nRows = metadata.num_rows
 
@@ -1071,10 +1071,10 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                             partitionKVs[k] = v[:-1]
 
                     if i < self._SCHEMA_MIN_N_PIECES:
-                        localOrHDFSPath = \
-                            self.pieceLocalOrHDFSPath(piecePath=piecePath)
+                        localPath = \
+                            self.pieceLocalPath(piecePath=piecePath)
 
-                        schema = read_schema(where=localOrHDFSPath)
+                        schema = read_schema(where=localPath)
 
                         srcColsExclPartitionKVs = schema.names
 
@@ -1085,12 +1085,12 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                 srcTypesInclPartitionKVs[col] = \
                                 schema.field(col).type
 
-                        metadata = read_metadata(where=localOrHDFSPath)
+                        metadata = read_metadata(where=localPath)
                         nCols = metadata.num_columns
                         nRows = metadata.num_rows
 
                     else:
-                        localOrHDFSPath = \
+                        localPath = \
                             None \
                             if self.fromS3 \
                             else piecePath
@@ -1102,7 +1102,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     self._PIECE_CACHES[piecePath] = \
                         pieceCache = \
                         Namespace(
-                            localOrHDFSPath=localOrHDFSPath,
+                            localPath=localPath,
                             partitionKVs=partitionKVs,
 
                             srcColsExclPartitionKVs=srcColsExclPartitionKVs,
@@ -1491,54 +1491,37 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
     # ***************
     # CACHING METHODS
-    # pieceLocalOrHDFSPath
+    # pieceLocalPath
 
-    def pieceLocalOrHDFSPath(self, piecePath):
+    def pieceLocalPath(self, piecePath):
         if (piecePath in self._PIECE_CACHES) and \
-                self._PIECE_CACHES[piecePath].localOrHDFSPath:
-            return self._PIECE_CACHES[piecePath].localOrHDFSPath
+                self._PIECE_CACHES[piecePath].localPath:
+            return self._PIECE_CACHES[piecePath].localPath
 
-        if self.fromS3:
-            parsedURL = \
-                urlparse(
-                    url=piecePath,
-                    scheme='',
-                    allow_fragments=True)
+        parsedURL = urlparse(url=piecePath, scheme='', allow_fragments=True)
 
-            localOrHDFSPath = \
-                os.path.join(
-                    self._TMP_DIR_PATH,
-                    parsedURL.netloc,
-                    parsedURL.path[1:])
+        localPath = os.path.join(self._TMP_DIR_PATH,
+                                 parsedURL.netloc,
+                                 parsedURL.path[1:])
 
-            localDirPath = \
-                os.path.dirname(localOrHDFSPath)
+        localDirPath = os.path.dirname(localPath)
+        fs.mkdir(dir=localDirPath, hdfs=False)
+        # make sure the dir has been created
+        while not os.path.isdir(localDirPath):
+            time.sleep(1)
 
-            fs.mkdir(
-                dir=localDirPath,
-                hdfs=False)
-
-            # make sure the dir has been created
-            while not os.path.isdir(localDirPath):
-                time.sleep(1)
-
-            self.s3Client.download_file(
-                Bucket=parsedURL.netloc,
-                Key=parsedURL.path[1:],
-                Filename=localOrHDFSPath)
-
-            # make sure AWS S3's asynchronous process has finished
-            # downloading a potentially large file
-            while not os.path.isfile(localOrHDFSPath):
-                time.sleep(1)
-
-        else:
-            localOrHDFSPath = piecePath
+        self.s3Client.download_file(Bucket=parsedURL.netloc,
+                                    Key=parsedURL.path[1:],
+                                    Filename=localPath)
+        # make sure AWS S3's asynchronous process has finished
+        # downloading a potentially large file
+        while not os.path.isfile(localPath):
+            time.sleep(1)
 
         if piecePath in self._PIECE_CACHES:
-            self._PIECE_CACHES[piecePath].localOrHDFSPath = localOrHDFSPath
+            self._PIECE_CACHES[piecePath].localPath = localPath
 
-        return localOrHDFSPath
+        return localPath
 
     # ***********************
     # MAP-REDUCE (PARTITIONS)
@@ -1642,13 +1625,13 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 (tqdm.tqdm(piecePaths)
                  if verbose
                  else piecePaths):
-            pieceLocalOrHDFSPath = \
-                self.pieceLocalOrHDFSPath(piecePath=piecePath)
+            pieceLocalPath = \
+                self.pieceLocalPath(piecePath=piecePath)
 
             pieceCache = self._PIECE_CACHES[piecePath]
 
             if pieceCache.nRows is None:
-                schema = read_schema(where=pieceLocalOrHDFSPath)
+                schema = read_schema(where=pieceLocalPath)
 
                 pieceCache.srcColsExclPartitionKVs = schema.names
 
@@ -1676,7 +1659,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     else:
                         self.srcTypesInclPartitionKVs[col] = _arrowType
 
-                metadata = read_metadata(where=pieceCache.localOrHDFSPath)
+                metadata = read_metadata(where=pieceCache.localPath)
                 pieceCache.nCols = metadata.num_columns
                 pieceCache.nRows = metadata.num_rows
 
@@ -1693,7 +1676,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             if srcCols:
                 pieceArrowTable = \
                     read_table(
-                        source=pieceLocalOrHDFSPath,
+                        source=pieceLocalPath,
                         # str, pyarrow.NativeFile, or file-like object
                         # If a string passed, can be a single file name or
                         # directory name.
@@ -2278,14 +2261,14 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # type / typeIsNum / typeIsComplex
 
     def _read_metadata_and_schema(self, piecePath):
-        pieceLocalOrHDFSPath = \
-            self.pieceLocalOrHDFSPath(
+        pieceLocalPath = \
+            self.pieceLocalPath(
                 piecePath=piecePath)
 
         pieceCache = self._PIECE_CACHES[piecePath]
 
         if pieceCache.nRows is None:
-            schema = read_schema(where=pieceLocalOrHDFSPath)
+            schema = read_schema(where=pieceLocalPath)
 
             pieceCache.srcColsExclPartitionKVs = schema.names
 
@@ -2311,7 +2294,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 else:
                     self.srcTypesInclPartitionKVs[col] = _arrowType
 
-            metadata = read_metadata(where=pieceCache.localOrHDFSPath)
+            metadata = read_metadata(where=pieceCache.localPath)
             pieceCache.nCols = metadata.num_columns
             pieceCache.nRows = metadata.num_rows
 
