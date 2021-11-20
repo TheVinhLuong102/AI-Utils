@@ -948,8 +948,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         # pylint: disable=too-many-arguments,too-many-branches
         # pylint: disable=too-many-locals,too-many-statements
 
-        if _mappers is None:
-            _mappers = []
 
         if verbose or h1st_util.debug.ON:
             logger = self.class_stdout_logger()
@@ -980,7 +978,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             _cache.tmpDirPath = f's3://{_cache.s3Bucket}/{_cache.tmpDirS3Key}'
 
             if verbose:
-                msg = f'Loading {self._pathRepr} by Arrow...'
+                msg = f'Loading {self.path} by Arrow...'
                 logger.info(msg)
                 tic = time.time()
 
@@ -1133,7 +1131,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         self.__dict__.update(_cache)
 
-        self._mappers = _mappers
+        self._mappers = [] if _mappers is None else _mappers
 
         # extract standard keyword arguments
         self._extractStdKwArgs(kwargs, resetToClassDefaults=True, inplace=True)
@@ -1160,6 +1158,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                           kwargs,
                           resetToClassDefaults=False,
                           inplace=False):
+        # pylint: disable=inconsistent-return-statements
+
         nameSpace = self \
             if inplace \
             else _Namespace()
@@ -1229,6 +1229,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
     def _inheritCache(self, arrowDF, *sameCols, **newColToOldColMappings):
         # pylint: disable=protected-access
+
         if arrowDF._cache.nRows:
             if self._cache.nRows is None:
                 self._cache.nRows = arrowDF._cache.nRows
@@ -1301,7 +1302,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         raise StopIteration
 
-    # https://stackoverflow.com/questions/40923522/python-defining-an-iterator-class-failed-with-iter-returned-non-iterator-of?rq=1
+    # stackoverflow.com/questions/40923522/python-defining-an-iterator-class-failed-with-iter-returned-non-iterator-of?rq=1
     def next(self):
         return self.__next__()
 
@@ -1409,9 +1410,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                 iCol=self._iCol, tCol=self._tCol,
 
-                _mappers=([]
-                          if resetMappers
-                          else self._mappers),
+                _mappers=[] if resetMappers else self._mappers,
 
                 reprSampleMinNPieces=self._reprSampleMinNPieces,
                 reprSampleSize=self._reprSampleSize,
@@ -1437,69 +1436,58 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # __repr__
     # __short_repr__
 
-    @property
-    def _pathRepr(self):
-        return (self.path
-                if isinstance(self.path, str)
-                else f'{len(self.path)} Paths e.g. {self.path[:3]}')
-
     def __repr__(self):
-        cols_and_types_str = []
+        col_and_type_strs = []
 
         if self._iCol:
-            cols_and_types_str += \
-                [f'(iCol) {self._iCol}: {self.type(self._iCol)}']
+            col_and_type_strs.append(
+                f'(iCol) {self._iCol}: {self.type(self._iCol)}')
 
         if self._dCol:
-            cols_and_types_str += \
-                [f'(dCol) {self._dCol}: {self.type(self._dCol)}']
+            col_and_type_strs.append(
+                f'(dCol) {self._dCol}: {self.type(self._dCol)}')
 
         if self._tCol:
-            cols_and_types_str += \
-                [f'(tCol) {self._tCol}: {self.type(self._tCol)}']
+            col_and_type_strs.append(
+                f'(tCol) {self._tCol}: {self.type(self._tCol)}')
 
-        cols_and_types_str += \
-            [f'{col}: {self.type(col)}'
-             for col in self.contentCols]
+        col_and_type_strs.extend(f'{col}: {self.type(col)}'
+                                 for col in self.contentCols)
 
-        return '{:,}-piece {}{}[{} + {:,} transform(s)][{}]'.format(
-            self.nPieces,
-            f'{self._cache.nRows:,}-row '
-            if self._cache.nRows
-            else (f'approx-{self._cache.approxNRows:,.0f}-row '
-                  if self._cache.approxNRows
-                  else ''),
-            type(self).__name__,
-            self._pathRepr,
-            len(self._mappers),
-            ', '.join(cols_and_types_str))
+        return (f'{self.nPieces:,}-piece ' +   # noqa: W504
+                (f'{self._cache.nRows:,}-row '
+                 if self._cache.nRows
+                 else (f'approx-{self._cache.approxNRows:,.0f}-row '
+                       if self._cache.approxNRows
+                       else '')) +   # noqa: W504
+                type(self).__name__ +   # noqa: W504
+                (f'[{self.path} + {len(self._mappers):,} transform(s)]'
+                 f"[{', '.join(col_and_type_strs)}]"))
 
     @property
     def __short_repr__(self):
         cols_desc_str = []
 
         if self._iCol:
-            cols_desc_str += [f'iCol: {self._iCol}']
+            cols_desc_str.append(f'iCol: {self._iCol}')
 
         if self._dCol:
-            cols_desc_str += [f'dCol: {self._dCol}']
+            cols_desc_str.append(f'dCol: {self._dCol}')
 
         if self._tCol:
-            cols_desc_str += [f'tCol: {self._tCol}']
+            cols_desc_str.append(f'tCol: {self._tCol}')
 
-        cols_desc_str += [f'{len(self.contentCols)} content col(s)']
+        cols_desc_str.append(f'{len(self.contentCols)} content col(s)')
 
-        return '{:,}-piece {}{}[{} + {:,} transform(s)][{}]'.format(
-            self.nPieces,
-            f'{self._cache.nRows:,}-row '
-            if self._cache.nRows
-            else (f'approx-{self._cache.approxNRows:,.0f}-row '
-                  if self._cache.approxNRows
-                  else ''),
-            type(self).__name__,
-            self._pathRepr,
-            len(self._mappers),
-            ', '.join(cols_desc_str))
+        return (f'{self.nPieces:,}-piece ' +   # noqa: W504
+                (f'{self._cache.nRows:,}-row '
+                 if self._cache.nRows
+                 else (f'approx-{self._cache.approxNRows:,.0f}-row '
+                       if self._cache.approxNRows
+                       else '')) +   # noqa: W504
+                type(self).__name__ +   # noqa: W504
+                (f'[{self.path} + {len(self._mappers):,} transform(s)]'
+                 f"[{', '.join(cols_desc_str)}]"))
 
     # ***************
     # CACHING METHODS
