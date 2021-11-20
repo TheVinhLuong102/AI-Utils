@@ -9,7 +9,7 @@ import re
 import sys
 import tempfile
 import time
-from typing import Optional, Union
+from typing import Optional
 from urllib.parse import urlparse
 import uuid
 import warnings
@@ -938,7 +938,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # load
 
     def __init__(self,
-                 path: Optional[Union[str, Sequence[str]]] = None,
+                 path: str,
                  reCache: bool = False,
                  aws_access_key_id: Optional[str] = None,
                  aws_secret_access_key: Optional[str] = None,
@@ -954,20 +954,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         if verbose or h1st_util.debug.ON:
             logger = self.class_stdout_logger()
 
-        if isinstance(path, str):
-            _aPath = path
-
-        else:
-            if isinstance(path, Sequence):
-                path = tuple(path)
-
-            _aPath = path[0]
-
+        assert isinstance(path, str) and path.startswith('s3://')
         self.path = path
-
-        self.fromS3 = _aPath.startswith('s3://')
-        if self.fromS3:
-            assert isinstance(path, str)
 
         if (not reCache) and (path in self._CACHE):
             _cache = self._CACHE[path]
@@ -980,46 +968,32 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 logger.debug(f'*** RETRIEVING CACHE FOR "{path}" ***')
 
         else:
-            if self.fromS3:
-                self.s3Client = \
-                    _cache.s3Client = \
-                    s3.client(
-                        access_key_id=aws_access_key_id,
-                        secret_access_key=aws_secret_access_key)
+            self.s3Client = _cache.s3Client = \
+                s3.client(access_key_id=aws_access_key_id,
+                          secret_access_key=aws_secret_access_key)
 
-                _parsedURL = urlparse(url=path,
-                                      scheme='',
-                                      allow_fragments=True)
-                _cache.s3Bucket = _parsedURL.netloc
-                _cache.pathS3Key = _parsedURL.path[1:]
+            _parsedURL = urlparse(url=path, scheme='', allow_fragments=True)
+            _cache.s3Bucket = _parsedURL.netloc
+            _cache.pathS3Key = _parsedURL.path[1:]
 
-                _cache.tmpDirS3Key = 'tmp'
-
-                _cache.tmpDirPath = \
-                    os.path.join(
-                        f's3://{_cache.s3Bucket}',
-                        _cache.tmpDirS3Key)
-
-            else:
-                _cache.s3Client = _cache.s3Bucket = _cache.tmpDirS3Key = None
-                _cache.tmpDirPath = self._TMP_DIR_PATH
+            _cache.tmpDirS3Key = 'tmp'
+            _cache.tmpDirPath = f's3://{_cache.s3Bucket}/{_cache.tmpDirS3Key}'
 
             if verbose:
                 msg = f'Loading {self._pathRepr} by Arrow...'
                 logger.info(msg)
                 tic = time.time()
 
-            s3.rm(
-                path=path,
-                dir=True,
-                globs='*_$folder$',   # redundant HDFS-generated files
-                quiet=True,
-                access_key_id=aws_access_key_id,
-                secret_access_key=aws_secret_access_key,
-                verbose=False)
+            s3.rm(path=path,
+                  dir=True,
+                  globs='*_$folder$',   # redundant HDFS-generated files
+                  quiet=True,
+                  access_key_id=aws_access_key_id,
+                  secret_access_key=aws_secret_access_key,
+                  verbose=False)
 
             _cache._srcArrowDS = \
-                dataset(source=path,
+                dataset(source=path.replace('s3://', ''),
                         schema=None,
                         format='parquet',
                         filesystem=S3FileSystem(
