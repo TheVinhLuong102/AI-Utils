@@ -932,8 +932,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         'prep',
     )
 
-    # *****************
+    # =================
     # METHODS TO CREATE
+    # -----------------
     # __init__
     # load
 
@@ -984,7 +985,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
             s3.rm(path=path,
                   dir=True,
-                  globs='*_$folder$',   # redundant HDFS-generated files
+                  globs='*_$folder$',   # redundant AWS EMR-generated files
                   quiet=True,
                   access_key_id=aws_access_key_id,
                   secret_access_key=aws_secret_access_key,
@@ -1144,8 +1145,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     def load(cls, path, **kwargs):
         return cls(path=path, **kwargs)
 
-    # ********************************
+    # ================================
     # "INTERNAL / DON'T TOUCH" METHODS
+    # --------------------------------
     # _extractStdKwArgs
     # _organizeTimeSeries
     # _emptyCache
@@ -1282,10 +1284,12 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         self._cache = arrowADF._cache
 
-    # **********
+    # ========
     # ITERATOR
+    # --------
     # __iter__
     # __next__ / next
+
     def __iter__(self):
         arrowADF = self.copy(inheritCache=True, inheritNRows=True)
         arrowADF.piecePathsToIter = arrowADF.piecePaths.copy()
@@ -1299,12 +1303,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         raise StopIteration
 
-    # stackoverflow.com/questions/40923522/python-defining-an-iterator-class-failed-with-iter-returned-non-iterator-of?rq=1
-    def next(self):
-        return self.__next__()
-
-    # **********
+    # ==========
     # IO METHODS
+    # ----------
     # save
 
     def save(self, dir_path, collect=False, verbose=True):
@@ -1428,8 +1429,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         return arrowADF
 
-    # ***************
-    # PYTHON STR/REPR
+    # ===============
+    # PYTHON REPR/STR
+    # ---------------
     # __repr__
     # __short_repr__
 
@@ -1486,8 +1488,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 (f'[{self.path} + {len(self._mappers):,} transform(s)]'
                  f"[{', '.join(cols_desc_str)}]"))
 
-    # ***************
+    # ===============
     # CACHING METHODS
+    # ---------------
     # pieceLocalPath
 
     def pieceLocalPath(self, piecePath):
@@ -1522,6 +1525,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
     # ***********************
     # MAP-REDUCE (PARTITIONS)
+    # -----------------------
     # map
     # reduce
     # __getitem__
@@ -1618,12 +1622,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         results = []
 
-        for piecePath in \
-                (tqdm.tqdm(piecePaths)
-                 if verbose
-                 else piecePaths):
-            pieceLocalPath = \
-                self.pieceLocalPath(piecePath=piecePath)
+        for piecePath in (tqdm.tqdm(piecePaths) if verbose else piecePaths):
+            pieceLocalPath = self.pieceLocalPath(piecePath=piecePath)
 
             pieceCache = self._PIECE_CACHES[piecePath]
 
@@ -2157,8 +2157,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     def toPandas(self, *cols, **kwargs):
         return self.collect(*cols, **kwargs)
 
-    # *************************
+    # =========================
     # KEY (SETTABLE) PROPERTIES
+    # -------------------------
     # iCol
     # tCol
 
@@ -2202,8 +2203,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         self._tCol = None
         self.hasTS = False
 
-    # ***********
+    # ===========
     # REPR SAMPLE
+    # -----------
     # prelimReprSamplePiecePaths
     # reprSamplePiecePaths
     # _assignReprSample
@@ -2248,8 +2250,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         self._cache.nonNullProportion = {}
         self._cache.suffNonNull = {}
 
-    # *********************
+    # =====================
     # ROWS, COLUMNS & TYPES
+    # ---------------------
     # approxNRows
     # nRows
     # __len__
@@ -2361,8 +2364,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     def typeIsComplex(self, col):
         return is_complex(self.type(col))
 
-    # *************
+    # =============
     # COLUMN GROUPS
+    # -------------
     # indexCols
     # tRelAuxCols
     # possibleFeatureContentCols
