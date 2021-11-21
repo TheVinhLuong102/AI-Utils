@@ -827,10 +827,10 @@ class _S3ParquetDataFeeder__gen:
                 yield arrays
 
 
-def random_sample(population: Collection, k: int) -> Collection:
+def random_sample(population: Collection, k: int) -> list:
     return (random.sample(population=population, k=k)
             if len(population) > k
-            else population)
+            else list(population))
 
 
 @enable_inplace
