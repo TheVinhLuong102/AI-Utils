@@ -356,12 +356,12 @@ class _S3ParquetDataFeeder__prep__pandasDFTransform:
                     if self.typeStrs[catCol] == _STR_TYPE \
                     else (sum(((s - cat).abs().between(left=0,
                                                        right=_FLOAT_ABS_TOL,
-                                                       inclusive=True) * i)
+                                                       inclusive='both') * i)
                               for i, cat in enumerate(cats)) +   # noqa: W504
                           ((1 -   # noqa: W504
                             sum((s - cat).abs().between(left=0,
                                                         right=_FLOAT_ABS_TOL,
-                                                        inclusive=True)
+                                                        inclusive='both')
                                 for cat in cats)) *   # noqa: W504
                            nCats))
                 # *** NOTE NumPy BUG ***
@@ -385,7 +385,7 @@ class _S3ParquetDataFeeder__prep__pandasDFTransform:
                     # Try using .loc[row_indexer,col_indexer] = value instead
 
                     assert minMaxScaledIdxSeries.between(
-                        left=-1, right=1, inclusive=True).all(), \
+                        left=-1, right=1, inclusive='both').all(), \
                         (f'*** "{prepCatCol}" ({nCats:,} CATS) '
                          'CERTAIN MIN-MAX SCALED INT INDICES '
                          'NOT BETWEEN -1 AND 1: '
@@ -769,7 +769,7 @@ class _S3ParquetDataFeeder__gen:
                                 .between(
                                     left=left,
                                     right=right,
-                                    inclusive=False)
+                                    inclusive='neither')
                              if pandas.notnull(left) and pandas.notnull(right)
                              else ((filterChunkPandasDF[filterCol] > left)
                                    if pandas.notnull(left)
@@ -2643,7 +2643,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                               else (lambda series:
                                     series.between(left=lowerNumericNull,
                                                    right=upperNumericNull,
-                                                   inclusive=False)
+                                                   inclusive='neither')
                                     .sum(skipna=True, min_count=0)))) \
                     .reduce(
                         cols=col,
@@ -2675,7 +2675,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                   else pandasDF[col].between(left=lowerNumericNull,
                                              right=upperNumericNull,
-                                             inclusive=False).sum(
+                                             inclusive='neither').sum(
                                                  skipna=True,
                                                  min_count=0))
         )
@@ -2893,7 +2893,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         series.between(
                             left=self.outlierRstMin(col),
                             right=self.outlierRstMax(col),
-                            inclusive=True)]
+                            inclusive='both')]
 
                 elif outlierTails == 'lower':
                     series = series.loc[
@@ -4096,7 +4096,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                         series.between(
                                             left=colMin,
                                             right=colMax,
-                                            inclusive=True)]
+                                            inclusive='both')]
 
                                 elif colOutlierTails == 'lower':
                                     series = series.loc[series > colMin]
