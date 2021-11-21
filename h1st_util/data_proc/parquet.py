@@ -42,9 +42,9 @@ from . import AbstractDataHandler
 from .distributed import DDF
 
 if sys.version_info >= (3, 9):
-    from collections.abc import Sequence
+    from collections.abc import Collection, Sequence
 else:
-    from typing import Sequence
+    from typing import Collection, Sequence
 
 
 _NUM_CLASSES = int, float
@@ -825,6 +825,12 @@ class _S3ParquetDataFeeder__gen:
                             f'*** {array.shape}: {nNaNs} NaNs ***'
 
                 yield arrays
+
+
+def random_sample(population: Collection, k: int) -> Collection:
+    return (random.sample(population=population, k=k)
+            if len(population) > k
+            else population)
 
 
 @enable_inplace
@@ -1810,9 +1816,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         chunkPandasDFs = []
 
                         for recordBatch in \
-                                random.sample(
-                                    population=recordBatches,
-                                    k=nChunksForIntermediateN):
+                                random_sample(population=recordBatches,
+                                              k=nChunksForIntermediateN):
                             chunkPandasDF = \
                                 recordBatch.to_pandas(
                                     categories=None,
@@ -2204,9 +2209,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     def prelimReprSamplePiecePaths(self):
         if self._cache.prelimReprSamplePiecePaths is None:
             self._cache.prelimReprSamplePiecePaths = \
-                random.sample(
-                    population=self.piecePaths,
-                    k=self._reprSampleMinNPieces)
+                random_sample(population=self.piecePaths,
+                              k=self._reprSampleMinNPieces)
 
         return self._cache.prelimReprSamplePiecePaths
 
@@ -2220,7 +2224,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
             self._cache.reprSamplePiecePaths = \
                 self._cache.prelimReprSamplePiecePaths + \
-                (random.sample(
+                (random_sample(
                     population=self.piecePaths,
                     k=reprSampleNPieces - self._reprSampleMinNPieces)
                  if reprSampleNPieces > self._reprSampleMinNPieces
@@ -2553,10 +2557,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 nSamplePieces = min(nSamplePieces, maxNPieces)
 
             if nSamplePieces < self.nPieces:
-                piecePaths = \
-                    random.sample(
-                        population=self.piecePaths,
-                        k=nSamplePieces)
+                piecePaths = random_sample(population=self.piecePaths,
+                                           k=nSamplePieces)
 
             else:
                 nSamplePieces = self.nPieces
