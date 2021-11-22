@@ -2,16 +2,16 @@ import logging
 import os
 import tempfile
 
-from h1st_util.util.date_time import \
-    DATE_COL, \
-    _T_ORD_COL, _T_DELTA_COL, \
-    _T_HoY_COL, _T_QoY_COL, _T_MoY_COL, _T_PoY_COL, \
-    _T_QoH_COL, _T_MoH_COL, _T_PoH_COL, \
-    _T_MoQ_COL, _T_PoQ_COL, \
-    _T_WoM_COL, _T_DoM_COL, _T_PoM_COL, \
-    _T_DoW_COL, _T_PoW_COL, \
-    _T_HoD_COL, _T_PoD_COL, \
-    _T_COMPONENT_AUX_COLS, _T_CAT_AUX_COLS, _T_NUM_AUX_COLS
+from h1st_util.util.date_time import (
+    DATE_COL,
+    _T_ORD_COL, _T_DELTA_COL,
+    _T_HoY_COL, _T_QoY_COL, _T_MoY_COL, _T_PoY_COL,
+    _T_QoH_COL, _T_MoH_COL, _T_PoH_COL,
+    _T_MoQ_COL, _T_PoQ_COL,
+    _T_WoM_COL, _T_DoM_COL, _T_PoM_COL,
+    _T_DoW_COL, _T_PoW_COL,
+    _T_HoD_COL, _T_PoD_COL,
+    _T_COMPONENT_AUX_COLS, _T_CAT_AUX_COLS, _T_NUM_AUX_COLS)
 from h1st_util.util import Namespace
 from h1st_util.util.decor import _docstr_settable_property
 from h1st_util.util.log import STDOUT_HANDLER
@@ -19,6 +19,8 @@ import h1st_util.debug
 
 
 class AbstractDataHandler:
+    # pylint: disable=too-many-public-methods
+
     # default identity/entity, timestamp & time order columns
     _DEFAULT_I_COL = 'id'
 
@@ -97,8 +99,9 @@ class AbstractDataHandler:
     # data prep cache
     _PREP_CACHE = {}
 
-    # **********************
+    # ======================
     # PYTHON DEFAULT METHODS
+    # ----------------------
     # __repr__
     # __short_repr__
     # __str__
@@ -116,8 +119,9 @@ class AbstractDataHandler:
     def __unicode__(self):
         return repr(self)
 
-    # **********************
+    # =======
     # LOGGERS
+    # -------
     # class_logger
     # class_stdout_logger
     # logger
@@ -176,8 +180,9 @@ class AbstractDataHandler:
             level=logging.DEBUG,
             verbose=True)
 
-    # **********
+    # ==========
     # IO METHODS
+    # ----------
     # load / read
     # save / write
 
@@ -195,8 +200,9 @@ class AbstractDataHandler:
     def write(self, *args, **kwargs):
         return self.save(*args, **kwargs)
 
-    # ***************
+    # ===============
     # CACHING METHODS
+    # ---------------
     # _emptyCache
     # _inheritCache
 
@@ -206,8 +212,9 @@ class AbstractDataHandler:
     def _inheritCache(self):
         raise NotImplementedError
 
-    # *************************
+    # =========================
     # KEY (SETTABLE) PROPERTIES
+    # -------------------------
     # _assignReprSample
     # reprSampleSize
     # reprSample
@@ -303,8 +310,9 @@ class AbstractDataHandler:
     def minProportionByMaxNCats(self, minProportionByMaxNCats):
         self._minProportionByMaxNCats.default = minProportionByMaxNCats
 
-    # *********************
+    # =====================
     # ROWS, COLUMNS & TYPES
+    # ---------------------
     # __len__ / nRows / nrow
     # nCols / ncol
     # shape / dim
@@ -391,8 +399,9 @@ class AbstractDataHandler:
     def typeIsComplex(self, col):
         raise NotImplementedError
 
-    # *************
+    # =============
     # COLUMN GROUPS
+    # -------------
     # indexCols
     # tRelAuxCols
     # tComponentAuxCols
@@ -474,8 +483,9 @@ class AbstractDataHandler:
     def possibleNumCols(self):
         return self.possibleNumTAuxCols + self.possibleNumContentCols
 
-    # ****************
+    # ================
     # COLUMN PROFILING
+    # ----------------
     # count
     # nonNullProportion
     # suffNonNull
@@ -560,8 +570,9 @@ class AbstractDataHandler:
     def profile(self, *cols, **kwargs):
         raise NotImplementedError
 
-    # *********
+    # =========
     # DATA PREP
+    # ---------
     # fillna
     # prep
 
@@ -571,8 +582,11 @@ class AbstractDataHandler:
     def prep(self, *cols, **kwargs):
         raise NotImplementedError
 
-    # *******************************
+    # ===============================
     # SAMPLING / ITERATIVE GENERATION
+    # -------------------------------
+    # sample
+    # gen
 
     def sample(self, *args, **kwargs):
         raise NotImplementedError
