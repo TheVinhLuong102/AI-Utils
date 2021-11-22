@@ -36,7 +36,7 @@ from h1st_util.util.types.spark_sql import \
     _VECTOR_TYPE, _DECIMAL_TYPE_PREFIX, _ARRAY_TYPE_PREFIX, _MAP_TYPE_PREFIX, _STRUCT_TYPE_PREFIX
 import h1st_util.debug
 
-from . import AbstractDataHandler
+from ._abstract import AbstractDataHandler
 
 
 _NUM_CLASSES = int, float
@@ -5186,4 +5186,5 @@ class DistributedDataFrame(AbstractDataHandler):
             partitionBy=partitionBy)
 
 
+# alias
 DDF = DistributedDataFrame

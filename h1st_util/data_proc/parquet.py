@@ -24,6 +24,10 @@ from pyarrow.dataset import dataset
 from pyarrow.fs import S3FileSystem
 from pyarrow.parquet import read_metadata, read_schema, read_table
 
+# pylint: disable=no-name-in-module
+from h1st_util.data_proc._abstract import AbstractDataHandler
+from h1st_util.data_proc.distributed import DDF
+
 from h1st_util.util import DefaultDict, fs, Namespace
 from h1st_util.util.aws import s3
 from h1st_util.util.date_time import gen_aux_cols, DATE_COL
@@ -38,8 +42,6 @@ from h1st_util.util.types.numpy_pandas import (NUMPY_FLOAT_TYPES,
 from h1st_util.util.types.spark_sql import _STR_TYPE
 import h1st_util.debug
 
-from . import AbstractDataHandler
-from .distributed import DDF
 
 if sys.version_info >= (3, 9):
     from collections.abc import Collection, Sequence
