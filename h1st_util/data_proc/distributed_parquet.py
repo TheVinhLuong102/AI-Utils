@@ -1023,3 +1023,7 @@ class S3ParquetDistributedDataFrame(AbstractS3ParquetDataHandler, DDF):
             secret_access_key=self._srcArrowDS.fs.secret,
             delete=True, quiet=True,
             verbose=verbose)
+
+
+# alias
+S3ParquetDDF = S3ParquetDistributedDataFrame
