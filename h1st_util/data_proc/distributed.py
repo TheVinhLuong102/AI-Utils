@@ -1,5 +1,5 @@
 from argparse import Namespace as _Namespace
-from collections.abc import Counter
+from collections import Counter
 import copy
 from functools import lru_cache
 from inspect import isclass
