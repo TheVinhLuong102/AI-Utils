@@ -15,7 +15,18 @@ packages = [
 [tool.poetry.dependencies]
 Python = '>= 3.8, < 3.10'
 
+# Data Processing
+PySpark = '^3.2.0'
+Ray = '^1.8.0'
+
+# ML/DL
+TensorFlow = '^2.7.0'
+
+# Cloud
 Boto3 = '*'
+
+# misc/other
+PSUtil = '*' 
 
 
 [build-system]
