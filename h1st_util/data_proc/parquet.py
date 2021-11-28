@@ -990,46 +990,52 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             _cache.tmpDirS3Key = 'tmp'
             _cache.tmpDirPath = f's3://{_cache.s3Bucket}/{_cache.tmpDirS3Key}'
 
-            if verbose:
-                msg = f'Loading "{self.path}" by Arrow...'
-                logger.info(msg)
-                tic = time.time()
-
-            s3.rm(path=path,
-                  dir=True,
-                  globs='*_$folder$',   # redundant AWS EMR-generated files
-                  quiet=True,
-                  access_key_id=aws_access_key_id,
-                  secret_access_key=aws_secret_access_key,
-                  verbose=False)
-
-            _cache._srcArrowDS = \
-                dataset(source=path.replace('s3://', ''),
-                        schema=None,
-                        format='parquet',
-                        filesystem=S3FileSystem(
-                            access_key=aws_access_key_id,
-                            secret_key=aws_secret_access_key,
-                            region=aws_region),
-                        partitioning=None,
-                        partition_base_dir=None,
-                        exclude_invalid_files=None,
-                        ignore_prefixes=None)
-
-            if verbose:
-                toc = time.time()
-                logger.info(msg + f' done!   <{toc - tic:,.1f} s>')
-
-            _cache.nPieces = len(_cache._srcArrowDS.files)
-
-            if _cache.nPieces:
-                _cache.piecePaths = {f's3://{file_path}'
-                                     for file_path in _cache._srcArrowDS.files
-                                     if not file_path.endswith('_$folder$')}
-
-            else:
+            if path in self._PIECE_CACHES:
                 _cache.nPieces = 1
                 _cache.piecePaths = {path}
+
+            else:
+                if verbose:
+                    msg = f'Loading "{path}" by Arrow...'
+                    logger.info(msg)
+                    tic = time.time()
+
+                s3.rm(path=path,
+                      dir=True,
+                      globs='*_$folder$',   # redundant AWS EMR-generated files
+                      quiet=True,
+                      access_key_id=aws_access_key_id,
+                      secret_access_key=aws_secret_access_key,
+                      verbose=False)
+
+                _cache._srcArrowDS = \
+                    dataset(source=path.replace('s3://', ''),
+                            schema=None,
+                            format='parquet',
+                            filesystem=S3FileSystem(
+                                access_key=aws_access_key_id,
+                                secret_key=aws_secret_access_key,
+                                region=aws_region),
+                            partitioning=None,
+                            partition_base_dir=None,
+                            exclude_invalid_files=None,
+                            ignore_prefixes=None)
+
+                if verbose:
+                    toc = time.time()
+                    logger.info(msg + f' done!   <{toc - tic:,.1f} s>')
+
+                _cache.nPieces = len(_cache._srcArrowDS.files)
+
+                if _cache.nPieces:
+                    _cache.piecePaths = {
+                        f's3://{file_path}'
+                        for file_path in _cache._srcArrowDS.files
+                        if not file_path.endswith('_$folder$')}
+
+                else:
+                    _cache.nPieces = 1
+                    _cache.piecePaths = {path}
 
             _cache.srcColsInclPartitionKVs = set()
             _cache.srcTypesInclPartitionKVs = Namespace()
@@ -1502,11 +1508,13 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
     def cacheLocally(self):
         if not self._cachedLocally:
-            parsedURL = urlparse(url=self.path, scheme='', allow_fragments=True)
+            parsedURL = urlparse(url=self.path,
+                                 scheme='',
+                                 allow_fragments=True)
 
             localPath = os.path.join(self._TMP_DIR_PATH,
-                                    parsedURL.netloc,
-                                    parsedURL.path[1:])
+                                     parsedURL.netloc,
+                                     parsedURL.path[1:])
 
             s3.sync(from_dir_path=self.path,
                     to_dir_path=localPath,
@@ -1518,7 +1526,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             for piecePath in self.piecePaths:
                 self._PIECE_CACHES[piecePath].localPath = \
                     piecePath.replace(self.path, localPath)
-            
+
             self._cachedLocally = True
 
     def pieceLocalPath(self, piecePath):
