@@ -1495,7 +1495,26 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # ===============
     # CACHING METHODS
     # ---------------
+    # cacheLocally
     # pieceLocalPath
+
+    def cacheLocally(self):
+        parsedURL = urlparse(url=self.path, scheme='', allow_fragments=True)
+
+        localPath = os.path.join(self._TMP_DIR_PATH,
+                                 parsedURL.netloc,
+                                 parsedURL.path[1:])
+
+        s3.sync(from_dir_path=self.path,
+                to_dir_path=localPath,
+                access_key_id=self.aws_access_key_id,
+                secret_access_key=self.aws_secret_access_key,
+                delete=True, quiet=True,
+                verbose=True)
+
+        for piecePath in self.piecePaths:
+            self._PIECE_CACHES[piecePath].localPath = \
+                piecePath.replace(self.path, localPath)
 
     def pieceLocalPath(self, piecePath):
         if (piecePath in self._PIECE_CACHES) and \
