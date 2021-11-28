@@ -1141,6 +1141,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         self.__dict__.update(_cache)
 
+        self._cachedLocally = False
+
         self._mappers = [] if _mappers is None else _mappers
 
         # extract standard keyword arguments
@@ -1499,22 +1501,25 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # pieceLocalPath
 
     def cacheLocally(self):
-        parsedURL = urlparse(url=self.path, scheme='', allow_fragments=True)
+        if not self._cachedLocally:
+            parsedURL = urlparse(url=self.path, scheme='', allow_fragments=True)
 
-        localPath = os.path.join(self._TMP_DIR_PATH,
-                                 parsedURL.netloc,
-                                 parsedURL.path[1:])
+            localPath = os.path.join(self._TMP_DIR_PATH,
+                                    parsedURL.netloc,
+                                    parsedURL.path[1:])
 
-        s3.sync(from_dir_path=self.path,
-                to_dir_path=localPath,
-                access_key_id=self.aws_access_key_id,
-                secret_access_key=self.aws_secret_access_key,
-                delete=True, quiet=True,
-                verbose=True)
+            s3.sync(from_dir_path=self.path,
+                    to_dir_path=localPath,
+                    access_key_id=self.aws_access_key_id,
+                    secret_access_key=self.aws_secret_access_key,
+                    delete=True, quiet=True,
+                    verbose=True)
 
-        for piecePath in self.piecePaths:
-            self._PIECE_CACHES[piecePath].localPath = \
-                piecePath.replace(self.path, localPath)
+            for piecePath in self.piecePaths:
+                self._PIECE_CACHES[piecePath].localPath = \
+                    piecePath.replace(self.path, localPath)
+            
+            self._cachedLocally = True
 
     def pieceLocalPath(self, piecePath):
         if (piecePath in self._PIECE_CACHES) and \
