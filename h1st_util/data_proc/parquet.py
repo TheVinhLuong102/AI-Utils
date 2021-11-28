@@ -1706,55 +1706,57 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 pieceArrowTable = \
                     read_table(
                         source=pieceLocalPath,
-                        # str, pyarrow.NativeFile, or file-like object
-                        # If a string passed, can be a single file name or
-                        # directory name.
+                        # (str, pyarrow.NativeFile, or file-like object) –
+                        # If a string passed,
+                        # can be a single file name or directory name.
                         # For file-like objects, only read a single file.
-                        # Use pyarrow.BufferReader to read a file contained in
-                        # a bytes or buffer-like object.
+                        # Use pyarrow.BufferReader to read
+                        # a file contained in a bytes or buffer-like object.
 
                         columns=list(srcCols),
-                        # list -- If not None, only these columns will be read
-                        # from the file.
+                        # (list) – If not None,
+                        # only these columns will be read from the file.
                         # A column name may be a prefix of a nested field,
-                        # e.g. 'a' will select 'a.b', 'a.c', and 'a.d.e'.
+                        # e.g. ‘a’ will select ‘a.b’, ‘a.c’, and ‘a.d.e’.
+                        # If empty, no columns will be read.
+                        # Note that the table will still have the correct
+                        # num_rows set despite having no columns.
 
                         use_threads=True,
-                        # bool, default True
-                        # Perform multi-threaded column reads
+                        # (bool, default True) –
+                        # Perform multi-threaded column reads.
 
                         metadata=None,
-                        # FileMetaData – If separately computed
+                        # (FileMetaData) – If separately computed
 
                         use_pandas_metadata=False,
-                        # bool, default False
+                        # (bool, default False) –
                         # If True and file has custom pandas schema metadata,
-                        # ensure that index columns are also loaded
+                        # ensure that index columns are also loaded.
 
                         memory_map=False,
-                        # bool, default False
+                        # (bool, default False) –
                         # If the source is a file path,
                         # use a memory map to read file,
                         # which can improve performance in some environments.
 
                         read_dictionary=None,
-                        # list, default None
+                        # (list, default None) –
                         # List of names or column paths (for nested types)
                         # to read directly as DictionaryArray.
                         # Only supported for BYTE_ARRAY storage.
                         # To read a flat column as dictionary-encoded
                         # pass the column name.
-                        # For nested types,
-                        # you must pass the full column 'path',
-                        # which could be something like
-                        # level1.level2.list.item.
-                        # Refer to the Parquet file's schema
+                        # For nested types, you must pass
+                        # the full column “path”, which could be something
+                        # like level1.level2.list.item.
+                        # Refer to the Parquet file’s schema
                         # to obtain the paths.
 
                         filesystem=None,
-                        # FileSystem, default None
-                        # If nothing passed, paths assumed to be found in
-                        # the local on-disk filesystem.
+                        # (FileSystem, default None) –
+                        # If nothing passed, paths assumed to be found
+                        # in the local on-disk filesystem.
 
                         filters=None,
                         # List[Tuple] or List[List[Tuple]] or None (default))
@@ -1787,40 +1789,56 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         # (preferred) List[List[Tuple]] notation.
 
                         buffer_size=0,
-                        # int, default 0
-                        # If positive, perform read buffering
-                        # when deserializing individual column chunks.
+                        # (int, default 0) –
+                        # If positive, perform read buffering when
+                        # deserializing individual column chunks.
                         # Otherwise IO calls are unbuffered.
 
                         partitioning='hive',
-                        # Partitioning or str or list of str, default 'hive'
-                        # The partitioning scheme for a partitioned dataset.
-                        # The default of 'hive' assumes directory names with
-                        # key=value pairs like '/year=2009/month=11'.
-                        # In addition, a scheme like '/2009/11'
-                        # is also supported,
-                        # in which case you need to specify the field names
-                        # or a full schema.
-                        # See the pyarrow.dataset.partitioning()
-                        # function for more details.
+                        # (Partitioning or str or list of str, default "hive")
+                        # – The partitioning scheme for a partitioned dataset.
+                        # The default of “hive” assumes directory names with
+                        # key=value pairs like “/year=2009/month=11”.
+                        # In addition, a scheme like “/2009/11” is also
+                        # supported, in which case you need to specify the
+                        # field names or a full schema.
+                        # See the pyarrow.dataset.partitioning() function
+                        # for more details.
 
-                        use_legacy_dataset=True,
-                        # bool, default False
+                        use_legacy_dataset=False,
+                        # (bool, default False) –
                         # By default, read_table uses the new Arrow Datasets
-                        # API since pyarrow 1.0.0.
-                        # Among other things, this allows to pass filters for
-                        # all columns and not only the partition keys,
-                        # enables different partitioning schemes, etc
+                        # API since pyarrow 1.0.0. Among other things,
+                        # this allows to pass filters for all columns and
+                        # not only the partition keys, enables different
+                        # partitioning schemes, etc.
                         # Set to True to use the legacy behaviour.
 
-                        ignore_prefixes=None
-                        # list, optional
+                        ignore_prefixes=None,
+                        # (list, optional) –
                         # Files matching any of these prefixes will be ignored
                         # by the discovery process if use_legacy_dataset=False.
                         # This is matched to the basename of a path.
-                        # By default this is ['.', '_'].
+                        # By default this is [‘.’, ‘_’].
                         # Note that discovery happens only if a directory
                         # is passed as source.
+
+                        pre_buffer=True,
+                        # Coalesce and issue file reads in parallel to improve
+                        # performance on high-latency filesystems (e.g. S3).
+                        # If True, Arrow will use a background I/O thread pool.
+                        # This option is only supported for
+                        # use_legacy_dataset=False.
+                        # If using a filesystem layer that itself performs
+                        # readahead (e.g. fsspec’s S3FS),
+                        # disable readahead for best results.
+
+                        coerce_int96_timestamp_unit=None,
+                        # Cast timestamps that are stored in INT96 format to a
+                        # particular resolution (e.g. ‘ms’).
+                        # Setting to None is equivalent to ‘ns’ and therefore
+                        # INT96 timestamps will be infered as timestamps in
+                        # nanoseconds.
                     )
 
                 if nSamplesPerPiece and (nSamplesPerPiece < pieceCache.nRows):
