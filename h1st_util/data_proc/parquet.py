@@ -18,7 +18,7 @@ import numpy
 import pandas
 from sklearn.exceptions import DataConversionWarning
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
-import tqdm
+from tqdm import tqdm
 
 from pyarrow.dataset import dataset
 from pyarrow.fs import S3FileSystem
@@ -1368,8 +1368,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 '{:0%dd}.snappy.parquet' % len(str(self.nPieces))
 
             for i, pandasDF in \
-                    (tqdm.tqdm(enumerate(self), total=self.nPieces)
-                     if verbose
+                    (tqdm(enumerate(self), total=self.nPieces)
+                     if verbose and (self.nPieces > 1)
                      else enumerate(self)):
                 # ValueError: parquet must have string column names
                 pandasDF.columns = \
@@ -1652,7 +1652,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         results = []
 
-        for piecePath in (tqdm.tqdm(piecePaths) if verbose else piecePaths):
+        for piecePath in (tqdm(piecePaths)
+                          if verbose and (len(piecePaths) > 1)
+                          else piecePaths):
             pieceLocalPath = self.pieceLocalPath(piecePath=piecePath)
 
             pieceCache = self._PIECE_CACHES[piecePath]
@@ -2335,7 +2337,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 self.nPieces \
                 * sum(self._read_metadata_and_schema(piecePath=piecePath).nRows
                       for piecePath in
-                      tqdm.tqdm(self.prelimReprSamplePiecePaths)) \
+                      (tqdm(self.prelimReprSamplePiecePaths)
+                       if len(self.prelimReprSamplePiecePaths) > 1
+                       else self.prelimReprSamplePiecePaths)) \
                 / self._reprSampleMinNPieces
 
         return self._cache.approxNRows
@@ -2347,7 +2351,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
             self._cache.nRows = \
                 sum(self._read_metadata_and_schema(piecePath=piecePath).nRows
-                    for piecePath in tqdm.tqdm(self.piecePaths))
+                    for piecePath in (tqdm(self.piecePaths)
+                                      if self.nPieces > 1
+                                      else self.piecePaths))
 
         return self._cache.nRows
 
@@ -2449,9 +2455,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                 _pathPlusSepLen = len(self.path) + 1
 
-                for piecePath in (tqdm.tqdm(piecePaths)
-                                  if verbose
-                                  else piecePaths):
+                for piecePath in (tqdm(piecePaths) if verbose else piecePaths):
                     pieceSubPath = piecePath[_pathPlusSepLen:]
 
                     _from_key = os.path.join(self.pathS3Key, pieceSubPath)
