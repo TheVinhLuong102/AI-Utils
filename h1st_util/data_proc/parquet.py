@@ -1025,13 +1025,13 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     toc = time.time()
                     logger.info(msg + f' done!   <{toc - tic:,.1f} s>')
 
-                _cache.nPieces = len(_cache._srcArrowDS.files)
-
-                if _cache.nPieces:
+                if (_file_paths := _cache._srcArrowDS.files):
                     _cache.piecePaths = {
                         f's3://{file_path}'
-                        for file_path in _cache._srcArrowDS.files
+                        for file_path in _file_paths
                         if not file_path.endswith('_$folder$')}
+
+                    _cache.nPieces = len(_cache.piecePaths)
 
                 else:
                     _cache.nPieces = 1
