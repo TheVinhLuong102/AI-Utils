@@ -1,6 +1,6 @@
 [tool.poetry]
 name = 'H1st-Util'
-version = '0.0.0.dev13'
+version = '0.0.0.dev14'
 description = 'H1st Utilities'
 authors = ['Aitomatic, Inc. <Engineering@Aitomatic.com>']
 license = 'Apache-2.0'
@@ -23,6 +23,7 @@ Ray = '^1.8.0'
 TensorFlow = '^2.7.0'
 
 # Cloud
+AWSCLI = '*'
 Boto3 = '*'
 
 # misc/other
