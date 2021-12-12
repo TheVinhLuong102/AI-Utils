@@ -1,6 +1,6 @@
 [tool.poetry]
 name = 'H1st-Util'
-version = '0.0.0.dev14'
+version = '0.0.0.dev15'
 description = 'H1st Utilities'
 authors = ['Aitomatic, Inc. <Engineering@Aitomatic.com>']
 license = 'Apache-2.0'
@@ -17,7 +17,7 @@ Python = '>= 3.8, < 3.10'
 
 # Data Processing
 PySpark = '^3.2.0'
-Ray = '^1.8.0'
+Ray = '^1.9.0'
 
 # ML/DL
 TensorFlow = '^2.7.0'
@@ -30,5 +30,7 @@ PSUtil = '*'
 
 
 [build-system]
-requires = ['Poetry-Core >= 1.0.0']
+requires = [
+  'Poetry-Core >= 1.0.7'
+]
 build-backend = 'poetry.core.masonry.api'
