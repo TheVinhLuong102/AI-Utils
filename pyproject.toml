@@ -17,7 +17,7 @@ Python = '>= 3.8, < 3.10'
 
 # Data Processing
 PySpark = '^3.2.0'
-Ray = '^1.9.0'
+Ray = '^1.9.1'
 
 # ML/DL
 TensorFlow = '^2.7.0'
@@ -31,6 +31,7 @@ PSUtil = '*'
 
 [build-system]
 requires = [
-  'Poetry-Core >= 1.0.7'
+  'Poetry-Core >= 1.0.7',
+  'SetUpTools >= 60.1.0',   # *** TEMP FIX per github.com/pypa/pip/issues/10743#issuecomment-998321115 ***
 ]
 build-backend = 'poetry.core.masonry.api'
