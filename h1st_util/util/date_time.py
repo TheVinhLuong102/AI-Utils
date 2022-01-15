@@ -134,8 +134,7 @@ def gen_aux_cols(
             level=None,
             as_index=True,
             sort=False,
-            group_keys=True,
-            squeeze=False)
+            group_keys=True)
 
         df[_T_ORD_COL] = \
             g.cumcount()
