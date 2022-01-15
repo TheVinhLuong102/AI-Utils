@@ -3407,17 +3407,17 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 Namespace(
                     partition=   # noqa: E251
                     (f'{_TS_WINDOW_NAMES.partition} AS '
-                     f'(PARTITION BY {self._iCol}, {DDF._T_CHUNK_COL})'),
+                     f'(PARTITION BY {self._iCol}, {'__tChunk__'})'),
 
                     before=   # noqa: E251
                     (f'{_TS_WINDOW_NAMES.before} AS '
-                     f'(PARTITION BY {self._iCol}, {DDF._T_CHUNK_COL} '
+                     f'(PARTITION BY {self._iCol}, {'__tChunk__'} '
                      f'ORDER BY {self._T_ORD_COL} '
                      'ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)'),
 
                     after=   # noqa: E251
                     (f'{_TS_WINDOW_NAMES.after} AS '
-                     f'(PARTITION BY {self._iCol}, {DDF._T_CHUNK_COL} '
+                     f'(PARTITION BY {self._iCol}, {'__tChunk__'} '
                      f'ORDER BY {self._T_ORD_COL} '
                      'ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)'))
 
