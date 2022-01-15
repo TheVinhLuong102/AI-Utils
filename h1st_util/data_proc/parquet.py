@@ -26,7 +26,6 @@ from pyarrow.parquet import read_metadata, read_schema, read_table
 
 # pylint: disable=no-name-in-module
 from h1st_util.data_proc._abstract import AbstractDataHandler
-from h1st_util.data_proc.distributed import DDF
 
 from h1st_util.util import DefaultDict, fs, Namespace
 from h1st_util.util.aws import s3
