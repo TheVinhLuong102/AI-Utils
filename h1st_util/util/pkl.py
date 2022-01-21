@@ -1,12 +1,7 @@
 from __future__ import print_function
 
+import pickle
 import sys
-
-import six
-if six.PY2:
-    import cPickle as pickle
-else:
-    import pickle
 
 
 COMPAT_PROTOCOL = 2

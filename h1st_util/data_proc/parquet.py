@@ -1612,6 +1612,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         return arrowADF
 
     def reduce(self, *piecePaths, **kwargs):
+        # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         _CHUNK_SIZE = 10 ** 5
 
         nSamplesPerPiece = kwargs.get('nSamplesPerPiece')
