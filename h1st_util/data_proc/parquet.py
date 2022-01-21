@@ -1629,13 +1629,13 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         objs=results,
                         axis='index',
                         join='outer',
-                        ignore_index=True,
+                        ignore_index=False,
                         keys=None,
                         levels=None,
                         names=None,
                         verify_integrity=False,
-                        copy=False,
-                        sort=False
+                        sort=False,
+                        copy=False,  
                         # FutureWarning:
                         # Sorting because non-concatenation axisis not aligned.
                         # A future version of pandas will change to not sort
