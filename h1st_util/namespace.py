@@ -1,20 +1,14 @@
-"""H1st utilities."""
+"""Namespace utilities."""
 
 
 import argparse
 import copy
 import datetime
-from importlib.metadata import version
 import json
 from types import ModuleType
 
 
-__all__ = (
-    '__version__',
-)
-
-
-__version__: str = version(distribution_name='H1st-Util')
+__all__ = ('Namespace',)
 
 
 class DefaultDict(dict):
