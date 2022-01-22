@@ -2,6 +2,7 @@
 
 
 import collections
+from typing import Any
 
 import numpy
 import tensorflow
@@ -10,7 +11,7 @@ import tensorflow
 __all__ = ('to_iterable',)
 
 
-def to_iterable(x, iterable_type=tuple) -> collections.Iterable:
+def to_iterable(x: Any, iterable_type=tuple) -> collections.Iterable:
     # pylint: disable=invalid-name
     """Return an iterable collection."""
     if isinstance(x, iterable_type):
