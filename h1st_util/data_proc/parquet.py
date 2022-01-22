@@ -24,7 +24,7 @@ from pyarrow.parquet import read_metadata, read_schema, read_table
 
 from h1st_util import DefaultDict, fs, Namespace
 from h1st_util.aws import s3
-from h1st_util.iterables import to_iterable
+from h1st_util.iter import to_iterable
 from h1st_util.data_types.arrow import (
     _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)

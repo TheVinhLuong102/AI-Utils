@@ -1,7 +1,7 @@
 import os
 import time
 
-from ..iterables import to_iterable
+from ..iter import to_iterable
 from . import client as aws_client
 
 
