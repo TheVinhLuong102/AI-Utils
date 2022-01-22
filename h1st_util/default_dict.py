@@ -10,7 +10,7 @@ __all__ = ('DefaultDict',)
 class DefaultDict(dict):
     """Dict with Default Value."""
 
-    def __init__(self, default: Any, *args, **kwargs):
+    def __init__(self, default: Any, *args: Any, **kwargs: Any):
         """Init Default Dict."""
         super().__init__(*args, **kwargs)
 
