@@ -18,7 +18,7 @@ class DefaultDict(dict):
                                    if callable(default)
                                    else (lambda: default))
 
-    def __getitem__(self, item) -> Any:
+    def __getitem__(self, item: str, /) -> Any:
         """Get item."""
         return super().__getitem__(item) if item in self else self._default()
 
@@ -28,7 +28,7 @@ class DefaultDict(dict):
         return self._default()
 
     @default.setter
-    def default(self, default):
+    def default(self, default: Any, /):
         """Set default value."""
         if callable(default):
             self._default = default
