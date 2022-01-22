@@ -14,14 +14,6 @@ def flatten(iterable):
                     else [iterable]))
 
 
-def nested_filter(func, iterable):
-    return [(nested_filter(func, i)
-             if isinstance(i, collections.Iterable) and not isinstance(i, str)
-             else i)
-            for i in iterable
-            if (isinstance(i, collections.Iterable) and (not isinstance(i, str))) or func(i)]
-
-
 def nested_map(func, iterable):
     ls = list(iterable)
     for i, item in enumerate(iterable):
