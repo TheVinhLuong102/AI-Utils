@@ -12,11 +12,9 @@ import time
 from typing import Optional
 from urllib.parse import urlparse
 import uuid
-import warnings
 
 import numpy
 import pandas
-from sklearn.exceptions import DataConversionWarning
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 from tqdm import tqdm
 
@@ -52,12 +50,6 @@ _NUM_CLASSES = int, float
 
 
 # pylint: disable=consider-using-f-string,line-too-long,too-many-lines
-
-
-# filter out DataConversionWarning re: int64 in DL training
-warnings.filterwarnings(
-    action='ignore',
-    category=DataConversionWarning)
 
 
 class AbstractS3ParquetDataHandler(AbstractDataHandler):
@@ -1635,7 +1627,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         names=None,
                         verify_integrity=False,
                         sort=False,
-                        copy=False,  
+                        copy=False,
                         # FutureWarning:
                         # Sorting because non-concatenation axisis not aligned.
                         # A future version of pandas will change to not sort
