@@ -13,6 +13,8 @@ from typing import Optional
 from urllib.parse import urlparse
 import uuid
 
+import botocore
+import boto3
 import numpy
 import pandas
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
@@ -23,7 +25,7 @@ from pyarrow.fs import S3FileSystem
 from pyarrow.parquet import read_metadata, read_schema, read_table
 
 from h1st_util import DefaultDict, fs, Namespace
-from h1st_util.aws import s3
+from h1st_util import s3
 from h1st_util.iter import to_iterable
 from h1st_util.data_types.arrow import (
     _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
@@ -48,6 +50,18 @@ _NUM_CLASSES = int, float
 
 class AbstractS3ParquetDataHandler(AbstractDataHandler):
     # pylint: disable=abstract-method
+
+    S3_CLIENT = boto3.client(service_name='s3',
+                             region_name=None,
+                             api_version=None,
+                             use_ssl=True,
+                             verify=None,
+                             endpoint_url=None,
+                             aws_access_key_id=None,
+                             aws_secret_access_key=None,
+                             aws_session_token=None,
+                             config=botocore.client.Config(connect_timeout=9,
+                                                           read_timeout=9))
 
     _SCHEMA_MIN_N_PIECES = 10
     _REPR_SAMPLE_MIN_N_PIECES = 100
@@ -366,11 +380,7 @@ _PIECE_LOCAL_CACHE_PATHS = {}
 
 class _S3ParquetDataFeeder__pieceArrowTableFunc:
     def __init__(self,
-                 aws_access_key_id=None, aws_secret_access_key=None,
                  nThreads=1):
-        self.aws_access_key_id = aws_access_key_id
-        self.aws_secret_access_key = aws_secret_access_key
-
         self.nThreads = nThreads
 
     # @lru_cache(maxsize=68)
@@ -404,13 +414,10 @@ class _S3ParquetDataFeeder__pieceArrowTableFunc:
                 while not os.path.isdir(_dir_path):
                     time.sleep(1)
 
-                (s3.client(
-                    access_key_id=self.aws_access_key_id,
-                    secret_access_key=self.aws_secret_access_key)
-                 .download_file(
+                AbstractS3ParquetDataHandler.S3_CLIENT.download_file(
                     Bucket=parsedURL.netloc,
                     Key=parsedURL.path[1:],
-                    Filename=path))
+                    Filename=path)
 
                 # make sure AWS S3's asynchronous process has finished
                 # downloading a potentially large file
@@ -535,7 +542,6 @@ class _S3ParquetDataFeeder__gen:
     def __init__(
             self, args,
             piecePaths,
-            aws_access_key_id, aws_secret_access_key,
             partitionKVs,
             iCol, tCol,
             possibleFeatureTAuxCols, contentCols,
@@ -570,8 +576,6 @@ class _S3ParquetDataFeeder__gen:
 
         self.pieceArrowTableFunc = \
             _S3ParquetDataFeeder__pieceArrowTableFunc(
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key,
                 nThreads=nThreads)
 
         self.filterConditions = filterConditions
@@ -808,8 +812,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     def __init__(self,
                  path: str,
                  reCache: bool = False,
-                 aws_access_key_id: Optional[str] = None,
-                 aws_secret_access_key: Optional[str] = None,
                  aws_region: Optional[str] = None,
                  _mappers: Optional[Sequence[callable]] = None,
                  verbose: bool = True,
@@ -820,8 +822,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         if verbose or h1st_util.debug.ON:
             logger = self.class_stdout_logger()
 
-        self.aws_access_key_id = aws_access_key_id
-        self.aws_secret_access_key = aws_secret_access_key
         self.aws_region = aws_region
 
         assert isinstance(path, str) and path.startswith('s3://')
@@ -838,10 +838,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 logger.debug(f'*** RETRIEVING CACHE FOR "{path}" ***')
 
         else:
-            self.s3Client = _cache.s3Client = \
-                s3.client(access_key_id=aws_access_key_id,
-                          secret_access_key=aws_secret_access_key)
-
             _parsedURL = urlparse(url=path, scheme='', allow_fragments=True)
             _cache.s3Bucket = _parsedURL.netloc
             _cache.pathS3Key = _parsedURL.path[1:]
@@ -860,11 +856,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     tic = time.time()
 
                 s3.rm(path=path,
-                      dir=True,
+                      is_dir=True,
                       globs='*_$folder$',   # redundant AWS EMR-generated files
                       quiet=True,
-                      access_key_id=aws_access_key_id,
-                      secret_access_key=aws_secret_access_key,
                       verbose=False)
 
                 _cache._srcArrowDS = \
@@ -872,8 +866,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                             schema=None,
                             format='parquet',
                             filesystem=S3FileSystem(
-                                access_key=aws_access_key_id,
-                                secret_key=aws_secret_access_key,
                                 region=aws_region),
                             partitioning=None,
                             partition_base_dir=None,
@@ -1239,8 +1231,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             s3.sync(
                 from_dir_path=_dir_path,
                 to_dir_path=dir_path,
-                access_key_id=self.aws_access_key_id,
-                secret_access_key=self.aws_secret_access_key,
                 delete=True, quiet=True,
                 verbose=verbose)
 
@@ -1257,8 +1247,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         arrowADF = \
             S3ParquetDataFeeder(
                 path=self.path,
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
                 aws_region=self.aws_region,
 
                 iCol=self._iCol, tCol=self._tCol,
@@ -1361,8 +1349,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
             s3.sync(from_dir_path=self.path,
                     to_dir_path=localPath,
-                    access_key_id=self.aws_access_key_id,
-                    secret_access_key=self.aws_secret_access_key,
                     delete=True, quiet=True,
                     verbose=True)
 
@@ -1389,9 +1375,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         while not os.path.isdir(localDirPath):
             time.sleep(1)
 
-        self.s3Client.download_file(Bucket=parsedURL.netloc,
-                                    Key=parsedURL.path[1:],
-                                    Filename=localPath)
+        self.S3_CLIENT.download_file(Bucket=parsedURL.netloc,
+                                     Key=parsedURL.path[1:],
+                                     Filename=localPath)
         # make sure AWS S3's asynchronous process has finished
         # downloading a potentially large file
         while not os.path.isfile(localPath):
@@ -1429,8 +1415,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         arrowADF = \
             S3ParquetDataFeeder(
                 path=self.path,
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
                 aws_region=self.aws_region,
 
                 iCol=self._iCol, tCol=self._tCol,
@@ -2179,7 +2163,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     _to_key = os.path.join(subsetDirS3Key, pieceSubPath)
 
                     try:
-                        self.s3Client.copy(
+                        self.S3_CLIENT.copy(
                             CopySource=dict(Bucket=self.s3Bucket,
                                             Key=_from_key),
                             Bucket=self.s3Bucket,
@@ -2199,8 +2183,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
             return S3ParquetDataFeeder(
                 path=subsetPath,
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
                 aws_region=self.aws_region,
 
                 iCol=self._iCol, tCol=self._tCol,
@@ -4113,8 +4095,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         return _S3ParquetDataFeeder__gen(
             args=args,
             piecePaths=piecePaths,
-            aws_access_key_id=self.aws_access_key_id,
-            aws_secret_access_key=self.aws_secret_access_key,
             partitionKVs={piecePath: self._PIECE_CACHES[piecePath].partitionKVs
                           for piecePath in piecePaths},
             iCol=self._iCol, tCol=self._tCol,
@@ -4160,8 +4140,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         s3.sync(
             from_dir_path=self.path,
             to_dir_path=path,
-            access_key_id=self.aws_access_key_id,
-            secret_access_key=self.aws_secret_access_key,
             delete=True, quiet=True,
             verbose=verbose)
 
