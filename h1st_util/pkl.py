@@ -1,7 +1,17 @@
-from __future__ import print_function
+"""Pickle utilities."""
+
 
 import pickle
-import sys
+from sys import version_info
+from typing import Any
+
+
+__all__ = (
+    'COMPAT_PROTOCOL', 'COMPAT_COMPRESS',
+    'DEFAULT_COMPRESS_LVL', 'MAX_COMPRESS_LVL',
+    'PKL_EXT', 'PKL_W_PY_VER',
+    'pickle_able',
+)
 
 
 COMPAT_PROTOCOL = 2
@@ -11,15 +21,16 @@ DEFAULT_COMPRESS_LVL = 3
 MAX_COMPRESS_LVL = 9
 
 PKL_EXT = '.pkl'
-PKL_W_PY_VER = PKL_EXT + str(sys.version_info.major)
+PKL_W_PY_VER = f'{PKL_EXT}{version_info.major}'
 
 
-def pickle_able(obj):
+def pickle_able(obj: Any) -> bool:
+    """Determine if object is picklable."""
     try:
-        s = pickle.dumps(obj)
+        s = pickle.dumps(obj)   # pylint: disable=invalid-name
         _ = pickle.loads(s)
         return True
 
-    except Exception as err:
+    except Exception as err:   # pylint: disable=broad-except
         print(err)
         return False
