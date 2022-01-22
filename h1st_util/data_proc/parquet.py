@@ -25,7 +25,6 @@ from pyarrow.parquet import read_metadata, read_schema, read_table
 from h1st_util.util import DefaultDict, fs, Namespace
 from h1st_util.util.aws import s3
 from h1st_util.util.date_time import gen_aux_cols, DATE_COL
-from h1st_util.util.decor import enable_inplace, _docstr_verbose
 from h1st_util.util.iterables import to_iterable
 from h1st_util.util.types.arrow import (
     _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
@@ -781,7 +780,6 @@ def random_sample(population: Collection, k: int) -> list:
             else list(population))
 
 
-@enable_inplace
 class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # pylint: disable=too-many-instance-attributes,too-many-public-methods
 
@@ -872,18 +870,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         minProportionByMaxNCats=   # noqa: E251
         DefaultDict(
             AbstractS3ParquetDataHandler._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS)
-    )
-
-    # "inplace-able" methods
-    _INPLACE_ABLE = (
-        'filter',
-        'map',
-        'rename',
-        '_subset',
-        'drop',
-        'fillna',
-        'filterByPartitionKeys',
-        'prep',
     )
 
     # =================
@@ -2589,7 +2575,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # outlierRstStat / outlierRstMin / outlierRstMax
     # profile
 
-    @_docstr_verbose
     def count(self, *cols, **kwargs):
         """
         Return:
@@ -2685,7 +2670,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                                  min_count=0))
         )
 
-    @_docstr_verbose
     def nonNullProportion(self, *cols, **kwargs):
         """
         Return:
@@ -2723,7 +2707,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         return self._cache.nonNullProportion[col]
 
-    @_docstr_verbose
     def distinct(self, *cols, **kwargs):
         """
         Return:
@@ -2776,7 +2759,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 q=kwargs.get('q', .5),
                 interpolation='linear')
 
-    @_docstr_verbose
     def sampleStat(self, *cols, **kwargs):
         """
         *Approximate* measurements of a certain statistic
@@ -3076,7 +3058,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             f'{self}.outlierRstMax({col}, ...): '
             f'Column "{col}" Is Not of Numeric Type')
 
-    @_docstr_verbose
     def profile(self, *cols, **kwargs):
         """
         Return:
@@ -3270,7 +3251,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # fillna
     # prep
 
-    @_docstr_verbose
     def fillna(self, *cols, **kwargs):
         """
         Fill/interpolate ``NULL``/``NaN`` values
@@ -3651,7 +3631,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 if returnDetails
                 else arrowADF)
 
-    @_docstr_verbose
     def prep(self, *cols, **kwargs):
         """
         Pre-process ``ADF``'s selected column(s) in standard ways:
