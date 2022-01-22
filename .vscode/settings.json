@@ -19,7 +19,7 @@
   "python.linting.flake8Args": [
   ],
 
-  "python.linting.mypyEnabled": false,
+  "python.linting.mypyEnabled": true,
 
   "python.linting.pydocstyleEnabled": true,
 
