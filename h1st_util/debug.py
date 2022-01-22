@@ -1,1 +1,4 @@
-ON = False
+"""Debug flag."""
+
+
+ON: bool = False

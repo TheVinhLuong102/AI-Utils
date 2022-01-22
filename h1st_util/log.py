@@ -1,7 +1,7 @@
 """Logging-related utilities."""
 
 
-import logging
+from logging import Formatter, StreamHandler
 import sys
 
 
@@ -9,10 +9,10 @@ __all__ = 'STDOUT_HANDLER', 'enable_live_print'
 
 
 # handler for logging to StdOut
-STDOUT_HANDLER = logging.StreamHandler(stream=sys.stdout)
+STDOUT_HANDLER: StreamHandler = StreamHandler(stream=sys.stdout)
 
 STDOUT_HANDLER.setFormatter(
-    fmt=logging.Formatter(
+    fmt=Formatter(
         fmt='%(asctime)s   %(levelname)s   %(name)s:   %(message)s\n',
         datefmt='%Y-%m-%d %H:%M',
         style='%',
