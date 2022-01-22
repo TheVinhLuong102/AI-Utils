@@ -5,6 +5,7 @@
     "**/.git": true,
     "**/.mypy_cache": true,
     "**/__pycache__": true,
+    "**/.pytest_cache": true,
     "**/.ropeproject": true,
   },
 
@@ -12,40 +13,24 @@
 
   "python.linting.pylintEnabled": true,
   "python.linting.pylintArgs": [
-    "--disable", "arguments-differ",
-    "--disable", "attribute-defined-outside-init",
-    "--disable", "c-extension-no-member",
-    "--disable", "fixme",
-    "--disable", "invalid-name",
-    "--disable", "invalid-overridden-method",
-    "--disable", "logging-fstring-interpolation",
-    "--disable", "logging-not-lazy",
-    "--disable", "missing-class-docstring",
-    "--disable", "missing-function-docstring",
-    "--disable", "missing-module-docstring",
-    "--disable", "no-member",
-    "--disable", "protected-access",
   ],
 
   "python.linting.flake8Enabled": true,
   "python.linting.flake8Args": [
-    "--ignore=N801,N802,N803,N806",
   ],
 
   "python.linting.mypyEnabled": false,
 
-  "python.linting.pydocstyleEnabled": false,
+  "python.linting.pydocstyleEnabled": true,
 
   "python.linting.pycodestyleEnabled": true,
   "python.linting.pycodestyleArgs": [
-    "--ignore=E251,W503,W504",
   ],
 
   "python.linting.prospectorEnabled": true,
 
   "python.linting.pylamaEnabled": true,
   "python.linting.pylamaArgs": [
-    "--ignore C901",
   ],
 
   "python.linting.banditEnabled": true,
