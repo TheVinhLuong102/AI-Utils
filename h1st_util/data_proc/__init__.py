@@ -1,13 +1,9 @@
-import sys
+"""Data-Processing utilities."""
+
 
 from .parquet import S3ParquetDataFeeder
 
-if sys.version_info >= (3, 9):
-    from collections.abc import Sequence
-else:
-    from typing import Sequence
 
-
-__all__: Sequence[str] = (
+__all__ = (
     'S3ParquetDataFeeder',
 )
