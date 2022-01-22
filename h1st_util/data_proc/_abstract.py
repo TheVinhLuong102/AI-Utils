@@ -2,7 +2,7 @@ import logging
 import os
 import tempfile
 
-from h1st_util.util.date_time import (
+from h1st_util.date_time import (
     DATE_COL,
     _T_ORD_COL, _T_DELTA_COL,
     _T_HoY_COL, _T_QoY_COL, _T_MoY_COL, _T_PoY_COL,
@@ -12,9 +12,8 @@ from h1st_util.util.date_time import (
     _T_DoW_COL, _T_PoW_COL,
     _T_HoD_COL, _T_PoD_COL,
     _T_COMPONENT_AUX_COLS, _T_CAT_AUX_COLS, _T_NUM_AUX_COLS)
-from h1st_util.util import Namespace
-from h1st_util.util.decor import _docstr_settable_property
-from h1st_util.util.log import STDOUT_HANDLER
+from h1st_util import Namespace
+from h1st_util.log import STDOUT_HANDLER
 import h1st_util.debug
 
 
@@ -227,7 +226,6 @@ class AbstractDataHandler:
         raise NotImplementedError
 
     @property
-    @_docstr_settable_property
     def reprSampleSize(self):
         """
         *Approximate* number of rows to sample for profiling purposes
@@ -252,7 +250,6 @@ class AbstractDataHandler:
         return self._cache.reprSample
 
     @property
-    @_docstr_settable_property
     def minNonNullProportion(self):
         """
         Minimum proportion of non-``NULL`` values in each column
@@ -269,7 +266,6 @@ class AbstractDataHandler:
             self._cache.suffNonNull = {}
 
     @property
-    @_docstr_settable_property
     def outlierTailProportion(self):
         """
         Proportion in each tail end of each numerical column's distribution
@@ -283,7 +279,6 @@ class AbstractDataHandler:
         self._outlierTailProportion.default = outlierTailProportion
 
     @property
-    @_docstr_settable_property
     def maxNCats(self):
         """
         Maximum number of categorical levels to consider for each possible
@@ -296,7 +291,6 @@ class AbstractDataHandler:
         self._maxNCats.default = maxNCats
 
     @property
-    @_docstr_settable_property
     def minProportionByMaxNCats(self):
         """
         Minimum total proportion accounted for by the most common ``maxNCats``
