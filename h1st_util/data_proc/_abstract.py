@@ -5,7 +5,7 @@ import logging
 import os
 import tempfile
 
-from h1st_util import Namespace
+from h1st_util.namespace import Namespace
 from h1st_util.log import STDOUT_HANDLER
 import h1st_util.debug
 

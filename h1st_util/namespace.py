@@ -19,14 +19,14 @@ __version__: str = version(distribution_name='H1st-Util')
 
 class DefaultDict(dict):
     def __init__(self, default, *args, **kwargs):
-        super(DefaultDict, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._default = \
             default \
             if callable(default) \
             else lambda: default
 
     def __getitem__(self, item):
-        return super(DefaultDict, self).__getitem__(item) \
+        return super().__getitem__(item) \
             if item in self \
           else self._default()
 
@@ -43,6 +43,8 @@ class DefaultDict(dict):
 
 
 class Namespace(argparse.Namespace):
+    """Namespace with support for nested keys."""
+
     @staticmethod
     def _as_namespace_if_applicable(obj):
         if isinstance(obj, dict):
