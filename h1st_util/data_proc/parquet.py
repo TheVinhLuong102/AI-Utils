@@ -22,9 +22,6 @@ from pyarrow.dataset import dataset
 from pyarrow.fs import S3FileSystem
 from pyarrow.parquet import read_metadata, read_schema, read_table
 
-# pylint: disable=no-name-in-module
-from h1st_util.data_proc._abstract import AbstractDataHandler
-
 from h1st_util.util import DefaultDict, fs, Namespace
 from h1st_util.util.aws import s3
 from h1st_util.util.date_time import gen_aux_cols, DATE_COL
@@ -39,6 +36,7 @@ from h1st_util.util.types.numpy_pandas import (NUMPY_FLOAT_TYPES,
 from h1st_util.util.types.spark_sql import _STR_TYPE
 import h1st_util.debug
 
+from ._abstract import AbstractDataHandler
 
 if sys.version_info >= (3, 9):
     from collections.abc import Collection, Sequence
@@ -3758,8 +3756,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     f'(({sqlItem}) - ({origMin})) / {origRange})'
                     f' + ({targetMin})')
 
-        kwargs.pop('alias', None)   # *** NOT USED ***
-
         nulls = kwargs.pop('nulls', {})
 
         forceCatIncl = kwargs.pop('forceCatIncl', None)
@@ -3811,8 +3807,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         scaler = kwargs.pop('scaler', 'standard')
         if scaler:
             scaler = scaler.lower()
-
-        kwargs.pop('assembleVec', None)   # *** NOT USED ***
 
         returnNumPy = kwargs.pop('returnNumPy', False)
         returnOrigToPrepColMaps = kwargs.pop('returnOrigToPrepColMaps', False)
@@ -4410,7 +4404,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # *******************************
     # ITERATIVE GENERATION / SAMPLING
     # gen
-    # _CrossSectDLDF
 
     def gen(self, *args, **kwargs):
         piecePaths = kwargs.get('piecePaths', self.piecePaths)
