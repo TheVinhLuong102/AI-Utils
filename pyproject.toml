@@ -16,14 +16,15 @@ packages = [
 Python = '>= 3.8, < 3.10'
 
 # Data Processing
+PyArrow = '^6.0.1'
 PySpark = '^3.2.0'
-Ray = '^1.9.1'
 
 # ML/DL
 TensorFlow = '^2.7.0'
 
-# Cloud
-# Boto3 = '*'   # *** OFTEN CONFLICTS WITH OTHER DEPS ***
+# AWS   # *** OFTEN CONFLICTS WITH OTHER DEPS ***
+# AWSCLI = '*'
+# Boto3 = '*'
 
 # misc/other
 PSUtil = '*' 
