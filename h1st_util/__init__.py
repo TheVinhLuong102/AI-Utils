@@ -20,10 +20,6 @@ __all__: Sequence[str] = ('__version__',)
 __version__: str = version(distribution_name='H1st-Util')
 
 
-LOCAL_TMP_DIR_PATH = tempfile.gettempdir()
-assert LOCAL_TMP_DIR_PATH == tempfile.tempdir
-
-
 class DefaultDict(dict):
     def __init__(self, default, *args, **kwargs):
         super(DefaultDict, self).__init__(*args, **kwargs)
