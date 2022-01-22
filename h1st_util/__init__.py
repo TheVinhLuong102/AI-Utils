@@ -364,7 +364,3 @@ def python_module_base_name(python_module):
     return python_module \
         if isinstance(python_module, str) \
         else os.path.splitext(os.path.basename(python_module.__file__))[0]
-
-
-def sql_alias(s):
-    return re.split(' as | aS | As | AS ', s)[-1].strip()
