@@ -45,13 +45,6 @@ class DefaultDict(dict):
             self._default = lambda: default
 
 
-def import_obj(name):
-    module_name, obj_name = name.rsplit('.', 1)
-    return getattr(
-        importlib.import_module(module_name),
-        obj_name)
-
-
 class Namespace(argparse.Namespace):
     @staticmethod
     def _as_namespace_if_applicable(obj):
