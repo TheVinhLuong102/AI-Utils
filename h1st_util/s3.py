@@ -11,7 +11,8 @@ from .iter import to_iterable
 __all__ = 'cp', 'mv', 'rm', 'sync'
 
 
-def cp(from_path: str, to_path: str, is_dir: bool = True,
+def cp(from_path: str, to_path: str,
+       *, is_dir: bool = True,
        quiet: bool = True, verbose: bool = True):
     # pylint: disable=invalid-name,too-many-arguments
     """S3 Copy."""
@@ -32,7 +33,8 @@ def cp(from_path: str, to_path: str, is_dir: bool = True,
         print(f'{msg} done!   <{(toc - tic):,.1f} s>')
 
 
-def mv(from_path: str, to_path: str, is_dir: bool = True,
+def mv(from_path: str, to_path: str,
+       *, is_dir: bool = True,
        quiet: bool = True, verbose: bool = True):
     # pylint: disable=invalid-name,too-many-arguments
     """S3 Move."""
@@ -52,7 +54,8 @@ def mv(from_path: str, to_path: str, is_dir: bool = True,
         print(f'{msg} done!   <{(toc - tic):,.1f} s>')
 
 
-def rm(path: str, is_dir: bool = True, globs: Optional[str] = None,
+def rm(path: str,
+       *, is_dir: bool = True, globs: Optional[str] = None,
        quiet: bool = True, verbose: bool = True):
     # pylint: disable=invalid-name,too-many-arguments
     """S3 Remove."""
@@ -84,7 +87,8 @@ def rm(path: str, is_dir: bool = True, globs: Optional[str] = None,
         print(f'{msg} done!   <{(toc - tic):,.1f} s>')
 
 
-def sync(from_dir_path: str, to_dir_path: str, delete: bool = True,
+def sync(from_dir_path: str, to_dir_path: str,
+         *, delete: bool = True,
          quiet: bool = True, verbose=True):
     # pylint: disable=too-many-arguments
     """S3 Sync."""
