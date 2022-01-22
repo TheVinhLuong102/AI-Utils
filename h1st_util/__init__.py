@@ -1,20 +1,17 @@
-"""H1st Util package."""
+"""H1st utilities."""
 
 
 import argparse
 import copy
 import datetime
-import importlib
 from importlib.metadata import version
 import json
-import os
-import re
-import tempfile
 from types import ModuleType
-from typing import Sequence   # TODO: Py3.9: use generics/collections.abc
 
 
-__all__: Sequence[str] = ('__version__',)
+__all__ = (
+    '__version__',
+)
 
 
 __version__: str = version(distribution_name='H1st-Util')
