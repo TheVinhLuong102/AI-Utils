@@ -8,7 +8,7 @@ import pyspark.sql
 from pyspark.sql import functions
 
 from h1st_util import Namespace
-from h1st_util.types.spark_sql import _INT_TYPES, _NUM_TYPES, _STR_TYPE
+from h1st_util.data_types.spark_sql import _INT_TYPES, _NUM_TYPES, _STR_TYPE
 
 
 class _MetricABC:
