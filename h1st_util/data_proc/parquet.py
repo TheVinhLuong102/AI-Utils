@@ -24,14 +24,17 @@ from pyarrow.dataset import dataset
 from pyarrow.fs import S3FileSystem
 from pyarrow.parquet import read_metadata, read_schema, read_table
 
-from h1st_util.namespace import DefaultDict, fs, Namespace
-from h1st_util import s3
-from h1st_util.iter import to_iterable
 from h1st_util.data_types.arrow import (
     _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)
-from h1st_util.data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY_NUM_TYPES   # noqa: E501
+from h1st_util.data_types.numpy_pandas import (NUMPY_FLOAT_TYPES,
+                                               NUMPY_INT_TYPES,
+                                               PY_NUM_TYPES)
 from h1st_util.data_types.spark_sql import _STR_TYPE
+from h1st_util.default_dict import DefaultDict
+from h1st_util.iter import to_iterable
+from h1st_util.namespace import Namespace
+from h1st_util import s3
 import h1st_util.debug
 
 from ._abstract import AbstractDataHandler

@@ -11,31 +11,6 @@ from types import ModuleType
 __all__ = ('Namespace',)
 
 
-class DefaultDict(dict):
-    def __init__(self, default, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._default = \
-            default \
-            if callable(default) \
-            else lambda: default
-
-    def __getitem__(self, item):
-        return super().__getitem__(item) \
-            if item in self \
-          else self._default()
-
-    @property
-    def default(self):
-        return self._default()
-
-    @default.setter
-    def default(self, default):
-        if callable(default):
-            self._default = default
-        elif default != self._default():
-            self._default = lambda: default
-
-
 class Namespace(argparse.Namespace):
     """Namespace with support for nested keys."""
 
