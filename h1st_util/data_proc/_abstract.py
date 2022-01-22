@@ -355,12 +355,6 @@ class AbstractDataHandler:
     # COLUMN GROUPS
     # -------------
     # indexCols
-    # tRelAuxCols
-    # tComponentAuxCols
-    # tAuxCols
-    # possibleFeatureTAuxCols
-    # possibleCatTAuxCols
-    # possibleNumTAuxCols
     # contentCols
     # possibleFeatureContentCols
     # possibleCatContentCols
@@ -372,44 +366,9 @@ class AbstractDataHandler:
     def indexCols(self):
         raise NotImplementedError
 
-    def tRelAuxCols(self):
-        raise NotImplementedError
-
-    @property
-    def tComponentAuxCols(self):
-        return tuple(tComponentAuxCol
-                     for tComponentAuxCol in self._T_COMPONENT_AUX_COLS
-                     if tComponentAuxCol in self.columns)
-
-    @property
-    def tAuxCols(self):
-        return self.tRelAuxCols + self.tComponentAuxCols
-
-    @property
-    def possibleFeatureTAuxCols(self):
-        return ((self._T_DELTA_COL,)
-                if self.hasTS
-                else ()) + self.tComponentAuxCols
-
-    @property
-    def possibleCatTAuxCols(self):
-        return tuple(tComponentAuxCol
-                     for tComponentAuxCol in self.tComponentAuxCols
-                     if tComponentAuxCol in self._T_CAT_AUX_COLS)
-
-    @property
-    def possibleNumTAuxCols(self):
-        return ((self._T_DELTA_COL,)
-                if self.hasTS
-                else ()) + tuple(tComponentAuxCol
-                                 for tComponentAuxCol in self.tComponentAuxCols
-                                 if tComponentAuxCol in self._T_NUM_AUX_COLS)
-
     @property
     def contentCols(self):
-        return tuple(
-            col for col in self.columns
-            if col not in (self.indexCols + self._T_AUX_COLS))
+        return tuple(col for col in self.columns if col not in self.indexCols)
 
     def possibleFeatureContentCols(self):
         raise NotImplementedError

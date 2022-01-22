@@ -2220,7 +2220,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # COLUMN GROUPS
     # -------------
     # indexCols
-    # tRelAuxCols
     # possibleFeatureContentCols
     # possibleCatContentCols
 
@@ -2229,12 +2228,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         return (((self._iCol,) if self._iCol else ()) +   # noqa: W504
                 ((self._dCol,) if self._dCol else ()) +   # noqa: W504
                 ((self._tCol,) if self._tCol else ()))
-
-    @property
-    def tRelAuxCols(self):
-        return ((self._T_ORD_COL, self._T_DELTA_COL)
-                if self.hasTS
-                else ())
 
     @property
     def possibleFeatureContentCols(self):
