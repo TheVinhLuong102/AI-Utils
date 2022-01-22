@@ -4,16 +4,6 @@ import numpy
 import tensorflow
 
 
-def flatten(iterable):
-    return iterable.flatten().tolist() \
-        if isinstance(iterable, numpy.ndarray) \
-        else (iterable.toArray().tolist()
-              if 'Vector' in str(type(iterable))
-              else (reduce(lambda left, right: left + flatten(right), iterable, [])
-                    if isinstance(iterable, collections.Iterable) and not isinstance(iterable, (dict, str))
-                    else [iterable]))
-
-
 def to_iterable(x, iterable_type=tuple):
     if isinstance(x, iterable_type):
         return x
