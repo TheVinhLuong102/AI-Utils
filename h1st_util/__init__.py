@@ -24,21 +24,6 @@ LOCAL_TMP_DIR_PATH = tempfile.gettempdir()
 assert LOCAL_TMP_DIR_PATH == tempfile.tempdir
 
 
-def clean_str(s: str) -> str:   # TODO: positional-only
-    return re.sub('[^-\w]+', '_', s).strip('-_')
-
-
-def clean_uuid(uuid: str) -> str:   # TODO: positional-only
-    if not isinstance(uuid, str):
-        uuid = str(uuid)
-
-    uuid = uuid.replace('-', '_')
-
-    return uuid \
-        if uuid[0].isalpha() \
-      else f'_{uuid}'
-
-
 class DefaultDict(dict):
     def __init__(self, default, *args, **kwargs):
         super(DefaultDict, self).__init__(*args, **kwargs)
