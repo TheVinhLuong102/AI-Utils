@@ -1,66 +1,24 @@
+"""Data-Processing Abstract Base Class."""
+
+
 import logging
 import os
 import tempfile
 
-from h1st_util.date_time import (
-    DATE_COL,
-    _T_ORD_COL, _T_DELTA_COL,
-    _T_HoY_COL, _T_QoY_COL, _T_MoY_COL, _T_PoY_COL,
-    _T_QoH_COL, _T_MoH_COL, _T_PoH_COL,
-    _T_MoQ_COL, _T_PoQ_COL,
-    _T_WoM_COL, _T_DoM_COL, _T_PoM_COL,
-    _T_DoW_COL, _T_PoW_COL,
-    _T_HoD_COL, _T_PoD_COL,
-    _T_COMPONENT_AUX_COLS, _T_CAT_AUX_COLS, _T_NUM_AUX_COLS)
 from h1st_util import Namespace
 from h1st_util.log import STDOUT_HANDLER
 import h1st_util.debug
 
 
 class AbstractDataHandler:
-    # pylint: disable=too-many-public-methods
+    # pylint: disable=no-member,too-many-public-methods
+    """Abstract Data Handler."""
 
     # default identity/entity, timestamp & time order columns
     _DEFAULT_I_COL = 'id'
 
     _DEFAULT_T_COL = 't'
-    _DEFAULT_D_COL = DATE_COL
-
-    _T_ORD_COL = _T_ORD_COL
-
-    _T_DELTA_COL = _T_DELTA_COL
-
-    _T_REL_AUX_COLS = _T_ORD_COL, _T_DELTA_COL
-
-    _T_HoY_COL = _T_HoY_COL   # Half of Year
-    _T_QoY_COL = _T_QoY_COL   # Quarter of Year
-    _T_MoY_COL = _T_MoY_COL   # Month of Year
-    _T_PoY_COL = _T_PoY_COL   # Part/Proportion/Fraction of Year
-
-    _T_QoH_COL = _T_QoH_COL   # Quarter of Half-Year
-    _T_MoH_COL = _T_MoH_COL   # Month of Half-Year
-    _T_PoH_COL = _T_PoH_COL   # Part/Proportion/Fraction of Half-Year
-
-    _T_MoQ_COL = _T_MoQ_COL   # Month of Quarter
-    _T_PoQ_COL = _T_PoQ_COL   # Part/Proportion/Fraction of Quarter
-
-    _T_WoM_COL = _T_WoM_COL   # Week of Month
-    _T_DoM_COL = _T_DoM_COL   # Day of Month
-    _T_PoM_COL = _T_PoM_COL   # Part/Proportion/Fraction of Month
-
-    _T_DoW_COL = _T_DoW_COL   # Day of Week
-    _T_PoW_COL = _T_PoW_COL   # Part/Proportion/Fraction of Week
-
-    _T_HoD_COL = _T_HoD_COL   # Hour of Day
-    _T_PoD_COL = _T_PoD_COL   # Part/Proportion/Fraction of Day
-
-    _T_COMPONENT_AUX_COLS = _T_COMPONENT_AUX_COLS
-
-    _T_AUX_COLS = _T_REL_AUX_COLS + _T_COMPONENT_AUX_COLS
-
-    _T_CAT_AUX_COLS = _T_CAT_AUX_COLS
-
-    _T_NUM_AUX_COLS = _T_NUM_AUX_COLS
+    _DEFAULT_D_COL = 'date'
 
     # repr sample size
     _DEFAULT_REPR_SAMPLE_SIZE = 10 ** 6

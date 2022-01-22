@@ -24,7 +24,6 @@ from pyarrow.parquet import read_metadata, read_schema, read_table
 
 from h1st_util import DefaultDict, fs, Namespace
 from h1st_util.aws import s3
-from h1st_util.date_time import gen_aux_cols, DATE_COL
 from h1st_util.iterables import to_iterable
 from h1st_util.data_types.arrow import (
     _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
@@ -682,15 +681,8 @@ class _S3ParquetDataFeeder__gen:
 
                     chunkPandasDF[k] = \
                         datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date() \
-                        if k == DATE_COL \
+                        if k == 'date' \
                         else v[:-1]
-
-            if self.tCol:
-                chunkPandasDF = \
-                    gen_aux_cols(
-                        df=chunkPandasDF,
-                        i_col=self.iCol,
-                        t_col=self.tCol)
 
             for i, pandasDFTransform in enumerate(self.pandasDFTransforms):
                 try:
@@ -1010,7 +1002,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                         srcColsInclPartitionKVs.append(k)
 
-                        if k == DATE_COL:
+                        if k == 'date':
                             srcTypesInclPartitionKVs[k] = _ARROW_DATE_TYPE
                             partitionKVs[k] = \
                                 datetime.datetime.strptime(v[:-1],
@@ -1147,8 +1139,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             return nameSpace
 
     def _organizeTimeSeries(self):
-        self._dCol = DATE_COL \
-            if DATE_COL in self.srcColsInclPartitionKVs \
+        self._dCol = 'date' \
+            if 'date' in self.srcColsInclPartitionKVs \
             else None
 
         self.hasTS = self._iCol and self._tCol
@@ -1548,8 +1540,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         nSamplesPerPiece = kwargs.get('nSamplesPerPiece')
 
-        genTAuxCols = kwargs.get('genTAuxCols', True)
-
         reducer = \
             kwargs.get(
                 'reducer',
@@ -1817,47 +1807,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                             for k in partitionKeyCols:
                                 chunkPandasDF[k] = pieceCache.partitionKVs[k]
 
-                            if genTAuxCols and \
-                                    (self._tCol in chunkPandasDF.columns):
-                                if self._iCol in chunkPandasDF.columns:
-                                    try:
-                                        chunkPandasDF = \
-                                            gen_aux_cols(
-                                                df=chunkPandasDF.loc[
-                                                    pandas.notnull(
-                                                        chunkPandasDF[
-                                                            self._iCol]) &   # noqa: E501,W504
-                                                    pandas.notnull(
-                                                        chunkPandasDF[
-                                                            self._tCol])],
-                                                i_col=self._iCol,
-                                                t_col=self._tCol)
-
-                                    except Exception as err:
-                                        print(f'*** {piecePath} ***')
-
-                                        # stackoverflow.com/questions/4825234/
-                                        # exception-traceback-is-hidden-if-not-re-raised-immediately
-                                        raise err
-
-                                else:
-                                    try:
-                                        chunkPandasDF = \
-                                            gen_aux_cols(
-                                                df=chunkPandasDF.loc[
-                                                    pandas.notnull(
-                                                        chunkPandasDF[
-                                                            self._tCol])],
-                                                i_col=None,
-                                                t_col=self._tCol)
-
-                                    except Exception as err:
-                                        print(f'*** {piecePath} ***')
-
-                                        # stackoverflow.com/questions/4825234/
-                                        # exception-traceback-is-hidden-if-not-re-raised-immediately
-                                        raise err
-
                             if nSamplesPerChunk < len(chunkPandasDF):
                                 chunkPandasDF = \
                                     chunkPandasDF.sample(
@@ -1931,47 +1880,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         for k in partitionKeyCols:
                             piecePandasDF[k] = pieceCache.partitionKVs[k]
 
-                        if genTAuxCols and \
-                                (self._tCol in piecePandasDF.columns):
-                            if self._iCol in piecePandasDF.columns:
-                                try:
-                                    piecePandasDF = \
-                                        gen_aux_cols(
-                                            df=piecePandasDF.loc[
-                                                pandas.notnull(
-                                                    piecePandasDF[
-                                                        self._iCol]) &   # noqa: E501,W504
-                                                pandas.notnull(
-                                                    piecePandasDF[
-                                                        self._tCol])],
-                                            i_col=self._iCol,
-                                            t_col=self._tCol)
-
-                                except Exception as err:
-                                    print(f'*** {piecePath} ***')
-
-                                    # stackoverflow.com/questions/4825234/
-                                    # exception-traceback-is-hidden-if-not-re-raised-immediately
-                                    raise err
-
-                            else:
-                                try:
-                                    piecePandasDF = \
-                                        gen_aux_cols(
-                                            df=piecePandasDF.loc[
-                                                pandas.notnull(
-                                                    piecePandasDF[
-                                                        self._tCol])],
-                                            i_col=None,
-                                            t_col=self._tCol)
-
-                                except Exception as err:
-                                    print(f'*** {piecePath} ***')
-
-                                    # stackoverflow.com/questions/4825234/
-                                    # exception-traceback-is-hidden-if-not-re-raised-immediately
-                                    raise err
-
                         piecePandasDF = \
                             piecePandasDF.sample(
                                 n=nSamplesPerPiece,
@@ -2030,43 +1938,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                     for k in partitionKeyCols:
                         piecePandasDF[k] = pieceCache.partitionKVs[k]
-
-                    if genTAuxCols and (self._tCol in piecePandasDF.columns):
-                        if self._iCol in piecePandasDF.columns:
-                            try:
-                                piecePandasDF = \
-                                    gen_aux_cols(
-                                        df=piecePandasDF.loc[
-                                            pandas.notnull(
-                                                piecePandasDF[self._iCol]) &   # noqa: E501,W504
-                                            pandas.notnull(
-                                                piecePandasDF[self._tCol])],
-                                        i_col=self._iCol,
-                                        t_col=self._tCol)
-
-                            except Exception as err:
-                                print(f'*** {piecePath} ***')
-
-                                # stackoverflow.com/questions/4825234/
-                                # exception-traceback-is-hidden-if-not-re-raised-immediately
-                                raise err
-
-                        else:
-                            try:
-                                piecePandasDF = \
-                                    gen_aux_cols(
-                                        df=piecePandasDF.loc[
-                                            pandas.notnull(
-                                                piecePandasDF[self._tCol])],
-                                        i_col=None,
-                                        t_col=self._tCol)
-
-                            except Exception as err:
-                                print(f'*** {piecePath} ***')
-
-                                # stackoverflow.com/questions/4825234/
-                                # exception-traceback-is-hidden-if-not-re-raised-immediately
-                                raise err
 
             else:
                 piecePandasDF = pandas.DataFrame(
@@ -2129,7 +2000,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             **remainingKwargs)
 
     def filter(self, *conditions, **kwargs):
-        pass   # TODO
+        pass
 
     def collect(self, *cols, **kwargs):
         return self.reduce(cols=cols if cols else None, **kwargs)
