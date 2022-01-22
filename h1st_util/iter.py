@@ -10,7 +10,8 @@ import tensorflow
 __all__ = ('to_iterable',)
 
 
-def to_iterable(x, iterable_type=tuple):   # pylint: disable=invalid-name
+def to_iterable(x, iterable_type=tuple) -> collections.Iterable:
+    # pylint: disable=invalid-name
     """Return an iterable collection."""
     if isinstance(x, iterable_type):
         return x
