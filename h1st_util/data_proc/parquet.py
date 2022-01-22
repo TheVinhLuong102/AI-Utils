@@ -1030,7 +1030,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # _organizeTimeSeries
     # _emptyCache
     # _inheritCache
-    # _inplace
 
     # pylint: disable=inconsistent-return-statements
     def _extractStdKwArgs(self,
@@ -1147,26 +1146,11 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     self._cache.__dict__[cacheCategory][newCol] = \
                         arrowDF._cache.__dict__[cacheCategory][oldCol]
 
-    def _inplace(self, arrowADF):
-        # just in case we're taking in multiple inputs
-        if isinstance(arrowADF, (tuple, list)):
-            arrowADF = arrowADF[0]
-
-        assert isinstance(arrowADF, S3ParquetDataFeeder)
-
-        self.path = arrowADF.path
-
-        self.__dict__.update(self._CACHE[arrowADF.path])
-
-        self._mappers = arrowADF._mappers
-
-        self._cache = arrowADF._cache
-
     # ========
     # ITERATOR
     # --------
     # __iter__
-    # __next__ / next
+    # __next__
 
     def __iter__(self):
         arrowADF = self.copy(inheritCache=True, inheritNRows=True)
