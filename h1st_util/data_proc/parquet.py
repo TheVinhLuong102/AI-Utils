@@ -106,27 +106,6 @@ class _S3ParquetDataFeeder__drop__pandasDFTransform:
                              errors='ignore')
 
 
-class _S3ParquetDataFeeder__encodeStr__pandasDFTransform:
-    def __init__(self, col, strs, asCol=None):
-        self.col = col
-        self.strs = strs
-        self.asCol = asCol
-
-    def __call__(self, pandasDF):
-        series = \
-            pandasDF[self.col] \
-            .loc[pandas.notnull(pandasDF[self.col])] \
-            .map(self.strs.index)
-
-        if self.asCol:
-            pandasDF[self.asCol] = series
-
-        else:
-            pandasDF[self.col] = series
-
-        return pandasDF
-
-
 class _S3ParquetDataFeeder__fillna__pandasDFTransform:
     def __init__(self, nullFillDetails):
         self.nullFillDetails = nullFillDetails
