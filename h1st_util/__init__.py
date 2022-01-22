@@ -360,53 +360,6 @@ class Namespace(argparse.Namespace):
             indent=2)
 
 
-def pandas_fillna(df, *cols, **kwargs):
-    _REVERSE_METHOD_MAP = \
-        dict(ffill='bfill',
-             pad='bfill',
-             bfill='ffill',
-             backfill='ffill')
-
-    method = kwargs.pop('method')
-    fill_tail = \
-        kwargs.pop('fill_tail', True) \
-        if method \
-        else False
-
-    if not kwargs.pop('inplace'):
-        df = df.copy(deep=True)
-
-    if cols:
-        cols = list(cols)
-
-        df[cols] = \
-            df[cols].fillna(
-                inplace=False,
-                method=method,
-                **kwargs)
-
-        if fill_tail:
-            df[cols] = \
-                df[cols].fillna(
-                    inplace=False,
-                    method=_REVERSE_METHOD_MAP[method],
-                    **kwargs)
-
-    else:
-        df.fillna(
-            inplace=True,
-            method=method,
-            **kwargs)
-
-        if fill_tail:
-            df.fillna(
-                inplace=True,
-                method=_REVERSE_METHOD_MAP[method],
-                **kwargs)
-
-    return df
-
-
 def python_module_base_name(python_module):
     return python_module \
         if isinstance(python_module, str) \
