@@ -634,10 +634,6 @@ class _S3ParquetDataFeeder__gen:
             self.colsOverTime = [False]
             self.rowFrom_n_rowTo_tups = [None]
 
-        if _hasTS:
-            self.filterConditions[AbstractDataHandler._T_ORD_COL] = (minTOrd,
-                                                                     numpy.inf)
-
         if (not self.anon) and (self.iCol or self.tCol):
             self.colsLists.insert(
                 0,
@@ -776,65 +772,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     _CACHE = {}
 
     _PIECE_CACHES = {}
-
-    _T_AUX_COL_ARROW_TYPES = {
-        AbstractS3ParquetDataHandler._T_ORD_COL: _ARROW_INT_TYPE,
-        AbstractS3ParquetDataHandler._T_DELTA_COL: _ARROW_DOUBLE_TYPE,
-
-        # Half of Year
-        AbstractS3ParquetDataHandler._T_HoY_COL: _ARROW_INT_TYPE,
-
-        # Quarter of Year
-        AbstractS3ParquetDataHandler._T_QoY_COL: _ARROW_INT_TYPE,
-
-        # Month of Year
-        AbstractS3ParquetDataHandler._T_MoY_COL: _ARROW_INT_TYPE,
-
-        # Week of Year
-        # AbstractS3ParquetDataHandler._T_WoY_COL: _ARROW_INT_TYPE,
-
-        # Day of Year
-        # AbstractS3ParquetDataHandler._T_DoY_COL: _ARROW_INT_TYPE,
-
-        # Part/Proportion/Fraction of Year
-        AbstractS3ParquetDataHandler._T_PoY_COL: _ARROW_DOUBLE_TYPE,
-
-        # Quarter of Half-Year
-        AbstractS3ParquetDataHandler._T_QoH_COL: _ARROW_INT_TYPE,
-
-        # Month of Half-Year
-        AbstractS3ParquetDataHandler._T_MoH_COL: _ARROW_INT_TYPE,
-
-        # Part/Proportion/Fraction of Half-Year
-        AbstractS3ParquetDataHandler._T_PoH_COL: _ARROW_DOUBLE_TYPE,
-
-        # Month of Quarter
-        AbstractS3ParquetDataHandler._T_MoQ_COL: _ARROW_INT_TYPE,
-
-        # Part/Proportion/Fraction of Quarter
-        AbstractS3ParquetDataHandler._T_PoQ_COL: _ARROW_DOUBLE_TYPE,
-
-        # Week of Month
-        AbstractS3ParquetDataHandler._T_WoM_COL: _ARROW_INT_TYPE,
-
-        # Day of Month
-        AbstractS3ParquetDataHandler._T_DoM_COL: _ARROW_INT_TYPE,
-
-        # Part/Proportion/Fraction of Month
-        AbstractS3ParquetDataHandler._T_PoM_COL: _ARROW_DOUBLE_TYPE,
-
-        # Day of Week
-        AbstractS3ParquetDataHandler._T_DoW_COL: _ARROW_INT_TYPE,
-
-        # Part/Proportion/Fraction of Week
-        AbstractS3ParquetDataHandler._T_PoW_COL: _ARROW_DOUBLE_TYPE,
-
-        # Hour of Day
-        AbstractS3ParquetDataHandler._T_HoD_COL: _ARROW_INT_TYPE,
-
-        # Part/Proportion/Fraction of Day
-        AbstractS3ParquetDataHandler._T_PoD_COL: _ARROW_DOUBLE_TYPE,
-    }
 
     # default arguments dict
     _DEFAULT_KWARGS = dict(
@@ -2184,27 +2121,10 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
     @property
     def columns(self):
-        return list(self.srcColsInclPartitionKVs) + \
-            (list(self._T_AUX_COLS
-                  if self._iCol
-                  else self._T_COMPONENT_AUX_COLS)
-             if self._tCol
-             else [])
+        return list(self.srcColsInclPartitionKVs)
 
     @property
     def types(self):
-        if self._tCol:
-            _types = Namespace(
-                **{col: self._T_AUX_COL_ARROW_TYPES[col]
-                   for col in (self._T_AUX_COLS
-                               if self._iCol
-                               else self._T_COMPONENT_AUX_COLS)})
-
-            for col, arrowType in self.srcTypesInclPartitionKVs.items():
-                _types[col] = arrowType
-
-            return _types
-
         return self.srcTypesInclPartitionKVs
 
     def type(self, col):
@@ -3253,7 +3173,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             if not cols:
                 cols = set(self.contentCols)
 
-            cols.difference_update(self.indexCols + (self._T_ORD_COL,))
+            cols.difference_update(self.indexCols)
 
             nulls = kwargs.pop('nulls', {})
 
