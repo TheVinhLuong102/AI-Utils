@@ -339,9 +339,3 @@ class Namespace(argparse.Namespace):
             encoding='utf-8',
             ensure_ascii=False,
             indent=2)
-
-
-def python_module_base_name(python_module):
-    return python_module \
-        if isinstance(python_module, str) \
-        else os.path.splitext(os.path.basename(python_module.__file__))[0]
