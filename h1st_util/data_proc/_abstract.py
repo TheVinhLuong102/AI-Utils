@@ -9,9 +9,9 @@ import tempfile
 from typing import Any, Union
 from typing import Callable, Collection, Dict, Set, Tuple   # Py3.9+: built-ins
 
-import h1st_util.debug
-from h1st_util.log import STDOUT_HANDLER
-from h1st_util.namespace import Namespace
+from .. import debug
+from ..log import STDOUT_HANDLER
+from ..namespace import Namespace
 
 
 class AbstractDataHandler:
@@ -93,7 +93,7 @@ class AbstractDataHandler:
 
         level = kwargs.get('level')
         if not level:
-            level = logging.DEBUG if h1st_util.debug.ON else logging.INFO
+            level = logging.DEBUG if debug.ON else logging.INFO
         logger.setLevel(level=level)
 
         for handler in handlers:
@@ -114,7 +114,7 @@ class AbstractDataHandler:
 
         level = kwargs.get('level')
         if not level:
-            level = logging.DEBUG if h1st_util.debug.ON else logging.INFO
+            level = logging.DEBUG if debug.ON else logging.INFO
         logger.setLevel(level=level)
 
         for handler in handlers:
