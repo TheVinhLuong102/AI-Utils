@@ -5,13 +5,14 @@ import os
 import time
 from typing import Optional
 
+from .fs import PathType
 from .iter import to_iterable
 
 
 __all__ = 'cp', 'mv', 'rm', 'sync'
 
 
-def cp(from_path: str, to_path: str,
+def cp(from_path: PathType, to_path: PathType,
        *, is_dir: bool = True,
        quiet: bool = True, verbose: bool = True):
     # pylint: disable=invalid-name,too-many-arguments
@@ -33,7 +34,7 @@ def cp(from_path: str, to_path: str,
         print(f'{msg} done!   <{(toc - tic):,.1f} s>')
 
 
-def mv(from_path: str, to_path: str,
+def mv(from_path: PathType, to_path: PathType,
        *, is_dir: bool = True,
        quiet: bool = True, verbose: bool = True):
     # pylint: disable=invalid-name,too-many-arguments
@@ -54,7 +55,7 @@ def mv(from_path: str, to_path: str,
         print(f'{msg} done!   <{(toc - tic):,.1f} s>')
 
 
-def rm(path: str,
+def rm(path: PathType,
        *, is_dir: bool = True, globs: Optional[str] = None,
        quiet: bool = True, verbose: bool = True):
     # pylint: disable=invalid-name,too-many-arguments
@@ -87,7 +88,7 @@ def rm(path: str,
         print(f'{msg} done!   <{(toc - tic):,.1f} s>')
 
 
-def sync(from_dir_path: str, to_dir_path: str,
+def sync(from_dir_path: PathType, to_dir_path: PathType,
          *, delete: bool = True,
          quiet: bool = True, verbose=True):
     # pylint: disable=too-many-arguments

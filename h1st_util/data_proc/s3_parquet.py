@@ -13,7 +13,7 @@ import sys
 import tempfile
 import time
 from typing import Optional
-from typing import Tuple   # Py3.9+: use built-ins
+from typing import Collection, List, Tuple   # Py3.9+: use built-ins
 from urllib.parse import urlparse
 import uuid
 
@@ -28,6 +28,8 @@ from pyarrow.dataset import dataset
 from pyarrow.fs import S3FileSystem
 from pyarrow.parquet import read_metadata, read_schema, read_table
 
+import h1st_util.debug
+from h1st_util import fs, s3
 from h1st_util.data_types.arrow import (
     _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)
@@ -38,15 +40,8 @@ from h1st_util.data_types.spark_sql import _STR_TYPE
 from h1st_util.default_dict import DefaultDict
 from h1st_util.iter import to_iterable
 from h1st_util.namespace import Namespace
-from h1st_util import s3
-import h1st_util.debug
 
 from ._abstract import AbstractDataHandler
-
-if sys.version_info >= (3, 9):
-    from collections.abc import Collection, Sequence
-else:
-    from typing import Collection, Sequence
 
 
 _NUM_CLASSES = int, float
@@ -415,7 +410,7 @@ class _S3ParquetDataFeeder__pieceArrowTableFunc:
 
                 _dir_path = os.path.dirname(path)
 
-                fs.mkdir(dir=_dir_path,
+                fs.mkdir(dir_path=_dir_path,
                          hdfs=False)
 
                 while not os.path.isdir(_dir_path):
@@ -819,7 +814,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                  path: str,
                  reCache: bool = False,
                  aws_region: Optional[str] = None,
-                 _mappers: Optional[Sequence[callable]] = None,
+                 _mappers: Optional[List[callable]] = None,
                  verbose: bool = True,
                  **kwargs):
         # pylint: disable=too-many-arguments,too-many-branches
@@ -1177,7 +1172,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             _s3 = False
             _dir_path = dir_path
             fs.empty(
-                dir=_dir_path,
+                dir_path=_dir_path,
                 hdfs=False)
 
         if verbose:
@@ -1376,7 +1371,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                  parsedURL.path[1:])
 
         localDirPath = os.path.dirname(localPath)
-        fs.mkdir(dir=localDirPath, hdfs=False)
+        fs.mkdir(dir_path=localDirPath, hdfs=False)
         # make sure the dir has been created
         while not os.path.isdir(localDirPath):
             time.sleep(1)
@@ -3347,7 +3342,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 _tic = time.time()
 
             fs.mkdir(
-                dir=savePath,
+                dir_path=savePath,
                 hdfs=False)
 
             with open(os.path.join(savePath,
@@ -3947,7 +3942,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 _tic = time.time()
 
             fs.mkdir(
-                dir=savePath,
+                dir_path=savePath,
                 hdfs=False)
 
             with open(os.path.join(savePath,
