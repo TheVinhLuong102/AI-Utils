@@ -203,7 +203,7 @@ class Namespace(argparse.Namespace):
         """Iterate through content."""
         return (k for k in self.__dict__ if k != '__metadata__')
 
-    def update(self,
+    def update(self,   # noqa: MC0001
                other: Union[argparse.Namespace, dict, ModuleType] = {}, /,
                **kwargs: Any):
         # pylint: disable=dangerous-default-value
