@@ -206,7 +206,7 @@ class Namespace(argparse.Namespace):
     def update(self,   # noqa: MC0001
                other: Union[argparse.Namespace, dict, ModuleType] = {}, /,
                **kwargs: Any):
-        # pylint: disable=dangerous-default-value
+        # pylint: disable=dangerous-default-value,too-many-branches
         """Update content."""
         if isinstance(other, argparse.Namespace):
             other = copy.deepcopy(other.__dict__)
