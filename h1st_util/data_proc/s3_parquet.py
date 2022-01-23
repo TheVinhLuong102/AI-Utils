@@ -1,3 +1,6 @@
+"""S3 Parquet Data Feeder."""
+
+
 from argparse import Namespace as _Namespace
 import datetime
 from functools import lru_cache
@@ -10,6 +13,7 @@ import sys
 import tempfile
 import time
 from typing import Optional
+from typing import Tuple   # Py3.9+: use built-ins
 from urllib.parse import urlparse
 import uuid
 
@@ -25,7 +29,7 @@ from pyarrow.fs import S3FileSystem
 from pyarrow.parquet import read_metadata, read_schema, read_table
 
 from h1st_util.data_types.arrow import (
-    _ARROW_INT_TYPE, _ARROW_DOUBLE_TYPE, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
+    _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)
 from h1st_util.data_types.numpy_pandas import (NUMPY_FLOAT_TYPES,
                                                NUMPY_INT_TYPES,
@@ -603,7 +607,6 @@ class _S3ParquetDataFeeder__gen:
 
         self.pandasDFTransforms = pandasDFTransforms
 
-        _hasTS = False
         minTOrd = 0
 
         if args:
@@ -624,8 +627,6 @@ class _S3ParquetDataFeeder__gen:
 
                         self.colsOverTime.append(True)
                         self.rowFrom_n_rowTo_tups.append((rowFrom, rowTo))
-
-                        _hasTS = True
 
                         if -rowFrom > minTOrd:
                             minTOrd = -rowFrom
@@ -768,12 +769,14 @@ class _S3ParquetDataFeeder__gen:
 
 
 def random_sample(population: Collection, k: int) -> list:
+    """Draw random sample from population."""
     return (random.sample(population=population, k=k)
             if len(population) > k
             else list(population))
 
 
 class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
+    """S3 Parquet Data Feeder."""
     # pylint: disable=too-many-instance-attributes,too-many-public-methods
 
     _CACHE = {}
@@ -2091,8 +2094,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 else self.approxNRows)
 
     @property
-    def columns(self):
-        return list(self.srcColsInclPartitionKVs)
+    def columns(self) -> Tuple[str]:
+        return self.srcColsInclPartitionKVs
 
     @property
     def types(self):

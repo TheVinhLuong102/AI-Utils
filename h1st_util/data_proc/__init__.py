@@ -1,7 +1,7 @@
-"""Data-Processing utilities."""
+"""Data-processing utilities."""
 
 
-from .parquet import S3ParquetDataFeeder
+from .s3_parquet import S3ParquetDataFeeder
 
 
 __all__ = (
