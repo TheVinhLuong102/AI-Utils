@@ -1,4 +1,4 @@
-"""(Hadoop Distributed) File System utilities."""
+"""Local File System & HDFS utilities."""
 
 
 import os
@@ -30,10 +30,10 @@ PathType = Union[str, Path]
 
 # Hadoop configuration directory
 _HADOOP_HOME_ENV_VAR_NAME: str = 'HADOOP_HOME'
-_HADOOP_HOME: str = os.environ.get(_HADOOP_HOME_ENV_VAR_NAME)
+_HADOOP_HOME: PathType = os.environ.get(_HADOOP_HOME_ENV_VAR_NAME)
 
 
-def _hdfs_cmd(hadoop_home=_HADOOP_HOME) -> str:
+def _hdfs_cmd(hadoop_home: PathType = _HADOOP_HOME) -> str:
     if hadoop_home:
         cmd: str = f'{hadoop_home}/bin/hdfs'
 
