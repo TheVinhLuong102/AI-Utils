@@ -4160,12 +4160,3 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         return [self._subset(*piecePaths[cumuIndices[i]:cumuIndices[i + 1]],
                              **kwargs)
                 for i in range(nWeights)]
-
-    def schemaDiff(self, parquet_data_feeder):
-        return {col: (self.srcTypesInclPartitionKVs[col],
-                      parquet_data_feeder.srcTypesInclPartitionKVs[col])
-                for col in (set(self.srcTypesInclPartitionKVs)
-                            .intersection(
-                                parquet_data_feeder.srcTypesInclPartitionKVs))
-                if self.srcTypesInclPartitionKVs[col] !=   # noqa: W504
-                parquet_data_feeder.srcTypesInclPartitionKVs[col]}
