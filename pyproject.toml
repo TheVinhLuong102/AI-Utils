@@ -24,7 +24,7 @@ PySpark = '^3.2.0'
 SciKit-Learn = '*'
 TensorFlow = '^2.7.0'
 
-# AWS   # *** OFTEN CONFLICTS WITH OTHER DEPS ***
+# AWS deps: often conflict w/ other deps, so need separate installation
 # AWSCLI = '*'
 # Boto3 = '*'
 
