@@ -3,19 +3,19 @@
 
 from __future__ import annotations
 
-import argparse
+from argparse import Namespace as ArgParseNamespace
 import copy
 import datetime
 import json
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from typing import Any, Optional, Union
-from typing import List, Tuple   # Py3.9+: use built-ins
+from typing import Collection, List, Tuple   # Py3.9+: use built-ins
 
 
 __all__ = ('Namespace',)
 
 
-class Namespace(argparse.Namespace):
+class Namespace(ArgParseNamespace):
     """Namespace with support for nested keys."""
 
     @staticmethod
@@ -24,7 +24,7 @@ class Namespace(argparse.Namespace):
         if isinstance(obj, dict) and all(isinstance(k, str) for k in obj):
             obj: Namespace = Namespace(**obj)
 
-        elif isinstance(obj, argparse.Namespace):
+        elif isinstance(obj, (ArgParseNamespace, SimpleNamespace)):
             obj: Namespace = Namespace(**obj.__dict__)
 
         elif isinstance(obj, ModuleType):
@@ -43,15 +43,16 @@ class Namespace(argparse.Namespace):
         super().__init__(**{k: self._as_namespace_if_applicable(v)
                             for k, v in kwargs.items()})
 
+        # move any nested metadata to corresponding nested child Namespace
         # pylint: disable=invalid-name
         for k, v in self.__metadata__.copy().items():
-            nested_attr_names_list: List[str] = k.split(sep='.', maxsplit=-1)
+            nested_attr_names: List[str] = k.split(sep='.', maxsplit=-1)
 
-            if len(nested_attr_names_list) > 1:
+            if len(nested_attr_names) > 1:
                 del self.__metadata__[k]
 
-                self._get_nested_attr(nested_attr_names_list[:-1]) \
-                    .__metadata__[nested_attr_names_list[-1]] = v
+                self._get_nested_attr(nested_attr_names[:-1]) \
+                    .__metadata__[nested_attr_names[-1]] = v
 
     @staticmethod
     def pprint(namespace_or_dict: Union[Namespace, dict], /,
@@ -76,11 +77,16 @@ class Namespace(argparse.Namespace):
                     v_metadata_str: str = ''
 
                     if isinstance(namespace_or_dict, Namespace):
-                        v_metadata: Union[argparse.Namespace, dict] = \
+                        v_metadata: Union[Namespace,
+                                          ArgParseNamespace,
+                                          SimpleNamespace,
+                                          dict] = \
                             namespace_or_dict.__metadata__.get(k)
 
                         if v_metadata:
-                            if isinstance(v_metadata, argparse.Namespace):
+                            if isinstance(v_metadata, (Namespace,
+                                                       ArgParseNamespace,
+                                                       SimpleNamespace)):
                                 v_metadata: dict = v_metadata.__dict__
 
                             label: Optional[str] = v_metadata.get('label')
@@ -98,13 +104,14 @@ class Namespace(argparse.Namespace):
                                     f'({description})\n'
                                 )
 
-                            choices: Optional[Any] = v_metadata.get('choices')
+                            choices: Optional[Collection[Any]] = \
+                                v_metadata.get('choices')
                             if choices:
                                 v_metadata_str += (
                                     double_addl_indent_str +
                                     'choices:\n' +
                                     '\n'.join((double_addl_indent_str +
-                                               f'    - {choice}')
+                                               f'  - {choice}')
                                               for choice in choices) +
                                     '\n'
                                 )
@@ -113,16 +120,7 @@ class Namespace(argparse.Namespace):
                             if default:
                                 v_metadata_str += (
                                     double_addl_indent_str +
-                                    f'default:   {default}\n'
-                                )
-
-                            tags: Optional[str] = v_metadata.get('tags')
-                            if tags:
-                                v_metadata_str += (
-                                    double_addl_indent_str +
-                                    'tags:   ' +
-                                    ', '.join(tags) +
-                                    '\n'
+                                    f'default: {default}\n'
                                 )
 
                     s += (   # pylint: disable=invalid-name
@@ -138,7 +136,7 @@ class Namespace(argparse.Namespace):
                         )
                     )
 
-        s += (indent_str + '}\n\n')   # pylint: disable=invalid-name
+        s += (indent_str + '}\n')   # pylint: disable=invalid-name
 
         return s
 
@@ -204,11 +202,14 @@ class Namespace(argparse.Namespace):
         return (k for k in self.__dict__ if k != '__metadata__')
 
     def update(self,   # noqa: MC0001
-               other: Union[argparse.Namespace, dict, ModuleType] = {}, /,
+               other: Union[ArgParseNamespace,
+                            SimpleNamespace,
+                            dict,
+                            ModuleType] = {}, /,
                **kwargs: Any):
         # pylint: disable=dangerous-default-value,too-many-branches
         """Update content."""
-        if isinstance(other, argparse.Namespace):
+        if isinstance(other, (ArgParseNamespace, SimpleNamespace)):
             other = copy.deepcopy(other.__dict__)
 
         elif isinstance(other, dict):
@@ -238,7 +239,9 @@ class Namespace(argparse.Namespace):
                 if k != '__metadata__':
                     n = getattr(self, k, None)   # pylint: disable=invalid-name
                     if isinstance(n, Namespace) and \
-                            isinstance(v, (dict, argparse.Namespace)):
+                            isinstance(v, (dict,
+                                           ArgParseNamespace,
+                                           SimpleNamespace)):
                         n.update(v, __modules_first__=True)
                     elif not isinstance(v, ModuleType):
                         setattr(self, k, v)
@@ -248,13 +251,17 @@ class Namespace(argparse.Namespace):
                 if k != '__metadata__':
                     n = getattr(self, k, None)   # pylint: disable=invalid-name
                     if isinstance(n, Namespace) and \
-                            isinstance(v, (dict, argparse.Namespace, ModuleType)):   # noqa: E501
+                            isinstance(v, (dict,
+                                           ArgParseNamespace,
+                                           SimpleNamespace,
+                                           ModuleType)):
                         n.update(v)
                     else:
                         setattr(self, k, v)
 
         for k, v in __metadata__.items():   # pylint: disable=invalid-name
             nested_attr_names: List[str] = k.split(sep='.', maxsplit=-1)
+
             self._get_nested_attr(nested_attr_names[:-1]) \
                 .__metadata__[nested_attr_names[-1]] = v
 
@@ -296,7 +303,7 @@ class Namespace(argparse.Namespace):
         nested_attr_names: List[str] = key.split(sep='.', maxsplit=-1)
 
         return (self._get_nested_attr(nested_attr_names[:-1])
-                .__metadata__.get(nested_attr_names[-1], Namespace()))
+                    .__metadata__.get(nested_attr_names[-1], Namespace()))
 
     def to_dict(self):
         """Convert to Dict."""
