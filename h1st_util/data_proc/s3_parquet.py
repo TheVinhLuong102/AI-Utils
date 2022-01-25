@@ -4161,15 +4161,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                              **kwargs)
                 for i in range(nWeights)]
 
-    def copyToPath(self, path, verbose=True):
-        assert path.startswith('s3://')
-
-        s3.sync(
-            from_dir_path=self.path,
-            to_dir_path=path,
-            delete=True, quiet=True,
-            verbose=verbose)
-
     def schemaDiff(self, parquet_data_feeder):
         return {col: (self.srcTypesInclPartitionKVs[col],
                       parquet_data_feeder.srcTypesInclPartitionKVs[col])
