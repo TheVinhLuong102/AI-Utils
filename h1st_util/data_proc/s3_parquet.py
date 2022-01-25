@@ -88,19 +88,19 @@ class AbstractS3FileDataHandler(AbstractDataHandler):
     _REPR_SAMPLE_MIN_N_PIECES: int = 100
 
     @property
-    def reprSampleMinNPieces(self):
+    def reprSampleMinNPieces(self) -> int:
         """Minimum number of pieces for reprensetative sample."""
         return self._reprSampleMinNPieces
 
     @reprSampleMinNPieces.setter
     def reprSampleMinNPieces(self, n: int, /):
         if (n <= self.nPieces) and (n != self._reprSampleMinNPieces):
-            self._reprSampleMinNPieces = n
+            self._reprSampleMinNPieces: int = n
 
     @reprSampleMinNPieces.deleter
     def reprSampleMinNPieces(self):
-        self._reprSampleMinNPieces = min(self._REPR_SAMPLE_MIN_N_PIECES,
-                                         self.nPieces)
+        self._reprSampleMinNPieces: int = min(self._REPR_SAMPLE_MIN_N_PIECES,
+                                              self.nPieces)
 
 
 class _S3ParquetDataFeeder__getitem__pandasDFTransform:
