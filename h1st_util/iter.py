@@ -11,26 +11,26 @@ import tensorflow
 __all__ = ('to_iterable',)
 
 
-def to_iterable(x: Any, iterable_type=tuple) -> collections.Iterable:
+def to_iterable(obj: Any, /, *, iterable_type=tuple) -> collections.Iterable:
     # pylint: disable=invalid-name
     """Return an iterable collection."""
-    if isinstance(x, iterable_type):
-        return x
+    if isinstance(obj, iterable_type):
+        return obj
 
-    if isinstance(x, collections.Iterable) and \
-            (not isinstance(x, (str, tensorflow.Tensor))):
-        return iterable_type(x)
+    if isinstance(obj, collections.Iterable) and \
+            (not isinstance(obj, (str, tensorflow.Tensor))):
+        return iterable_type(obj)
 
     if iterable_type is tuple:
-        return (x,)
+        return (obj,)
 
     if iterable_type is list:
-        return [x]
+        return [obj]
 
     if iterable_type is set:
-        return {x}
+        return {obj}
 
     if iterable_type is numpy.ndarray:
-        return numpy.array((x,))
+        return numpy.array((obj,))
 
     raise TypeError(f'*** INVALID iterable_type {iterable_type} ***')
