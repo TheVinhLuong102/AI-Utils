@@ -25,6 +25,7 @@
 
   "python.linting.pycodestyleEnabled": true,
   "python.linting.pycodestyleArgs": [
+    "--ignore=E251,E501,W503,W504",
   ],
 
   "python.linting.prospectorEnabled": true,

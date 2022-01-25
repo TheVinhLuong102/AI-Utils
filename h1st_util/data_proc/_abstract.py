@@ -69,6 +69,7 @@ class AbstractDataHandler:
         """Return string repr."""
         raise NotImplementedError
 
+    @property
     def __short_repr__(self) -> str:
         """Return short string repr."""
         raise NotImplementedError
@@ -309,6 +310,7 @@ class AbstractDataHandler:
         """Return (number of rows, number of columns) tuple."""
         return self.nRows, self.nCols
 
+    @property
     def types(self) -> Namespace:
         """Return column data types."""
         raise NotImplementedError
@@ -339,6 +341,7 @@ class AbstractDataHandler:
     # possibleCatCols
     # possibleNumCols
 
+    @property
     def indexCols(self) -> Tuple[str]:   # noqa: N802
         # pylint: disable=invalid-name
         """Return index columns."""

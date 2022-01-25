@@ -1,7 +1,9 @@
 """S3 Parquet Data Feeder."""
 
 
-from argparse import Namespace as _Namespace
+from __future__ import annotations
+
+from argparse import Namespace as ArgParseNamespace
 import datetime
 from functools import lru_cache
 import json
@@ -11,8 +13,8 @@ import random
 import re
 import tempfile
 import time
-from typing import Optional
-from typing import Collection, List, Tuple   # Py3.9+: use built-ins
+from typing import Any, Optional, Union
+from typing import Collection, List, Set, Tuple   # Py3.9+: use built-ins
 from urllib.parse import urlparse
 import uuid
 
@@ -40,14 +42,35 @@ from ..namespace import Namespace
 from ._abstract import AbstractDataHandler
 
 
-_NUM_CLASSES = int, float
+# flake8: noqa
+# (too many camelCase names)
+
+# pylint: disable=c-extension-no-member
+# e.g., `math.`
+
+# pylint: disable=invalid-name
+# e.g., camelCase names
+
+# pylint: disable=logging-fstring-interpolation,logging-not-lazy
+
+# pylint: disable=no-member
+# e.g., `._cache`
+
+# pylint: disable=protected-access
+# e.g., `._cache`
+
+# pylint: disable=too-many-lines
+# (this whole module)
 
 
-# pylint: disable=consider-using-f-string,line-too-long,too-many-lines
+# pylint: disable=consider-using-f-string
+# pylint: disable=line-too-long
+# pylint: disable=too-few-public-methods
 
 
-class AbstractS3ParquetDataHandler(AbstractDataHandler):
+class AbstractS3FileDataHandler(AbstractDataHandler):
     # pylint: disable=abstract-method
+    """Abstract S3 File Data Handler."""
 
     S3_CLIENT = boto3.client(service_name='s3',
                              region_name=None,
@@ -61,18 +84,18 @@ class AbstractS3ParquetDataHandler(AbstractDataHandler):
                              config=botocore.client.Config(connect_timeout=9,
                                                            read_timeout=9))
 
-    _SCHEMA_MIN_N_PIECES = 10
-    _REPR_SAMPLE_MIN_N_PIECES = 100
+    _SCHEMA_MIN_N_PIECES: int = 10
+    _REPR_SAMPLE_MIN_N_PIECES: int = 100
 
     @property
     def reprSampleMinNPieces(self):
+        """Minimum number of pieces for reprensetative sample."""
         return self._reprSampleMinNPieces
 
     @reprSampleMinNPieces.setter
-    def reprSampleMinNPieces(self, reprSampleMinNPieces):
-        if (reprSampleMinNPieces <= self.nPieces) and \
-                (reprSampleMinNPieces != self._reprSampleMinNPieces):
-            self._reprSampleMinNPieces = reprSampleMinNPieces
+    def reprSampleMinNPieces(self, n: int, /):
+        if (n <= self.nPieces) and (n != self._reprSampleMinNPieces):
+            self._reprSampleMinNPieces = n
 
     @reprSampleMinNPieces.deleter
     def reprSampleMinNPieces(self):
@@ -139,8 +162,8 @@ class _S3ParquetDataFeeder__fillna__pandasDFTransform:
 
                 pandasDF.loc[
                     :,
-                    (AbstractDataHandler._NULL_FILL_PREFIX +   # noqa: W504
-                     col +   # noqa: W504
+                    (AbstractDataHandler._NULL_FILL_PREFIX +
+                     col +
                      AbstractDataHandler._PREP_SUFFIX)] = \
                     series.where(
                         cond=chks,
@@ -186,8 +209,8 @@ class _S3ParquetDataFeeder__prep__pandasDFTransform:
                     isinstance(numPrepColNDetails, list) and \
                     (len(numPrepColNDetails) == 2):
                 self.numNullFillCols.append(
-                    AbstractDataHandler._NULL_FILL_PREFIX +   # noqa: W504
-                    numCol +   # noqa: W504
+                    AbstractDataHandler._NULL_FILL_PREFIX +
+                    numCol +
                     AbstractDataHandler._PREP_SUFFIX)
 
                 numPrepCol, numPrepDetails = numPrepColNDetails
@@ -307,18 +330,18 @@ class _S3ParquetDataFeeder__prep__pandasDFTransform:
 
                 pandasDF.loc[:, prepCatCol] = \
                     (sum(((s == cat) * i)
-                         for i, cat in enumerate(cats)) +   # noqa: W504
+                         for i, cat in enumerate(cats)) +
                      ((~s.isin(cats)) * nCats)) \
                     if self.typeStrs[catCol] == _STR_TYPE \
                     else (sum(((s - cat).abs().between(left=0,
                                                        right=_FLOAT_ABS_TOL,
                                                        inclusive='both') * i)
-                              for i, cat in enumerate(cats)) +   # noqa: W504
-                          ((1 -   # noqa: W504
+                              for i, cat in enumerate(cats)) +
+                          ((1 -
                             sum((s - cat).abs().between(left=0,
                                                         right=_FLOAT_ABS_TOL,
                                                         inclusive='both')
-                                for cat in cats)) *   # noqa: W504
+                                for cat in cats)) *
                            nCats))
                 # *** NOTE NumPy BUG ***
                 # *** abs(...) of a data type most negative value equals to
@@ -412,7 +435,7 @@ class _S3ParquetDataFeeder__pieceArrowTableFunc:
                 while not os.path.isdir(_dir_path):
                     time.sleep(1)
 
-                AbstractS3ParquetDataHandler.S3_CLIENT.download_file(
+                AbstractS3FileDataHandler.S3_CLIENT.download_file(
                     Bucket=parsedURL.netloc,
                     Key=parsedURL.path[1:],
                     Filename=path)
@@ -542,7 +565,7 @@ class _S3ParquetDataFeeder__gen:
             piecePaths,
             partitionKVs,
             iCol, tCol,
-            possibleFeatureTAuxCols, contentCols,
+            contentCols,
             pandasDFTransforms,
             filterConditions,
             n, sampleN, pad,
@@ -593,7 +616,6 @@ class _S3ParquetDataFeeder__gen:
 
         self.hasTS = self.iCol and self.tCol
 
-        self.possibleFeatureTAuxCols = possibleFeatureTAuxCols
         self.contentCols = contentCols
 
         self.pandasDFTransforms = pandasDFTransforms
@@ -629,14 +651,14 @@ class _S3ParquetDataFeeder__gen:
                 self.rowFrom_n_rowTo_tups = nArgs * [None]
 
         else:
-            self.colsLists = [self.possibleFeatureTAuxCols + self.contentCols]
+            self.colsLists = list(self.contentCols)
             self.colsOverTime = [False]
             self.rowFrom_n_rowTo_tups = [None]
 
         if (not self.anon) and (self.iCol or self.tCol):
             self.colsLists.insert(
                 0,
-                ([self.iCol] if self.iCol else []) +   # noqa: W504
+                ([self.iCol] if self.iCol else []) +
                 ([self.tCol] if self.tCol else []))
             self.colsOverTime.insert(0, False)
             self.rowFrom_n_rowTo_tups.insert(0, None)
@@ -706,10 +728,10 @@ class _S3ParquetDataFeeder__gen:
                              else ((filterChunkPandasDF[filterCol] > left)
                                    if pandas.notnull(left)
                                    else ((filterChunkPandasDF[filterCol]
-                                          < right))))   # noqa: W503
+                                          < right))))
                             for filterCol, (left, right) in
                             self.filterConditions.items())
-                        == len(self.filterConditions)].index.tolist()   # noqa: E501,W503
+                        == len(self.filterConditions)].index.tolist()
 
             else:
                 rowIndices = chunkPandasDF.index.tolist()
@@ -726,9 +748,9 @@ class _S3ParquetDataFeeder__gen:
                         numpy.expand_dims(
                             numpy.vstack(
                                 (numpy.full(
-                                    shape=(max((rowFrom_n_rowTo[1] -   # noqa: E501,W504
+                                    shape=(max((rowFrom_n_rowTo[1] -
                                                 rowFrom_n_rowTo[0] + 1)
-                                               - max(rowIdx +   # noqa: E501,W503,W504
+                                               - max(rowIdx +
                                                      rowFrom_n_rowTo[1] + 1,
                                                      0),
                                                0),
@@ -766,9 +788,9 @@ def random_sample(population: Collection, k: int) -> list:
             else list(population))
 
 
-class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
-    """S3 Parquet Data Feeder."""
+class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # pylint: disable=too-many-instance-attributes,too-many-public-methods
+    """S3 Parquet Data Feeder."""
 
     _CACHE = {}
 
@@ -776,28 +798,20 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
     # default arguments dict
     _DEFAULT_KWARGS = dict(
-        iCol=AbstractS3ParquetDataHandler._DEFAULT_I_COL,
+        iCol=AbstractS3FileDataHandler._DEFAULT_I_COL,
         tCol=None,
 
-        reprSampleMinNPieces=   # noqa: E251
-        AbstractS3ParquetDataHandler._REPR_SAMPLE_MIN_N_PIECES,
-        reprSampleSize=   # noqa: E251
-        AbstractS3ParquetDataHandler._DEFAULT_REPR_SAMPLE_SIZE,
+        reprSampleMinNPieces=AbstractS3FileDataHandler._REPR_SAMPLE_MIN_N_PIECES,   # noqa: E501
+        reprSampleSize=AbstractS3FileDataHandler._DEFAULT_REPR_SAMPLE_SIZE,
 
-        nulls=   # noqa: E251
-        DefaultDict((None, None)),
-        minNonNullProportion=   # noqa: E251
-        DefaultDict(
-            AbstractS3ParquetDataHandler._DEFAULT_MIN_NON_NULL_PROPORTION),
-        outlierTailProportion=   # noqa: E251
-        DefaultDict(
-            AbstractS3ParquetDataHandler._DEFAULT_OUTLIER_TAIL_PROPORTION),
-        maxNCats=   # noqa: E251
-        DefaultDict(
-            AbstractS3ParquetDataHandler._DEFAULT_MAX_N_CATS),
-        minProportionByMaxNCats=   # noqa: E251
-        DefaultDict(
-            AbstractS3ParquetDataHandler._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS)
+        nulls=DefaultDict((None, None)),
+        minNonNullProportion=DefaultDict(
+            AbstractS3FileDataHandler._DEFAULT_MIN_NON_NULL_PROPORTION),
+        outlierTailProportion=DefaultDict(
+            AbstractS3FileDataHandler._DEFAULT_OUTLIER_TAIL_PROPORTION),
+        maxNCats=DefaultDict(AbstractS3FileDataHandler._DEFAULT_MAX_N_CATS),
+        minProportionByMaxNCats=DefaultDict(
+            AbstractS3FileDataHandler._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS),
     )
 
     # =================
@@ -806,22 +820,23 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # __init__
     # load
 
-    def __init__(self,
-                 path: str,
+    def __init__(self, path: str, *,
                  reCache: bool = False,
-                 aws_region: Optional[str] = None,
+                 awsRegion: Optional[str] = None,
                  _mappers: Optional[List[callable]] = None,
                  verbose: bool = True,
                  **kwargs):
+        """Init S3 Parquet Data Feeder."""
         # pylint: disable=too-many-arguments,too-many-branches
         # pylint: disable=too-many-locals,too-many-statements
 
         if verbose or debug.ON:
             logger = self.class_stdout_logger()
 
-        self.aws_region = aws_region
+        self.awsRegion = awsRegion
 
-        assert isinstance(path, str) and path.startswith('s3://')
+        assert isinstance(path, str) and path.startswith('s3://'), \
+            ValueError(f'*** {path} NOT AN S3 PATH ***')
         self.path = path
 
         if (not reCache) and (path in self._CACHE):
@@ -863,7 +878,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                             schema=None,
                             format='parquet',
                             filesystem=S3FileSystem(
-                                region=aws_region),
+                                region=awsRegion),
                             partitioning=None,
                             partition_base_dir=None,
                             exclude_invalid_files=None,
@@ -1009,7 +1024,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         self._emptyCache()
 
     @classmethod
-    def load(cls, path, **kwargs):
+    def load(cls, path, **kwargs):   # pylint: disable=arguments-differ
+        """Load S3 Parquet Data Feeder."""
         return cls(path=path, **kwargs)
 
     # ================================
@@ -1027,7 +1043,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                           inplace=False):
         nameSpace = self \
             if inplace \
-            else _Namespace()
+            else ArgParseNamespace()
 
         for k, classDefaultV in self._DEFAULT_KWARGS.items():
             _privateK = f'_{k}'
@@ -1072,7 +1088,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
     def _emptyCache(self):
         self._cache = \
-            _Namespace(
+            ArgParseNamespace(
                 prelimReprSamplePiecePaths=None,
                 reprSamplePiecePaths=None,
                 reprSample=None,
@@ -1093,7 +1109,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 colWidth={})
 
     def _inheritCache(self, arrowDF, *sameCols, **newColToOldColMappings):
-        # pylint: disable=protected-access
+        # pylint: disable=arguments-differ
 
         if arrowDF._cache.nRows:
             if self._cache.nRows is None:
@@ -1141,16 +1157,19 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # __iter__
     # __next__
 
-    def __iter__(self):
-        arrowADF = self.copy(inheritCache=True, inheritNRows=True)
-        arrowADF.piecePathsToIter = arrowADF.piecePaths.copy()
-        return arrowADF
+    def __iter__(self) -> S3ParquetDataFeeder:
+        """Iterate through pieces."""
+        s3_parquet_df = self.copy(inheritCache=True, inheritNRows=True)
+
+        # pylint: disable=attribute-defined-outside-init
+        s3_parquet_df.piecePathsToIter = s3_parquet_df.piecePaths.copy()
+
+        return s3_parquet_df
 
     def __next__(self):
+        """Iterate through next piece."""
         if self.piecePathsToIter:
-            return self.reduce(
-                self.piecePathsToIter.pop(),
-                verbose=False)
+            return self.reduce(self.piecePathsToIter.pop(), verbose=False)
 
         raise StopIteration
 
@@ -1159,7 +1178,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # ----------
     # save
 
-    def save(self, dir_path, collect=False, verbose=True):
+    def save(self, dir_path: str, collect: bool = False, verbose: bool = True):
+        # pylint: disable=arguments-differ
+        """Save S3 Parquet Data."""
         if dir_path.startswith('s3://'):
             _s3 = True
             _dir_path = tempfile.mkdtemp()
@@ -1167,9 +1188,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         else:
             _s3 = False
             _dir_path = dir_path
-            fs.empty(
-                dir_path=_dir_path,
-                hdfs=False)
+            fs.empty(dir_path=_dir_path, hdfs=False)
 
         if verbose:
             msg = f'Saving to "{_dir_path}"...'
@@ -1236,15 +1255,16 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 hdfs=False,
                 is_dir=True)
 
-    def copy(self, **kwargs):
+    def copy(self, **kwargs: Any) -> S3ParquetDataFeeder:
+        """Make a copy."""
         resetMappers = kwargs.pop('resetMappers', False)
         inheritCache = kwargs.pop('inheritCache', not resetMappers)
         inheritNRows = kwargs.pop('inheritNRows', inheritCache)
 
-        arrowADF = \
+        s3ParquetDF: S3ParquetDataFeeder = \
             S3ParquetDataFeeder(
                 path=self.path,
-                aws_region=self.aws_region,
+                awsRegion=self.awsRegion,
 
                 iCol=self._iCol, tCol=self._tCol,
 
@@ -1261,21 +1281,22 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 **kwargs)
 
         if inheritCache:
-            arrowADF._inheritCache(self)
+            s3ParquetDF._inheritCache(self)
 
         if inheritNRows:
-            arrowADF._cache.approxNRows = self._cache.approxNRows
-            arrowADF._cache.nRows = self._cache.nRows
+            s3ParquetDF._cache.approxNRows = self._cache.approxNRows
+            s3ParquetDF._cache.nRows = self._cache.nRows
 
-        return arrowADF
+        return s3ParquetDF
 
     # ===============
-    # PYTHON REPR/STR
+    # STRING REPR/STR
     # ---------------
     # __repr__
     # __short_repr__
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return string repr."""
         col_and_type_strs = []
 
         if self._iCol:
@@ -1293,19 +1314,20 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         col_and_type_strs.extend(f'{col}: {self.type(col)}'
                                  for col in self.contentCols)
 
-        return (f'{self.nPieces:,}-piece ' +   # noqa: W504
+        return (f'{self.nPieces:,}-piece ' +
                 (f'{self._cache.nRows:,}-row '
                  if self._cache.nRows
                  else (f'approx-{self._cache.approxNRows:,.0f}-row '
                        if self._cache.approxNRows
-                       else '')) +   # noqa: W504
-                type(self).__name__ +   # noqa: W504
+                       else '')) +
+                type(self).__name__ +
                 (f'[{self.path} + {len(self._mappers):,} transform(s)]'
                  f"[{', '.join(col_and_type_strs)}]"))
 
     @property
-    def __short_repr__(self):
-        cols_desc_str = []
+    def __short_repr__(self) -> str:
+        """Short string repr."""
+        cols_desc_str: List[str] = []
 
         if self._iCol:
             cols_desc_str.append(f'iCol: {self._iCol}')
@@ -1318,13 +1340,13 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         cols_desc_str.append(f'{len(self.contentCols)} content col(s)')
 
-        return (f'{self.nPieces:,}-piece ' +   # noqa: W504
+        return (f'{self.nPieces:,}-piece ' +
                 (f'{self._cache.nRows:,}-row '
                  if self._cache.nRows
                  else (f'approx-{self._cache.approxNRows:,.0f}-row '
                        if self._cache.approxNRows
-                       else '')) +   # noqa: W504
-                type(self).__name__ +   # noqa: W504
+                       else '')) +
+                type(self).__name__ +
                 (f'[{self.path} + {len(self._mappers):,} transform(s)]'
                  f"[{', '.join(cols_desc_str)}]"))
 
@@ -1335,6 +1357,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # pieceLocalPath
 
     def cacheLocally(self):
+        """Cache files to local disk."""
         if not self._cachedLocally:
             parsedURL = urlparse(url=self.path,
                                  scheme='',
@@ -1355,7 +1378,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
             self._cachedLocally = True
 
-    def pieceLocalPath(self, piecePath):
+    def pieceLocalPath(self, piecePath: str) -> str:
+        """Get local cache file path of piece."""
         if (piecePath in self._PIECE_CACHES) and \
                 self._PIECE_CACHES[piecePath].localPath:
             return self._PIECE_CACHES[piecePath].localPath
@@ -1397,9 +1421,11 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # collect
     # toPandas
 
-    def map(self, mapper=None, **kwargs):
+    def map(self, mapper: Optional[List[callable]] = None, **kwargs: Any) \
+            -> S3ParquetDataFeeder:
+        """Apply mapper function(s) to pieces."""
         if mapper is None:
-            mapper = []
+            mapper: List[callable] = []
 
         inheritCache = kwargs.pop('inheritCache', False)
         inheritNRows = kwargs.pop('inheritNRows', inheritCache)
@@ -1409,10 +1435,10 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             if isinstance(mapper, list) \
             else [mapper]
 
-        arrowADF = \
+        arrowADF: S3ParquetDataFeeder = \
             S3ParquetDataFeeder(
                 path=self.path,
-                aws_region=self.aws_region,
+                awsRegion=self.awsRegion,
 
                 iCol=self._iCol, tCol=self._tCol,
                 _mappers=self._mappers + additionalMappers,
@@ -1436,8 +1462,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         return arrowADF
 
-    def reduce(self, *piecePaths, **kwargs):
+    def reduce(self, *piecePaths: str, **kwargs: Any):
         # pylint: disable=too-many-branches,too-many-locals,too-many-statements
+        """Reduce from mapped content."""
         _CHUNK_SIZE = 10 ** 5
 
         nSamplesPerPiece = kwargs.get('nSamplesPerPiece')
@@ -1844,7 +1871,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             else:
                 piecePandasDF = pandas.DataFrame(
                     index=range(nSamplesPerPiece
-                                if nSamplesPerPiece and   # noqa: W504
+                                if nSamplesPerPiece and
                                 (nSamplesPerPiece < pieceCache.nRows)
                                 else pieceCache.nRows))
 
@@ -1858,26 +1885,21 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         return reducer(results)
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> S3ParquetDataFeeder:
+        """Get column."""
         return self.map(
             mapper=_S3ParquetDataFeeder__getitem__pandasDFTransform(item=item),
             inheritNRows=True)
 
-    def drop(self, *cols, **kwargs):
+    def drop(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
+        """Drop column(s)."""
         return self.map(
             mapper=_S3ParquetDataFeeder__drop__pandasDFTransform(cols=cols),
             inheritNRows=True,
             **kwargs)
 
-    def rename(self, **kwargs):
-        """
-        Return:
-            ``ADF`` with new column names
-
-        Args:
-            **kwargs: arguments of the form
-            ``newColName`` = ``existingColName``
-        """
+    def rename(self, **kwargs: Any) -> S3ParquetDataFeeder:
+        """Rename data columns (``newColName`` = ``existingColName``)."""
         renameDict = {}
         remainingKwargs = {}
 
@@ -1901,13 +1923,17 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             inheritNRows=True,
             **remainingKwargs)
 
-    def filter(self, *conditions, **kwargs):
-        pass
+    def filter(self, *conditions: str, **kwargs: Any) -> S3ParquetDataFeeder:
+        """Apply filtering mapper."""
 
-    def collect(self, *cols, **kwargs):
+    def collect(self, *cols: str, **kwargs: Any) \
+            -> Union[pandas.DataFrame, pandas.Series, Collection]:
+        """Collect content."""
         return self.reduce(cols=cols if cols else None, **kwargs)
 
-    def toPandas(self, *cols, **kwargs):
+    def toPandas(self, *cols: str, **kwargs: Any) \
+            -> Union[pandas.DataFrame, pandas.Series]:
+        """Collect content to Pandas form."""
         return self.collect(*cols, **kwargs)
 
     # =========================
@@ -1917,11 +1943,12 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # tCol
 
     @property
-    def iCol(self):
+    def iCol(self) -> str:
+        """Entity/Identity column."""
         return self._iCol
 
     @iCol.setter
-    def iCol(self, iCol):
+    def iCol(self, iCol: str):
         if iCol != self._iCol:
             self._iCol = iCol
 
@@ -1937,11 +1964,12 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         self.hasTS = False
 
     @property
-    def tCol(self):
+    def tCol(self) -> Optional[str]:
+        """Date-Time column."""
         return self._tCol
 
     @tCol.setter
-    def tCol(self, tCol):
+    def tCol(self, tCol: str):
         if tCol != self._tCol:
             self._tCol = tCol
 
@@ -1964,7 +1992,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # _assignReprSample
 
     @property
-    def prelimReprSamplePiecePaths(self):
+    def prelimReprSamplePiecePaths(self) -> Set[str]:
+        """Prelim Representative Sample Piece Paths."""
         if self._cache.prelimReprSamplePiecePaths is None:
             self._cache.prelimReprSamplePiecePaths = \
                 random_sample(population=self.piecePaths,
@@ -1973,11 +2002,12 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         return self._cache.prelimReprSamplePiecePaths
 
     @property
-    def reprSamplePiecePaths(self):
+    def reprSamplePiecePaths(self) -> Set[str]:
+        """Return representative sample piece paths."""
         if self._cache.reprSamplePiecePaths is None:
             reprSampleNPieces = \
                 int(math.ceil(
-                    ((min(self._reprSampleSize, self.approxNRows) /   # noqa: E501,W504
+                    ((min(self._reprSampleSize, self.approxNRows) /
                      self.approxNRows) ** .5) * self.nPieces))
 
             self._cache.reprSamplePiecePaths = \
@@ -1997,6 +2027,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 piecePaths=self.reprSamplePiecePaths,
                 verbose=True)
 
+        # pylint: disable=attribute-defined-outside-init
         self._reprSampleSize = len(self._cache.reprSample)
 
         self._cache.nonNullProportion = {}
@@ -2012,7 +2043,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # types
     # type / typeIsNum / typeIsComplex
 
-    def _read_metadata_and_schema(self, piecePath):
+    def _read_metadata_and_schema(self, piecePath: str):
         pieceLocalPath = self.pieceLocalPath(piecePath=piecePath)
 
         pieceCache = self._PIECE_CACHES[piecePath]
@@ -2052,6 +2083,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
     @property
     def approxNRows(self):
+        """Approximate number of rows."""
         if self._cache.approxNRows is None:
             self.stdout_logger.info('Counting Approx. No. of Rows...')
 
@@ -2067,7 +2099,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         return self._cache.approxNRows
 
     @property
-    def nRows(self):
+    def nRows(self) -> int:
+        """Return number of rows."""
         if self._cache.nRows is None:
             self.stdout_logger.info('Counting No. of Rows...')
 
@@ -2079,26 +2112,30 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         return self._cache.nRows
 
-    def __len__(self):
-        return (self._cache.nRows
-                if self._cache.nRows
-                else self.approxNRows)
+    def __len__(self) -> int:
+        """Return (approximate) number of rows."""
+        return self._cache.nRows if self._cache.nRows else self.approxNRows
 
     @property
-    def columns(self) -> Tuple[str]:
+    def columns(self) -> Set[str]:
+        """Column names."""
         return self.srcColsInclPartitionKVs
 
     @property
-    def types(self):
+    def types(self) -> Namespace:
+        """Return column data types."""
         return self.srcTypesInclPartitionKVs
 
-    def type(self, col):
+    def type(self, col: str):
+        """Return data type of specified column."""
         return self.types[col]
 
-    def typeIsNum(self, col):
+    def typeIsNum(self, col: str) -> bool:
+        """Check whether specified column's data type is boolean."""
         return is_num(self.type(col))
 
-    def typeIsComplex(self, col):
+    def typeIsComplex(self, col: str) -> bool:
+        """Check whether specified column's data type is complex."""
         return is_complex(self.type(col))
 
     # =============
@@ -2109,25 +2146,24 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # possibleCatContentCols
 
     @property
-    def indexCols(self):
-        return (((self._iCol,) if self._iCol else ()) +   # noqa: W504
-                ((self._dCol,) if self._dCol else ()) +   # noqa: W504
+    def indexCols(self) -> Tuple[str]:
+        """Return index columns."""
+        return (((self._iCol,) if self._iCol else ()) +
+                ((self._dCol,) if self._dCol else ()) +
                 ((self._tCol,) if self._tCol else ()))
 
     @property
-    def possibleFeatureContentCols(self):
-        def chk(t):
+    def possibleFeatureContentCols(self) -> Set[str]:
+        """Possible feature columns for ML modeling."""
+        def possibleFeatureType(t) -> bool:
             return is_boolean(t) or is_string(t) or is_num(t)
 
-        return tuple(col
-                     for col in self.contentCols
-                     if chk(self.type(col)))
+        return {col for col in self.contentCols if possibleFeatureType(self.type(col))}
 
     @property
-    def possibleCatContentCols(self):
-        return tuple(col
-                     for col in self.contentCols
-                     if is_possible_cat(self.type(col)))
+    def possibleCatContentCols(self) -> Set[str]:
+        """Possible categorical content columns."""
+        return {col for col in self.contentCols if is_possible_cat(self.type(col))}
 
     # **************
     # SUBSET METHODS
@@ -2136,7 +2172,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # sample
     # gen
 
-    def _subset(self, *piecePaths, **kwargs):
+    def _subset(self, *piecePaths: str, **kwargs: Any):
         if piecePaths:
             assert self.piecePaths.issuperset(piecePaths)
 
@@ -2180,7 +2216,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
             return S3ParquetDataFeeder(
                 path=subsetPath,
-                aws_region=self.aws_region,
+                awsRegion=self.awsRegion,
 
                 iCol=self._iCol, tCol=self._tCol,
                 _mappers=self._mappers,
@@ -2197,7 +2233,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         return self
 
-    def filterByPartitionKeys(self, *filterCriteriaTuples, **kwargs):
+    def filterByPartitionKeys(self, *filterCriteriaTuples: Tuple, **kwargs: Any):
+        """Filter by partition keys."""
         filterCriteria = {}
 
         _samplePiecePath = next(iter(self.piecePaths))
@@ -2264,7 +2301,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
         return self
 
-    def sample(self, *cols, **kwargs):
+    def sample(self, *cols: str, **kwargs: Any):
+        """Sample."""
         n = kwargs.pop('n', self._DEFAULT_REPR_SAMPLE_SIZE)
 
         piecePaths = kwargs.pop('piecePaths', None)
@@ -2281,7 +2319,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             nSamplePieces = \
                 max(int(math.ceil(
                     ((min(n, self.approxNRows) / self.approxNRows) ** .5)
-                    * self.nPieces)),   # noqa: W503
+                    * self.nPieces)),
                     minNPieces) \
                 if (self.nPieces > 1) and \
                 ((maxNPieces is None) or (maxNPieces > 1)) \
@@ -2320,8 +2358,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # outlierRstStat / outlierRstMin / outlierRstMax
     # profile
 
-    def count(self, *cols, **kwargs):
-        """
+    def count(self, *cols: str, **kwargs: Any):
+        """Count non-NULL values in specified column(s).
+
         Return:
             - If 1 column name is given,
             return its corresponding non-``NULL`` count
@@ -2332,11 +2371,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             - If no column names are given,
             return a {``col``: corresponding non-``NULL`` count} *dict*
             for all columns
-
-        Args:
-             *cols (str): column name(s)
-
-             **kwargs:
         """
         if not cols:
             cols = self.contentCols
@@ -2415,8 +2449,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                                  min_count=0))
         )
 
-    def nonNullProportion(self, *cols, **kwargs):
-        """
+    def nonNullProportion(self, *cols: str, **kwargs: Any):
+        """Calculate non-NULL data proportion(s) of specified column(s).
+
         Return:
             - If 1 column name is given,
             return its *approximate* non-``NULL`` proportion
@@ -2427,11 +2462,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             - If no column names are given,
             return {``col``: approximate non-``NULL`` proportion}
             *dict* for all columns
-
-        Args:
-             *cols (str): column name(s)
-
-             **kwargs:
         """
         if not cols:
             cols = self.contentCols
@@ -2453,7 +2483,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         return self._cache.nonNullProportion[col]
 
     def distinct(self, *cols, **kwargs):
-        """
+        """Return distinct values in specified column(s).
+
         Return:
             *Approximate* list of distinct values of ``ADF``'s column ``col``,
                 with optional descending-sorted counts for those values
@@ -2491,7 +2522,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 else self._cache.distinct[col])
 
     @lru_cache()
-    def quantile(self, *cols, **kwargs):
+    def quantile(self, *cols: str, **kwargs: Any):
+        """Return quantile values in specified column(s)."""
         if len(cols) > 1:
             return Namespace(**{col: self.quantile(col, **kwargs)
                                 for col in cols})
@@ -2504,18 +2536,14 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 q=kwargs.get('q', .5),
                 interpolation='linear')
 
-    def sampleStat(self, *cols, **kwargs):
-        """
-        *Approximate* measurements of a certain statistic
-        on **numerical** columns
+    def sampleStat(self, *cols: str, **kwargs: Any) \
+            -> Union[Collection, Namespace]:
+        """Approximate measurements of a certain stat on numerical columns.
 
         Args:
             *cols (str): column name(s)
-
             **kwargs:
-
                 - **stat**: one of the following:
-
                     - ``avg``/``mean`` (default)
                     - ``median``
                     - ``min``
@@ -2584,7 +2612,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             f'{self}.sampleStat({col}, ...): '
             f'Column "{col}" Is Not of Numeric Type')
 
-    def outlierRstStat(self, *cols, **kwargs):
+    def outlierRstStat(self, *cols: str, **kwargs: Any):
+        """Return outlier-resistant stat for specified column(s)."""
         if not cols:
             cols = self.possibleNumContentCols
 
@@ -2675,7 +2704,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             f'{self}.outlierRstStat({col}, ...): '
             f'Column "{col}" Is Not of Numeric Type')
 
-    def outlierRstMin(self, *cols, **kwargs):
+    def outlierRstMin(self, *cols: str, **kwargs: Any):
+        """Return outlier-resistant minimum for specified column(s)."""
         if not cols:
             cols = self.possibleNumContentCols
 
@@ -2739,7 +2769,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             f'{self}.outlierRstMin({col}, ...): '
             f'Column "{col}" Is Not of Numeric Type')
 
-    def outlierRstMax(self, *cols, **kwargs):
+    def outlierRstMax(self, *cols: str, **kwargs: Any):
+        """Return outlier-resistant maximum for specified column(s)."""
         if not cols:
             cols = self.possibleNumContentCols
 
@@ -2803,8 +2834,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             f'{self}.outlierRstMax({col}, ...): '
             f'Column "{col}" Is Not of Numeric Type')
 
-    def profile(self, *cols, **kwargs):
-        """
+    def profile(self, *cols: str, **kwargs: Any) -> Namespace:
+        """Profile specified column(s).
+
         Return:
             *dict* of profile of salient statistics on
             specified columns of ``ADF``
@@ -2996,9 +3028,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
     # fillna
     # prep
 
-    def fillna(self, *cols, **kwargs):
-        """
-        Fill/interpolate ``NULL``/``NaN`` values
+    def fillna(self, *cols: str, **kwargs: Any):
+        """Fill/interpolate ``NULL``/``NaN`` values.
 
         Return:
             ``ADF`` with ``NULL``/``NaN`` values filled/interpolated
@@ -3144,11 +3175,11 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 if col in nulls:
                     colNulls = nulls[col]
 
-                    assert (isinstance(colNulls, (list, tuple)) and   # noqa: E501,W504
-                            (len(colNulls) == 2) and   # noqa: W504
-                            ((colNulls[0] is None) or   # noqa: W504
-                             isinstance(colNulls[0], PY_NUM_TYPES)) and   # noqa: E501,W504
-                            ((colNulls[1] is None) or   # noqa: W504
+                    assert (isinstance(colNulls, (list, tuple)) and
+                            (len(colNulls) == 2) and
+                            ((colNulls[0] is None) or
+                             isinstance(colNulls[0], PY_NUM_TYPES)) and
+                            ((colNulls[1] is None) or
                              isinstance(colNulls[1], PY_NUM_TYPES)))
 
                 else:
@@ -3195,7 +3226,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         if len(methodForCol) == 2:
                             assert self.hasTS, \
                                 ('NULL-Filling Methods '
-                                 f"{', '.join(s.upper() for s in _TS_FILL_METHODS)} "   # noqa: E501
+                                 f"{', '.join(s.upper() for s in _TS_FILL_METHODS)} "
                                  'Not Supported for Non-Time-Series ADFs')
 
                             methodForCol, window = methodForCol
@@ -3211,17 +3242,17 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                 col,
                                 stat=(methodForCol
                                       if (not self.hasTS) or (window is None)
-                                      or (window == 'partition')   # noqa: W503
+                                      or (window == 'partition')
                                       else 'mean'),
                                 outlierTails=colOutlierTails,
                                 verbose=verbose > 1)
 
                     elif isinstance(value, dict):
                         colFallBackVal = value.get(col)
-                        if not isinstance(colFallBackVal, _NUM_CLASSES):
+                        if not isinstance(colFallBackVal, PY_NUM_TYPES):
                             colFallBackVal = None
 
-                    elif isinstance(value, _NUM_CLASSES):
+                    elif isinstance(value, PY_NUM_TYPES):
                         colFallBackVal = value
 
                 else:
@@ -3229,16 +3260,16 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
                     if isinstance(value, dict):
                         colFallBackVal = value.get(col)
-                        if isinstance(colFallBackVal, _NUM_CLASSES):
+                        if isinstance(colFallBackVal, PY_NUM_TYPES):
                             colFallBackVal = None
 
-                    elif not isinstance(value, _NUM_CLASSES):
+                    elif not isinstance(value, PY_NUM_TYPES):
                         colFallBackVal = value
 
                 if pandas.notnull(colFallBackVal):
                     fallbackStrs = \
                         [f"'{colFallBackVal}'"
-                         if is_string(colType) and   # noqa: W504
+                         if is_string(colType) and
                          isinstance(colFallBackVal, str)
                          else repr(colFallBackVal)]
 
@@ -3293,7 +3324,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         self._NULL_FILL_PREFIX + col + self._PREP_SUFFIX,
 
                         dict(
-                            SQL="COALESCE(CASE WHEN (STRING({0}) = 'NaN'){1}{2}{3}{4} THEN NULL ELSE {0} END, {5})"   # noqa: E501
+                            SQL="COALESCE(CASE WHEN (STRING({0}) = 'NaN'){1}{2}{3}{4} THEN NULL ELSE {0} END, {5})"
                                 .format(
                                     col,
                                     '' if lowerNull is None
@@ -3302,11 +3333,11 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                     else f' OR ({col} >= {upperNull})',
                                     f' OR ({col} < {self.outlierRstMin(col)})'
                                     if isNum and (col in fillOutliers)
-                                    and fixLowerTail   # noqa: W503
+                                    and fixLowerTail
                                     else '',
                                     f' OR ({col} > {self.outlierRstMax(col)})'
                                     if isNum and (col in fillOutliers)
-                                    and fixUpperTail   # noqa: W503
+                                    and fixUpperTail
                                     else '',
                                     ', '.join(fallbackStrs)),
 
@@ -3377,10 +3408,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 else arrowADF)
 
     def prep(self, *cols, **kwargs):
-        """
-        Pre-process ``ADF``'s selected column(s) in standard ways:
-            - One-hot-encode categorical columns
-            - Scale numerical columns
+        """Pre-process selected column(s) in standard ways.
+
+        One-hot-encode categorical columns and scale numerical columns.
 
         Return:
             Standard-pre-processed ``ADF``
@@ -3525,11 +3555,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 if fs._ON_LINUX_CLUSTER_WITH_HDFS:
                     localDirExists = os.path.isdir(loadPath)
 
-                    hdfsDirExists = \
-                        h1st_util.data_backend.hdfs.test(
-                            path=loadPath,
-                            exists=True,
-                            directory=True)
+                    hdfsDirExists = ...   # TODO   # pylint: disable=fixme
 
                     if localDirExists and (not hdfsDirExists):
                         fs.put(
@@ -3622,7 +3648,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 return self.copy()
 
             cols = {col for col in cols
-                    if self.suffNonNull(col) and   # noqa: W504
+                    if self.suffNonNull(col) and
                     (len(profile[col].distinctProportions.loc[
                         # (profile[col].distinctProportions.index != '') &
                         # FutureWarning:
@@ -3642,10 +3668,10 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 for col in (cols
                             .intersection(self.possibleCatCols)
                             .difference(forceNum))
-                if (col in forceCat) or   # noqa: W504
+                if (col in forceCat) or
                 (profile[col].distinctProportions
                  .iloc[:self._maxNCats[col]].sum()
-                 >= self._minProportionByMaxNCats[col])]   # noqa: W503
+                 >= self._minProportionByMaxNCats[col])]
 
             numCols = [col
                        for col in cols.difference(catCols)
@@ -3668,8 +3694,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
 
             if catCols:
                 if verbose:
-                    msg = 'Transforming Categorical Features {}...'.format(
-                        ', '.join(f'"{catCol}"' for catCol in catCols))
+                    msg = ('Transforming Categorical Features ' +
+                           ', '.join(f'"{catCol}"' for catCol in catCols) +
+                           '...')
                     self.stdout_logger.info(msg)
                     _tic = time.time()
 
@@ -3679,8 +3706,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                     catScaledIdxCols = []
 
                 for catCol in catCols:
-                    catIdxCol = (self._CAT_IDX_PREFIX +   # noqa: W504
-                                 catCol +   # noqa: W504
+                    catIdxCol = (self._CAT_IDX_PREFIX +
+                                 catCol +
                                  self._PREP_SUFFIX)
 
                     catColType = self.type(catCol)
@@ -3705,7 +3732,7 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                              if catCol in forceCat
                              else (profile[catCol].distinctProportions
                                    .index[:self._maxNCats[catCol]]))
-                            if pandas.notnull(cat) and   # noqa: W504
+                            if pandas.notnull(cat) and
                             ((cat != '') if isStr else numpy.isfinite(cat))]
 
                         nCats = len(cats)
@@ -3724,9 +3751,9 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                 nCats)
 
                     if scaleCat:
-                        catPrepCol = (self._MIN_MAX_SCL_PREFIX +   # noqa: W504
-                                      self._CAT_IDX_PREFIX +   # noqa: W504
-                                      catCol +   # noqa: W504
+                        catPrepCol = (self._MIN_MAX_SCL_PREFIX +
+                                      self._CAT_IDX_PREFIX +
+                                      catCol +
                                       self._PREP_SUFFIX)
                         catScaledIdxCols.append(catPrepCol)
 
@@ -3810,8 +3837,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                         if scaler:
                             if scaler == 'standard':
                                 scaledCol = (
-                                    self._STD_SCL_PREFIX +   # noqa: W504
-                                    numCol +   # noqa: W504
+                                    self._STD_SCL_PREFIX +
+                                    numCol +
                                     self._PREP_SUFFIX)
 
                                 series = self.reprSample[numCol]
@@ -3851,8 +3878,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                           StdDev=stdDev)]
 
                             elif scaler == 'maxabs':
-                                scaledCol = (self._MAX_ABS_SCL_PREFIX +   # noqa: E501,W504
-                                             numCol +   # noqa: W504
+                                scaledCol = (self._MAX_ABS_SCL_PREFIX +
+                                             numCol +
                                              self._PREP_SUFFIX)
 
                                 maxAbs = float(max(abs(colMin), abs(colMax)))
@@ -3870,8 +3897,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                           MaxAbs=maxAbs)]
 
                             elif scaler == 'minmax':
-                                scaledCol = (self._MIN_MAX_SCL_PREFIX +   # noqa: E501,W504
-                                             numCol +   # noqa: W504
+                                scaledCol = (self._MIN_MAX_SCL_PREFIX +
+                                             numCol +
                                              self._PREP_SUFFIX)
 
                                 prepSqlItems[scaledCol] = \
@@ -3895,8 +3922,8 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                                     'and None ***')
 
                         else:
-                            scaledCol = (self._NULL_FILL_PREFIX +  # noqa: W504
-                                         numCol +   # noqa: W504
+                            scaledCol = (self._NULL_FILL_PREFIX +
+                                         numCol +
                                          self._PREP_SUFFIX)
 
                             prepSqlItems[scaledCol] = numColSqlItem
@@ -3981,15 +4008,15 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 sorted(catPrepColDetails[0]
                        for catCol, catPrepColDetails in
                        catOrigToPrepColMap.items()
-                       if (catCol not in ('__OHE__', '__SCALE__')) and   # noqa: E501,W504
-                       isinstance(catPrepColDetails, list) and   # noqa: W504
+                       if (catCol not in ('__OHE__', '__SCALE__')) and
+                       isinstance(catPrepColDetails, list) and
                        (len(catPrepColDetails) == 2)) + \
                 sorted(numPrepColDetails[0]
                        for numCol, numPrepColDetails in
                        numOrigToPrepColMap.items()
                        if (numCol not in ('__TS_WINDOW_CLAUSE__',
-                                          '__SCALER__')) and   # noqa: W504
-                       isinstance(numPrepColDetails, list) and   # noqa: W504
+                                          '__SCALER__')) and
+                       isinstance(numPrepColDetails, list) and
                        (len(numPrepColDetails) == 2))
 
         else:
@@ -3997,20 +4024,20 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 self.columns + \
                 (([catPrepColDetails[0]
                    for catCol, catPrepColDetails in catOrigToPrepColMap.items()
-                   if (catCol not in ('__OHE__', '__SCALE__')) and   # noqa: E501,W504
-                   isinstance(catPrepColDetails, list) and   # noqa: W504
-                   (len(catPrepColDetails) == 2)] +   # noqa: W504
+                   if (catCol not in ('__OHE__', '__SCALE__')) and
+                   isinstance(catPrepColDetails, list) and
+                   (len(catPrepColDetails) == 2)] +
                   [numPrepColDetails[0]
                    for numCol, numPrepColDetails in numOrigToPrepColMap.items()
-                   if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and   # noqa: E501,W504
-                   isinstance(numPrepColDetails, list) and   # noqa: W504
+                   if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and
+                   isinstance(numPrepColDetails, list) and
                    (len(numPrepColDetails) == 2)])
                  if loadPath
                  else (((catScaledIdxCols
                          if scaleCat
                          else catIdxCols)
                         if catCols
-                        else []) +   # noqa: W504
+                        else []) +
                        (numScaledCols
                         if numCols
                         else [])))
@@ -4018,13 +4045,13 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
         missingCatCols = \
             set(catOrigToPrepColMap) \
             .difference(
-                self.columns +   # noqa: W504
+                self.columns +
                 ['__OHE__', '__SCALE__'])
 
         missingNumCols = \
             set(numOrigToPrepColMap) \
             .difference(
-                self.columns +   # noqa: W504
+                self.columns +
                 ['__TS_WINDOW_CLAUSE__', '__SCALER__'])
 
         missingCols = missingCatCols | missingNumCols
@@ -4082,11 +4109,13 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
                 if returnOrigToPrepColMaps
                 else arrowADF)
 
-    # *******************************
+    # ===============================
     # ITERATIVE GENERATION / SAMPLING
+    # ===============================
     # gen
 
-    def gen(self, *args, **kwargs):
+    def gen(self, *args: str, **kwargs: Any):
+        """Generate from data set."""
         piecePaths = kwargs.get('piecePaths', self.piecePaths)
 
         return _S3ParquetDataFeeder__gen(
@@ -4095,7 +4124,6 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             partitionKVs={piecePath: self._PIECE_CACHES[piecePath].partitionKVs
                           for piecePath in piecePaths},
             iCol=self._iCol, tCol=self._tCol,
-            possibleFeatureTAuxCols=self.possibleFeatureTAuxCols,
             contentCols=self.contentCols,
             pandasDFTransforms=self._mappers,
             filterConditions=kwargs.get('filter', {}),
@@ -4105,12 +4133,14 @@ class S3ParquetDataFeeder(AbstractS3ParquetDataHandler):
             anon=kwargs.get('anon', True),
             nThreads=kwargs.get('nThreads', 1))
 
-    # ****
-    # MISC
+    # ============
+    # MISC / OTHER
+    # ============
     # split
-    # copyToPath
 
-    def split(self, *weights, **kwargs):
+    def split(self, *weights: float, **kwargs: Any) \
+            -> Union[S3ParquetDataFeeder, List[S3ParquetDataFeeder]]:
+        """Split into multiple S3 Parquet Data Feeders by weight."""
         if (not weights) or weights == (1,):
             return self
 
