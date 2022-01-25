@@ -7,7 +7,7 @@ import logging
 import os
 import tempfile
 from typing import Any, Union
-from typing import Callable, Collection, Dict, Set, Tuple   # Py3.9+: built-ins
+from typing import Collection, Dict, Set, Tuple   # Py3.9+: built-ins
 
 from .. import debug
 from ..log import STDOUT_HANDLER
@@ -141,14 +141,19 @@ class AbstractDataHandler:
         raise NotImplementedError
 
     # alias
-    read: Callable[..., AbstractDataHandler] = load
+    @classmethod
+    def read(cls, *args: Any, **kwargs: Any) -> AbstractDataHandler:
+        """Read data set."""
+        return cls.load(*args, **kwargs)
 
     def save(self, *args: Any, **kwargs: Any):
         """Save data set."""
         raise NotImplementedError
 
     # alias
-    write: Callable[..., None] = save
+    def write(self, *args: Any, **kwargs: Any) -> AbstractDataHandler:
+        """Write data set."""
+        return self.save(*args, **kwargs)
 
     # ===============
     # CACHING METHODS
@@ -456,7 +461,9 @@ class AbstractDataHandler:
         raise NotImplementedError
 
     # alias
-    unique: Callable[..., Union[Collection, Namespace]] = distinct
+    def unique(self, *cols: str, **kwargs: Any) -> Union[Collection, Namespace]:   # noqa: E501
+        """Return unique values for specified column(s)."""
+        raise self.distinct(*cols, **kwargs)
 
     def quantile(self, *cols: str, **kwargs: Any) \
             -> Union[float, int, Collection, Namespace]:
