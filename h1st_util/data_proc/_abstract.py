@@ -508,16 +508,11 @@ class AbstractDataHandler:
         """Pre-process specified column(s) for ML model training/inference."""
         raise NotImplementedError
 
-    # ===============================
-    # SAMPLING / ITERATIVE GENERATION
-    # -------------------------------
+    # ========
+    # SAMPLING
+    # --------
     # sample
-    # gen
 
     def sample(self, *cols: str, **kwargs: Any):
         """Sample from data set."""
-        raise NotImplementedError
-
-    def gen(self, *cols: str, **kwargs: Any):
-        """Generate from data set."""
         raise NotImplementedError
