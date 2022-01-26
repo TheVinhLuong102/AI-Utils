@@ -2154,10 +2154,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     @property
     def possibleFeatureContentCols(self) -> Set[str]:
         """Possible feature columns for ML modeling."""
-        def possibleFeatureType(t) -> bool:
+        def is_possible_feature(t: DataType) -> bool:
             return is_boolean(t) or is_string(t) or is_num(t)
 
-        return {col for col in self.contentCols if possibleFeatureType(self.type(col))}
+        return {col for col in self.contentCols if is_possible_feature(self.type(col))}
 
     @property
     def possibleCatContentCols(self) -> Set[str]:
