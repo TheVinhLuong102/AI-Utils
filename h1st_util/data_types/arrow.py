@@ -110,23 +110,23 @@ _ARROW_DATE_TYPE = date32()
 _ARROW_TIMESTAMP_TYPE = timestamp(unit='ns', tz=None)
 
 
-def is_float(arrow_type, /) -> bool:
+def is_float(arrow_type: DataType, /) -> bool:
     """Check if data type is float."""
     return is_floating(arrow_type) or is_decimal(arrow_type)
 
 
-def is_num(arrow_type, /) -> bool:
+def is_num(arrow_type: DataType, /) -> bool:
     """Check if data type is numerical."""
     return is_integer(arrow_type) or is_float(arrow_type)
 
 
-def is_possible_cat(arrow_type, /) -> bool:
+def is_possible_cat(arrow_type: DataType, /) -> bool:
     """Check if data type is possibly categorical."""
     return (is_boolean(arrow_type) or
             is_string(arrow_type) or
             is_num(arrow_type))
 
 
-def is_complex(arrow_type, /) -> bool:
+def is_complex(arrow_type: DataType, /) -> bool:
     """Check if data type is complex."""
     return is_dictionary(arrow_type) or is_nested(arrow_type)
