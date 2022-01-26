@@ -13,8 +13,8 @@ import re
 import tempfile
 import time
 from typing import Any, Optional, Union
-from typing import Collection, List, Set, Tuple   # Py3.9+: use built-ins
-from urllib.parse import urlparse
+from typing import Collection, Dict, List, Set, Sequence, Tuple   # Py3.9+: use built-ins
+from urllib.parse import ParseResult, urlparse
 import uuid
 
 import botocore
@@ -434,12 +434,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # __init__
     # load
 
-    def __init__(self, path: str, *,
-                 reCache: bool = False,
+    def __init__(self, path: str, *, reCache: bool = False,
                  awsRegion: Optional[str] = None,
-                 _mappers: Optional[List[callable]] = None,
-                 verbose: bool = True,
-                 **kwargs):
+                 _mappers: Optional[Union[callable, Sequence[callable]]] = None,
+                 verbose: bool = True, **kwargs: Any):
         """Init S3 Parquet Data Feeder."""
         # pylint: disable=too-many-arguments,too-many-branches
         # pylint: disable=too-many-locals,too-many-statements
@@ -625,7 +623,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         self._cachedLocally = False
 
-        self._mappers = [] if _mappers is None else _mappers
+        self._mappers: Tuple[callable] = (()
+                                          if _mappers is None
+                                          else to_iterable(_mappers,
+                                                           iterable_type=tuple))
 
         # extract standard keyword arguments
         self._extractStdKwArgs(kwargs, resetToClassDefaults=True, inplace=True)
@@ -883,7 +884,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 iCol=self._iCol, tCol=self._tCol,
 
-                _mappers=[] if resetMappers else self._mappers,
+                _mappers=() if resetMappers else self._mappers,
 
                 reprSampleMinNPieces=self._reprSampleMinNPieces,
                 reprSampleSize=self._reprSampleSize,
@@ -1033,27 +1034,23 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # collect
     # toPandas
 
-    def map(self, mapper: Optional[List[callable]] = None, **kwargs: Any) \
-            -> S3ParquetDataFeeder:
+    def map(self,
+            mappers: Optional[Union[callable, Sequence[callable]]] = None, /,
+            **kwargs: Any) -> S3ParquetDataFeeder:
         """Apply mapper function(s) to pieces."""
-        if mapper is None:
-            mapper: List[callable] = []
+        if mappers is None:
+            mappers: Tuple[callable] = ()
 
-        inheritCache = kwargs.pop('inheritCache', False)
-        inheritNRows = kwargs.pop('inheritNRows', inheritCache)
+        inheritCache: bool = kwargs.pop('inheritCache', False)
+        inheritNRows: bool = kwargs.pop('inheritNRows', inheritCache)
 
-        additionalMappers = \
-            mapper \
-            if isinstance(mapper, list) \
-            else [mapper]
-
-        arrowADF: S3ParquetDataFeeder = \
+        s3ParquetDF: S3ParquetDataFeeder = \
             S3ParquetDataFeeder(
                 path=self.path,
                 awsRegion=self.awsRegion,
 
                 iCol=self._iCol, tCol=self._tCol,
-                _mappers=self._mappers + additionalMappers,
+                _mappers=self._mappers + to_iterable(mappers, iterable_type=tuple),
 
                 reprSampleMinNPieces=self._reprSampleMinNPieces,
                 reprSampleSize=self._reprSampleSize,
@@ -1066,13 +1063,13 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 **kwargs)
 
         if inheritCache:
-            arrowADF._inheritCache(self)
+            s3ParquetDF._inheritCache(self)
 
         if inheritNRows:
-            arrowADF._cache.approxNRows = self._cache.approxNRows
-            arrowADF._cache.nRows = self._cache.nRows
+            s3ParquetDF._cache.approxNRows = self._cache.approxNRows
+            s3ParquetDF._cache.nRows = self._cache.nRows
 
-        return arrowADF
+        return s3ParquetDF
 
     def reduce(self, *piecePaths: str, **kwargs: Any):
         # pylint: disable=too-many-branches,too-many-locals,too-many-statements
@@ -1501,13 +1498,13 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def __getitem__(self, item: str) -> S3ParquetDataFeeder:
         """Get column."""
         return self.map(
-            mapper=_S3ParquetDataFeeder__getitem__pandasDFTransform(item=item),
+            _S3ParquetDataFeeder__getitem__pandasDFTransform(item=item),
             inheritNRows=True)
 
     def drop(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
         """Drop column(s)."""
         return self.map(
-            mapper=_S3ParquetDataFeeder__drop__pandasDFTransform(cols=cols),
+            _S3ParquetDataFeeder__drop__pandasDFTransform(cols=cols),
             inheritNRows=True,
             **kwargs)
 
@@ -1524,7 +1521,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 remainingKwargs[k] = v
 
         return self.map(
-            mapper=lambda pandasDF:
+            lambda pandasDF:
                 pandasDF.rename(
                     mapper=None,
                     index=None,
@@ -2014,7 +2011,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 self._cache.count[col] = result = \
                     self[col] \
                     .map(
-                        mapper=   # noqa: E251
                         ((lambda series:
                             series.notnull().sum(skipna=True, min_count=0))
                             if pandas.isnull(upperNumericNull)
@@ -3005,7 +3001,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         arrowADF = \
             self.map(
-                mapper=_S3ParquetDataFeeder__fillna__pandasDFTransform(
+                _S3ParquetDataFeeder__fillna__pandasDFTransform(
                     nullFillDetails=details),
                 inheritNRows=True,
                 **kwargs)
@@ -3695,7 +3691,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         arrowADF = \
             self.map(
-                mapper=_S3ParquetDataFeeder__prep__pandasDFTransform(
+                _S3ParquetDataFeeder__prep__pandasDFTransform(
                     addCols=addCols,
                     typeStrs={
                         catCol: str(self.type(catCol))
