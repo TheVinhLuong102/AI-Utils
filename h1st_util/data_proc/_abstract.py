@@ -172,7 +172,7 @@ class AbstractDataHandler:
         """Empty cache."""
         raise NotImplementedError
 
-    def _inheritCache(self):   # noqa: N802
+    def _inheritCache(self, *args: Any, **kwargs: Any):   # noqa: N802
         # pylint: disable=invalid-name
         """Inherit existing cache."""
         raise NotImplementedError
