@@ -153,7 +153,7 @@ class AbstractDataHandler:
         raise NotImplementedError
 
     # alias
-    def write(self, *args: Any, **kwargs: Any) -> AbstractDataHandler:
+    def write(self, *args: Any, **kwargs: Any):
         """Write data set."""
         return self.save(*args, **kwargs)
 
