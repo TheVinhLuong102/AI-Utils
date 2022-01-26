@@ -781,7 +781,7 @@ class _S3ParquetDataFeeder__gen:
                 yield arrays
 
 
-def random_sample(population: Collection[Any], k: int) -> List[Any]:
+def randomSample(population: Collection[Any], k: int) -> List[Any]:
     """Draw random sample from population."""
     return (random.sample(population=population, k=k)
             if len(population) > k
@@ -1504,6 +1504,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         for piecePath in (tqdm(piecePaths)
                           if verbose and (len(piecePaths) > 1)
                           else piecePaths):
+            # pylint: disable=too-many-nested-blocks
             pieceLocalPath = self.pieceLocalPath(piecePath=piecePath)
 
             pieceCache = self._PIECE_CACHES[piecePath]
@@ -1719,8 +1720,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         chunkPandasDFs = []
 
                         for recordBatch in \
-                                random_sample(population=recordBatches,
-                                              k=nChunksForIntermediateN):
+                                randomSample(population=recordBatches,
+                                             k=nChunksForIntermediateN):
                             chunkPandasDF = \
                                 recordBatch.to_pandas(
                                     categories=None,
@@ -1995,8 +1996,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         """Prelim Representative Sample Piece Paths."""
         if self._cache.prelimReprSamplePiecePaths is None:
             self._cache.prelimReprSamplePiecePaths = \
-                random_sample(population=self.piecePaths,
-                              k=self._reprSampleMinNPieces)
+                randomSample(population=self.piecePaths,
+                             k=self._reprSampleMinNPieces)
 
         return self._cache.prelimReprSamplePiecePaths
 
@@ -2011,7 +2012,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             self._cache.reprSamplePiecePaths = \
                 self._cache.prelimReprSamplePiecePaths + \
-                (random_sample(
+                (randomSample(
                     population=self.piecePaths,
                     k=reprSampleNPieces - self._reprSampleMinNPieces)
                  if reprSampleNPieces > self._reprSampleMinNPieces
@@ -2164,8 +2165,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         """Possible categorical content columns."""
         return {col for col in self.contentCols if is_possible_cat(self.type(col))}
 
-    # **************
+    # ==============
     # SUBSET METHODS
+    # --------------
     # _subset
     # filterByPartitionKeys
     # sample
@@ -2233,6 +2235,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         return self
 
     def filterByPartitionKeys(self, *filterCriteriaTuples: Tuple, **kwargs: Any):
+        # pylint: disable=too-many-branches
         """Filter by partition keys."""
         filterCriteria = {}
 
@@ -2328,8 +2331,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 nSamplePieces = min(nSamplePieces, maxNPieces)
 
             if nSamplePieces < self.nPieces:
-                piecePaths = random_sample(population=self.piecePaths,
-                                           k=nSamplePieces)
+                piecePaths = randomSample(population=self.piecePaths,
+                                          k=nSamplePieces)
 
             else:
                 nSamplePieces = self.nPieces
@@ -2347,8 +2350,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             verbose=verbose,
             **kwargs)
 
-    # ****************
+    # ================
     # COLUMN PROFILING
+    # ----------------
     # count
     # nonNullProportion
     # distinct
@@ -2612,6 +2616,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             f'Column "{col}" Is Not of Numeric Type')
 
     def outlierRstStat(self, *cols: str, **kwargs: Any):
+        # pylint: disable=too-many-branches
         """Return outlier-resistant stat for specified column(s)."""
         if not cols:
             cols = self.possibleNumContentCols
@@ -3022,12 +3027,14 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 if asDict
                 else profile)
 
-    # *********
+    # =========
     # DATA PREP
+    # ---------
     # fillna
     # prep
 
     def fillna(self, *cols: str, **kwargs: Any):
+        # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Fill/interpolate ``NULL``/``NaN`` values.
 
         Return:
@@ -3406,7 +3413,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 if returnDetails
                 else arrowADF)
 
-    def prep(self, *cols, **kwargs):
+    def prep(self, *cols: str, **kwargs: Any):
+        # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Pre-process selected column(s) in standard ways.
 
         One-hot-encode categorical columns and scale numerical columns.
@@ -4134,7 +4142,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
     # ============
     # MISC / OTHER
-    # ============
+    # ------------
     # split
 
     def split(self, *weights: float, **kwargs: Any) \

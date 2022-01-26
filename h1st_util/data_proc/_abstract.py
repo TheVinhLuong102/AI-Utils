@@ -282,7 +282,7 @@ class AbstractDataHandler:
     # ---------------------
     # __len__ / nRows
     # nCols
-    # shape / dim
+    # shape
     # types / type / typeIsNum / typeIsComplex
 
     def __len__(self) -> int:
