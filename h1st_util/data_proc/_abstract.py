@@ -262,9 +262,9 @@ class AbstractDataHandler:
         return self._maxNCats.default
 
     @maxNCats.setter
-    def maxNCats(self, maxNCats: int, /):   # noqa: N802,N803
+    def maxNCats(self, n: int, /):   # noqa: N802
         # pylint: disable=invalid-name
-        self._maxNCats.default = maxNCats
+        self._maxNCats.default = n
 
     @property
     def minProportionByMaxNCats(self) -> float:   # noqa: N802
