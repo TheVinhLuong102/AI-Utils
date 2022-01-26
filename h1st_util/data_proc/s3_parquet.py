@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-from argparse import Namespace as ArgParseNamespace
 import datetime
 from functools import lru_cache
 import json
@@ -1043,7 +1042,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                           inplace=False):
         nameSpace = self \
             if inplace \
-            else ArgParseNamespace()
+            else Namespace()
 
         for k, classDefaultV in self._DEFAULT_KWARGS.items():
             _privateK = f'_{k}'
@@ -1088,7 +1087,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
     def _emptyCache(self):
         self._cache = \
-            ArgParseNamespace(
+            Namespace(
                 prelimReprSamplePiecePaths=None,
                 reprSamplePiecePaths=None,
                 reprSample=None,
@@ -1096,9 +1095,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 approxNRows=None,
                 nRows=None,
 
-                count={}, distinct={},   # approx.
+                count={}, distinct={},
 
-                nonNullProportion={},   # approx.
+                nonNullProportion={},
                 suffNonNullProportionThreshold={},
                 suffNonNull={},
 
