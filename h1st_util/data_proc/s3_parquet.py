@@ -1166,7 +1166,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return s3_parquet_df
 
-    def __next__(self) -> Union[numpy.ndarray, pandas.DataFrame, pandas.Series]:
+    def __next__(self) -> Union[Any, Collection, numpy.ndarray,
+                                pandas.DataFrame, pandas.Series]:
         """Iterate through next piece."""
         if self.piecePathsToIter:
             return self.reduce(self.piecePathsToIter.pop(), verbose=False)
@@ -1928,7 +1929,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         """Apply filtering mapper."""
 
     def collect(self, *cols: str, **kwargs: Any) \
-            -> Union[pandas.DataFrame, pandas.Series, Collection]:
+            -> Union[Any, Collection, numpy.ndarray,
+                     pandas.DataFrame, pandas.Series]:
         """Collect content."""
         return self.reduce(cols=cols if cols else None, **kwargs)
 
