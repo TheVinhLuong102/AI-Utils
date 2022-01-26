@@ -62,7 +62,7 @@ class AbstractDataHandler:
     # REPR METHODS
     # ------------
     # __repr__
-    # __short_repr__
+    # __shortRepr__
     # __str__
 
     def __repr__(self) -> str:
@@ -70,7 +70,8 @@ class AbstractDataHandler:
         raise NotImplementedError
 
     @property
-    def __short_repr__(self) -> str:
+    def __shortRepr__(self) -> str:   # noqa: N802
+        # pylint: disable=invalid-name
         """Return short string repr."""
         raise NotImplementedError
 
@@ -111,7 +112,7 @@ class AbstractDataHandler:
 
     def logger(self, *handlers: logging.Handler, **kwargs: Any) -> logging.Logger:   # noqa: E501
         """Get Logger."""
-        logger = logging.getLogger(name=self.__short_repr__)
+        logger = logging.getLogger(name=self.__shortRepr__)
 
         level = kwargs.get('level')
         if not level:

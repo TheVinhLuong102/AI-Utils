@@ -781,7 +781,7 @@ class _S3ParquetDataFeeder__gen:
                 yield arrays
 
 
-def random_sample(population: Collection, k: int) -> list:
+def random_sample(population: Collection[Any], k: int) -> List[Any]:
     """Draw random sample from population."""
     return (random.sample(population=population, k=k)
             if len(population) > k
@@ -801,7 +801,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         iCol=AbstractS3FileDataHandler._DEFAULT_I_COL,
         tCol=None,
 
-        reprSampleMinNPieces=AbstractS3FileDataHandler._REPR_SAMPLE_MIN_N_PIECES,   # noqa: E501
+        reprSampleMinNPieces=AbstractS3FileDataHandler._REPR_SAMPLE_MIN_N_PIECES,
         reprSampleSize=AbstractS3FileDataHandler._DEFAULT_REPR_SAMPLE_SIZE,
 
         nulls=DefaultDict((None, None)),
@@ -877,8 +877,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     dataset(source=path.replace('s3://', ''),
                             schema=None,
                             format='parquet',
-                            filesystem=S3FileSystem(
-                                region=awsRegion),
+                            filesystem=S3FileSystem(region=awsRegion),
                             partitioning=None,
                             partition_base_dir=None,
                             exclude_invalid_files=None,
@@ -1325,20 +1324,20 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                  f"[{', '.join(col_and_type_strs)}]"))
 
     @property
-    def __short_repr__(self) -> str:
+    def __shortRepr__(self) -> str:
         """Short string repr."""
-        cols_desc_str: List[str] = []
+        colsDescStr: List[str] = []
 
         if self._iCol:
-            cols_desc_str.append(f'iCol: {self._iCol}')
+            colsDescStr.append(f'iCol: {self._iCol}')
 
         if self._dCol:
-            cols_desc_str.append(f'dCol: {self._dCol}')
+            colsDescStr.append(f'dCol: {self._dCol}')
 
         if self._tCol:
-            cols_desc_str.append(f'tCol: {self._tCol}')
+            colsDescStr.append(f'tCol: {self._tCol}')
 
-        cols_desc_str.append(f'{len(self.contentCols)} content col(s)')
+        colsDescStr.append(f'{len(self.contentCols)} content col(s)')
 
         return (f'{self.nPieces:,}-piece ' +
                 (f'{self._cache.nRows:,}-row '
@@ -1348,7 +1347,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                        else '')) +
                 type(self).__name__ +
                 (f'[{self.path} + {len(self._mappers):,} transform(s)]'
-                 f"[{', '.join(cols_desc_str)}]"))
+                 f"[{', '.join(colsDescStr)}]"))
 
     # ===============
     # CACHING METHODS
