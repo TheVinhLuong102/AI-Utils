@@ -1166,7 +1166,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return s3_parquet_df
 
-    def __next__(self):
+    def __next__(self) -> Union[numpy.ndarray, pandas.DataFrame, pandas.Series]:
         """Iterate through next piece."""
         if self.piecePathsToIter:
             return self.reduce(self.piecePathsToIter.pop(), verbose=False)
