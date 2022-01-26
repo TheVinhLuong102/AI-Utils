@@ -31,7 +31,7 @@ from pyarrow.parquet import read_metadata, read_schema, read_table
 
 from .. import debug, fs, s3
 from ..data_types.arrow import (
-    _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
+    DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)
 from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY_NUM_TYPES  # noqa: E501
 from ..data_types.spark_sql import _STR_TYPE
@@ -2129,12 +2129,12 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         """Return column data types."""
         return self.srcTypesInclPartitionKVs
 
-    def type(self, col: str):
+    def type(self, col: str) -> DataType:
         """Return data type of specified column."""
         return self.types[col]
 
     def typeIsNum(self, col: str) -> bool:
-        """Check whether specified column's data type is boolean."""
+        """Check whether specified column's data type is numerical."""
         return is_num(self.type(col))
 
     def typeIsComplex(self, col: str) -> bool:
