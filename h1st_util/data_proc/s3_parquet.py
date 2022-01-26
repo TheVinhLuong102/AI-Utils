@@ -1297,22 +1297,19 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
     def __repr__(self) -> str:
         """Return string repr."""
-        col_and_type_strs = []
+        colAndTypeStrs: List[str] = []
 
         if self._iCol:
-            col_and_type_strs.append(
-                f'(iCol) {self._iCol}: {self.type(self._iCol)}')
+            colAndTypeStrs.append(f'(iCol) {self._iCol}: {self.type(self._iCol)}')
 
         if self._dCol:
-            col_and_type_strs.append(
-                f'(dCol) {self._dCol}: {self.type(self._dCol)}')
+            colAndTypeStrs.append(f'(dCol) {self._dCol}: {self.type(self._dCol)}')
 
         if self._tCol:
-            col_and_type_strs.append(
-                f'(tCol) {self._tCol}: {self.type(self._tCol)}')
+            colAndTypeStrs.append(f'(tCol) {self._tCol}: {self.type(self._tCol)}')
 
-        col_and_type_strs.extend(f'{col}: {self.type(col)}'
-                                 for col in self.contentCols)
+        colAndTypeStrs.extend(f'{col}: {self.type(col)}'
+                              for col in self.contentCols)
 
         return (f'{self.nPieces:,}-piece ' +
                 (f'{self._cache.nRows:,}-row '
@@ -1322,7 +1319,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                        else '')) +
                 type(self).__name__ +
                 (f'[{self.path} + {len(self._mappers):,} transform(s)]'
-                 f"[{', '.join(col_and_type_strs)}]"))
+                 f"[{', '.join(colAndTypeStrs)}]"))
 
     @property
     def __shortRepr__(self) -> str:
