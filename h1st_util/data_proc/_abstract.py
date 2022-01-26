@@ -322,7 +322,7 @@ class AbstractDataHandler:
 
     def typeIsNum(self, col: str) -> bool:   # noqa: N802
         # pylint: disable=invalid-name
-        """Check whether specified column's data type is boolean."""
+        """Check whether specified column's data type is numerical."""
         raise NotImplementedError
 
     def typeIsComplex(self, col: str) -> bool:   # noqa: N802
