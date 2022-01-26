@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 import os
 import tempfile
-from typing import Any, Union
+from typing import Any, Optional, Union
 from typing import Collection, Dict, Set, Tuple   # Py3.9+: built-ins
 
 from .. import debug
@@ -82,20 +82,22 @@ class AbstractDataHandler:
     # =======
     # LOGGERS
     # -------
-    # class_logger
-    # class_stdout_logger
+    # classLogger
+    # classStdOutLogger
     # logger
-    # stdout_logger
+    # stdOutLogger
 
     @classmethod
-    def class_logger(cls, *handlers: logging.Handler, **kwargs: Any) \
-            -> logging.Logger:
+    def classLogger(cls,   # noqa: N802
+                    *handlers: logging.Handler,
+                    **kwargs: Any) -> logging.Logger:
+        # pylint: disable=invalid-name
         """Get Class Logger."""
-        logger = logging.getLogger(name=cls.__name__)
+        logger: logging.Logger = logging.getLogger(name=cls.__name__)
 
-        level = kwargs.get('level')
+        level: Optional[int] = kwargs.get('level')
         if not level:
-            level = logging.DEBUG if debug.ON else logging.INFO
+            level: int = logging.DEBUG if debug.ON else logging.INFO
         logger.setLevel(level=level)
 
         for handler in handlers:
@@ -106,17 +108,18 @@ class AbstractDataHandler:
         return logger
 
     @classmethod
-    def class_stdout_logger(cls) -> logging.Logger:
+    def classStdOutLogger(cls) -> logging.Logger:   # noqa: N802
+        # pylint: disable=invalid-name
         """Get Class StdOut Logger."""
-        return cls.class_logger(level=logging.DEBUG, verbose=True)
+        return cls.classLogger(level=logging.DEBUG, verbose=True)
 
     def logger(self, *handlers: logging.Handler, **kwargs: Any) -> logging.Logger:   # noqa: E501
         """Get Logger."""
-        logger = logging.getLogger(name=self.__shortRepr__)
+        logger: logging.Logger = logging.getLogger(name=self.__shortRepr__)
 
-        level = kwargs.get('level')
+        level: Optional[int] = kwargs.get('level')
         if not level:
-            level = logging.DEBUG if debug.ON else logging.INFO
+            level: int = logging.DEBUG if debug.ON else logging.INFO
         logger.setLevel(level=level)
 
         for handler in handlers:
@@ -127,7 +130,8 @@ class AbstractDataHandler:
         return logger
 
     @property
-    def stdout_logger(self) -> logging.Logger:
+    def stdOutLogger(self) -> logging.Logger:   # noqa: N802
+        # pylint: disable=invalid-name
         """Get StdOut Logger."""
         return self.logger(level=logging.DEBUG, verbose=True)
 

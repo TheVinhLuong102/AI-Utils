@@ -831,7 +831,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         # pylint: disable=too-many-locals,too-many-statements
 
         if verbose or debug.ON:
-            logger = self.class_stdout_logger()
+            logger = self.classStdOutLogger()
 
         self.awsRegion = awsRegion
 
@@ -1193,7 +1193,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         if verbose:
             msg = f'Saving to "{_dir_path}"...'
-            self.stdout_logger.info(msg)
+            self.stdOutLogger.info(msg)
             tic = time.time()
 
         if collect:
@@ -1241,7 +1241,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         if verbose:
             toc = time.time()
-            self.stdout_logger.info(
+            self.stdOutLogger.info(
                 msg + f'done!   <{((toc - tic) / 60):,.1f} m>')
 
         if _s3:
@@ -2088,7 +2088,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def approxNRows(self):
         """Approximate number of rows."""
         if self._cache.approxNRows is None:
-            self.stdout_logger.info('Counting Approx. No. of Rows...')
+            self.stdOutLogger.info('Counting Approx. No. of Rows...')
 
             self._cache.approxNRows = \
                 self.nPieces \
@@ -2105,7 +2105,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def nRows(self) -> int:
         """Return number of rows."""
         if self._cache.nRows is None:
-            self.stdout_logger.info('Counting No. of Rows...')
+            self.stdOutLogger.info('Counting No. of Rows...')
 
             self._cache.nRows = \
                 sum(self._read_metadata_and_schema(piecePath=piecePath).nRows
@@ -2298,7 +2298,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                  f'FILTER CRITERIA {filterCriteria} ***')
 
             if debug.ON:
-                self.stdout_logger.debug(
+                self.stdOutLogger.debug(
                     msg=(f'*** {len(piecePaths)} PIECES SATISFYING '
                          f'FILTERING CRITERIA: {filterCriteria} ***'))
 
@@ -2342,7 +2342,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 piecePaths = self.piecePaths
 
         if verbose or debug.ON:
-            self.stdout_logger.info(
+            self.stdOutLogger.info(
                 f"Sampling {n:,} Rows{f' of Columns {cols}' if cols else ''} "
                 f'from {nSamplePieces:,} Pieces...')
 
@@ -2429,7 +2429,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if verbose:
                     toc = time.time()
-                    self.stdout_logger.info(
+                    self.stdOutLogger.info(
                         msg=(f'No. of Non-NULLs of Column "{col}" = '
                              f'{result:,}   <{toc - tic:,.1f} s>'))
 
@@ -2605,7 +2605,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if verbose:
                     toc = time.time()
-                    self.stdout_logger.info(
+                    self.stdOutLogger.info(
                         msg=(f'Sample {capitalizedStatName} for '
                              f'Column "{col}" = '
                              f'{result:,.3g}   <{toc - tic:,.1f} s>'))
@@ -2678,7 +2678,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         level=None)
 
                 if pandas.isnull(result):
-                    self.stdout_logger.warning(
+                    self.stdOutLogger.warning(
                         msg=(f'*** "{col}" OUTLIER-RESISTANT '
                              f'{capitalizedStatName.upper()} = '
                              f'{result} ***'))
@@ -2698,7 +2698,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if verbose:
                     toc = time.time()
-                    self.stdout_logger.info(
+                    self.stdOutLogger.info(
                         msg=(f'Outlier-Resistant {capitalizedStatName}'
                              f' for Column "{col}" = '
                              f'{result:,.3g}   <{toc - tic:,.1f} s>'))
@@ -2764,7 +2764,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if verbose:
                     toc = time.time()
-                    self.stdout_logger.info(
+                    self.stdOutLogger.info(
                         msg=(f'Outlier-Resistant Min of Column "{col}" = '
                              f'{result:,.3g}   <{toc - tic:,.1f} s>'))
 
@@ -2829,7 +2829,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if verbose:
                     toc = time.time()
-                    self.stdout_logger.info(
+                    self.stdOutLogger.info(
                         msg=(f'Outlier-Resistant Max of Column "{col}" = '
                              f'{result:,.3g}   <{toc - tic:,.1f} s>'))
 
@@ -2880,7 +2880,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         if verbose:
             msg = f'Profiling Column "{col}"...'
-            self.stdout_logger.info(msg)
+            self.stdOutLogger.info(msg)
             tic = time.time()
 
         colType = self.type(col)
@@ -3023,7 +3023,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         if verbose:
             toc = time.time()
-            self.stdout_logger.info(
+            self.stdOutLogger.info(
                 msg + f' done!   <{toc - tic:,.1f} s>')
 
         return (Namespace(**{col: profile})
@@ -3147,7 +3147,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             if verbose:
                 message = ('Loading NULL-Filling SQL Statement '
                            f'from Path "{loadPath}"...')
-                self.stdout_logger.info(message)
+                self.stdOutLogger.info(message)
                 tic = time.time()
 
             with open(os.path.join(loadPath,
@@ -3210,7 +3210,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             if verbose:
                 message = 'NULL-Filling Columns {}...'.format(
                     ', '.join(f'"{col}"' for col in cols))
-                self.stdout_logger.info(message)
+                self.stdOutLogger.info(message)
                 tic = time.time()
 
             for col in cols:
@@ -3374,7 +3374,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             if verbose:
                 msg = ('Saving NULL-Filling SQL Statement '
                        f'to Path "{savePath}"...')
-                self.stdout_logger.info(msg)
+                self.stdOutLogger.info(msg)
                 _tic = time.time()
 
             fs.mkdir(
@@ -3389,7 +3389,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             if verbose:
                 _toc = time.time()
-                self.stdout_logger.info(
+                self.stdOutLogger.info(
                     msg + f' done!   <{_toc - _tic:,.1f} s>')
 
         arrowADF = \
@@ -3407,7 +3407,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         if verbose:
             toc = time.time()
-            self.stdout_logger.info(
+            self.stdOutLogger.info(
                 message + f' done!   <{((toc - tic) / 60):,.1f} m>')
 
         return (((arrowADF, details, sqlStatement)
@@ -3544,7 +3544,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             if verbose:
                 message = ('Loading & Applying Data Transformations '
                            f'from Path "{loadPath}"...')
-                self.stdout_logger.info(message)
+                self.stdOutLogger.info(message)
                 tic = time.time()
 
             if loadPath in self._PREP_CACHE:
@@ -3693,7 +3693,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 message = \
                     'Prepping Columns {}...'.format(
                         ', '.join(f'"{col}"' for col in cols))
-                self.stdout_logger.info(message)
+                self.stdOutLogger.info(message)
                 tic = time.time()
 
             prepSqlItems = {}
@@ -3707,7 +3707,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     msg = ('Transforming Categorical Features ' +
                            ', '.join(f'"{catCol}"' for catCol in catCols) +
                            '...')
-                    self.stdout_logger.info(msg)
+                    self.stdOutLogger.info(msg)
                     _tic = time.time()
 
                 catIdxCols = []
@@ -3788,7 +3788,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if verbose:
                     _toc = time.time()
-                    self.stdout_logger.info(
+                    self.stdOutLogger.info(
                         msg + f' done!   <{_toc - tic:,.1f} s>')
 
             numOrigToPrepColMap = \
@@ -3800,7 +3800,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 if verbose:
                     msg = 'Transforming Numerical Features {}...'.format(
                         ', '.join(f'"{numCol}"' for numCol in numCols))
-                    self.stdout_logger.info(msg)
+                    self.stdOutLogger.info(msg)
                     _tic = time.time()
 
                 outlierTails = fill.get('outlierTails', {})
@@ -3948,7 +3948,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if verbose:
                     _toc = time.time()
-                    self.stdout_logger.info(
+                    self.stdOutLogger.info(
                         msg + f' done!   <{_toc - _tic:,.1f} s>')
 
             defaultVecCols = \
@@ -3971,7 +3971,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             if verbose:
                 msg = ('Saving Data Transformations '
                        f'to Local Path "{savePath}"...')
-                self.stdout_logger.info(msg)
+                self.stdOutLogger.info(msg)
                 _tic = time.time()
 
             fs.mkdir(
@@ -3998,7 +3998,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             if verbose:
                 _toc = time.time()
-                self.stdout_logger.info(
+                self.stdOutLogger.info(
                     msg + f' done!   <{_toc - _tic:,.1f} s>')
 
             self._PREP_CACHE[savePath] = \
@@ -4070,7 +4070,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         if missingCols:
             if debug.ON:
-                self.stdout_logger.debug(
+                self.stdOutLogger.debug(
                     msg=f'*** FILLING MISSING COLS {missingCols} ***')
 
             for missingCol in missingCols:
@@ -4109,7 +4109,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         if verbose:
             toc = time.time()
-            self.stdout_logger.info(
+            self.stdOutLogger.info(
                 message + f' done!   <{((toc - tic) / 60):,.1f} m>')
 
         return (((arrowADF, catOrigToPrepColMap, numOrigToPrepColMap,
