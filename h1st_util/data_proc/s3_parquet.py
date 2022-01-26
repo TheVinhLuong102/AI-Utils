@@ -1023,7 +1023,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         self._emptyCache()
 
     @classmethod
-    def load(cls, path, **kwargs):   # pylint: disable=arguments-differ
+    def load(cls, path: str, **kwargs: Any):
+        # pylint: disable=arguments-differ
         """Load S3 Parquet Data Feeder."""
         return cls(path=path, **kwargs)
 
