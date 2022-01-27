@@ -1515,11 +1515,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         return self._cache.reprSamplePiecePaths
 
     def _assignReprSample(self):
-        self._cache.reprSample = \
-            self.sample(
-                n=self._reprSampleSize,
-                piecePaths=self.reprSamplePiecePaths,
-                verbose=True)
+        self._cache.reprSample = self.sample(n=self._reprSampleSize,
+                                             piecePaths=self.reprSamplePiecePaths,
+                                             verbose=True)
 
         # pylint: disable=attribute-defined-outside-init
         self._reprSampleSize = len(self._cache.reprSample)
