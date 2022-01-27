@@ -21,7 +21,7 @@ from uuid import uuid4
 import botocore
 import boto3
 from numpy import array, allclose, cumsum, hstack, isfinite, isnan, nan, ndarray, vstack
-from pandas import DataFrame, Series, concat, isnull, notnull
+from pandas import DataFrame, Series, concat, isnull, notnull, read_parquet
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 from tqdm import tqdm
 
@@ -954,6 +954,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         return s3ParquetDF
 
     def reduce(self, *piecePaths: str, **kwargs: Any) -> ReducedDataSetType:
+        # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Reduce from mapped content."""
         _CHUNK_SIZE: int = 10 ** 5
 
@@ -982,6 +983,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         results: List[ReducedDataSetType] = []
 
+        # pylint: disable=too-many-nested-blocks
         for piecePath in (tqdm(piecePaths) if verbose and (len(piecePaths) > 1) else piecePaths):
             pieceLocalPath: Path = self.pieceLocalPath(piecePath=piecePath)
 
@@ -1028,33 +1030,30 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             partitionKeyCols: Set[str] = cols & pieceCache.partitionKVs
 
             if srcCols:
-                # arrow.apache.org/docs/python/generated/pyarrow.parquet.read_table
-                pieceArrowTable: Table = read_table(source=pieceLocalPath,
-                                                    columns=list(srcCols),
-                                                    use_threads=True,
-                                                    metadata=None,
-                                                    use_pandas_metadata=True,
-                                                    memory_map=False,
-                                                    read_dictionary=None,
-                                                    filesystem=None,
-                                                    filters=None,
-                                                    buffer_size=0,
-                                                    partitioning='hive',
-                                                    use_legacy_dataset=False,
-                                                    ignore_prefixes=None,
-                                                    pre_buffer=True,
-                                                    coerce_int96_timestamp_unit=None)
+                pandasDFConstructed: bool = False
 
-                if nSamplesPerPiece and (nSamplesPerPiece < pieceCache.nRows):
+                if toSubSample := nSamplesPerPiece and (nSamplesPerPiece < pieceCache.nRows):
                     intermediateN: float = (nSamplesPerPiece * pieceCache.nRows) ** .5
 
-                    approxNChunks: int = int(math.ceil(pieceCache.nRows / _CHUNK_SIZE))
-                    nChunksForIntermediateN: int = int(math.ceil(intermediateN / _CHUNK_SIZE))
+                    if ((nChunksForIntermediateN := int(math.ceil(intermediateN / _CHUNK_SIZE)))
+                            < (approxNChunks := int(math.ceil(pieceCache.nRows / _CHUNK_SIZE)))):
+                        # arrow.apache.org/docs/python/generated/pyarrow.parquet.read_table
+                        pieceArrowTable: Table = read_table(source=pieceLocalPath,
+                                                            columns=list(srcCols),
+                                                            use_threads=True,
+                                                            metadata=None,
+                                                            use_pandas_metadata=True,
+                                                            memory_map=False,
+                                                            read_dictionary=None,
+                                                            filesystem=None,
+                                                            filters=None,
+                                                            buffer_size=0,
+                                                            partitioning='hive',
+                                                            use_legacy_dataset=False,
+                                                            ignore_prefixes=None,
+                                                            pre_buffer=True,
+                                                            coerce_int96_timestamp_unit=None)
 
-                    nSamplesPerChunk: int = int(math.ceil(nSamplesPerPiece /
-                                                          nChunksForIntermediateN))
-
-                    if nChunksForIntermediateN < approxNChunks:
                         chunkRecordBatches: List[RecordBatch] = \
                             pieceArrowTable.to_batches(max_chunksize=_CHUNK_SIZE)
 
@@ -1069,6 +1068,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                        f'{nChunks} Record Batches ***')
 
                         chunkPandasDFs: List[DataFrame] = []
+
+                        nSamplesPerChunk: int = int(math.ceil(nSamplesPerPiece /
+                                                              nChunksForIntermediateN))
 
                         for chunkRecordBatch in sampleSet(population=chunkRecordBatches,
                                                           sampleSize=nChunksForIntermediateN):
@@ -1155,63 +1157,88 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                    sort=False,
                                    copy=False)
 
-                    else:
-                        # arrow.apache.org/docs/python/generated/pyarrow.Table.html
-                        # #pyarrow.Table.to_pandas
-                        piecePandasDF: DataFrame = \
-                            pieceArrowTable.to_pandas(
-                                memory_pool=None,
-                                categories=None,
-                                strings_to_categorical=False,
-                                zero_copy_only=True,
+                        pandasDFConstructed: bool = True
 
-                                integer_object_nulls=False,
-                                # TODO: check
-                                # (bool, default False) –
-                                # Cast integers with nulls to objects
+                if not pandasDFConstructed:
+                    # pandas.pydata.org/docs/reference/api/pandas.read_parquet
+                    # arrow.apache.org/docs/python/generated/pyarrow.Table.html
+                    # #pyarrow.Table.to_pandas
+                    piecePandasDF: DataFrame = read_parquet(
+                        path=pieceLocalPath,
+                        engine='pyarrow',
+                        columns=list(srcCols),
+                        storage_options=None,
+                        use_nullable_dtypes=True,
 
-                                date_as_object=True,
-                                # TODO: check
-                                # (bool, default True) –
-                                # Cast dates to objects.
-                                # If False, convert to datetime64[ns] dtype.
+                        # pyarrow.parquet.read_table(...) kwargs:
+                        use_threads=True,
+                        metadata=None,
+                        use_pandas_metadata=True,
+                        memory_map=False,
+                        read_dictionary=None,
+                        filesystem=None,
+                        filters=None,
+                        buffer_size=0,
+                        partitioning='hive',
+                        use_legacy_dataset=False,
+                        ignore_prefixes=None,
+                        pre_buffer=True,
+                        coerce_int96_timestamp_unit=None,
 
-                                timestamp_as_object=False,
-                                use_threads=True,
+                        # pyarrow.Table.to_pandas(...) kwargs:
+                        memory_pool=None,
+                        categories=None,
+                        strings_to_categorical=False,
+                        zero_copy_only=True,
 
-                                deduplicate_objects=True,
-                                # TODO: check
-                                # (bool, default False) –
-                                # Do not create multiple copies Python objects when created,
-                                # to save on memory use. Conversion will be slower.
+                        integer_object_nulls=False,
+                        # TODO: check
+                        # (bool, default False) –
+                        # Cast integers with nulls to objects
 
-                                ignore_metadata=False,
-                                safe=True,
+                        date_as_object=True,
+                        # TODO: check
+                        # (bool, default True) –
+                        # Cast dates to objects.
+                        # If False, convert to datetime64[ns] dtype.
 
-                                split_blocks=True,
-                                # TODO: check
-                                # (bool, default False) –
-                                # If True, generate one internal “block” for each column
-                                # when creating a pandas.DataFrame from a RecordBatch or Table.
-                                # While this can temporarily reduce memory note that
-                                # various pandas operations can trigger “consolidation”
-                                # which may balloon memory use.
+                        timestamp_as_object=False,
+                        use_threads=True,
 
-                                self_destruct=True,
-                                # TODO: check
-                                # EXPERIMENTAL: If True, attempt to deallocate the originating
-                                # Arrow memory while converting the Arrow object to pandas.
-                                # If you use the object after calling to_pandas with this option
-                                # it will crash your program.
-                                # Note that you may not see always memory usage improvements.
-                                # For example, if multiple columns share an underlying allocation,
-                                # memory can’t be freed until all columns are converted.
+                        deduplicate_objects=True,
+                        # TODO: check
+                        # (bool, default False) –
+                        # Do not create multiple copies Python objects when created,
+                        # to save on memory use. Conversion will be slower.
 
-                                types_mapper=None)
+                        ignore_metadata=False,
+                        safe=True,
 
-                        for k in partitionKeyCols:
-                            piecePandasDF[k] = pieceCache.partitionKVs[k]
+                        split_blocks=True,
+                        # TODO: check
+                        # (bool, default False) –
+                        # If True, generate one internal “block” for each column
+                        # when creating a pandas.DataFrame from a RecordBatch or Table.
+                        # While this can temporarily reduce memory note that
+                        # various pandas operations can trigger “consolidation”
+                        # which may balloon memory use.
 
+                        self_destruct=True,
+                        # TODO: check
+                        # EXPERIMENTAL: If True, attempt to deallocate the originating
+                        # Arrow memory while converting the Arrow object to pandas.
+                        # If you use the object after calling to_pandas with this option
+                        # it will crash your program.
+                        # Note that you may not see always memory usage improvements.
+                        # For example, if multiple columns share an underlying allocation,
+                        # memory can’t be freed until all columns are converted.
+
+                        types_mapper=None)
+
+                    for k in partitionKeyCols:
+                        piecePandasDF[k] = pieceCache.partitionKVs[k]
+
+                    if toSubSample:
                         piecePandasDF: DataFrame = \
                             piecePandasDF.sample(n=nSamplesPerPiece,
                                                  # frac=None,
@@ -1220,63 +1247,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                  random_state=None,
                                                  axis='index',
                                                  ignore_index=False)
-
-                else:
-                    # arrow.apache.org/docs/python/generated/pyarrow.Table.html
-                    # #pyarrow.Table.to_pandas
-                    piecePandasDF: DataFrame = \
-                        pieceArrowTable.to_pandas(
-                            memory_pool=None,
-                            categories=None,
-                            strings_to_categorical=False,
-                            zero_copy_only=True,
-
-                            integer_object_nulls=False,
-                            # TODO: check
-                            # (bool, default False) –
-                            # Cast integers with nulls to objects
-
-                            date_as_object=True,
-                            # TODO: check
-                            # (bool, default True) –
-                            # Cast dates to objects.
-                            # If False, convert to datetime64[ns] dtype.
-
-                            timestamp_as_object=False,
-                            use_threads=True,
-
-                            deduplicate_objects=True,
-                            # TODO: check
-                            # (bool, default False) –
-                            # Do not create multiple copies Python objects when created,
-                            # to save on memory use. Conversion will be slower.
-
-                            ignore_metadata=False,
-                            safe=True,
-
-                            split_blocks=True,
-                            # TODO: check
-                            # (bool, default False) –
-                            # If True, generate one internal “block” for each column
-                            # when creating a pandas.DataFrame from a RecordBatch or Table.
-                            # While this can temporarily reduce memory note that
-                            # various pandas operations can trigger “consolidation”
-                            # which may balloon memory use.
-
-                            self_destruct=True,
-                            # TODO: check
-                            # EXPERIMENTAL: If True, attempt to deallocate the originating
-                            # Arrow memory while converting the Arrow object to pandas.
-                            # If you use the object after calling to_pandas with this option
-                            # it will crash your program.
-                            # Note that you may not see always memory usage improvements.
-                            # For example, if multiple columns share an underlying allocation,
-                            # memory can’t be freed until all columns are converted.
-
-                            types_mapper=None)
-
-                    for k in partitionKeyCols:
-                        piecePandasDF[k] = pieceCache.partitionKVs[k]
 
             else:
                 piecePandasDF: DataFrame = DataFrame(
