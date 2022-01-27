@@ -1580,14 +1580,14 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         if self._cache.approxNRows is None:
             self.stdOutLogger.info(msg='Counting Approx. No. of Rows...')
 
-            self._cache.approxNRows = \
-                self.nPieces \
+            self._cache.approxNRows = (
+                self.nPieces
                 * sum(self._readMetadataAndSchema(piecePath=piecePath).nRows
                       for piecePath in
                       (tqdm(self.prelimReprSamplePiecePaths)
                        if len(self.prelimReprSamplePiecePaths) > 1
-                       else self.prelimReprSamplePiecePaths)) \
-                / self._reprSampleMinNPieces
+                       else self.prelimReprSamplePiecePaths))
+                / self._reprSampleMinNPieces)
 
         return self._cache.approxNRows
 
