@@ -1538,6 +1538,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         s3ParquetDF: S3ParquetDataFeeder = self
 
         for condition in conditions:
+            # pylint: disable=cell-var-from-loop
             s3ParquetDF: S3ParquetDataFeeder = \
                 s3ParquetDF.map(lambda df: df.query(expr=condition, inplace=False),
                                 **kwargs)
