@@ -8,6 +8,7 @@ from functools import lru_cache
 import json
 import math
 import os
+from pathlib import Path
 import random
 import re
 import time
@@ -31,7 +32,7 @@ from .. import debug, fs, s3
 from ..data_types.arrow import (
     DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)
-from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY_NUM_TYPES  # noqa: E501
+from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY_NUM_TYPES
 from ..data_types.spark_sql import _STR_TYPE
 from ..default_dict import DefaultDict
 from ..iter import to_iterable
@@ -62,7 +63,6 @@ from ._abstract import AbstractDataHandler
 
 
 # pylint: disable=consider-using-f-string
-# pylint: disable=line-too-long
 # pylint: disable=too-few-public-methods
 
 
@@ -402,7 +402,7 @@ def randomSample(population: Collection[Any], k: int) -> List[Any]:
 
 
 class S3ParquetDataFeeder(AbstractS3FileDataHandler):
-    # pylint: disable=too-many-instance-attributes,too-many-public-methods
+    # pylint: disable=abstract-method,too-many-instance-attributes,too-many-public-methods
     """S3 Parquet Data Feeder."""
 
     _CACHE = {}
@@ -620,7 +620,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         self.__dict__.update(_cache)
 
-        self._cachedLocally = False
+        self._cachedLocally: bool = False
 
         self._mappers: Tuple[callable] = (()
                                           if _mappers is None
@@ -877,16 +877,15 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # cacheLocally
     # pieceLocalPath
 
-    def cacheLocally(self):
+    def cacheLocally(self, verbose: bool = True):
         """Cache files to local disk."""
         if not self._cachedLocally:
-            parsedURL = urlparse(url=self.path,
-                                 scheme='',
-                                 allow_fragments=True)
+            if verbose:
+                self.stdOutLogger.info(msg=(msg := 'Caching Files to Local Disk...'))
 
-            localPath = os.path.join(self._TMP_DIR_PATH,
-                                     parsedURL.netloc,
-                                     parsedURL.path[1:])
+            parsedURL: ParseResult = urlparse(url=self.path, scheme='', allow_fragments=True)
+
+            localPath: Path = self._TMP_DIR_PATH / parsedURL.netloc / parsedURL.path[1:]
 
             s3.sync(from_dir_path=self.path,
                     to_dir_path=localPath,
@@ -897,32 +896,32 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 self._PIECE_CACHES[piecePath].localPath = \
                     piecePath.replace(self.path, localPath)
 
-            self._cachedLocally = True
+            self._cachedLocally: bool = True
 
-    def pieceLocalPath(self, piecePath: str) -> str:
+            if verbose:
+                self.stdOutLogger.info(msg=f'{msg} done!')
+
+    def pieceLocalPath(self, piecePath: str) -> Path:
         """Get local cache file path of piece."""
-        if (piecePath in self._PIECE_CACHES) and \
-                self._PIECE_CACHES[piecePath].localPath:
+        if (piecePath in self._PIECE_CACHES) and self._PIECE_CACHES[piecePath].localPath:
             return self._PIECE_CACHES[piecePath].localPath
 
-        parsedURL = urlparse(url=piecePath, scheme='', allow_fragments=True)
+        parsedURL: ParseResult = urlparse(url=piecePath, scheme='', allow_fragments=True)
 
-        localPath = os.path.join(self._TMP_DIR_PATH,
-                                 parsedURL.netloc,
-                                 parsedURL.path[1:])
+        localPath: Path = self._TMP_DIR_PATH / parsedURL.netloc / parsedURL.path[1:]
 
-        localDirPath = os.path.dirname(localPath)
+        localDirPath: Path = localPath.parent
         fs.mkdir(dir_path=localDirPath, hdfs=False)
         # make sure the dir has been created
-        while not os.path.isdir(localDirPath):
+        while not localDirPath.is_dir():
             time.sleep(1)
 
         self.S3_CLIENT.download_file(Bucket=parsedURL.netloc,
                                      Key=parsedURL.path[1:],
-                                     Filename=localPath)
+                                     Filename=str(localPath))
         # make sure AWS S3's asynchronous process has finished
         # downloading a potentially large file
-        while not os.path.isfile(localPath):
+        while not localPath.is_file():
             time.sleep(1)
 
         if piecePath in self._PIECE_CACHES:
@@ -2859,6 +2858,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     details[col] = [
                         self._NULL_FILL_PREFIX + col + self._PREP_SUFFIX,
 
+                        # pylint: disable=line-too-long
                         dict(
                             SQL="COALESCE(CASE WHEN (STRING({0}) = 'NaN'){1}{2}{3}{4} THEN NULL ELSE {0} END, {5})"
                                 .format(

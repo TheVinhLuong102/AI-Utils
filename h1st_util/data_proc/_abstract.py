@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import logging
-import os
+from pathlib import Path
 import tempfile
 from typing import Any, Optional, Union
 from typing import Collection, Dict, Set, Tuple   # Py3.9+: built-ins
@@ -53,7 +53,8 @@ class AbstractDataHandler:
     _PREP_SQL_STATEMENT_FILE_NAME: str = 'prepSQLStatement.json'
 
     # temp dir
-    _TMP_DIR_PATH: str = os.path.join(tempfile.gettempdir(), '.h1st/df')
+    _TMP_DIR_PATH: Path = (Path(tempfile.gettempdir()).resolve(strict=True) /
+                           '.h1st/tmp')
 
     # data prep cache
     _PREP_CACHE: Dict[str, Namespace] = {}
