@@ -136,32 +136,6 @@ class AbstractDataHandler:
         """Get StdOut Logger."""
         return self.logger(level=logging.DEBUG, verbose=True)
 
-    # ==========
-    # IO METHODS
-    # ----------
-    # load / read
-    # save / write
-
-    @classmethod
-    def load(cls, *args: Any, **kwargs: Any) -> AbstractDataHandler:
-        """Load data set."""
-        raise NotImplementedError
-
-    # alias
-    @classmethod
-    def read(cls, *args: Any, **kwargs: Any) -> AbstractDataHandler:
-        """Read data set."""
-        return cls.load(*args, **kwargs)
-
-    def save(self, *args: Any, **kwargs: Any):
-        """Save data set."""
-        raise NotImplementedError
-
-    # alias
-    def write(self, *args: Any, **kwargs: Any):
-        """Write data set."""
-        return self.save(*args, **kwargs)
-
     # ===============
     # CACHING METHODS
     # ---------------
@@ -401,7 +375,7 @@ class AbstractDataHandler:
     # count
     # nonNullProportion
     # suffNonNull
-    # distinct / unique
+    # distinct
     # quantile
     # sampleStat / sampleMedian
     # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
@@ -468,11 +442,6 @@ class AbstractDataHandler:
     def distinct(self, *cols: str, **kwargs: Any) -> Union[Collection, Namespace]:   # noqa: E501
         """Return distinct values for specified column(s)."""
         raise NotImplementedError
-
-    # alias
-    def unique(self, *cols: str, **kwargs: Any) -> Union[Collection, Namespace]:   # noqa: E501
-        """Return unique values for specified column(s)."""
-        raise self.distinct(*cols, **kwargs)
 
     def quantile(self, *cols: str, **kwargs: Any) \
             -> Union[float, int, Collection, Namespace]:

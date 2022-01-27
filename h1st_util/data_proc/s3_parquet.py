@@ -404,7 +404,7 @@ def randomSample(population: Collection[Any], k: int) -> List[Any]:
 
 
 class S3ParquetDataFeeder(AbstractS3FileDataHandler):
-    # pylint: disable=abstract-method,too-many-instance-attributes,too-many-public-methods
+    # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """S3 Parquet Data Feeder."""
 
     _CACHE: Dict[str, Namespace] = {}
@@ -428,12 +428,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         minProportionByMaxNCats=DefaultDict(
             AbstractS3FileDataHandler._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS),
     )
-
-    # =================
-    # METHODS TO CREATE
-    # -----------------
-    # __init__
-    # load
 
     def __init__(self, path: str, *, reCache: bool = False,
                  awsRegion: Optional[str] = None,
@@ -620,12 +614,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         # set profiling settings and create empty profiling cache
         self._emptyCache()
-
-    @classmethod
-    def load(cls, path: str, **kwargs: Any) -> S3ParquetDataFeeder:
-        # pylint: disable=arguments-differ
-        """Load S3 Parquet Data Feeder."""
-        return cls(path=path, **kwargs)
 
     # ================================
     # "INTERNAL / DON'T TOUCH" METHODS
