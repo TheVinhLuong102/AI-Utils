@@ -776,87 +776,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         raise StopIteration
 
-    # ==========
-    # IO METHODS
-    # ----------
-    # save
-
-    def save(self, dir_path: str, collect: bool = False, verbose: bool = True):
-        # pylint: disable=arguments-differ
-        """Save S3 Parquet Data."""
-        if dir_path.startswith('s3://'):
-            _s3 = True
-            _dir_path = tempfile.mkdtemp()
-
-        else:
-            _s3 = False
-            _dir_path = dir_path
-            fs.empty(dir_path=_dir_path, hdfs=False)
-
-        if verbose:
-            msg = f'Saving to "{_dir_path}"...'
-            self.stdOutLogger.info(msg)
-            tic = time.time()
-
-        if collect:
-            pandasDF = self.collect(verbose=verbose)
-
-            # ValueError: parquet must have string column names
-            pandasDF.columns = \
-                pandasDF.columns.map(str)
-
-            pandasDF.to_parquet(
-                fname=os.path.join(_dir_path, '0.snappy.parquet'),
-                engine='pyarrow',
-                compression='snappy',
-                row_group_size=None,
-                # version='1.0',
-                use_dictionary=True,
-                use_deprecated_int96_timestamps=None,
-                coerce_timestamps=None,
-                flavor='spark')
-
-        else:
-            # pylint: disable=consider-using-f-string
-            file_name_formatter = \
-                '{:0%dd}.snappy.parquet' % len(str(self.nPieces))
-
-            for i, pandasDF in \
-                    (tqdm(enumerate(self), total=self.nPieces)
-                     if verbose and (self.nPieces > 1)
-                     else enumerate(self)):
-                # ValueError: parquet must have string column names
-                pandasDF.columns = \
-                    pandasDF.columns.map(str)
-
-                pandasDF.to_parquet(
-                    fname=os.path.join(_dir_path,
-                                       file_name_formatter.format(i)),
-                    engine='pyarrow',
-                    compression='snappy',
-                    row_group_size=None,
-                    # version='1.0',
-                    use_dictionary=True,
-                    use_deprecated_int96_timestamps=None,
-                    coerce_timestamps=None,
-                    flavor='spark')
-
-        if verbose:
-            toc = time.time()
-            self.stdOutLogger.info(
-                msg + f'done!   <{((toc - tic) / 60):,.1f} m>')
-
-        if _s3:
-            s3.sync(
-                from_dir_path=_dir_path,
-                to_dir_path=dir_path,
-                delete=True, quiet=True,
-                verbose=verbose)
-
-            fs.rm(
-                path=_dir_path,
-                hdfs=False,
-                is_dir=True)
+    # ====
+    # COPY
+    # ----
+    # copy
 
     def copy(self, **kwargs: Any) -> S3ParquetDataFeeder:
         """Make a copy."""
