@@ -688,11 +688,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             return namespace
 
     def _organizeTimeSeries(self):
-        self._dCol = 'date' \
-            if 'date' in self.srcColsInclPartitionKVs \
-            else None
+        self._dCol: Optional[str] = (self._DEFAULT_D_COL
+                                     if self._DEFAULT_D_COL in self.columns
+                                     else None)
 
-        self.hasTS = self._iCol and self._tCol
+        self.hasTS: bool = bool(self._iCol and self._tCol)
 
     def _emptyCache(self):
         self._cache: Namespace = \
