@@ -16,7 +16,7 @@ import time
 from typing import Any, Optional, Union
 from typing import Collection, Dict, List, Set, Sequence, Tuple   # Py3.9+: use built-ins
 from urllib.parse import ParseResult, urlparse
-import uuid
+from uuid import uuid4
 
 import botocore
 import boto3
@@ -1663,28 +1663,27 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # sample
     # gen
 
-    def _subset(self, *piecePaths: str, **kwargs: Any):
+    def _subset(self, *piecePaths: str, **kwargs: Any) -> S3ParquetDataFeeder:
         if piecePaths:
             assert self.piecePaths.issuperset(piecePaths)
 
-            nPiecePaths = len(piecePaths)
+            nPiecePaths: int = len(piecePaths)
 
             if nPiecePaths == self.nPieces:
                 return self
 
             if nPiecePaths > 1:
-                verbose = kwargs.pop('verbose', True)
+                verbose: bool = kwargs.pop('verbose', True)
 
-                subsetDirS3Key = os.path.join(self.tmpDirS3Key,
-                                              str(uuid.uuid4()))
+                subsetDirS3Key: str = f'{self.tmpDirS3Key}/{uuid4()}'
 
-                _pathPlusSepLen = len(self.path) + 1
+                _pathPlusSepLen: int = len(self.path) + 1
 
                 for piecePath in (tqdm(piecePaths) if verbose else piecePaths):
-                    pieceSubPath = piecePath[_pathPlusSepLen:]
+                    pieceSubPath: str = piecePath[_pathPlusSepLen:]
 
-                    _from_key = os.path.join(self.pathS3Key, pieceSubPath)
-                    _to_key = os.path.join(subsetDirS3Key, pieceSubPath)
+                    _from_key: str = f'{self.pathS3Key}/{pieceSubPath}'
+                    _to_key: str = f'{subsetDirS3Key}/{pieceSubPath}'
 
                     try:
                         self.S3_CLIENT.copy(
@@ -1699,15 +1698,13 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                         raise err
 
-                subsetPath = os.path.join(f's3://{self.s3Bucket}',
-                                          subsetDirS3Key)
+                subsetPath: str = f's3://{self.s3Bucket}/{subsetDirS3Key}'
 
             else:
-                subsetPath = piecePaths[0]
+                subsetPath: str = piecePaths[0]
 
             return S3ParquetDataFeeder(
-                path=subsetPath,
-                awsRegion=self.awsRegion,
+                path=subsetPath, awsRegion=self.awsRegion,
 
                 iCol=self._iCol, tCol=self._tCol,
                 _mappers=self._mappers,
