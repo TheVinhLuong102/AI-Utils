@@ -1027,7 +1027,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             srcCols: Set[str] = cols & pieceCache.srcColsExclPartitionKVs
 
-            partitionKeyCols: Set[str] = cols & pieceCache.partitionKVs
+            partitionKeyCols: Set[str] = cols.intersection(pieceCache.partitionKVs)
 
             if srcCols:
                 pandasDFConstructed: bool = False
