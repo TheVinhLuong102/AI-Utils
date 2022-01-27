@@ -396,11 +396,11 @@ class _S3ParquetDataFeeder__prep__pandasDFTransform:
         return pandasDF
 
 
-def randomSample(population: Collection[Any], k: int) -> List[Any]:
+def sampleSet(population: Collection[Any], sampleSize: int) -> Set[Any]:
     """Draw random sample from population."""
-    return (random.sample(population=population, k=k)
-            if len(population) > k
-            else list(population))
+    return set(random.sample(population=population, k=sampleSize)
+               if len(population) > sampleSize
+               else population)
 
 
 class S3ParquetDataFeeder(AbstractS3FileDataHandler):
@@ -1198,12 +1198,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                             (f'*** {piecePath}: {nChunksForIntermediateN} vs. '
                              f'{nRecordBatches} Record Batches ***')
 
-                        chunkPandasDFs = []
+                        chunkPandasDFs: List[pandas.DataFrame] = []
 
-                        for recordBatch in \
-                                randomSample(population=recordBatches,
-                                             k=nChunksForIntermediateN):
-                            chunkPandasDF = \
+                        for recordBatch in sampleSet(population=recordBatches,
+                                                     sampleSize=nChunksForIntermediateN):
+                            chunkPandasDF: pandas.DataFrame = \
                                 recordBatch.to_pandas(
                                     categories=None,
                                     strings_to_categorical=False,
@@ -1490,8 +1489,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         """Prelim Representative Sample Piece Paths."""
         if self._cache.prelimReprSamplePiecePaths is None:
             self._cache.prelimReprSamplePiecePaths = \
-                randomSample(population=self.piecePaths,
-                             k=self._reprSampleMinNPieces)
+                sampleSet(population=self.piecePaths,
+                          sampleSize=self._reprSampleMinNPieces)
 
         return self._cache.prelimReprSamplePiecePaths
 
@@ -1499,18 +1498,18 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def reprSamplePiecePaths(self) -> Set[str]:
         """Return representative sample piece paths."""
         if self._cache.reprSamplePiecePaths is None:
-            reprSampleNPieces = \
+            reprSampleNPieces: int = \
                 int(math.ceil(
-                    ((min(self._reprSampleSize, self.approxNRows) /
-                     self.approxNRows) ** .5) * self.nPieces))
+                    ((min(self._reprSampleSize, self.approxNRows) / self.approxNRows) ** .5)
+                    * self.nPieces))
 
-            self._cache.reprSamplePiecePaths = \
-                self._cache.prelimReprSamplePiecePaths + \
-                (randomSample(
-                    population=self.piecePaths,
-                    k=reprSampleNPieces - self._reprSampleMinNPieces)
+            self._cache.reprSamplePiecePaths = (
+                self._cache.prelimReprSamplePiecePaths |
+                (sampleSet(
+                    population=self.piecePaths - self._cache.prelimReprSamplePiecePaths,
+                    sampleSize=reprSampleNPieces - self._reprSampleMinNPieces)
                  if reprSampleNPieces > self._reprSampleMinNPieces
-                 else [])
+                 else set()))
 
         return self._cache.reprSamplePiecePaths
 
@@ -1822,8 +1821,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 nSamplePieces = min(nSamplePieces, maxNPieces)
 
             if nSamplePieces < self.nPieces:
-                piecePaths = randomSample(population=self.piecePaths,
-                                          k=nSamplePieces)
+                piecePaths = sampleSet(population=self.piecePaths,
+                                       sampleSize=nSamplePieces)
 
             else:
                 nSamplePieces = self.nPieces
