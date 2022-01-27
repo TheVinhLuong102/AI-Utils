@@ -27,7 +27,7 @@ from tqdm import tqdm
 
 from pyarrow.dataset import dataset
 from pyarrow.fs import S3FileSystem
-from pyarrow.lib import Schema   # pylint: disable=no-name-in-module
+from pyarrow.lib import RecordBatch, Schema, Table   # pylint: disable=no-name-in-module
 from pyarrow.parquet import FileMetaData, read_metadata, read_schema, read_table
 
 from .. import debug, fs, s3
@@ -954,7 +954,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         return s3ParquetDF
 
     def reduce(self, *piecePaths: str, **kwargs: Any) -> ReducedDataSetType:
-        # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Reduce from mapped content."""
         _CHUNK_SIZE: int = 10 ** 5
 
@@ -981,18 +980,15 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         if not piecePaths:
             piecePaths: Set[str] = self.piecePaths
 
-        results = []
+        results: List[ReducedDataSetType] = []
 
-        # pylint: disable=too-many-nested-blocks
-        for piecePath in (tqdm(piecePaths)
-                          if verbose and (len(piecePaths) > 1)
-                          else piecePaths):
-            pieceLocalPath = self.pieceLocalPath(piecePath=piecePath)
+        for piecePath in (tqdm(piecePaths) if verbose and (len(piecePaths) > 1) else piecePaths):
+            pieceLocalPath: Path = self.pieceLocalPath(piecePath=piecePath)
 
-            pieceCache = self._PIECE_CACHES[piecePath]
+            pieceCache: Namespace = self._PIECE_CACHES[piecePath]
 
             if pieceCache.nRows is None:
-                schema = read_schema(where=pieceLocalPath)
+                schema: Schema = read_schema(where=pieceLocalPath)
 
                 pieceCache.srcColsExclPartitionKVs = set(schema.names)
 
@@ -1004,346 +1000,280 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                             .difference(pieceCache.partitionKVs)):
                     pieceCache.srcTypesExclPartitionKVs[col] = \
                         pieceCache.srcTypesInclPartitionKVs[col] = \
-                        _arrowType = \
-                        schema.field(col).type
+                        _arrowType = schema.field(col).type
 
                     assert not is_binary(_arrowType), \
-                        f'*** {piecePath}: {col} IS OF BINARY TYPE ***'
+                        TypeError(f'*** {piecePath}: {col} IS OF BINARY TYPE ***')
 
                     if col in self.srcTypesInclPartitionKVs:
                         assert _arrowType == self.srcTypesInclPartitionKVs[col], \
                             TypeError(f'*** {piecePath} COLUMN {col}: '
                                       f'DETECTED TYPE {_arrowType} != '
                                       f'{self.srcTypesInclPartitionKVs[col]} ***')
-
                     else:
                         self.srcTypesInclPartitionKVs[col] = _arrowType
 
-                metadata = read_metadata(where=pieceCache.localPath)
+                metadata: FileMetaData = read_metadata(where=pieceCache.localPath)
                 pieceCache.nCols = metadata.num_columns
                 pieceCache.nRows = metadata.num_rows
 
-            cols = kwargs.get('cols')
+            cols: Optional[Collection[str]] = kwargs.get('cols')
 
-            cols = (to_iterable(cols, iterable_type=set)
-                    if cols
-                    else set(pieceCache.srcColsInclPartitionKVs))
+            cols: Set[str] = (to_iterable(cols, iterable_type=set)
+                              if cols
+                              else pieceCache.srcColsInclPartitionKVs)
 
-            srcCols = cols.intersection(pieceCache.srcColsExclPartitionKVs)
+            srcCols: Set[str] = cols & pieceCache.srcColsExclPartitionKVs
 
-            partitionKeyCols = cols.intersection(pieceCache.partitionKVs)
+            partitionKeyCols: Set[str] = cols & pieceCache.partitionKVs
 
             if srcCols:
-                pieceArrowTable = \
-                    read_table(
-                        source=pieceLocalPath,
-                        # (str, pyarrow.NativeFile, or file-like object) –
-                        # If a string passed,
-                        # can be a single file name or directory name.
-                        # For file-like objects, only read a single file.
-                        # Use pyarrow.BufferReader to read
-                        # a file contained in a bytes or buffer-like object.
-
-                        columns=list(srcCols),
-                        # (list) – If not None,
-                        # only these columns will be read from the file.
-                        # A column name may be a prefix of a nested field,
-                        # e.g. ‘a’ will select ‘a.b’, ‘a.c’, and ‘a.d.e’.
-                        # If empty, no columns will be read.
-                        # Note that the table will still have the correct
-                        # num_rows set despite having no columns.
-
-                        use_threads=True,
-                        # (bool, default True) –
-                        # Perform multi-threaded column reads.
-
-                        metadata=None,
-                        # (FileMetaData) – If separately computed
-
-                        use_pandas_metadata=False,
-                        # (bool, default False) –
-                        # If True and file has custom pandas schema metadata,
-                        # ensure that index columns are also loaded.
-
-                        memory_map=False,
-                        # (bool, default False) –
-                        # If the source is a file path,
-                        # use a memory map to read file,
-                        # which can improve performance in some environments.
-
-                        read_dictionary=None,
-                        # (list, default None) –
-                        # List of names or column paths (for nested types)
-                        # to read directly as DictionaryArray.
-                        # Only supported for BYTE_ARRAY storage.
-                        # To read a flat column as dictionary-encoded
-                        # pass the column name.
-                        # For nested types, you must pass
-                        # the full column “path”, which could be something
-                        # like level1.level2.list.item.
-                        # Refer to the Parquet file’s schema
-                        # to obtain the paths.
-
-                        filesystem=None,
-                        # (FileSystem, default None) –
-                        # If nothing passed, paths assumed to be found
-                        # in the local on-disk filesystem.
-
-                        filters=None,
-                        # List[Tuple] or List[List[Tuple]] or None (default))
-                        # Rows which do not match the filter predicate
-                        # will be removed from scanned data.
-                        # Partition keys embedded in a nested directory
-                        # structure will be exploited to avoid loading
-                        # files at all if they contain no matching rows.
-                        # If use_legacy_dataset is True,
-                        # filters can only reference partition keys and
-                        # only a hive-style directory structure is supported.
-                        # When setting use_legacy_dataset to False,
-                        # also within-file level filtering and different
-                        # partitioning schemes are supported.
-                        # Predicates are expressed in disjunctive normal form
-                        # (DNF), like [[('x', '=', 0), ...], ...].
-                        # DNF allows arbitrary boolean logical combinations
-                        # of single column predicates.
-                        # The innermost tuples each describe a single column
-                        # predicate.
-                        # The list of inner predicates is interpreted
-                        # as a conjunction (AND),
-                        # forming a more selective and multiple column
-                        # predicate.
-                        # Finally, the most outer list combines these filters
-                        # as a disjunction (OR).
-                        # Predicates may also be passed as List[Tuple].
-                        # This form is interpreted as a single conjunction.
-                        # To express OR in predicates, one must use the
-                        # (preferred) List[List[Tuple]] notation.
-
-                        buffer_size=0,
-                        # (int, default 0) –
-                        # If positive, perform read buffering when
-                        # deserializing individual column chunks.
-                        # Otherwise IO calls are unbuffered.
-
-                        partitioning='hive',
-                        # (Partitioning or str or list of str, default "hive")
-                        # – The partitioning scheme for a partitioned dataset.
-                        # The default of “hive” assumes directory names with
-                        # key=value pairs like “/year=2009/month=11”.
-                        # In addition, a scheme like “/2009/11” is also
-                        # supported, in which case you need to specify the
-                        # field names or a full schema.
-                        # See the pyarrow.dataset.partitioning() function
-                        # for more details.
-
-                        use_legacy_dataset=False,
-                        # (bool, default False) –
-                        # By default, read_table uses the new Arrow Datasets
-                        # API since pyarrow 1.0.0. Among other things,
-                        # this allows to pass filters for all columns and
-                        # not only the partition keys, enables different
-                        # partitioning schemes, etc.
-                        # Set to True to use the legacy behaviour.
-
-                        ignore_prefixes=None,
-                        # (list, optional) –
-                        # Files matching any of these prefixes will be ignored
-                        # by the discovery process if use_legacy_dataset=False.
-                        # This is matched to the basename of a path.
-                        # By default this is [‘.’, ‘_’].
-                        # Note that discovery happens only if a directory
-                        # is passed as source.
-
-                        pre_buffer=True,
-                        # Coalesce and issue file reads in parallel to improve
-                        # performance on high-latency filesystems (e.g. S3).
-                        # If True, Arrow will use a background I/O thread pool.
-                        # This option is only supported for
-                        # use_legacy_dataset=False.
-                        # If using a filesystem layer that itself performs
-                        # readahead (e.g. fsspec’s S3FS),
-                        # disable readahead for best results.
-
-                        coerce_int96_timestamp_unit=None,
-                        # Cast timestamps that are stored in INT96 format to a
-                        # particular resolution (e.g. ‘ms’).
-                        # Setting to None is equivalent to ‘ns’ and therefore
-                        # INT96 timestamps will be infered as timestamps in
-                        # nanoseconds.
-                    )
+                # arrow.apache.org/docs/python/generated/pyarrow.parquet.read_table
+                pieceArrowTable: Table = read_table(source=pieceLocalPath,
+                                                    columns=list(srcCols),
+                                                    use_threads=True,
+                                                    metadata=None,
+                                                    use_pandas_metadata=True,
+                                                    memory_map=False,
+                                                    read_dictionary=None,
+                                                    filesystem=None,
+                                                    filters=None,
+                                                    buffer_size=0,
+                                                    partitioning='hive',
+                                                    use_legacy_dataset=False,
+                                                    ignore_prefixes=None,
+                                                    pre_buffer=True,
+                                                    coerce_int96_timestamp_unit=None)
 
                 if nSamplesPerPiece and (nSamplesPerPiece < pieceCache.nRows):
-                    intermediateN = (nSamplesPerPiece * pieceCache.nRows) ** .5
+                    intermediateN: float = (nSamplesPerPiece * pieceCache.nRows) ** .5
 
-                    nChunks = int(math.ceil(pieceCache.nRows / _CHUNK_SIZE))
-                    nChunksForIntermediateN = \
-                        int(math.ceil(intermediateN / _CHUNK_SIZE))
+                    approxNChunks: int = int(math.ceil(pieceCache.nRows / _CHUNK_SIZE))
+                    nChunksForIntermediateN: int = int(math.ceil(intermediateN / _CHUNK_SIZE))
 
-                    nSamplesPerChunk = \
-                        int(math.ceil(
-                            nSamplesPerPiece / nChunksForIntermediateN))
+                    nSamplesPerChunk: int = int(math.ceil(nSamplesPerPiece /
+                                                          nChunksForIntermediateN))
 
-                    if nChunksForIntermediateN < nChunks:
-                        recordBatches = \
-                            pieceArrowTable.to_batches(
-                                max_chunksize=_CHUNK_SIZE)
+                    if nChunksForIntermediateN < approxNChunks:
+                        chunkRecordBatches: List[RecordBatch] = \
+                            pieceArrowTable.to_batches(max_chunksize=_CHUNK_SIZE)
 
-                        nRecordBatches = len(recordBatches)
+                        nChunks: int = len(chunkRecordBatches)
 
-                        assert nRecordBatches in (nChunks - 1, nChunks), \
-                            (f'*** {piecePath}: {nRecordBatches} vs. '
-                             f'{nChunks} Record Batches ***')
+                        assert nChunks in (approxNChunks - 1, approxNChunks), \
+                            ValueError(f'*** {piecePath}: {nChunks} vs. '
+                                       f'{approxNChunks} Record Batches ***')
 
-                        assert nChunksForIntermediateN <= nRecordBatches, \
-                            (f'*** {piecePath}: {nChunksForIntermediateN} vs. '
-                             f'{nRecordBatches} Record Batches ***')
+                        assert nChunksForIntermediateN <= nChunks, \
+                            ValueError(f'*** {piecePath}: {nChunksForIntermediateN} vs. '
+                                       f'{nChunks} Record Batches ***')
 
                         chunkPandasDFs: List[DataFrame] = []
 
-                        for recordBatch in sampleSet(population=recordBatches,
-                                                     sampleSize=nChunksForIntermediateN):
+                        for chunkRecordBatch in sampleSet(population=chunkRecordBatches,
+                                                          sampleSize=nChunksForIntermediateN):
+                            # arrow.apache.org/docs/python/generated/pyarrow.RecordBatch.html
+                            # #pyarrow.RecordBatch.to_pandas
                             chunkPandasDF: DataFrame = \
-                                recordBatch.to_pandas(
+                                chunkRecordBatch.to_pandas(
+                                    memory_pool=None,
                                     categories=None,
                                     strings_to_categorical=False,
-                                    zero_copy_only=False,
+                                    zero_copy_only=True,
+
                                     integer_object_nulls=False,
+                                    # TODO: check
+                                    # (bool, default False) –
+                                    # Cast integers with nulls to objects
+
                                     date_as_object=True,
+                                    # TODO: check
+                                    # (bool, default True) –
+                                    # Cast dates to objects.
+                                    # If False, convert to datetime64[ns] dtype.
+
+                                    timestamp_as_object=False,
                                     use_threads=True,
-                                    deduplicate_objects=False,
-                                    ignore_metadata=False)
+
+                                    deduplicate_objects=True,
+                                    # TODO: check
+                                    # (bool, default False) –
+                                    # Do not create multiple copies Python objects when created,
+                                    # to save on memory use. Conversion will be slower.
+
+                                    ignore_metadata=False,
+                                    safe=True,
+
+                                    split_blocks=True,
+                                    # TODO: check
+                                    # (bool, default False) –
+                                    # If True, generate one internal “block”
+                                    # for each column when creating a pandas.DataFrame
+                                    # from a RecordBatch or Table.
+                                    # While this can temporarily reduce memory
+                                    # note that various pandas operations can
+                                    # trigger “consolidation” which may balloon memory use.
+
+                                    self_destruct=True,
+                                    # TODO: check
+                                    # EXPERIMENTAL: If True, attempt to deallocate
+                                    # the originating Arrow memory while
+                                    # converting the Arrow object to pandas.
+                                    # If you use the object after calling to_pandas
+                                    # with this option it will crash your program.
+                                    # Note that you may not see always memory usage improvements.
+                                    # For example, if multiple columns share
+                                    # an underlying allocation, memory can’t be freed
+                                    # until all columns are converted.
+
+                                    types_mapper=None)
 
                             for k in partitionKeyCols:
                                 chunkPandasDF[k] = pieceCache.partitionKVs[k]
 
                             if nSamplesPerChunk < len(chunkPandasDF):
                                 chunkPandasDF: DataFrame = \
-                                    chunkPandasDF.sample(
-                                        n=nSamplesPerChunk,
-                                        # Number of items from axis to return.
-                                        # Cannot be used with frac.
-                                        # Default = 1 if frac = None.
-                                        # frac=None,
-                                        # Fraction of axis items to return.
-                                        # Cannot be used with n.
-
-                                        replace=False,
-                                        # Sample with or without replacement.
-                                        # Default = False.
-
-                                        weights=None,
-                                        # Default None
-                                        # results in equal probability
-                                        # weighting.
-                                        # If passed a Series,
-                                        # will align with target object
-                                        # on index.
-                                        # Index values in weights not found
-                                        # in sampled object will be ignored
-                                        # and index values in sampled object
-                                        # not in weights will be assigned
-                                        # weights of zero.
-                                        # If called on a DataFrame, will accept
-                                        # the name of a column when axis = 0.
-                                        # Unless weights are a Series, weights
-                                        # must be same length as axis being
-                                        # sampled.
-                                        # If weights do not sum to 1, they will
-                                        # be normalized to sum to 1.
-                                        # Missing values in the weights column
-                                        # will be treated as zero.
-                                        # inf and -inf values not allowed.
-
-                                        random_state=None,
-                                        # Seed for the random number generator
-                                        # (if int), or numpy RandomState object
-
-                                        axis='index')
+                                    chunkPandasDF.sample(n=nSamplesPerChunk,
+                                                         # frac=None,
+                                                         replace=False,
+                                                         weights=None,
+                                                         random_state=None,
+                                                         axis='index',
+                                                         ignore_index=False)
 
                             chunkPandasDFs.append(chunkPandasDF)
 
                         piecePandasDF: DataFrame = \
-                            concat(
-                                objs=chunkPandasDFs,
-                                axis='index',
-                                join='outer',
-                                ignore_index=True,
-                                keys=None,
-                                levels=None,
-                                names=None,
-                                verify_integrity=False,
-                                copy=False)
+                            concat(objs=chunkPandasDFs,
+                                   axis='index',
+                                   join='outer',
+                                   ignore_index=False,
+                                   keys=None,
+                                   levels=None,
+                                   names=None,
+                                   verify_integrity=False,
+                                   sort=False,
+                                   copy=False)
 
                     else:
+                        # arrow.apache.org/docs/python/generated/pyarrow.Table.html
+                        # #pyarrow.Table.to_pandas
                         piecePandasDF: DataFrame = \
                             pieceArrowTable.to_pandas(
+                                memory_pool=None,
                                 categories=None,
                                 strings_to_categorical=False,
-                                zero_copy_only=False,
+                                zero_copy_only=True,
+
                                 integer_object_nulls=False,
+                                # TODO: check
+                                # (bool, default False) –
+                                # Cast integers with nulls to objects
+
                                 date_as_object=True,
+                                # TODO: check
+                                # (bool, default True) –
+                                # Cast dates to objects.
+                                # If False, convert to datetime64[ns] dtype.
+
+                                timestamp_as_object=False,
                                 use_threads=True,
-                                deduplicate_objects=False,
-                                ignore_metadata=False)
+
+                                deduplicate_objects=True,
+                                # TODO: check
+                                # (bool, default False) –
+                                # Do not create multiple copies Python objects when created,
+                                # to save on memory use. Conversion will be slower.
+
+                                ignore_metadata=False,
+                                safe=True,
+
+                                split_blocks=True,
+                                # TODO: check
+                                # (bool, default False) –
+                                # If True, generate one internal “block” for each column
+                                # when creating a pandas.DataFrame from a RecordBatch or Table.
+                                # While this can temporarily reduce memory note that
+                                # various pandas operations can trigger “consolidation”
+                                # which may balloon memory use.
+
+                                self_destruct=True,
+                                # TODO: check
+                                # EXPERIMENTAL: If True, attempt to deallocate the originating
+                                # Arrow memory while converting the Arrow object to pandas.
+                                # If you use the object after calling to_pandas with this option
+                                # it will crash your program.
+                                # Note that you may not see always memory usage improvements.
+                                # For example, if multiple columns share an underlying allocation,
+                                # memory can’t be freed until all columns are converted.
+
+                                types_mapper=None)
 
                         for k in partitionKeyCols:
                             piecePandasDF[k] = pieceCache.partitionKVs[k]
 
                         piecePandasDF: DataFrame = \
-                            piecePandasDF.sample(
-                                n=nSamplesPerPiece,
-                                # Number of items from axis to return.
-                                # Cannot be used with frac.
-                                # Default = 1 if frac = None.
-
-                                # frac=None,
-                                # Fraction of axis items to return.
-                                # Cannot be used with n.
-
-                                replace=False,
-                                # Sample with or without replacement.
-                                # Default = False.
-
-                                weights=None,
-                                # Default None
-                                # results in equal probability
-                                # weighting.
-                                # If passed a Series,
-                                # will align with target object
-                                # on index.
-                                # Index values in weights not found
-                                # in sampled object will be ignored
-                                # and index values in sampled object
-                                # not in weights will be assigned
-                                # weights of zero.
-                                # If called on a DataFrame, will accept
-                                # the name of a column when axis = 0.
-                                # Unless weights are a Series, weights
-                                # must be same length as axis being
-                                # sampled.
-                                # If weights do not sum to 1, they will
-                                # be normalized to sum to 1.
-                                # Missing values in the weights column
-                                # will be treated as zero.
-                                # inf and -inf values not allowed.
-
-                                random_state=None,
-                                # Seed for the random number generator
-                                # (if int), or numpy RandomState object.
-
-                                axis='index')
+                            piecePandasDF.sample(n=nSamplesPerPiece,
+                                                 # frac=None,
+                                                 replace=False,
+                                                 weights=None,
+                                                 random_state=None,
+                                                 axis='index',
+                                                 ignore_index=False)
 
                 else:
+                    # arrow.apache.org/docs/python/generated/pyarrow.Table.html
+                    # #pyarrow.Table.to_pandas
                     piecePandasDF: DataFrame = \
                         pieceArrowTable.to_pandas(
+                            memory_pool=None,
                             categories=None,
                             strings_to_categorical=False,
-                            zero_copy_only=False,
+                            zero_copy_only=True,
+
                             integer_object_nulls=False,
+                            # TODO: check
+                            # (bool, default False) –
+                            # Cast integers with nulls to objects
+
                             date_as_object=True,
+                            # TODO: check
+                            # (bool, default True) –
+                            # Cast dates to objects.
+                            # If False, convert to datetime64[ns] dtype.
+
+                            timestamp_as_object=False,
                             use_threads=True,
-                            deduplicate_objects=False,
-                            ignore_metadata=False)
+
+                            deduplicate_objects=True,
+                            # TODO: check
+                            # (bool, default False) –
+                            # Do not create multiple copies Python objects when created,
+                            # to save on memory use. Conversion will be slower.
+
+                            ignore_metadata=False,
+                            safe=True,
+
+                            split_blocks=True,
+                            # TODO: check
+                            # (bool, default False) –
+                            # If True, generate one internal “block” for each column
+                            # when creating a pandas.DataFrame from a RecordBatch or Table.
+                            # While this can temporarily reduce memory note that
+                            # various pandas operations can trigger “consolidation”
+                            # which may balloon memory use.
+
+                            self_destruct=True,
+                            # TODO: check
+                            # EXPERIMENTAL: If True, attempt to deallocate the originating
+                            # Arrow memory while converting the Arrow object to pandas.
+                            # If you use the object after calling to_pandas with this option
+                            # it will crash your program.
+                            # Note that you may not see always memory usage improvements.
+                            # For example, if multiple columns share an underlying allocation,
+                            # memory can’t be freed until all columns are converted.
+
+                            types_mapper=None)
 
                     for k in partitionKeyCols:
                         piecePandasDF[k] = pieceCache.partitionKVs[k]
@@ -1358,10 +1288,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 for k in partitionKeyCols:
                     piecePandasDF[k] = pieceCache.partitionKVs[k]
 
+            result: ReducedDataSetType = piecePandasDF
             for mapper in self._mappers:
-                piecePandasDF = mapper(piecePandasDF)
+                result: ReducedDataSetType = mapper(result)
 
-            results.append(piecePandasDF)
+            results.append(result)
 
         return reducer(results)
 
