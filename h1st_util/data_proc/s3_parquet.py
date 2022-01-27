@@ -10,7 +10,6 @@ import math
 import os
 import random
 import re
-import tempfile
 import time
 from typing import Any, Optional, Union
 from typing import Collection, Dict, List, Set, Sequence, Tuple   # Py3.9+: use built-ins
@@ -783,14 +782,13 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
     def copy(self, **kwargs: Any) -> S3ParquetDataFeeder:
         """Make a copy."""
-        resetMappers = kwargs.pop('resetMappers', False)
-        inheritCache = kwargs.pop('inheritCache', not resetMappers)
-        inheritNRows = kwargs.pop('inheritNRows', inheritCache)
+        resetMappers: bool = kwargs.pop('resetMappers', False)
+        inheritCache: bool = kwargs.pop('inheritCache', not resetMappers)
+        inheritNRows: bool = kwargs.pop('inheritNRows', inheritCache)
 
         s3ParquetDF: S3ParquetDataFeeder = \
             S3ParquetDataFeeder(
-                path=self.path,
-                awsRegion=self.awsRegion,
+                path=self.path, awsRegion=self.awsRegion,
 
                 iCol=self._iCol, tCol=self._tCol,
 
