@@ -1554,25 +1554,28 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # tCol
 
     @property
-    def iCol(self) -> str:
+    def iCol(self) -> Optional[str]:
         """Entity/Identity column."""
         return self._iCol
 
     @iCol.setter
     def iCol(self, iCol: str):
         if iCol != self._iCol:
-            self._iCol = iCol
+            self._iCol: Optional[str] = iCol
 
             if iCol is None:
-                self.hasTS = False
+                self.hasTS: bool = False
+
             else:
-                assert iCol
-                self.hasTS = bool(self._tCol)
+                assert iCol, ValueError(f'*** iCol {iCol} INVALID ***')
+
+                self.hasTS: bool = bool(self._tCol)
 
     @iCol.deleter
     def iCol(self):
-        self._iCol = None
-        self.hasTS = False
+        self._iCol: Optional[str] = None
+
+        self.hasTS: bool = False
 
     @property
     def tCol(self) -> Optional[str]:
@@ -1582,18 +1585,21 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     @tCol.setter
     def tCol(self, tCol: str):
         if tCol != self._tCol:
-            self._tCol = tCol
+            self._tCol: Optional[str] = tCol
 
             if tCol is None:
-                self.hasTS = False
+                self.hasTS: bool = False
+
             else:
-                assert tCol
-                self.hasTS = bool(self._iCol)
+                assert tCol, ValueError(f'*** tCol {tCol} INVALID ***')
+
+                self.hasTS: bool = bool(self._iCol)
 
     @tCol.deleter
     def tCol(self):
-        self._tCol = None
-        self.hasTS = False
+        self._tCol: Optional[str] = None
+
+        self.hasTS: bool = False
 
     # ===========
     # REPR SAMPLE
