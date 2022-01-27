@@ -1535,6 +1535,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
     def filter(self, *conditions: str, **kwargs: Any) -> S3ParquetDataFeeder:
         """Apply filtering mapper."""
+        return self.map(tuple((lambda df: df.query(expr=condition,
+                                                   inplace=False))
+                              for condition in conditions),
+                        **kwargs)
 
     def collect(self, *cols: str, **kwargs: Any) \
             -> Union[Any, Collection, numpy.ndarray,
