@@ -1203,7 +1203,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         # If False, convert to datetime64[ns] dtype.
 
                         timestamp_as_object=False,
-                        use_threads=True,
+                        # use_threads=True,
 
                         deduplicate_objects=True,
                         # TODO: check
