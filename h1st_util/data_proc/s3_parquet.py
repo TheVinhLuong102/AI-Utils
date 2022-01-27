@@ -963,50 +963,42 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return s3ParquetDF
 
-    def reduce(self, *piecePaths: str, **kwargs: Any):
+    def reduce(self, *piecePaths: str, **kwargs: Any) \
+            -> Union[Any, Collection, numpy.ndarray,
+                     pandas.DataFrame, pandas.Series]:
         # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Reduce from mapped content."""
-        _CHUNK_SIZE = 10 ** 5
+        _CHUNK_SIZE: int = 10 ** 5
 
-        nSamplesPerPiece = kwargs.get('nSamplesPerPiece')
+        nSamplesPerPiece: int = kwargs.get('nSamplesPerPiece')
 
-        reducer = \
-            kwargs.get(
-                'reducer',
-                lambda results:
-                    numpy.vstack(results)
-                    if isinstance(results[0], numpy.ndarray)
-                    else pandas.concat(
-                        objs=results,
-                        axis='index',
-                        join='outer',
-                        ignore_index=False,
-                        keys=None,
-                        levels=None,
-                        names=None,
-                        verify_integrity=False,
-                        sort=False,
-                        copy=False,
-                        # FutureWarning:
-                        # Sorting because non-concatenation axisis not aligned.
-                        # A future version of pandas will change to not sort
-                        # by default.
-                        # To accept the future behavior, pass 'sort=False'.
-                        # To retain the current behavior and
-                        # silence the warning, pass 'sort=True'.
-                    ))
+        reducer: callable = kwargs.get(
+            'reducer',
+            lambda results:
+                numpy.vstack(tup=results)
+                if isinstance(results[0], numpy.ndarray)
+                else pandas.concat(objs=results,
+                                   axis='index',
+                                   join='outer',
+                                   ignore_index=False,
+                                   keys=None,
+                                   levels=None,
+                                   names=None,
+                                   verify_integrity=False,
+                                   sort=False,
+                                   copy=False))
 
-        verbose = kwargs.pop('verbose', True)
+        verbose: bool = kwargs.pop('verbose', True)
 
         if not piecePaths:
-            piecePaths = self.piecePaths
+            piecePaths: Set[str] = self.piecePaths
 
         results = []
 
+        # pylint: disable=too-many-nested-blocks
         for piecePath in (tqdm(piecePaths)
                           if verbose and (len(piecePaths) > 1)
                           else piecePaths):
-            # pylint: disable=too-many-nested-blocks
             pieceLocalPath = self.pieceLocalPath(piecePath=piecePath)
 
             pieceCache = self._PIECE_CACHES[piecePath]
@@ -1014,13 +1006,13 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             if pieceCache.nRows is None:
                 schema = read_schema(where=pieceLocalPath)
 
-                pieceCache.srcColsExclPartitionKVs = schema.names
+                pieceCache.srcColsExclPartitionKVs = set(schema.names)
 
-                pieceCache.srcColsInclPartitionKVs += schema.names
+                pieceCache.srcColsInclPartitionKVs.update(schema.names)
 
                 self.srcColsInclPartitionKVs.update(schema.names)
 
-                for col in (set(schema.names)
+                for col in (pieceCache.srcColsExclPartitionKVs
                             .difference(pieceCache.partitionKVs)):
                     pieceCache.srcTypesExclPartitionKVs[col] = \
                         pieceCache.srcTypesInclPartitionKVs[col] = \
@@ -1031,11 +1023,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         f'*** {piecePath}: {col} IS OF BINARY TYPE ***'
 
                     if col in self.srcTypesInclPartitionKVs:
-                        assert _arrowType == \
-                            self.srcTypesInclPartitionKVs[col], \
-                            (f'*** {piecePath} COLUMN {col}: '
-                             f'DETECTED TYPE {_arrowType} != '
-                             f'{self.srcTypesInclPartitionKVs[col]} ***')
+                        assert _arrowType == self.srcTypesInclPartitionKVs[col], \
+                            TypeError(f'*** {piecePath} COLUMN {col}: '
+                                      f'DETECTED TYPE {_arrowType} != '
+                                      f'{self.srcTypesInclPartitionKVs[col]} ***')
 
                     else:
                         self.srcTypesInclPartitionKVs[col] = _arrowType
