@@ -1161,8 +1161,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if not pandasDFConstructed:
                     # pandas.pydata.org/docs/reference/api/pandas.read_parquet
-                    # arrow.apache.org/docs/python/generated/pyarrow.Table.html
-                    # #pyarrow.Table.to_pandas
                     piecePandasDF: DataFrame = read_parquet(
                         path=pieceLocalPath,
                         engine='pyarrow',
@@ -1170,7 +1168,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         storage_options=None,
                         use_nullable_dtypes=True,
 
-                        # pyarrow.parquet.read_table(...) kwargs:
+                        # arrow.apache.org/docs/python/generated/pyarrow.parquet.read_table:
                         use_threads=True,
                         metadata=None,
                         use_pandas_metadata=True,
@@ -1185,36 +1183,37 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         pre_buffer=True,
                         coerce_int96_timestamp_unit=None,
 
-                        # pyarrow.Table.to_pandas(...) kwargs:
-                        # memory_pool=None,
-                        # categories=None,
-                        # strings_to_categorical=False,
-                        # zero_copy_only=True,
+                        # arrow.apache.org/docs/python/generated/pyarrow.Table.html
+                        # #pyarrow.Table.to_pandas:
+                        # memory_pool=None,   # (default)
+                        # categories=None,   # (default)
+                        # strings_to_categorical=False,   # (default)
+                        # zero_copy_only=True,   # (default: *** False ***)
 
-                        # integer_object_nulls=False,
+                        # integer_object_nulls=False,   # (default)
                         # TODO: check
                         # (bool, default False) –
                         # Cast integers with nulls to objects
 
-                        # date_as_object=True,
+                        # date_as_object=True,   # (default)
                         # TODO: check
                         # (bool, default True) –
                         # Cast dates to objects.
                         # If False, convert to datetime64[ns] dtype.
 
-                        # timestamp_as_object=False,
-                        # use_threads=True,
+                        # timestamp_as_object=False,   # (default)
+                        # use_threads=True,   # (default)
 
-                        # deduplicate_objects=True,
+                        # deduplicate_objects=True,   # (default: *** False ***)
                         # TODO: check
                         # (bool, default False) –
                         # Do not create multiple copies Python objects when created,
                         # to save on memory use. Conversion will be slower.
 
-                        # ignore_metadata=False,
-                        # safe=True,
+                        # ignore_metadata=False,   # (default)
+                        # safe=True,   # (default)
 
-                        # split_blocks=True,
+                        # split_blocks=True,   # (default: *** False ***)
                         # TODO: check
                         # (bool, default False) –
                         # If True, generate one internal “block” for each column
@@ -1223,7 +1222,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         # various pandas operations can trigger “consolidation”
                         # which may balloon memory use.
 
-                        # self_destruct=True,
+                        # self_destruct=True,   # (default: *** False ***)
                         # TODO: check
                         # EXPERIMENTAL: If True, attempt to deallocate the originating
                         # Arrow memory while converting the Arrow object to pandas.
@@ -1233,7 +1232,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         # For example, if multiple columns share an underlying allocation,
                         # memory can’t be freed until all columns are converted.
 
-                        # types_mapper=None,
+                        # types_mapper=None,   # (default)
                     )
 
                     for k in partitionKeyCols:
