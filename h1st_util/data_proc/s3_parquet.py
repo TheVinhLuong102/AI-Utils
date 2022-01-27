@@ -720,48 +720,45 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                       outlierRstMin={}, outlierRstMax={},
                       outlierRstMean={}, outlierRstMedian={})
 
-    def _inheritCache(self, arrowDF, *sameCols, **newColToOldColMappings):
+    def _inheritCache(self, oldS3ParquetDF: S3ParquetDataFeeder, /,
+                      *sameCols: str, **newColToOldColMap: str):
         # pylint: disable=arguments-differ
-
-        if arrowDF._cache.nRows:
+        if oldS3ParquetDF._cache.nRows:
             if self._cache.nRows is None:
-                self._cache.nRows = arrowDF._cache.nRows
+                self._cache.nRows = oldS3ParquetDF._cache.nRows
             else:
-                assert self._cache.nRows == arrowDF._cache.nRows
+                assert self._cache.nRows == oldS3ParquetDF._cache.nRows
 
-        if arrowDF._cache.approxNRows and (self._cache.approxNRows is None):
-            self._cache.approxNRows = arrowDF._cache.approxNRows
+        if oldS3ParquetDF._cache.approxNRows and (self._cache.approxNRows is None):
+            self._cache.approxNRows = oldS3ParquetDF._cache.approxNRows
 
-        commonCols = set(self.columns).intersection(arrowDF.columns)
+        commonCols: Set[str] = self.columns.intersection(oldS3ParquetDF.columns)
 
-        if sameCols or newColToOldColMappings:
-            for newCol, oldCol in newColToOldColMappings.items():
+        if sameCols or newColToOldColMap:
+            for newCol, oldCol in newColToOldColMap.items():
                 assert newCol in self.columns
-                assert oldCol in arrowDF.columns
+                assert oldCol in oldS3ParquetDF.columns
 
             for sameCol in (commonCols
-                            .difference(newColToOldColMappings)
+                            .difference(newColToOldColMap)
                             .intersection(sameCols)):
-                newColToOldColMappings[sameCol] = sameCol
+                newColToOldColMap[sameCol] = sameCol
 
         else:
-            newColToOldColMappings = \
-                {col: col
-                 for col in commonCols}
+            newColToOldColMap: Dict[str, str] = {col: col for col in commonCols}
 
-        for cacheCategory in \
-                ('count', 'distinct',
-                 'nonNullProportion',
-                 'suffNonNullProportionThreshold',
-                 'suffNonNull',
-                 'sampleMin', 'sampleMax', 'sampleMean', 'sampleMedian',
-                 'outlierRstMin', 'outlierRstMax',
-                 'outlierRstMean', 'outlierRstMedian',
-                 'colWidth'):
-            for newCol, oldCol in newColToOldColMappings.items():
-                if oldCol in arrowDF._cache.__dict__[cacheCategory]:
+        for cacheCategory in ('count', 'distinct',
+                              'nonNullProportion',
+                              'suffNonNullProportionThreshold',
+                              'suffNonNull',
+                              'sampleMin', 'sampleMax',
+                              'sampleMean', 'sampleMedian',
+                              'outlierRstMin', 'outlierRstMax',
+                              'outlierRstMean', 'outlierRstMedian'):
+            for newCol, oldCol in newColToOldColMap.items():
+                if oldCol in oldS3ParquetDF._cache.__dict__[cacheCategory]:
                     self._cache.__dict__[cacheCategory][newCol] = \
-                        arrowDF._cache.__dict__[cacheCategory][oldCol]
+                        oldS3ParquetDF._cache.__dict__[cacheCategory][oldCol]
 
     # ========
     # ITERATOR
