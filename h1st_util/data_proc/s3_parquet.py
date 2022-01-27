@@ -870,7 +870,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             parsedURL: ParseResult = urlparse(url=self.path, scheme='', allow_fragments=True)
 
-            localPath: Path = self._TMP_DIR_PATH / parsedURL.netloc / parsedURL.path[1:]
+            localPath: str = str(self._TMP_DIR_PATH / parsedURL.netloc / parsedURL.path[1:])
 
             s3.sync(from_dir_path=self.path,
                     to_dir_path=localPath,
