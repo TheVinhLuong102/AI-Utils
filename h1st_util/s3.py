@@ -22,8 +22,7 @@ def cp(from_path: PathType, to_path: PathType,
                        (' --quiet' if quiet else ''))
 
     if verbose:
-        msg: str = f'Copying "{from_path}" to "{to_path}"...'
-        print(msg)
+        print(msg := f'Copying "{from_path}" to "{to_path}"...')
         print(f'Running: {s3_command}...')
         tic: float = time.time()
 
@@ -31,7 +30,7 @@ def cp(from_path: PathType, to_path: PathType,
 
     if verbose:
         toc: float = time.time()
-        print(f'{msg} done!   <{(toc - tic):,.1f} s>')
+        print(f'{msg} done!   <{toc - tic:,.1f} s>')
 
 
 def mv(from_path: PathType, to_path: PathType,
@@ -43,8 +42,7 @@ def mv(from_path: PathType, to_path: PathType,
                        (' --recursive' if is_dir else '') +
                        (' --quiet' if quiet else ''))
     if verbose:
-        msg: str = f'Moving "{from_path}" to "{to_path}"...'
-        print(msg)
+        print(msg := f'Moving "{from_path}" to "{to_path}"...')
         print(f'Running: {s3_command}...')
         tic: float = time.time()
 
@@ -52,7 +50,7 @@ def mv(from_path: PathType, to_path: PathType,
 
     if verbose:
         toc: float = time.time()
-        print(f'{msg} done!   <{(toc - tic):,.1f} s>')
+        print(f'{msg} done!   <{toc - tic:,.1f} s>')
 
 
 def rm(path: PathType,
@@ -72,12 +70,11 @@ def rm(path: PathType,
                        (' --quiet' if quiet else ''))
 
     if verbose:
-        msg: str = ('Deleting ' +
-                    ((f'Globs "{globs}" @ ' if globs else 'Directory ')
-                     if is_dir
-                     else '') +
-                    f'"{path}"...')
-        print(msg)
+        print(msg := ('Deleting ' +
+                      ((f'Globs "{globs}" @ ' if globs else 'Directory ')
+                       if is_dir
+                       else '') +
+                      f'"{path}"...'))
         print(f'Running: {s3_command}...')
         tic: float = time.time()
 
@@ -85,7 +82,7 @@ def rm(path: PathType,
 
     if verbose:
         toc: float = time.time()
-        print(f'{msg} done!   <{(toc - tic):,.1f} s>')
+        print(f'{msg} done!   <{toc - tic:,.1f} s>')
 
 
 def sync(from_dir_path: PathType, to_dir_path: PathType,
@@ -97,8 +94,7 @@ def sync(from_dir_path: PathType, to_dir_path: PathType,
                        (' --delete' if delete else '') +
                        (' --quiet' if quiet else ''))
     if verbose:
-        msg: str = f'Syncing "{from_dir_path}" to "{to_dir_path}"...'
-        print(msg)
+        print(msg := f'Syncing "{from_dir_path}" to "{to_dir_path}"...')
         print(f'Running: {s3_command}...')
         tic = time.time()
 
@@ -106,4 +102,4 @@ def sync(from_dir_path: PathType, to_dir_path: PathType,
 
     if verbose:
         toc = time.time()
-        print(f'{msg} done!   <{(toc - tic):,.1f} s>')
+        print(f'{msg} done!   <{toc - tic:,.1f} s>')
