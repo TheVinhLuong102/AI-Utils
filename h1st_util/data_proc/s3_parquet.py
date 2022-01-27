@@ -20,8 +20,8 @@ from uuid import uuid4
 
 import botocore
 import boto3
-import numpy
-import pandas
+from numpy import array, allclose, cumsum, hstack, isfinite, isnan, nan, ndarray, vstack
+from pandas import DataFrame, Series, concat, isnull, notnull
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 from tqdm import tqdm
 
@@ -40,7 +40,10 @@ from ..default_dict import DefaultDict
 from ..iter import to_iterable
 from ..namespace import Namespace
 
-from ._abstract import AbstractDataHandler
+from ._abstract import AbstractDataHandler, ReducedDataSetType
+
+
+__all__ = ('S3ParquetDataFeeder',)
 
 
 # flake8: noqa
@@ -123,7 +126,7 @@ class _S3ParquetDataFeeder__getitem__pandasDFTransform:
         if self.col in pandasDF.columns:
             return pandasDF[self.col]
 
-        return pandas.Series(index=pandasDF.index, name=self.col)
+        return Series(index=pandasDF.index, name=self.col)
 
 
 class _S3ParquetDataFeeder__drop__pandasDFTransform:
@@ -252,13 +255,13 @@ class _S3ParquetDataFeeder__prep__pandasDFTransform:
 
             # mean value for each feature in the training set
             self.numScaler.mean_ = \
-                numpy.array(
+                array(
                     [numPrepDetails['Mean']
                      for numPrepDetails in self.numPrepDetails])
 
             # per-feature relative scaling of the data
             self.numScaler.scale_ = \
-                numpy.array(
+                array(
                     [numPrepDetails['StdDev']
                      for numPrepDetails in self.numPrepDetails])
 
@@ -271,7 +274,7 @@ class _S3ParquetDataFeeder__prep__pandasDFTransform:
             # per-feature relative scaling of the data
             self.numScaler.max_abs_ = \
                 self.numScaler.scale_ = \
-                numpy.array(
+                array(
                     [numPrepDetails['MaxAbs']
                      for numPrepDetails in self.numPrepDetails])
 
@@ -283,13 +286,13 @@ class _S3ParquetDataFeeder__prep__pandasDFTransform:
 
             # per-feature minimum seen in the data
             self.numScaler.data_min_ = \
-                numpy.array(
+                array(
                     [numPrepDetails['OrigMin']
                      for numPrepDetails in self.numPrepDetails])
 
             # per-feature maximum seen in the data
             self.numScaler.data_max_ = \
-                numpy.array(
+                array(
                     [numPrepDetails['OrigMax']
                      for numPrepDetails in self.numPrepDetails])
 
@@ -376,7 +379,7 @@ class _S3ParquetDataFeeder__prep__pandasDFTransform:
                 pandasDF=pandasDF)
 
         if self.returnNumPyForCols:
-            return (numpy.hstack(
+            return (hstack(
                     (pandasDF[self.catPrepCols].values,
                      self.numScaler.transform(
                          X=pandasDF[self.numNullFillCols])))
@@ -385,7 +388,7 @@ class _S3ParquetDataFeeder__prep__pandasDFTransform:
 
         if self.numScaler:
             pandasDF[self.numPrepCols] = \
-                pandas.DataFrame(
+                DataFrame(
                     data=self.numScaler.transform(
                         X=pandasDF[self.numNullFillCols]))
             # ^^^ SettingWithCopyWarning (?)
@@ -740,8 +743,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return s3_parquet_df
 
-    def __next__(self) -> Union[Any, Collection, numpy.ndarray,
-                                pandas.DataFrame, pandas.Series]:
+    def __next__(self) -> ReducedDataSetType:
         """Iterate through next piece."""
         if self.piecePathsToIter:
             return self.reduce(self.piecePathsToIter.pop(), verbose=False)
@@ -951,9 +953,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return s3ParquetDF
 
-    def reduce(self, *piecePaths: str, **kwargs: Any) \
-            -> Union[Any, Collection, numpy.ndarray,
-                     pandas.DataFrame, pandas.Series]:
+    def reduce(self, *piecePaths: str, **kwargs: Any) -> ReducedDataSetType:
         # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Reduce from mapped content."""
         _CHUNK_SIZE: int = 10 ** 5
@@ -963,18 +963,18 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         reducer: callable = kwargs.get(
             'reducer',
             lambda results:
-                numpy.vstack(tup=results)
-                if isinstance(results[0], numpy.ndarray)
-                else pandas.concat(objs=results,
-                                   axis='index',
-                                   join='outer',
-                                   ignore_index=False,
-                                   keys=None,
-                                   levels=None,
-                                   names=None,
-                                   verify_integrity=False,
-                                   sort=False,
-                                   copy=False))
+                vstack(tup=results)
+                if isinstance(results[0], ndarray)
+                else concat(objs=results,
+                            axis='index',
+                            join='outer',
+                            ignore_index=False,
+                            keys=None,
+                            levels=None,
+                            names=None,
+                            verify_integrity=False,
+                            sort=False,
+                            copy=False))
 
         verbose: bool = kwargs.pop('verbose', True)
 
@@ -1198,11 +1198,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                             (f'*** {piecePath}: {nChunksForIntermediateN} vs. '
                              f'{nRecordBatches} Record Batches ***')
 
-                        chunkPandasDFs: List[pandas.DataFrame] = []
+                        chunkPandasDFs: List[DataFrame] = []
 
                         for recordBatch in sampleSet(population=recordBatches,
                                                      sampleSize=nChunksForIntermediateN):
-                            chunkPandasDF: pandas.DataFrame = \
+                            chunkPandasDF: DataFrame = \
                                 recordBatch.to_pandas(
                                     categories=None,
                                     strings_to_categorical=False,
@@ -1217,7 +1217,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                 chunkPandasDF[k] = pieceCache.partitionKVs[k]
 
                             if nSamplesPerChunk < len(chunkPandasDF):
-                                chunkPandasDF = \
+                                chunkPandasDF: DataFrame = \
                                     chunkPandasDF.sample(
                                         n=nSamplesPerChunk,
                                         # Number of items from axis to return.
@@ -1262,8 +1262,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                             chunkPandasDFs.append(chunkPandasDF)
 
-                        piecePandasDF = \
-                            pandas.concat(
+                        piecePandasDF: DataFrame = \
+                            concat(
                                 objs=chunkPandasDFs,
                                 axis='index',
                                 join='outer',
@@ -1275,7 +1275,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                 copy=False)
 
                     else:
-                        piecePandasDF = \
+                        piecePandasDF: DataFrame = \
                             pieceArrowTable.to_pandas(
                                 categories=None,
                                 strings_to_categorical=False,
@@ -1289,7 +1289,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         for k in partitionKeyCols:
                             piecePandasDF[k] = pieceCache.partitionKVs[k]
 
-                        piecePandasDF = \
+                        piecePandasDF: DataFrame = \
                             piecePandasDF.sample(
                                 n=nSamplesPerPiece,
                                 # Number of items from axis to return.
@@ -1334,7 +1334,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                 axis='index')
 
                 else:
-                    piecePandasDF = \
+                    piecePandasDF: DataFrame = \
                         pieceArrowTable.to_pandas(
                             categories=None,
                             strings_to_categorical=False,
@@ -1349,7 +1349,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         piecePandasDF[k] = pieceCache.partitionKVs[k]
 
             else:
-                piecePandasDF = pandas.DataFrame(
+                piecePandasDF: DataFrame = DataFrame(
                     index=range(nSamplesPerPiece
                                 if nSamplesPerPiece and
                                 (nSamplesPerPiece < pieceCache.nRows)
@@ -1412,14 +1412,12 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return s3ParquetDF
 
-    def collect(self, *cols: str, **kwargs: Any) \
-            -> Union[Any, Collection, numpy.ndarray,
-                     pandas.DataFrame, pandas.Series]:
+    def collect(self, *cols: str, **kwargs: Any) -> ReducedDataSetType:
         """Collect content."""
         return self.reduce(cols=cols if cols else None, **kwargs)
 
     def toPandas(self, *cols: str, **kwargs: Any) \
-            -> Union[pandas.DataFrame, pandas.Series]:
+            -> Union[DataFrame, Series]:
         """Collect content to Pandas form."""
         return self.collect(*cols, **kwargs)
 
@@ -1725,6 +1723,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                               *filterCriteriaTuples: Union[Tuple[str, str],
                                                            Tuple[str, str, str]],
                               **kwargs: Any) -> S3ParquetDataFeeder:
+        # pylint: disable=too-many-branches
         """Filter by partition keys."""
         filterCriteria: Dict[str, Tuple[Optional[str], Optional[str], Optional[Set[str]]]] = {}
 
@@ -1792,52 +1791,49 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return self
 
-    def sample(self, *cols: str, **kwargs: Any):
+    def sample(self, *cols: str, **kwargs: Any) -> ReducedDataSetType:
         """Sample."""
-        n = kwargs.pop('n', self._DEFAULT_REPR_SAMPLE_SIZE)
+        n: int = kwargs.pop('n', self._DEFAULT_REPR_SAMPLE_SIZE)
 
-        piecePaths = kwargs.pop('piecePaths', None)
+        piecePaths: Optional[Collection[str]] = kwargs.pop('piecePaths', None)
 
-        verbose = kwargs.pop('verbose', True)
+        verbose: bool = kwargs.pop('verbose', True)
 
         if piecePaths:
-            nSamplePieces = len(piecePaths)
+            nSamplePieces: int = len(piecePaths)
 
         else:
-            minNPieces = kwargs.pop('minNPieces', self._reprSampleMinNPieces)
-            maxNPieces = kwargs.pop('maxNPieces', None)
+            minNPieces: int = kwargs.pop('minNPieces', self._reprSampleMinNPieces)
+            maxNPieces: Optional[int] = kwargs.pop('maxNPieces', None)
 
-            nSamplePieces = \
+            nSamplePieces: int = (
                 max(int(math.ceil(
-                    ((min(n, self.approxNRows) / self.approxNRows) ** .5)
-                    * self.nPieces)),
-                    minNPieces) \
-                if (self.nPieces > 1) and \
-                ((maxNPieces is None) or (maxNPieces > 1)) \
-                else 1
+                        ((min(n, self.approxNRows) / self.approxNRows) ** .5)
+                        * self.nPieces)),
+                    minNPieces)
+                if (self.nPieces > 1) and ((maxNPieces is None) or (maxNPieces > 1))
+                else 1)
 
             if maxNPieces:
-                nSamplePieces = min(nSamplePieces, maxNPieces)
+                nSamplePieces: int = min(nSamplePieces, maxNPieces)
 
             if nSamplePieces < self.nPieces:
-                piecePaths = sampleSet(population=self.piecePaths,
-                                       sampleSize=nSamplePieces)
-
+                piecePaths: Set[str] = sampleSet(population=self.piecePaths,
+                                                 sampleSize=nSamplePieces)
             else:
-                nSamplePieces = self.nPieces
-                piecePaths = self.piecePaths
+                nSamplePieces: int = self.nPieces
+                piecePaths: Set[str] = self.piecePaths
 
         if verbose or debug.ON:
             self.stdOutLogger.info(
-                f"Sampling {n:,} Rows{f' of Columns {cols}' if cols else ''} "
-                f'from {nSamplePieces:,} Pieces...')
+                msg=f"Sampling {n:,} Rows{f' of Columns {cols}' if cols else ''} "
+                    f'from {nSamplePieces:,} Pieces...')
 
-        return self.reduce(
-            *piecePaths,
-            cols=cols,
-            nSamplesPerPiece=int(math.ceil(n / nSamplePieces)),
-            verbose=verbose,
-            **kwargs)
+        return self.reduce(*piecePaths,
+                           cols=cols,
+                           nSamplesPerPiece=int(math.ceil(n / nSamplePieces)),
+                           verbose=verbose,
+                           **kwargs)
 
     # ================
     # COLUMN PROFILING
@@ -1891,15 +1887,15 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     .map(
                         ((lambda series:
                             series.notnull().sum(skipna=True, min_count=0))
-                            if pandas.isnull(upperNumericNull)
+                            if isnull(upperNumericNull)
                             else (lambda series:
                                   (series < upperNumericNull)
                                   .sum(skipna=True, min_count=0)))
-                        if pandas.isnull(lowerNumericNull)
+                        if isnull(lowerNumericNull)
                         else ((lambda series:
                                (series > lowerNumericNull)
                                .sum(skipna=True, min_count=0))
-                              if pandas.isnull(upperNumericNull)
+                              if isnull(upperNumericNull)
                               else (lambda series:
                                     series.between(left=lowerNumericNull,
                                                    right=upperNumericNull,
@@ -1922,16 +1918,16 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return (
             (pandasDF[col].notnull().sum(skipna=True, min_count=0)
-             if pandas.isnull(upperNumericNull)
+             if isnull(upperNumericNull)
              else (pandasDF[col] < upperNumericNull).sum(skipna=True,
                                                          min_count=0))
 
-            if pandas.isnull(lowerNumericNull)
+            if isnull(lowerNumericNull)
 
             else ((pandasDF[col] > lowerNumericNull).sum(skipna=True,
                                                          min_count=0)
 
-                  if pandas.isnull(upperNumericNull)
+                  if isnull(upperNumericNull)
 
                   else pandasDF[col].between(left=lowerNumericNull,
                                              right=upperNumericNull,
@@ -2162,7 +2158,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         skipna=True,
                         level=None)
 
-                if pandas.isnull(result):
+                if isnull(result):
                     self.stdOutLogger.warning(
                         msg=(f'*** "{col}" OUTLIER-RESISTANT '
                              f'{capitalizedStatName.upper()} = '
@@ -2392,7 +2388,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 outlierTailProportion = self._outlierTailProportion[col]
 
                 quantilesOfInterest = \
-                    pandas.Series(
+                    Series(
                         index=(0,
                                outlierTailProportion,
                                .5,
@@ -2446,7 +2442,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if quantileProbsToQuery:
                     quantilesOfInterest[
-                        numpy.isnan(quantilesOfInterest)] = \
+                        isnan(quantilesOfInterest)] = \
                         series.quantile(
                             q=quantileProbsToQuery,
                             interpolation='linear')
@@ -2760,7 +2756,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     elif not isinstance(value, PY_NUM_TYPES):
                         colFallBackVal = value
 
-                if pandas.notnull(colFallBackVal):
+                if notnull(colFallBackVal):
                     fallbackStrs = \
                         [f"'{colFallBackVal}'"
                          if is_string(colType) and
@@ -3152,7 +3148,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         # returning scalar instead,
                         # but in the future will perform
                         # elementwise comparison
-                        pandas.notnull(
+                        notnull(
                             profile[col].distinctProportions.index)]) > 1
                      )}
 
@@ -3228,8 +3224,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                              if catCol in forceCat
                              else (profile[catCol].distinctProportions
                                    .index[:self._maxNCats[catCol]]))
-                            if pandas.notnull(cat) and
-                            ((cat != '') if isStr else numpy.isfinite(cat))]
+                            if notnull(cat) and
+                            ((cat != '') if isStr else isfinite(cat))]
 
                         nCats = len(cats)
 
@@ -3327,8 +3323,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                         numColNullFillValue = \
                             numColNullFillDetails['NullFillValue']
-                        assert numpy.allclose(numColNullFillValue,
-                                              self.outlierRstStat(numCol))
+                        assert allclose(numColNullFillValue, self.outlierRstStat(numCol))
 
                         if scaler:
                             if scaler == 'standard':
@@ -3561,7 +3556,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             for missingCol in missingCols:
                 addCols[missingCol] = \
-                    numpy.nan \
+                    nan \
                     if missingCol in missingCatCols \
                     else numOrigToPrepColMap[missingCol][1]['NullFillValue']
 
@@ -3617,7 +3612,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             return self
 
         nWeights = len(weights)
-        cumuWeights = numpy.cumsum(weights) / sum(weights)
+        cumuWeights = cumsum(weights) / sum(weights)
 
         nPieces = self.nPieces
 

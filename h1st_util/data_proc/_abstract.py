@@ -9,9 +9,18 @@ import tempfile
 from typing import Any, Optional, Union
 from typing import Collection, Dict, Set, Tuple   # Py3.9+: built-ins
 
+from numpy import ndarray
+from pandas import DataFrame, Series
+
 from .. import debug
 from ..log import STDOUT_HANDLER
 from ..namespace import Namespace
+
+
+__all__ = 'AbstractDataHandler', 'ReducedDataSetType'
+
+
+ReducedDataSetType = Union[Any, Collection, ndarray, DataFrame, Series]
 
 
 class AbstractDataHandler:
@@ -483,6 +492,7 @@ class AbstractDataHandler:
     # --------
     # sample
 
-    def sample(self, *cols: str, **kwargs: Any):
+    def sample(self, *cols: str, **kwargs: Any) \
+            -> Union[ReducedDataSetType, Any]:
         """Sample from data set."""
         raise NotImplementedError
