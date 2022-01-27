@@ -702,26 +702,23 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         self.hasTS = self._iCol and self._tCol
 
     def _emptyCache(self):
-        self._cache = \
-            Namespace(
-                prelimReprSamplePiecePaths=None,
-                reprSamplePiecePaths=None,
-                reprSample=None,
+        self._cache: Namespace = \
+            Namespace(prelimReprSamplePiecePaths=None,
+                      reprSamplePiecePaths=None,
+                      reprSample=None,
 
-                approxNRows=None,
-                nRows=None,
+                      approxNRows=None, nRows=None,
 
-                count={}, distinct={},
+                      count={}, distinct={},
 
-                nonNullProportion={},
-                suffNonNullProportionThreshold={},
-                suffNonNull={},
+                      nonNullProportion={},
+                      suffNonNullProportionThreshold={}, suffNonNull={},
 
-                sampleMin={}, sampleMax={}, sampleMean={}, sampleMedian={},
-                outlierRstMin={}, outlierRstMax={},
-                outlierRstMean={}, outlierRstMedian={},
+                      sampleMin={}, sampleMax={},
+                      sampleMean={}, sampleMedian={},
 
-                colWidth={})
+                      outlierRstMin={}, outlierRstMax={},
+                      outlierRstMean={}, outlierRstMedian={})
 
     def _inheritCache(self, arrowDF, *sameCols, **newColToOldColMappings):
         # pylint: disable=arguments-differ
