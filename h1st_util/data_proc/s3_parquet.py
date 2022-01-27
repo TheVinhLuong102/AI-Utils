@@ -1537,53 +1537,52 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # types
     # type / typeIsNum / typeIsComplex
 
-    def _read_metadata_and_schema(self, piecePath: str):
-        pieceLocalPath = self.pieceLocalPath(piecePath=piecePath)
+    def _readMetadataAndSchema(self, piecePath: str) -> Namespace:
+        pieceLocalPath: Path = self.pieceLocalPath(piecePath=piecePath)
 
-        pieceCache = self._PIECE_CACHES[piecePath]
+        pieceCache: Namespace = self._PIECE_CACHES[piecePath]
 
         if pieceCache.nRows is None:
-            schema = read_schema(where=pieceLocalPath)
+            schema: Schema = read_schema(where=pieceLocalPath)
 
-            pieceCache.srcColsExclPartitionKVs = schema.names
+            pieceCache.srcColsExclPartitionKVs = set(schema.names)
 
-            pieceCache.srcColsInclPartitionKVs += schema.names
+            pieceCache.srcColsInclPartitionKVs.update(schema.names)
 
             self.srcColsInclPartitionKVs.update(schema.names)
 
-            for col in set(schema.names).difference(pieceCache.partitionKVs):
+            for col in (pieceCache.srcColsExclPartitionKVs
+                        .difference(pieceCache.partitionKVs)):
                 pieceCache.srcTypesExclPartitionKVs[col] = \
                     pieceCache.srcTypesInclPartitionKVs[col] = \
-                    _arrowType = \
-                    schema.field(col).type
+                    _arrowType = schema.field(col).type
 
                 assert not is_binary(_arrowType), \
                     f'*** {piecePath}: {col} IS OF BINARY TYPE ***'
 
                 if col in self.srcTypesInclPartitionKVs:
                     assert _arrowType == self.srcTypesInclPartitionKVs[col], \
-                        (f'*** {piecePath} COLUMN {col}: '
-                         f'DETECTED TYPE {_arrowType} != '
-                         f'{self.srcTypesInclPartitionKVs[col]} ***')
-
+                        TypeError(f'*** {piecePath} COLUMN {col}: '
+                                  f'DETECTED TYPE {_arrowType} != '
+                                  f'{self.srcTypesInclPartitionKVs[col]} ***')
                 else:
                     self.srcTypesInclPartitionKVs[col] = _arrowType
 
-            metadata = read_metadata(where=pieceCache.localPath)
+            metadata: FileMetaData = read_metadata(where=pieceCache.localPath)
             pieceCache.nCols = metadata.num_columns
             pieceCache.nRows = metadata.num_rows
 
         return pieceCache
 
     @property
-    def approxNRows(self):
+    def approxNRows(self) -> int:
         """Approximate number of rows."""
         if self._cache.approxNRows is None:
-            self.stdOutLogger.info('Counting Approx. No. of Rows...')
+            self.stdOutLogger.info(msg='Counting Approx. No. of Rows...')
 
             self._cache.approxNRows = \
                 self.nPieces \
-                * sum(self._read_metadata_and_schema(piecePath=piecePath).nRows
+                * sum(self._readMetadataAndSchema(piecePath=piecePath).nRows
                       for piecePath in
                       (tqdm(self.prelimReprSamplePiecePaths)
                        if len(self.prelimReprSamplePiecePaths) > 1
@@ -1596,10 +1595,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def nRows(self) -> int:
         """Return number of rows."""
         if self._cache.nRows is None:
-            self.stdOutLogger.info('Counting No. of Rows...')
+            self.stdOutLogger.info(msg='Counting No. of Rows...')
 
             self._cache.nRows = \
-                sum(self._read_metadata_and_schema(piecePath=piecePath).nRows
+                sum(self._readMetadataAndSchema(piecePath=piecePath).nRows
                     for piecePath in (tqdm(self.piecePaths)
                                       if self.nPieces > 1
                                       else self.piecePaths))
