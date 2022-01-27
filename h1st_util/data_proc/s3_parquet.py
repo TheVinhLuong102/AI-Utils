@@ -1508,30 +1508,27 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             inheritNRows=True,
             **kwargs)
 
-    def rename(self, **kwargs: Any) -> S3ParquetDataFeeder:
+    def rename(self, **kwargs: Union[str, Any]) -> S3ParquetDataFeeder:
         """Rename data columns (``newColName`` = ``existingColName``)."""
-        renameDict = {}
-        remainingKwargs = {}
+        renameDict: Dict[str, str] = {}
+        remainingKwargs: Dict[str, Any] = {}
 
         for k, v in kwargs.items():
             if v in self.columns:
-                if v not in self._T_AUX_COLS:
-                    renameDict[v] = k
+                renameDict[v] = k
             else:
                 remainingKwargs[k] = v
 
-        return self.map(
-            lambda pandasDF:
-                pandasDF.rename(
-                    mapper=None,
-                    index=None,
-                    columns=renameDict,
-                    axis='index',
-                    copy=False,
-                    inplace=False,
-                    level=None),
-            inheritNRows=True,
-            **remainingKwargs)
+        return self.map(lambda df: df.rename(mapper=None,
+                                             index=None,
+                                             columns=renameDict,
+                                             axis='columns',
+                                             copy=False,
+                                             inplace=False,
+                                             level=None,
+                                             errors='ignore'),
+                        inheritNRows=True,
+                        **remainingKwargs)
 
     def filter(self, *conditions: str, **kwargs: Any) -> S3ParquetDataFeeder:
         """Apply filtering mapper."""
