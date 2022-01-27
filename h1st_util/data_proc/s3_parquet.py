@@ -651,10 +651,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # _emptyCache
     # _inheritCache
 
+    # pylint: disable=inconsistent-return-statements
     def _extractStdKwArgs(self, kwargs: Dict[str, Any], /, *,
                           resetToClassDefaults: bool = False,
                           inplace: bool = False) -> Optional[Namespace]:
-        # pylint: disable=inconsistent-return-statements
         namespace: Namespace = self if inplace else Namespace()
 
         for k, classDefaultV in self._DEFAULT_KWARGS.items():
