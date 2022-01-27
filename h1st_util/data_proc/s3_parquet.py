@@ -1721,35 +1721,37 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return self
 
-    def filterByPartitionKeys(self, *filterCriteriaTuples: Tuple, **kwargs: Any):
-        # pylint: disable=too-many-branches
+    def filterByPartitionKeys(self,
+                              *filterCriteriaTuples: Union[Tuple[str, str],
+                                                           Tuple[str, str, str]],
+                              **kwargs: Any) -> S3ParquetDataFeeder:
         """Filter by partition keys."""
-        filterCriteria = {}
+        filterCriteria: Dict[str, Tuple[Optional[str], Optional[str], Optional[Set[str]]]] = {}
 
-        _samplePiecePath = next(iter(self.piecePaths))
+        _samplePiecePath: str = next(iter(self.piecePaths))
 
         for filterCriteriaTuple in filterCriteriaTuples:
             assert isinstance(filterCriteriaTuple, (list, tuple))
             filterCriteriaTupleLen = len(filterCriteriaTuple)
 
-            col = filterCriteriaTuple[0]
+            col: str = filterCriteriaTuple[0]
 
             if f'{col}=' in _samplePiecePath:
                 if filterCriteriaTupleLen == 2:
-                    fromVal = toVal = None
-                    inSet = {str(v)
-                             for v in to_iterable(filterCriteriaTuple[1])}
+                    fromVal: Optional[str] = None
+                    toVal: Optional[str] = None
+                    inSet: Set[str] = {str(v) for v in to_iterable(filterCriteriaTuple[1])}
 
                 elif filterCriteriaTupleLen == 3:
-                    fromVal = filterCriteriaTuple[1]
+                    fromVal: Optional[str] = filterCriteriaTuple[1]
                     if fromVal is not None:
-                        fromVal = str(fromVal)
+                        fromVal: str = str(fromVal)
 
-                    toVal = filterCriteriaTuple[2]
+                    toVal: Optional[str] = filterCriteriaTuple[2]
                     if toVal is not None:
-                        toVal = str(toVal)
+                        toVal: str = str(toVal)
 
-                    inSet = None
+                    inSet: Optional[Set[str]] = None
 
                 else:
                     raise ValueError(
@@ -1760,26 +1762,26 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 filterCriteria[col] = fromVal, toVal, inSet
 
         if filterCriteria:
-            piecePaths = set()
+            piecePaths: Set[str] = set()
 
             for piecePath in self.piecePaths:
-                chk = True
+                pieceSatisfiesCriteria: bool = True
 
                 for col, (fromVal, toVal, inSet) in filterCriteria.items():
-                    v = re.search(f'{col}=(.*?)/', piecePath).group(1)
+                    v: str = re.search(f'{col}=(.*?)/', piecePath).group(1)
 
                     if ((fromVal is not None) and (v < fromVal)) or \
                             ((toVal is not None) and (v > toVal)) or \
                             ((inSet is not None) and (v not in inSet)):
-                        chk = False
+                        pieceSatisfiesCriteria: bool = False
                         break
 
-                if chk:
+                if pieceSatisfiesCriteria:
                     piecePaths.add(piecePath)
 
             assert piecePaths, \
-                (f'*** {self}: NO PIECE PATHS SATISFYING '
-                 f'FILTER CRITERIA {filterCriteria} ***')
+                FileNotFoundError(f'*** {self}: NO PIECE PATHS SATISFYING '
+                                  f'FILTER CRITERIA {filterCriteria} ***')
 
             if debug.ON:
                 self.stdOutLogger.debug(
