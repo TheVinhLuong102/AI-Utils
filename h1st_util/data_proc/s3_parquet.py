@@ -651,48 +651,41 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # _emptyCache
     # _inheritCache
 
-    # pylint: disable=inconsistent-return-statements
-    def _extractStdKwArgs(self,
-                          kwargs,
-                          resetToClassDefaults=False,
-                          inplace=False):
-        nameSpace = self \
-            if inplace \
-            else Namespace()
+    def _extractStdKwArgs(self, kwargs: Dict[str, Any], /, *,
+                          resetToClassDefaults: bool = False,
+                          inplace: bool = False) -> Optional[Namespace]:
+        # pylint: disable=inconsistent-return-statements
+        namespace: Namespace = self if inplace else Namespace()
 
         for k, classDefaultV in self._DEFAULT_KWARGS.items():
-            _privateK = f'_{k}'
+            _privateK: str = f'_{k}'
 
             if not resetToClassDefaults:
                 existingInstanceV = getattr(self, _privateK, None)
 
-            v = kwargs.pop(
-                k,
-                existingInstanceV
-                if (not resetToClassDefaults) and existingInstanceV
-                else classDefaultV)
+            v = kwargs.pop(k,
+                           existingInstanceV
+                           if (not resetToClassDefaults) and existingInstanceV
+                           else classDefaultV)
 
             if (k == 'reprSampleMinNPieces') and (v > self.nPieces):
                 v = self.nPieces
 
-            setattr(
-                nameSpace,
-                _privateK   # *** USE _k TO NOT INVOKE @k.setter RIGHT AWAY ***
-                if inplace
-                else k,
-                v)
+            setattr(namespace,
+                    _privateK   # USE _k TO NOT INVOKE @k.setter RIGHT AWAY
+                    if inplace
+                    else k,
+                    v)
 
         if inplace:
-            cols = self.srcColsInclPartitionKVs
-
-            if self._iCol not in cols:
+            if self._iCol not in self.columns:
                 self._iCol = None
 
-            if self._tCol not in cols:
+            if self._tCol not in self.columns:
                 self._tCol = None
 
         else:
-            return nameSpace
+            return namespace
 
     def _organizeTimeSeries(self):
         self._dCol = 'date' \
