@@ -547,8 +547,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                         if k == self._DEFAULT_D_COL:
                             srcTypesInclPartitionKVs[k] = _ARROW_DATE_TYPE
-                            partitionKVs[k] = datetime.datetime.strptime(date_string=v[:-1],
-                                                                         format='%Y-%m-%d').date()
+                            partitionKVs[k] = datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date()
 
                         else:
                             srcTypesInclPartitionKVs[k] = _ARROW_STR_TYPE
