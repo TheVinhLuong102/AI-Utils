@@ -6,6 +6,7 @@ from __future__ import annotations
 import datetime
 from functools import lru_cache
 import json
+from logging import Logger
 import math
 import os
 from pathlib import Path
@@ -26,6 +27,7 @@ from tqdm import tqdm
 
 from pyarrow.dataset import dataset
 from pyarrow.fs import S3FileSystem
+from pyarrow.lib import Schema   # pylint: disable=no-name-in-module
 from pyarrow.parquet import read_metadata, read_schema, read_table
 
 from .. import debug, fs, s3
@@ -405,9 +407,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # pylint: disable=abstract-method,too-many-instance-attributes,too-many-public-methods
     """S3 Parquet Data Feeder."""
 
-    _CACHE = {}
+    _CACHE: Dict[str, Namespace] = {}
 
-    _PIECE_CACHES = {}
+    _PIECE_CACHES: Dict[str, Namespace] = {}
 
     # default arguments dict
     _DEFAULT_KWARGS = dict(
@@ -437,31 +439,28 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                  awsRegion: Optional[str] = None,
                  _mappers: Optional[Union[callable, Sequence[callable]]] = None,
                  verbose: bool = True, **kwargs: Any):
+        # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Init S3 Parquet Data Feeder."""
-        # pylint: disable=too-many-arguments,too-many-branches
-        # pylint: disable=too-many-locals,too-many-statements
-
         if verbose or debug.ON:
-            logger = self.classStdOutLogger()
-
-        self.awsRegion = awsRegion
+            logger: Logger = self.classStdOutLogger()
 
         assert isinstance(path, str) and path.startswith('s3://'), \
             ValueError(f'*** {path} NOT AN S3 PATH ***')
-        self.path = path
+        self.path: str = path
+
+        self.awsRegion: Optional[str] = awsRegion
 
         if (not reCache) and (path in self._CACHE):
             _cache = self._CACHE[path]
-
         else:
             self._CACHE[path] = _cache = Namespace()
 
         if _cache:
             if debug.ON:
-                logger.debug(f'*** RETRIEVING CACHE FOR "{path}" ***')
+                logger.debug(msg=f'*** RETRIEVING CACHE FOR "{path}" ***')
 
         else:
-            _parsedURL = urlparse(url=path, scheme='', allow_fragments=True)
+            _parsedURL: ParseResult = urlparse(url=path, scheme='', allow_fragments=True)
             _cache.s3Bucket = _parsedURL.netloc
             _cache.pathS3Key = _parsedURL.path[1:]
 
@@ -474,9 +473,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             else:
                 if verbose:
-                    msg = f'Loading "{path}" by Arrow...'
-                    logger.info(msg)
-                    tic = time.time()
+                    logger.info(msg=(msg := f'Loading "{path}" by Arrow...'))
+                    tic: float = time.time()
 
                 s3.rm(path=path,
                       is_dir=True,
@@ -495,15 +493,13 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                             ignore_prefixes=None)
 
                 if verbose:
-                    toc = time.time()
-                    logger.info(msg + f' done!   <{toc - tic:,.1f} s>')
+                    toc: float = time.time()
+                    logger.info(msg=f'{msg} done!   <{toc - tic:,.1f} s>')
 
-                if (_file_paths := _cache._srcArrowDS.files):
-                    _cache.piecePaths = {
-                        f's3://{file_path}'
-                        for file_path in _file_paths
-                        if not file_path.endswith('_$folder$')}
-
+                if _file_paths := _cache._srcArrowDS.files:
+                    _cache.piecePaths = {f's3://{file_path}'
+                                         for file_path in _file_paths
+                                         if not file_path.endswith('_$folder$')}
                     _cache.nPieces = len(_cache.piecePaths)
 
                 else:
@@ -515,81 +511,76 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             for i, piecePath in enumerate(_cache.piecePaths):
                 if piecePath in self._PIECE_CACHES:
-                    pieceCache = self._PIECE_CACHES[piecePath]
+                    pieceCache: Namespace = self._PIECE_CACHES[piecePath]
 
-                    if (pieceCache.nRows is None) and \
-                            (i < self._SCHEMA_MIN_N_PIECES):
-                        pieceCache.localPath = \
-                            self.pieceLocalPath(piecePath=piecePath)
+                    if (pieceCache.nRows is None) and (i < self._SCHEMA_MIN_N_PIECES):
+                        pieceCache.localPath = self.pieceLocalPath(piecePath=piecePath)
 
-                        schema = read_schema(where=pieceCache.localPath)
+                        schema: Schema = read_schema(where=pieceCache.localPath)
 
-                        pieceCache.srcColsExclPartitionKVs = schema.names
+                        pieceCache.srcColsExclPartitionKVs = set(schema.names)
 
-                        pieceCache.srcColsInclPartitionKVs += schema.names
+                        pieceCache.srcColsInclPartitionKVs.update(schema.names)
 
-                        for col in (set(schema.names)
+                        for col in (pieceCache.srcColsExclPartitionKVs
                                     .difference(pieceCache.partitionKVs)):
                             pieceCache.srcTypesExclPartitionKVs[col] = \
                                 pieceCache.srcTypesInclPartitionKVs[col] = \
                                 schema.field(col).type
 
-                        metadata = read_metadata(
-                            where=pieceCache.localPath)
+                        metadata: FileMetaData = read_metadata(where=pieceCache.localPath)
                         pieceCache.nCols = metadata.num_columns
                         pieceCache.nRows = metadata.num_rows
 
                 else:
-                    srcColsInclPartitionKVs = []
+                    srcColsInclPartitionKVs: Set[str] = set()
 
-                    srcTypesExclPartitionKVs = Namespace()
-                    srcTypesInclPartitionKVs = Namespace()
+                    srcTypesExclPartitionKVs: Namespace = Namespace()
+                    srcTypesInclPartitionKVs: Namespace = Namespace()
 
-                    partitionKVs = {}
+                    partitionKVs: Dict[str, Union[datetime.date, str]] = {}
 
-                    for partitionKV in re.findall('[^/]+=[^/]+/', piecePath):
-                        k, v = partitionKV.split('=')
-                        k = str(k)   # ensure not Unicode
+                    for partitionKV in re.findall(pattern='[^/]+=[^/]+/', string=piecePath):
+                        k, v = partitionKV.split(sep='=', maxsplit=1)
 
-                        srcColsInclPartitionKVs.append(k)
+                        srcColsInclPartitionKVs.add(k)
 
-                        if k == 'date':
+                        if k == self._DEFAULT_D_COL:
                             srcTypesInclPartitionKVs[k] = _ARROW_DATE_TYPE
-                            partitionKVs[k] = \
-                                datetime.datetime.strptime(v[:-1],
-                                                           '%Y-%m-%d').date()
+                            partitionKVs[k] = datetime.datetime.strptime(date_string=v[:-1],
+                                                                         format='%Y-%m-%d').date()
 
                         else:
                             srcTypesInclPartitionKVs[k] = _ARROW_STR_TYPE
                             partitionKVs[k] = v[:-1]
 
                     if i < self._SCHEMA_MIN_N_PIECES:
-                        localPath = self.pieceLocalPath(piecePath=piecePath)
+                        localPath: Path = self.pieceLocalPath(piecePath=piecePath)
 
-                        schema = read_schema(where=localPath)
+                        schema: Schema = read_schema(where=localPath)
 
-                        srcColsExclPartitionKVs = schema.names
+                        srcColsExclPartitionKVs: Set[str] = set(schema.names)
 
-                        srcColsInclPartitionKVs += schema.names
+                        srcColsInclPartitionKVs.update(schema.names)
 
-                        for col in set(schema.names).difference(partitionKVs):
+                        for col in srcColsExclPartitionKVs.difference(partitionKVs):
                             srcTypesExclPartitionKVs[col] = \
                                 srcTypesInclPartitionKVs[col] = \
                                 schema.field(col).type
 
-                        metadata = read_metadata(where=localPath)
-                        nCols = metadata.num_columns
-                        nRows = metadata.num_rows
+                        metadata: FileMetaData = read_metadata(where=localPath)
+                        nCols: int = metadata.num_columns
+                        nRows: int = metadata.num_rows
 
                     else:
-                        localPath = None
+                        localPath: Optional[Path] = None
 
-                        srcColsExclPartitionKVs = None
+                        srcColsExclPartitionKVs: Optional[List[str]] = None
 
-                        nCols = nRows = None
+                        nCols: Optional[int] = None
+                        nRows: Optional[int] = None
 
-                    self._PIECE_CACHES[piecePath] = \
-                        pieceCache = \
+                    self._PIECE_CACHES[piecePath] = pieceCache = \
                         Namespace(
                             localPath=localPath,
                             partitionKVs=partitionKVs,
@@ -600,21 +591,16 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                             srcTypesExclPartitionKVs=srcTypesExclPartitionKVs,
                             srcTypesInclPartitionKVs=srcTypesInclPartitionKVs,
 
-                            nCols=nCols,
-                            nRows=nRows)
+                            nCols=nCols, nRows=nRows)
 
-                _cache.srcColsInclPartitionKVs.update(
-                    pieceCache.srcColsInclPartitionKVs)
+                _cache.srcColsInclPartitionKVs |= pieceCache.srcColsInclPartitionKVs
 
-                for col, arrowType in \
-                        pieceCache.srcTypesInclPartitionKVs.items():
+                for col, arrowType in pieceCache.srcTypesInclPartitionKVs.items():
                     if col in _cache.srcTypesInclPartitionKVs:
-                        assert arrowType == \
-                            _cache.srcTypesInclPartitionKVs[col], \
-                            (f'*** {piecePath} COLUMN {col}: '
-                             f'DETECTED TYPE {arrowType} != '
-                             f'{_cache.srcTypesInclPartitionKVs[col]} ***')
-
+                        assert arrowType == _cache.srcTypesInclPartitionKVs[col], \
+                            TypeError(f'*** {piecePath} COLUMN {col}: '
+                                      f'DETECTED TYPE {arrowType} != '
+                                      f'{_cache.srcTypesInclPartitionKVs[col]} ***')
                     else:
                         _cache.srcTypesInclPartitionKVs[col] = arrowType
 
