@@ -28,7 +28,7 @@ from tqdm import tqdm
 from pyarrow.dataset import dataset
 from pyarrow.fs import S3FileSystem
 from pyarrow.lib import Schema   # pylint: disable=no-name-in-module
-from pyarrow.parquet import read_metadata, read_schema, read_table
+from pyarrow.parquet import FileMetaData, read_metadata, read_schema, read_table
 
 from .. import debug, fs, s3
 from ..data_types.arrow import (
@@ -2655,7 +2655,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         if debug.ON:
             verbose = True
 
-        if loadPath:
+        if loadPath:   # pylint: disable=too-many-nested-blocks
             if verbose:
                 message = ('Loading NULL-Filling SQL Statement '
                            f'from Path "{loadPath}"...')
@@ -3053,7 +3053,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         if debug.ON:
             verbose = True
 
-        if loadPath:
+        if loadPath:   # pylint: disable=too-many-nested-blocks
             if verbose:
                 message = ('Loading & Applying Data Transformations '
                            f'from Path "{loadPath}"...')
