@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import datetime
-from functools import cache, partial
+from functools import lru_cache, partial
 import json
 from logging import Logger
 import math
@@ -1331,7 +1331,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return self
 
-    @cache
+    @lru_cache(maxsize=None, typed=False)
     def filterByPartitionKeys(self,
                               *filterCriteriaTuples: Union[Tuple[str, str],
                                                            Tuple[str, str, str]],
@@ -1631,7 +1631,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 if asDict
                 else self._cache.distinct[col])
 
-    @cache   # computationally expensive, so cached
+    @lru_cache(maxsize=None, typed=False)   # computationally expensive, so cached
     def quantile(self, *cols: str, **kwargs: Any) -> Union[float, int,
                                                            Series, Namespace]:
         """Return quantile values in specified column(s)."""
