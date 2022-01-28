@@ -307,6 +307,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     else:
                         _cache.srcTypesInclPartitionKVs[col] = arrowType
 
+            _cache.cachedLocally = False
+
         self.__dict__.update(_cache)
 
         self._cachedLocally: bool = False
@@ -561,7 +563,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
     def cacheLocally(self, verbose: bool = True):
         """Cache files to local disk."""
-        if not self._cachedLocally:
+        if not (_cache := self._CACHE[self.path]).cachedLocally:
             if verbose:
                 self.stdOutLogger.info(msg=(msg := 'Caching Files to Local Disk...'))
                 tic: float = time.time()
@@ -579,7 +581,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 self._PIECE_CACHES[piecePath].localPath = \
                     piecePath.replace(self.path, localPath)
 
-            self._cachedLocally: bool = True
+            _cache.cachedLocally = True
 
             if verbose:
                 toc: float = time.time()
