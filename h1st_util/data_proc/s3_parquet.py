@@ -18,8 +18,6 @@ from typing import Collection, Dict, List, Set, Sequence, Tuple   # Py3.9+: use 
 from urllib.parse import ParseResult, urlparse
 from uuid import uuid4
 
-import botocore
-import boto3
 from numpy import allclose, cumsum, isfinite, nan, ndarray, vstack
 from pandas import DataFrame, Series, concat, isnull, notnull, read_parquet
 from pandas._libs.missing import NAType   # pylint: disable=no-name-in-module
@@ -74,17 +72,7 @@ class AbstractS3FileDataHandler(AbstractDataHandler):
     # pylint: disable=abstract-method
     """Abstract S3 File Data Handler."""
 
-    S3_CLIENT = boto3.client(service_name='s3',
-                             region_name=None,
-                             api_version=None,
-                             use_ssl=True,
-                             verify=None,
-                             endpoint_url=None,
-                             aws_access_key_id=None,
-                             aws_secret_access_key=None,
-                             aws_session_token=None,
-                             config=botocore.client.Config(connect_timeout=9,
-                                                           read_timeout=9))
+    S3_CLIENT = s3.client()
 
     _SCHEMA_MIN_N_PIECES: int = 10
     _REPR_SAMPLE_MIN_N_PIECES: int = 100

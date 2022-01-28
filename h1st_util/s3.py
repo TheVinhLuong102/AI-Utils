@@ -6,6 +6,9 @@ import os
 import time
 from typing import Optional
 
+import botocore
+import boto3
+
 from .fs import PathType
 from .iter import to_iterable
 from .log import STDOUT_HANDLER
@@ -14,9 +17,32 @@ from .log import STDOUT_HANDLER
 __all__ = 'cp', 'mv', 'rm', 'sync'
 
 
-LOGGER: Logger = getLogger(name=__name__)
-LOGGER.setLevel(level=INFO)
-LOGGER.addHandler(hdlr=STDOUT_HANDLER)
+_LOGGER: Logger = getLogger(name=__name__)
+_LOGGER.setLevel(level=INFO)
+_LOGGER.addHandler(hdlr=STDOUT_HANDLER)
+
+
+_CLIENT = None
+
+
+def client():
+    """Get Boto3 S3 Client."""
+    global _CLIENT   # pylint: disable=global-statement
+
+    if _CLIENT is None:
+        _CLIENT = boto3.client(service_name='s3',
+                               region_name=None,
+                               api_version=None,
+                               use_ssl=True,
+                               verify=None,
+                               endpoint_url=None,
+                               aws_access_key_id=None,
+                               aws_secret_access_key=None,
+                               aws_session_token=None,
+                               config=botocore.client.Config(connect_timeout=9,
+                                                             read_timeout=9))
+
+    return _CLIENT
 
 
 def cp(from_path: PathType, to_path: PathType,
@@ -29,15 +55,15 @@ def cp(from_path: PathType, to_path: PathType,
                        (' --quiet' if quiet else ''))
 
     if verbose:
-        LOGGER.info(msg=(msg := f'Copying "{from_path}" to "{to_path}"...'))
-        LOGGER.debug(msg=f'Running: {s3_command}...')
+        _LOGGER.info(msg=(msg := f'Copying "{from_path}" to "{to_path}"...'))
+        _LOGGER.debug(msg=f'Running: {s3_command}...')
         tic: float = time.time()
 
     os.system(command=s3_command)
 
     if verbose:
         toc: float = time.time()
-        LOGGER.info(msg=f'{msg} done!   <{toc - tic:,.1f} s>')
+        _LOGGER.info(msg=f'{msg} done!   <{toc - tic:,.1f} s>')
 
 
 def mv(from_path: PathType, to_path: PathType,
@@ -50,15 +76,15 @@ def mv(from_path: PathType, to_path: PathType,
                        (' --quiet' if quiet else ''))
 
     if verbose:
-        LOGGER.info(msg=(msg := f'Moving "{from_path}" to "{to_path}"...'))
-        LOGGER.debug(msg=f'Running: {s3_command}...')
+        _LOGGER.info(msg=(msg := f'Moving "{from_path}" to "{to_path}"...'))
+        _LOGGER.debug(msg=f'Running: {s3_command}...')
         tic: float = time.time()
 
     os.system(command=s3_command)
 
     if verbose:
         toc: float = time.time()
-        LOGGER.info(msg=f'{msg} done!   <{toc - tic:,.1f} s>')
+        _LOGGER.info(msg=f'{msg} done!   <{toc - tic:,.1f} s>')
 
 
 def rm(path: PathType,
@@ -78,19 +104,21 @@ def rm(path: PathType,
                        (' --quiet' if quiet else ''))
 
     if verbose:
-        LOGGER.info(msg=(msg := ('Deleting ' +
-                                 ((f'Globs "{globs}" @ ' if globs else 'Directory ')   # noqa: E501
-                                  if is_dir
-                                  else '') +
-                                 f'"{path}"...')))
-        LOGGER.debug(msg=f'Running: {s3_command}...')
+        _LOGGER.info(msg=(msg := ('Deleting ' +
+                                  ((f'Globs "{globs}" @ '
+                                    if globs
+                                    else 'Directory ')
+                                   if is_dir
+                                   else '') +
+                                  f'"{path}"...')))
+        _LOGGER.debug(msg=f'Running: {s3_command}...')
         tic: float = time.time()
 
     os.system(command=s3_command)
 
     if verbose:
         toc: float = time.time()
-        LOGGER.info(msg=f'{msg} done!   <{toc - tic:,.1f} s>')
+        _LOGGER.info(msg=f'{msg} done!   <{toc - tic:,.1f} s>')
 
 
 def sync(from_dir_path: PathType, to_dir_path: PathType,
@@ -103,12 +131,12 @@ def sync(from_dir_path: PathType, to_dir_path: PathType,
                        (' --quiet' if quiet else ''))
 
     if verbose:
-        LOGGER.info(msg=(msg := f'Syncing "{from_dir_path}" to "{to_dir_path}"...'))   # noqa: E501
-        LOGGER.debug(msg=f'Running: {s3_command}...')
+        _LOGGER.info(msg=(msg := f'Syncing "{from_dir_path}" to "{to_dir_path}"...'))   # noqa: E501
+        _LOGGER.debug(msg=f'Running: {s3_command}...')
         tic = time.time()
 
     os.system(command=s3_command)
 
     if verbose:
         toc = time.time()
-        LOGGER.info(msg=f'{msg} done!   <{toc - tic:,.1f} s>')
+        _LOGGER.info(msg=f'{msg} done!   <{toc - tic:,.1f} s>')
