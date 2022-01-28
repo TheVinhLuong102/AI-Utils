@@ -1299,6 +1299,13 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 _pathPlusSepLen: int = len(self.path) + 1
 
+                subsetPath: str = f's3://{self.s3Bucket}/{subsetDirS3Key}'
+                
+                if verbose:
+                    self.stdOutLogger.info(
+                        msg=(msg := f'Subsetting {len(piecePaths):,} Pieces to "{subsetPath}"...'))
+                    tic: float = time.time()
+
                 for piecePath in (tqdm(piecePaths) if verbose else piecePaths):
                     pieceSubPath: str = piecePath[_pathPlusSepLen:]
 
@@ -1318,7 +1325,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                         raise err
 
-                subsetPath: str = f's3://{self.s3Bucket}/{subsetDirS3Key}'
+                if verbose:
+                    toc: float = time.time()
+                    self.stdOutLogger.info(msg=f'{msg} done!   <{toc-tic:.1f}>')
 
             else:
                 subsetPath: str = piecePaths[0]
@@ -1404,11 +1413,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             assert piecePaths, \
                 FileNotFoundError(f'*** {self}: NO PIECE PATHS SATISFYING '
                                   f'FILTER CRITERIA {filterCriteria} ***')
-
-            if debug.ON:
-                self.stdOutLogger.debug(
-                    msg=f'*** {len(piecePaths)} PIECES SATISFYING '
-                        f'FILTERING CRITERIA: {filterCriteria} ***')
 
             return self._subset(*piecePaths, **kwargs)
 
