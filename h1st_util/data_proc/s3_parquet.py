@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import datetime
-from functools import lru_cache
+from functools import cache
 import json
 from logging import Logger
 import math
@@ -399,11 +399,12 @@ class _S3ParquetDataFeeder__prep__pandasDFTransform:
         return pandasDF
 
 
-def sampleSet(population: Collection[Any], sampleSize: int) -> Set[Any]:
+def randomSample(population: Collection[Any], sampleSize: int,
+                 returnCollectionType=set) -> Collection[Any]:
     """Draw random sample from population."""
-    return set(random.sample(population=population, k=sampleSize)
-               if len(population) > sampleSize
-               else population)
+    return returnCollectionType(random.sample(population=population, k=sampleSize)
+                                if len(population) > sampleSize
+                                else population)
 
 
 class S3ParquetDataFeeder(AbstractS3FileDataHandler):
@@ -1072,8 +1073,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         nSamplesPerChunk: int = int(math.ceil(nSamplesPerPiece /
                                                               nChunksForIntermediateN))
 
-                        for chunkRecordBatch in sampleSet(population=chunkRecordBatches,
-                                                          sampleSize=nChunksForIntermediateN):
+                        for chunkRecordBatch in randomSample(population=chunkRecordBatches,
+                                                             sampleSize=nChunksForIntermediateN,
+                                                             returnCollectionType=tuple):
                             # arrow.apache.org/docs/python/generated/pyarrow.RecordBatch.html
                             # #pyarrow.RecordBatch.to_pandas
                             chunkPandasDF: DataFrame = \
@@ -1081,7 +1083,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                     memory_pool=None,
                                     categories=None,
                                     strings_to_categorical=False,
-                                    zero_copy_only=True,
+                                    zero_copy_only=False,
 
                                     integer_object_nulls=False,
                                     # TODO: check
@@ -1188,7 +1190,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         # memory_pool=None,   # (default)
                         # categories=None,   # (default)
                         # strings_to_categorical=False,   # (default)
-                        # zero_copy_only=True,   # (default: *** False ***)
+                        # zero_copy_only=False,   # (default)
 
                         # integer_object_nulls=False,   # (default)
                         # TODO: check
@@ -1388,8 +1390,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         """Prelim Representative Sample Piece Paths."""
         if self._cache.prelimReprSamplePiecePaths is None:
             self._cache.prelimReprSamplePiecePaths = \
-                sampleSet(population=self.piecePaths,
-                          sampleSize=self._reprSampleMinNPieces)
+                randomSample(population=self.piecePaths,
+                             sampleSize=self._reprSampleMinNPieces)
 
         return self._cache.prelimReprSamplePiecePaths
 
@@ -1404,7 +1406,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             self._cache.reprSamplePiecePaths = (
                 self._cache.prelimReprSamplePiecePaths |
-                (sampleSet(
+                (randomSample(
                     population=self.piecePaths - self._cache.prelimReprSamplePiecePaths,
                     sampleSize=reprSampleNPieces - self._reprSampleMinNPieces)
                  if reprSampleNPieces > self._reprSampleMinNPieces
@@ -1620,6 +1622,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return self
 
+    @cache
     def filterByPartitionKeys(self,
                               *filterCriteriaTuples: Union[Tuple[str, str],
                                                            Tuple[str, str, str]],
@@ -1719,8 +1722,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 nSamplePieces: int = min(nSamplePieces, maxNPieces)
 
             if nSamplePieces < self.nPieces:
-                piecePaths: Set[str] = sampleSet(population=self.piecePaths,
-                                                 sampleSize=nSamplePieces)
+                piecePaths: Set[str] = randomSample(population=self.piecePaths,
+                                                    sampleSize=nSamplePieces)
             else:
                 nSamplePieces: int = self.nPieces
                 piecePaths: Set[str] = self.piecePaths
@@ -1909,7 +1912,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 if asDict
                 else self._cache.distinct[col])
 
-    @lru_cache()
+    @cache
     def quantile(self, *cols: str, **kwargs: Any):
         """Return quantile values in specified column(s)."""
         if len(cols) > 1:
@@ -1958,9 +1961,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             if s not in self._cache:
                 setattr(self._cache, s, {})
-            cache = getattr(self._cache, s)
+            _cache = getattr(self._cache, s)
 
-            if col not in cache:
+            if col not in _cache:
                 verbose = True \
                     if debug.ON \
                     else kwargs.get('verbose')
@@ -1992,9 +1995,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                              f'Column "{col}" = '
                              f'{result:,.3g}   <{toc - tic:,.1f} s>'))
 
-                cache[col] = result
+                _cache[col] = result
 
-            return cache[col]
+            return _cache[col]
 
         raise ValueError(
             f'{self}.sampleStat({col}, ...): '
@@ -2024,9 +2027,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             if s not in self._cache:
                 setattr(self._cache, s, {})
-            cache = getattr(self._cache, s)
+            _cache = getattr(self._cache, s)
 
-            if col not in cache:
+            if col not in _cache:
                 verbose = True \
                     if debug.ON \
                     else kwargs.get('verbose')
@@ -2085,9 +2088,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                              f' for Column "{col}" = '
                              f'{result:,.3g}   <{toc - tic:,.1f} s>'))
 
-                cache[col] = result
+                _cache[col] = result
 
-            return cache[col]
+            return _cache[col]
 
         raise ValueError(
             f'{self}.outlierRstStat({col}, ...): '
