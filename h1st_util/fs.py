@@ -1,6 +1,7 @@
 """Local File System & HDFS utilities."""
 
 
+from logging import getLogger, Logger, DEBUG
 import os
 from pathlib import Path
 import shutil
@@ -9,6 +10,8 @@ import sys
 from typing import Union
 
 from pyarrow.hdfs import HadoopFileSystem
+
+from .log import STDOUT_HANDLER
 
 
 __all__ = (
@@ -23,6 +26,11 @@ __all__ = (
     'cp', 'mv',
     'get', 'put',
 )
+
+
+LOGGER: Logger = getLogger(name=__name__)
+LOGGER.setLevel(level=DEBUG)
+LOGGER.addHandler(hdlr=STDOUT_HANDLER)
 
 
 PathType = Union[str, Path]
@@ -61,30 +69,30 @@ if _HADOOP_HOME:
         HDFS_CLIENT = HadoopFileSystem()
 
         try:
-            print('Testing HDFS... ', end='')
+            LOGGER.debug(msg=(msg := 'Testing HDFS...'))
 
             if HDFS_CLIENT.isdir(path='/'):
                 _ON_LINUX_CLUSTER_WITH_HDFS: bool = True
-                print('done!')
+                LOGGER.debug(msg=f'{msg} done!')
 
             else:
                 _ON_LINUX_CLUSTER_WITH_HDFS: bool = False
-                print('UNAVAILABLE')
+                LOGGER.debug(msg=f'{msg} UNAVAILABLE')
 
         except Exception:   # pylint: disable=broad-except
             HDFS_CLIENT = None
             _ON_LINUX_CLUSTER_WITH_HDFS: bool = False
-            print('UNAVAILABLE')
+            LOGGER.debug(msg=f'{msg} UNAVAILABLE')
 
     except Exception:   # pylint: disable=broad-except
         HDFS_CLIENT = None
         _ON_LINUX_CLUSTER_WITH_HDFS: bool = False
-        print('*** HDFS UNAVAILABLE ***')
+        LOGGER.debug(msg='*** HDFS UNAVAILABLE ***')
 
 else:
     HDFS_CLIENT = None
     _ON_LINUX_CLUSTER_WITH_HDFS: bool = False
-    print('*** HDFS UNAVAILABLE ***')
+    LOGGER.debug('*** HDFS UNAVAILABLE ***')
 
 
 def _exec(cmd: str, must_succeed: bool = False):

@@ -1300,7 +1300,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 _pathPlusSepLen: int = len(self.path) + 1
 
                 subsetPath: str = f's3://{self.s3Bucket}/{subsetDirS3Key}'
-                
+
                 if verbose:
                     self.stdOutLogger.info(
                         msg=(msg := f'Subsetting {len(piecePaths):,} Pieces to "{subsetPath}"...'))
