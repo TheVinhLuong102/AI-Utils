@@ -1754,7 +1754,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             return Namespace(**{col: self.count(col, **kwargs)
                                 for col in cols})
 
-        col = cols[0]
+        col: str = cols[0]
 
         pandasDF: Optional[DataFrame] = kwargs.get('pandasDF')
 
@@ -1843,7 +1843,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                           # numeric_only=True,
                           min_count=0)
 
-    def nonNullProportion(self, *cols: str, **kwargs: Any):
+    def nonNullProportion(self, *cols: str, **kwargs: Any) -> Union[float, Namespace]:
         """Calculate non-NULL data proportion(s) of specified column(s).
 
         Return:
@@ -1858,21 +1858,18 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             *dict* for all columns
         """
         if not cols:
-            cols = self.contentCols
+            cols: Set[str] = self.contentCols
 
         if len(cols) > 1:
             return Namespace(**{col: self.nonNullProportion(col, **kwargs)
                                 for col in cols})
 
-        col = cols[0]
+        col: str = cols[0]
 
         if col not in self._cache.nonNullProportion:
-            self._cache.nonNullProportion[col] = \
-                self.count(
-                    col,
-                    pandasDF=self.reprSample,
-                    **kwargs) \
-                / self.reprSampleSize
+            self._cache.nonNullProportion[col] = (
+                self.count(col, pandasDF=self.reprSample, **kwargs) /
+                self.reprSampleSize)
 
         return self._cache.nonNullProportion[col]
 
