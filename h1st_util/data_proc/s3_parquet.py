@@ -876,7 +876,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # map
     # reduce
     # __getitem__
-    # drop
+    # castType
     # rename
     # filter
     # collect
@@ -1243,6 +1243,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def __getitem__(self, cols: Union[str, Collection[str]]) -> S3ParquetDataFeeder:
         """Get column(s)."""
         return self.map(partial(self._getCols, cols), inheritNRows=True)
+
+    def castType(self, **colsToTypes: Dict[str, Any]) -> S3ParquetDataFeeder:
+        """Cast data type(s) of column(s)."""
+        return self.map(lambda df: df.astype(colsToTypes, copy=False, errors='raise'),
+                        inheritNRows=True)
 
     def rename(self, **kwargs: Union[str, Any]) -> S3ParquetDataFeeder:
         """Rename data columns (``newColName`` = ``existingColName``)."""
