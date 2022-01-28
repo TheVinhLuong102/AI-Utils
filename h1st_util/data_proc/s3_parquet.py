@@ -564,6 +564,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         if not self._cachedLocally:
             if verbose:
                 self.stdOutLogger.info(msg=(msg := 'Caching Files to Local Disk...'))
+                tic: float = time.time()
 
             parsedURL: ParseResult = urlparse(url=self.path, scheme='', allow_fragments=True)
 
@@ -581,7 +582,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             self._cachedLocally: bool = True
 
             if verbose:
-                self.stdOutLogger.info(msg=f'{msg} done!')
+                toc: float = time.time()
+                self.stdOutLogger.info(msg=f'{msg} done!   <{toc - tic:,.1f} s>')
 
     def pieceLocalPath(self, piecePath: str) -> Path:
         """Get local cache file path of piece."""
@@ -611,7 +613,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return localPath
 
-    # ***********************
+    # =======================
     # MAP-REDUCE (PARTITIONS)
     # -----------------------
     # map
@@ -981,15 +983,18 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return pandasDF[cols if isinstance(cols, str) else list(cols)]
 
+    @lru_cache(maxsize=None, typed=False)
     def __getitem__(self, cols: Union[str, Collection[str]]) -> S3ParquetDataFeeder:
         """Get column(s)."""
         return self.map(partial(self._getCols, cols), inheritNRows=True)
 
+    @lru_cache(maxsize=None, typed=False)
     def castType(self, **colsToTypes: Dict[str, Any]) -> S3ParquetDataFeeder:
         """Cast data type(s) of column(s)."""
         return self.map(lambda df: df.astype(colsToTypes, copy=False, errors='raise'),
                         inheritNRows=True)
 
+    @lru_cache(maxsize=None, typed=False)
     def rename(self, **kwargs: Union[str, Any]) -> S3ParquetDataFeeder:
         """Rename data columns (``newColName`` = ``existingColName``)."""
         renameDict: Dict[str, str] = {}
@@ -1012,6 +1017,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         inheritNRows=True,
                         **remainingKwargs)
 
+    @lru_cache(maxsize=None, typed=False)
     def filter(self, *conditions: str, **kwargs: Any) -> S3ParquetDataFeeder:
         """Apply filtering mapper."""
         s3ParquetDF: S3ParquetDataFeeder = self
@@ -1028,8 +1034,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         """Collect content."""
         return self.reduce(cols=cols if cols else None, **kwargs)
 
-    def toPandas(self, *cols: str, **kwargs: Any) \
-            -> Union[DataFrame, Series]:
+    def toPandas(self, *cols: str, **kwargs: Any) -> Union[DataFrame, Series]:
         """Collect content to Pandas form."""
         return self.collect(*cols, **kwargs)
 
@@ -1226,14 +1231,17 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         """Return column data types."""
         return self.srcTypesInclPartitionKVs
 
+    @lru_cache(maxsize=None, typed=False)
     def type(self, col: str) -> DataType:
         """Return data type of specified column."""
         return self.types[col]
 
+    @lru_cache(maxsize=None, typed=False)
     def typeIsNum(self, col: str) -> bool:
         """Check whether specified column's data type is numerical."""
         return is_num(self.type(col))
 
+    @lru_cache(maxsize=None, typed=False)
     def typeIsComplex(self, col: str) -> bool:
         """Check whether specified column's data type is complex."""
         return is_complex(self.type(col))
@@ -1271,8 +1279,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # _subset
     # filterByPartitionKeys
     # sample
-    # gen
 
+    @lru_cache(maxsize=None, typed=False)   # computationally expensive, so cached
     def _subset(self, *piecePaths: str, **kwargs: Any) -> S3ParquetDataFeeder:
         if piecePaths:
             assert self.piecePaths.issuperset(piecePaths)
