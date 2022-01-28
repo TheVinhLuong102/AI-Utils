@@ -1910,20 +1910,18 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 if asDict
                 else self._cache.distinct[col])
 
-    @cache
-    def quantile(self, *cols: str, **kwargs: Any):
+    @cache   # computationally expensive, so cached
+    def quantile(self, *cols: str, **kwargs: Any) -> Union[float, int,
+                                                           Series, Namespace]:
         """Return quantile values in specified column(s)."""
         if len(cols) > 1:
             return Namespace(**{col: self.quantile(col, **kwargs)
                                 for col in cols})
 
-        col = cols[0]
+        col: str = cols[0]
 
-        return self[col] \
-            .reduce(cols=col) \
-            .quantile(
-                q=kwargs.get('q', .5),
-                interpolation='linear')
+        return self[col].reduce(cols=col).quantile(q=kwargs.get('q', .5),
+                                                   interpolation='linear')
 
     def sampleStat(self, *cols: str, **kwargs: Any) \
             -> Union[Collection, Namespace]:

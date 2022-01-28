@@ -453,8 +453,8 @@ class AbstractDataHandler:
         """Return distinct values for specified column(s)."""
         raise NotImplementedError
 
-    def quantile(self, *cols: str, **kwargs: Any) \
-            -> Union[float, int, Collection, Namespace]:
+    def quantile(self, *cols: str, **kwargs: Any) -> Union[float, int,
+                                                           Series, Namespace]:
         """Return quantile values for specified column(s)."""
         raise NotImplementedError
 
