@@ -465,7 +465,7 @@ class AbstractDataHandler:
         raise NotImplementedError
 
     def outlierRstStat(self, *cols: str, **kwargs: Any) \
-            -> Union[float, int, Collection, Namespace]:   # noqa: N802
+            -> Union[float, int, Namespace]:   # noqa: N802
         # pylint: disable=invalid-name:
         """Return outlier-resistant statistics for specified columns."""
         raise NotImplementedError

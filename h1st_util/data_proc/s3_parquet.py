@@ -34,9 +34,7 @@ from .. import debug, fs, s3
 from ..data_types.arrow import (
     DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)
-from ..data_types.numpy_pandas import (NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES,
-                                       PY_NUM_TYPES,
-                                       INT_TYPES)
+from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY_NUM_TYPES
 from ..data_types.spark_sql import _STR_TYPE
 from ..default_dict import DefaultDict
 from ..iter import to_iterable
@@ -1653,8 +1651,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             if debug.ON:
                 self.stdOutLogger.debug(
-                    msg=(f'*** {len(piecePaths)} PIECES SATISFYING '
-                         f'FILTERING CRITERIA: {filterCriteria} ***'))
+                    msg=f'*** {len(piecePaths)} PIECES SATISFYING '
+                        f'FILTERING CRITERIA: {filterCriteria} ***')
 
             return self._subset(*piecePaths, **kwargs)
 
@@ -1712,7 +1710,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # distinct
     # quantile
     # sampleStat
-    # outlierRstStat / outlierRstMin / outlierRstMax
+    # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
     # profile
 
     def count(self, *cols: str, **kwargs: Any) -> Union[int, Namespace]:
@@ -1749,7 +1747,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 if verbose:
                     tic: float = time.time()
 
-                self._cache.count[col] = result = (
+                self._cache.count[col] = result = int(
                     self[col]
                     .map(((lambda series: (series.notnull()
                                            .sum(axis='index',
@@ -1787,37 +1785,33 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                           level=None,
                                                           # numeric_only=True,
                                                           min_count=0)))))
-                    .reduce(cols=col, reducer=sum)
-                )
-
-                assert isinstance(result, INT_TYPES), \
-                    TypeError(f'*** "{col}" COUNT = {result} ({type(result)}) ***')
+                    .reduce(cols=col, reducer=sum))
 
                 if verbose:
                     toc: float = time.time()
                     self.stdOutLogger.info(
-                        msg=(f'No. of Non-NULLs of Column "{col}" = '
-                             f'{result:,}   <{toc - tic:,.1f} s>'))
+                        msg=f'No. of Non-NULLs of Column "{col}" = '
+                            f'{result:,}   <{toc - tic:,.1f} s>')
 
             return self._cache.count[col]
 
-        series = pandasDF[col]
+        series: Series = pandasDF[col]
 
-        series = ((series.notnull()
+        series: Series = ((series.notnull()
 
-                   if isnull(upperNumericNull)
+                           if isnull(upperNumericNull)
 
-                   else (series < upperNumericNull))
+                           else (series < upperNumericNull))
 
-                  if isnull(lowerNumericNull)
+                          if isnull(lowerNumericNull)
 
-                  else ((series > lowerNumericNull)
+                          else ((series > lowerNumericNull)
 
-                        if isnull(upperNumericNull)
+                                if isnull(upperNumericNull)
 
-                        else series.between(left=lowerNumericNull,
-                                            right=upperNumericNull,
-                                            inclusive='neither')))
+                                else series.between(left=lowerNumericNull,
+                                                    right=upperNumericNull,
+                                                    inclusive='neither')))
 
         return series.sum(axis='index',
                           skipna=True,
@@ -1855,8 +1849,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return self._cache.nonNullProportion[col]
 
-    def distinct(self, *cols: str, **kwargs: Any) -> Union[Dict[str, float],
-                                                           Series, Namespace]:
+    def distinct(self, *cols: str, **kwargs: Any) -> Union[Series, Namespace]:
         """Return distinct values in specified column(s).
 
         Return:
@@ -1902,6 +1895,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         col: str = cols[0]
 
+        # for precision, calc from whole data set instead of from reprSample
         return self[col].reduce(cols=col).quantile(q=kwargs.get('q', .5),
                                                    interpolation='linear')
 
@@ -1934,8 +1928,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             s: str = f'sample{capitalizedStatName}'
 
             if s not in self._cache:
-                setattr(self._cache, s, Namespace())
-            _cache: Namespace = getattr(self._cache, s)
+                setattr(self._cache, s, {})
+            _cache: Dict[str, Union[float, int]] = getattr(self._cache, s)
 
             if col not in _cache:
                 verbose: Optional[bool] = True if debug.ON else kwargs.get('verbose')
@@ -1943,9 +1937,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 if verbose:
                     tic: float = time.time()
 
-                result = getattr(self.reprSample[col], stat)(axis='index',
-                                                             skipna=True,
-                                                             level=None)
+                result = getattr(self.reprSample[col], stat)(axis='index', skipna=True, level=None)
 
                 if isinstance(result, NUMPY_FLOAT_TYPES):
                     result: float = float(result)
@@ -1961,9 +1953,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 if verbose:
                     toc: float = time.time()
                     self.stdOutLogger.info(
-                        msg=(f'Sample {capitalizedStatName} for '
-                             f'Column "{col}" = '
-                             f'{result:,.3g}   <{toc - tic:,.1f} s>'))
+                        msg=f'Sample {capitalizedStatName} for '
+                            f'Column "{col}" = '
+                            f'{result:,.3g}   <{toc - tic:,.1f} s>')
 
                 _cache[col] = result
 
@@ -1972,228 +1964,202 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         raise ValueError(f'*** {self}.sampleStat({col}, ...): '
                          f'COLUMN "{col}" NOT NUMERICAL ***')
 
-    def outlierRstStat(self, *cols: str, **kwargs: Any):
+    def outlierRstStat(self, *cols: str, **kwargs: Any) -> Union[float, int, Namespace]:
         # pylint: disable=too-many-branches
         """Return outlier-resistant stat for specified column(s)."""
         if not cols:
-            cols = self.possibleNumContentCols
+            cols: Set[str] = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**{col: self.outlierRstStat(col, **kwargs)
                                 for col in cols})
 
-        col = cols[0]
+        col: str = cols[0]
 
         if self.typeIsNum(col):
-            stat = kwargs.pop('stat', 'mean').lower()
+            stat: str = kwargs.pop('stat', 'mean').lower()
             if stat == 'avg':
-                stat = 'mean'
-            capitalizedStatName = stat.capitalize()
-            s = f'outlierRst{capitalizedStatName}'
+                stat: str = 'mean'
+            capitalizedStatName: str = stat.capitalize()
+            s: str = f'outlierRst{capitalizedStatName}'
 
             if hasattr(self, s):
                 return getattr(self, s)(col, **kwargs)
 
             if s not in self._cache:
                 setattr(self._cache, s, {})
-            _cache = getattr(self._cache, s)
+            _cache: Dict[str, Union[float, int]] = getattr(self._cache, s)
 
             if col not in _cache:
-                verbose = True \
-                    if debug.ON \
-                    else kwargs.get('verbose')
+                verbose: Optional[bool] = True if debug.ON else kwargs.get('verbose')
 
                 if verbose:
-                    tic = time.time()
+                    tic: float = time.time()
 
-                series = self.reprSample[col]
+                series: Series = self.reprSample[col]
 
-                outlierTails = kwargs.pop('outlierTails', 'both')
+                outlierTails: str = kwargs.pop('outlierTails', 'both')
 
                 if outlierTails == 'both':
-                    series = series.loc[
-                        series.between(
-                            left=self.outlierRstMin(col),
-                            right=self.outlierRstMax(col),
-                            inclusive='both')]
+                    series: Series = series.loc[
+                        series.between(left=self.outlierRstMin(col),
+                                       right=self.outlierRstMax(col),
+                                       inclusive='both')]
 
                 elif outlierTails == 'lower':
-                    series = series.loc[
-                        series >= self.outlierRstMin(col)]
+                    series: Series = series.loc[series >= self.outlierRstMin(col)]
 
                 elif outlierTails == 'upper':
-                    series = series.loc[
-                        series <= self.outlierRstMax(col)]
+                    series: Series = series.loc[series <= self.outlierRstMax(col)]
 
-                result = \
-                    getattr(series, stat)(
-                        axis='index',
-                        skipna=True,
-                        level=None)
+                result = getattr(series, stat)(axis='index', skipna=True, level=None)
 
                 if isnull(result):
                     self.stdOutLogger.warning(
-                        msg=(f'*** "{col}" OUTLIER-RESISTANT '
-                             f'{capitalizedStatName.upper()} = '
-                             f'{result} ***'))
+                        msg=f'*** "{col}" OUTLIER-RESISTANT '
+                            f'{capitalizedStatName.upper()} = '
+                            f'{result} ***')
 
-                    result = self.outlierRstMin(col)
+                    result: Union[float, int] = self.outlierRstMin(col)
 
                 if isinstance(result, NUMPY_FLOAT_TYPES):
-                    result = float(result)
+                    result: float = float(result)
 
                 elif isinstance(result, NUMPY_INT_TYPES):
-                    result = int(result)
+                    result: int = int(result)
 
                 assert isinstance(result, PY_NUM_TYPES), \
-                    (f'*** "{col}" '
-                        f'OUTLIER-RESISTANT {capitalizedStatName.upper()}'
-                        f' = {result} ({type(result)}) ***')
+                    TypeError(f'*** "{col}" '
+                              f'OUTLIER-RESISTANT {capitalizedStatName.upper()}'
+                              f' = {result} ({type(result)}) ***')
 
                 if verbose:
-                    toc = time.time()
+                    toc: float = time.time()
                     self.stdOutLogger.info(
-                        msg=(f'Outlier-Resistant {capitalizedStatName}'
-                             f' for Column "{col}" = '
-                             f'{result:,.3g}   <{toc - tic:,.1f} s>'))
+                        msg=f'Outlier-Resistant {capitalizedStatName}'
+                            f' for Column "{col}" = '
+                            f'{result:,.3g}   <{toc - tic:,.1f} s>')
 
                 _cache[col] = result
 
             return _cache[col]
 
-        raise ValueError(
-            f'{self}.outlierRstStat({col}, ...): '
-            f'Column "{col}" Is Not of Numeric Type')
+        raise ValueError(f'*** {self}.outlierRstStat({col}, ...): '
+                         f'COLUMN "{col}" NOT NUMERICAL ***')
 
-    def outlierRstMin(self, *cols: str, **kwargs: Any):
+    def outlierRstMin(self, *cols: str, **kwargs: Any) -> Union[float, int, Namespace]:
         """Return outlier-resistant minimum for specified column(s)."""
         if not cols:
-            cols = self.possibleNumContentCols
+            cols: Set[str] = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**{col: self.outlierRstMin(col, **kwargs)
                                 for col in cols})
 
-        col = cols[0]
+        col: str = cols[0]
 
         if self.typeIsNum(col):
             if 'outlierRstMin' not in self._cache:
                 self._cache.outlierRstMin = {}
 
             if col not in self._cache.outlierRstMin:
-                verbose = True \
-                    if debug.ON \
-                    else kwargs.get('verbose')
+                verbose: Optional[bool] = True if debug.ON else kwargs.get('verbose')
 
                 if verbose:
-                    tic = time.time()
+                    tic: float = time.time()
 
-                series = self.reprSample[col]
+                series: Series = self.reprSample[col]
 
-                outlierRstMin = \
-                    series.quantile(
-                        q=self._outlierTailProportion[col],
-                        interpolation='linear')
+                outlierRstMin: Union[float, int] = \
+                    series.quantile(q=self._outlierTailProportion[col],
+                                    interpolation='linear')
 
-                sampleMin = self.sampleStat(col, stat='min')
-                sampleMedian = self.sampleStat(col, stat='median')
+                sampleMin: Union[float, int] = self.sampleStat(col, stat='min')
+                sampleMedian: Union[float, int] = self.sampleStat(col, stat='median')
 
-                result = (
-                    series
-                    .loc[series > sampleMin]
-                    .min(axis='index', skipna=True, level=None)) \
-                    if (outlierRstMin == sampleMin) and \
-                    (outlierRstMin < sampleMedian) \
-                    else outlierRstMin
+                result = (series.loc[series > sampleMin].min(axis='index', skipna=True, level=None)
+                          if (outlierRstMin == sampleMin) and (outlierRstMin < sampleMedian)
+                          else outlierRstMin)
 
                 if isinstance(result, NUMPY_FLOAT_TYPES):
-                    result = float(result)
+                    result: float = float(result)
 
                 elif isinstance(result, NUMPY_INT_TYPES):
-                    result = int(result)
+                    result: int = int(result)
 
                 assert isinstance(result, PY_NUM_TYPES), \
-                    (f'*** "{col}" OUTLIER-RESISTANT MIN = '
-                        f'{result} ({type(result)}) ***')
+                    TypeError(f'*** "{col}" OUTLIER-RESISTANT MIN = '
+                              f'{result} ({type(result)}) ***')
 
                 if verbose:
-                    toc = time.time()
+                    toc: float = time.time()
                     self.stdOutLogger.info(
-                        msg=(f'Outlier-Resistant Min of Column "{col}" = '
-                             f'{result:,.3g}   <{toc - tic:,.1f} s>'))
+                        msg=f'Outlier-Resistant Min of Column "{col}" = '
+                            f'{result:,.3g}   <{toc - tic:,.1f} s>')
 
                 self._cache.outlierRstMin[col] = result
 
             return self._cache.outlierRstMin[col]
 
-        raise ValueError(
-            f'{self}.outlierRstMin({col}, ...): '
-            f'Column "{col}" Is Not of Numeric Type')
+        raise ValueError(f'*** {self}.outlierRstMin({col}, ...): '
+                         f'COLUMN "{col}" NOT NUMERICAL ***')
 
-    def outlierRstMax(self, *cols: str, **kwargs: Any):
+    def outlierRstMax(self, *cols: str, **kwargs: Any) -> Union[float, int, Namespace]:
         """Return outlier-resistant maximum for specified column(s)."""
         if not cols:
-            cols = self.possibleNumContentCols
+            cols: Set[str] = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**{col: self.outlierRstMax(col, **kwargs)
                                 for col in cols})
 
-        col = cols[0]
+        col: str = cols[0]
 
         if self.typeIsNum(col):
             if 'outlierRstMax' not in self._cache:
                 self._cache.outlierRstMax = {}
 
             if col not in self._cache.outlierRstMax:
-                verbose = (True
-                           if debug.ON
-                           else kwargs.get('verbose'))
+                verbose: Optional[bool] = True if debug.ON else kwargs.get('verbose')
 
                 if verbose:
-                    tic = time.time()
+                    tic: float = time.time()
 
-                series = self.reprSample[col]
+                series: Series = self.reprSample[col]
 
-                outlierRstMax = \
-                    series.quantile(
-                        q=1 - self._outlierTailProportion[col],
-                        interpolation='linear')
+                outlierRstMax: Union[float, int] = \
+                    series.quantile(q=1 - self._outlierTailProportion[col],
+                                    interpolation='linear')
 
-                sampleMax = self.sampleStat(col, stat='max')
-                sampleMedian = self.sampleStat(col, stat='median')
+                sampleMax: Union[float, int] = self.sampleStat(col, stat='max')
+                sampleMedian: Union[float, int] = self.sampleStat(col, stat='median')
 
-                result = (
-                    series
-                    .loc[series < sampleMax]
-                    .max(axis='index', skipna=True, level=None)) \
-                    if (outlierRstMax == sampleMax) and \
-                    (outlierRstMax > sampleMedian) \
-                    else outlierRstMax
+                result = (series.loc[series < sampleMax].max(axis='index', skipna=True, level=None)
+                          if (outlierRstMax == sampleMax) and (outlierRstMax > sampleMedian)
+                          else outlierRstMax)
 
                 if isinstance(result, NUMPY_FLOAT_TYPES):
-                    result = float(result)
+                    result: float = float(result)
 
                 elif isinstance(result, NUMPY_INT_TYPES):
-                    result = int(result)
+                    result: int = int(result)
 
                 assert isinstance(result, PY_NUM_TYPES), \
-                    (f'*** "{col}" OUTLIER-RESISTANT MAX = {result} '
-                     f'({type(result)}) ***')
+                    TypeError(f'*** "{col}" OUTLIER-RESISTANT MAX = {result} '
+                              f'({type(result)}) ***')
 
                 if verbose:
-                    toc = time.time()
+                    toc: float = time.time()
                     self.stdOutLogger.info(
-                        msg=(f'Outlier-Resistant Max of Column "{col}" = '
-                             f'{result:,.3g}   <{toc - tic:,.1f} s>'))
+                        msg=f'Outlier-Resistant Max of Column "{col}" = '
+                            f'{result:,.3g}   <{toc - tic:,.1f} s>')
 
                 self._cache.outlierRstMax[col] = result
 
             return self._cache.outlierRstMax[col]
 
-        raise ValueError(
-            f'{self}.outlierRstMax({col}, ...): '
-            f'Column "{col}" Is Not of Numeric Type')
+        raise ValueError(f'*** {self}.outlierRstMax({col}, ...): '
+                         f'COLUMN "{col}" NOT NUMERICAL ***')
 
     def profile(self, *cols: str, **kwargs: Any) -> Namespace:
         """Profile specified column(s).
