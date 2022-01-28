@@ -20,7 +20,7 @@ from uuid import uuid4
 
 import botocore
 import boto3
-from numpy import array, allclose, cumsum, hstack, isfinite, isnan, nan, ndarray, vstack
+from numpy import array, allclose, cumsum, hstack, isfinite, nan, ndarray, vstack
 from pandas import DataFrame, Series, concat, isnull, notnull, read_parquet
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 from tqdm import tqdm
@@ -2167,6 +2167,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                          f'COLUMN "{col}" NOT NUMERICAL ***')
 
     def profile(self, *cols: str, **kwargs: Any) -> Namespace:
+        # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Profile specified column(s).
 
         Return:
@@ -2189,171 +2190,134 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 enough non-NULLs
         """
         if not cols:
-            cols = self.contentCols
+            cols: Set[str] = self.contentCols
 
-        asDict = kwargs.pop('asDict', False)
+        asDict: bool = kwargs.pop('asDict', False)
 
         if len(cols) > 1:
             return Namespace(**{col: self.profile(col, **kwargs)
                                 for col in cols})
 
-        col = cols[0]
+        col: str = cols[0]
 
-        verbose = (True
-                   if debug.ON
-                   else kwargs.get('verbose'))
+        verbose: Optional[Union[bool, int]] = True if debug.ON else kwargs.get('verbose')
 
         if verbose:
-            msg = f'Profiling Column "{col}"...'
-            self.stdOutLogger.info(msg)
-            tic = time.time()
+            self.stdOutLogger.info(msg=(msg := f'Profiling Column "{col}"...'))
+            tic: float = time.time()
 
-        colType = self.type(col)
-        profile = Namespace(type=colType)
+        colType: DataType = self.type(col)
+        profile: Namespace = Namespace(type=colType)
 
         # non-NULL Proportions
-        profile.nonNullProportion = \
-            self.nonNullProportion(
-                col,
-                verbose=verbose > 1)
+        profile.nonNullProportion = self.nonNullProportion(col, verbose=verbose > 1)
 
-        if self.suffNonNull(col) or \
-                (not kwargs.get('skipIfInsuffNonNull', False)):
+        if self.suffNonNull(col) or (not kwargs.get('skipIfInsuffNonNull', False)):
             # profile categorical column
             if kwargs.get('profileCat', True) and is_possible_cat(colType):
-                profile.distinctProportions = \
-                    self.distinct(
-                        col,
-                        count=True,
-                        verbose=verbose > 1)
+                profile.distinctProportions = self.distinct(col, verbose=verbose > 1)
 
             # profile numerical column
             if kwargs.get('profileNum', True) and is_num(colType):
-                outlierTailProportion = self._outlierTailProportion[col]
+                outlierTailProportion: float = self._outlierTailProportion[col]
 
-                quantilesOfInterest = \
-                    Series(
-                        index=(0,
-                               outlierTailProportion,
-                               .5,
-                               1 - outlierTailProportion,
-                               1))
-                quantileProbsToQuery = []
+                quantilesOfInterest = Series(index=(0,
+                                                    outlierTailProportion,
+                                                    .5,
+                                                    1 - outlierTailProportion,
+                                                    1))
+                quantileProbsToQuery: List[float] = []
 
-                sampleMin = self._cache.sampleMin.get(col)
-                if sampleMin:
+                sampleMin: Optional[Union[float, int]] = self._cache.sampleMin.get(col)
+                if calcAndCacheSampleMin := (sampleMin is None):
+                    quantileProbsToQuery.append(0.)
+                else:
                     quantilesOfInterest[0] = sampleMin
-                    toCacheSampleMin = False
-                else:
-                    quantileProbsToQuery += [0.]
-                    toCacheSampleMin = True
 
-                outlierRstMin = self._cache.outlierRstMin.get(col)
-                if outlierRstMin:
-                    quantilesOfInterest[outlierTailProportion] = \
-                        outlierRstMin
-                    toCacheOutlierRstMin = False
+                outlierRstMin: Optional[Union[float, int]] = self._cache.outlierRstMin.get(col)
+                if calcAndCacheOutlierRstMin := (outlierRstMin is None):
+                    quantileProbsToQuery.append(outlierTailProportion)
                 else:
-                    quantileProbsToQuery += [outlierTailProportion]
-                    toCacheOutlierRstMin = True
+                    quantilesOfInterest[outlierTailProportion] = outlierRstMin
 
-                sampleMedian = self._cache.sampleMedian.get(col)
-                if sampleMedian:
+                sampleMedian: Optional[Union[float, int]] = self._cache.sampleMedian.get(col)
+                if calcAndCacheSampleMedian := (sampleMedian is None):
+                    quantileProbsToQuery.append(.5)
+                else:
                     quantilesOfInterest[.5] = sampleMedian
-                    toCacheSampleMedian = False
-                else:
-                    quantileProbsToQuery += [.5]
-                    toCacheSampleMedian = True
 
-                outlierRstMax = self._cache.outlierRstMax.get(col)
-                if outlierRstMax:
-                    quantilesOfInterest[1 - outlierTailProportion] = \
-                        outlierRstMax
-                    toCacheOutlierRstMax = False
+                outlierRstMax: Optional[Union[float, int]] = self._cache.outlierRstMax.get(col)
+                if calcAndCacheOutlierRstMax := (outlierRstMax is None):
+                    quantileProbsToQuery.append(1 - outlierTailProportion)
                 else:
-                    quantileProbsToQuery += [1 - outlierTailProportion]
-                    toCacheOutlierRstMax = True
+                    quantilesOfInterest[1 - outlierTailProportion] = outlierRstMax
 
-                sampleMax = self._cache.sampleMax.get(col)
-                if sampleMax:
+                sampleMax: Optional[Union[float, int]] = self._cache.sampleMax.get(col)
+                if calcAndCacheSampleMax := (sampleMax is None):
+                    quantileProbsToQuery.append(1.)
+                else:
                     quantilesOfInterest[1] = sampleMax
-                    toCacheSampleMax = False
-                else:
-                    quantileProbsToQuery += [1.]
-                    toCacheSampleMax = True
 
-                series = self.reprSample[col]
+                series: Series = self.reprSample[col]
 
                 if quantileProbsToQuery:
-                    quantilesOfInterest[
-                        isnan(quantilesOfInterest)] = \
-                        series.quantile(
-                            q=quantileProbsToQuery,
-                            interpolation='linear')
+                    quantilesOfInterest.mask(
+                        cond=quantilesOfInterest.isnull(),
+                        other=series.quantile(q=quantileProbsToQuery, interpolation='linear'),
+                        inplace=True,
+                        axis=None,
+                        level=None,
+                        errors='raise')
 
                 (sampleMin, outlierRstMin,
                  sampleMedian,
                  outlierRstMax, sampleMax) = quantilesOfInterest
 
-                if toCacheSampleMin:
+                if calcAndCacheSampleMin:
                     self._cache.sampleMin[col] = sampleMin
 
-                if toCacheOutlierRstMin:
-                    if (outlierRstMin == sampleMin) and \
-                            (outlierRstMin < sampleMedian):
-                        outlierRstMin = \
-                            series.loc[series > sampleMin] \
-                            .min(axis='index', skipna=True, level=None)
+                if calcAndCacheOutlierRstMin:
+                    if (outlierRstMin == sampleMin) and (outlierRstMin < sampleMedian):
+                        outlierRstMin: Union[float, int] = (
+                            series.loc[series > sampleMin]
+                            .min(axis='index', skipna=True, level=None))
+
                     self._cache.outlierRstMin[col] = outlierRstMin
 
-                if toCacheSampleMedian:
+                if calcAndCacheSampleMedian:
                     self._cache.sampleMedian[col] = sampleMedian
 
-                if toCacheOutlierRstMax:
-                    if (outlierRstMax == sampleMax) and \
-                            (outlierRstMax > sampleMedian):
-                        outlierRstMax = (
-                            series
-                            .loc[series < sampleMax]
+                if calcAndCacheOutlierRstMax:
+                    if (outlierRstMax == sampleMax) and (outlierRstMax > sampleMedian):
+                        outlierRstMax: Union[float, int] = (
+                            series.loc[series < sampleMax]
                             .max(axis='index', skipna=True, level=None))
+
                     self._cache.outlierRstMax[col] = outlierRstMax
 
-                if toCacheSampleMax:
+                if calcAndCacheSampleMax:
                     self._cache.sampleMax[col] = sampleMax
 
                 profile.sampleRange = sampleMin, sampleMax
                 profile.outlierRstRange = outlierRstMin, outlierRstMax
 
-                profile.sampleMean = \
-                    self.sampleStat(
-                        col,
-                        stat='mean',
-                        verbose=verbose)
+                profile.sampleMean = self.sampleStat(col, stat='mean', verbose=verbose)
 
                 profile.outlierRstMean = \
                     self._cache.outlierRstMean.get(
                         col,
-                        self.outlierRstStat(
-                            col,
-                            stat='mean',
-                            verbose=verbose))
+                        self.outlierRstStat(col, stat='mean', verbose=verbose))
 
                 profile.outlierRstMedian = \
                     self._cache.outlierRstMedian.get(
                         col,
-                        self.outlierRstStat(
-                            col,
-                            stat='median',
-                            verbose=verbose))
+                        self.outlierRstStat(col, stat='median', verbose=verbose))
 
         if verbose:
-            toc = time.time()
-            self.stdOutLogger.info(
-                msg + f' done!   <{toc - tic:,.1f} s>')
+            toc: float = time.time()
+            self.stdOutLogger.info(msg=f'{msg} done!   <{toc - tic:,.1f} s>')
 
-        return (Namespace(**{col: profile})
-                if asDict
-                else profile)
+        return Namespace(**{col: profile}) if asDict else profile
 
     # =========
     # DATA PREP
