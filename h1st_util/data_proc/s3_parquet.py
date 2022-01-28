@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import datetime
-from functools import cache
+from functools import cache, partial
 import json
 from logging import Logger
 import math
@@ -34,7 +34,9 @@ from .. import debug, fs, s3
 from ..data_types.arrow import (
     DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)
-from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY_NUM_TYPES
+from ..data_types.numpy_pandas import (NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES,
+                                       PY_NUM_TYPES,
+                                       INT_TYPES)
 from ..data_types.spark_sql import _STR_TYPE
 from ..default_dict import DefaultDict
 from ..iter import to_iterable
@@ -68,7 +70,6 @@ __all__ = ('S3ParquetDataFeeder',)
 
 
 # pylint: disable=consider-using-f-string
-# pylint: disable=too-few-public-methods
 
 
 class AbstractS3FileDataHandler(AbstractDataHandler):
@@ -104,29 +105,6 @@ class AbstractS3FileDataHandler(AbstractDataHandler):
     def reprSampleMinNPieces(self):
         self._reprSampleMinNPieces: int = min(self._REPR_SAMPLE_MIN_N_PIECES,
                                               self.nPieces)
-
-
-class _S3ParquetDataFeeder__getitem__pandasDFTransform:
-    def __init__(self, item):
-        if isinstance(item, str):
-            self.col = item
-            self.cols = None
-
-        else:
-            self.cols = item
-            self.col_set = set(item)
-
-    def __call__(self, pandasDF):
-        if self.cols:
-            for missingCol in self.col_set.difference(pandasDF.columns):
-                pandasDF.loc[:, missingCol] = None
-
-            return pandasDF[self.cols]
-
-        if self.col in pandasDF.columns:
-            return pandasDF[self.col]
-
-        return Series(index=pandasDF.index, name=self.col)
 
 
 class _S3ParquetDataFeeder__drop__pandasDFTransform:
@@ -1268,11 +1246,16 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return reducer(results)
 
-    def __getitem__(self, item: str) -> S3ParquetDataFeeder:
-        """Get column."""
-        return self.map(
-            _S3ParquetDataFeeder__getitem__pandasDFTransform(item=item),
-            inheritNRows=True)
+    @staticmethod
+    def _getCols(cols: Union[str, Collection[str]], /, pandasDF: DataFrame):
+        for missingCol in to_iterable(cols, iterable_type=set).difference(pandasDF.columns):
+            pandasDF.loc[:, missingCol] = None
+
+        return pandasDF[cols if isinstance(cols, str) else list(cols)]
+
+    def __getitem__(self, cols: Union[str, Collection[str]]) -> S3ParquetDataFeeder:
+        """Get column(s)."""
+        return self.map(partial(self._getCols, cols), inheritNRows=True)
 
     def drop(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
         """Drop column(s)."""
@@ -1750,7 +1733,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # outlierRstStat / outlierRstMin / outlierRstMax
     # profile
 
-    def count(self, *cols: str, **kwargs: Any):
+    def count(self, *cols: str, **kwargs: Any) -> Union[int, Namespace]:
         """Count non-NULL values in specified column(s).
 
         Return:
@@ -1765,7 +1748,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             for all columns
         """
         if not cols:
-            cols = self.contentCols
+            cols: Set[str] = self.contentCols
 
         if len(cols) > 1:
             return Namespace(**{col: self.count(col, **kwargs)
@@ -1773,72 +1756,92 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         col = cols[0]
 
-        pandasDF = kwargs.get('pandasDF')
+        pandasDF: Optional[DataFrame] = kwargs.get('pandasDF')
 
         lowerNumericNull, upperNumericNull = self._nulls[col]
 
         if pandasDF is None:
             if col not in self._cache.count:
-                verbose = (True
-                           if debug.ON
-                           else kwargs.get('verbose'))
+                verbose: Optional[bool] = True if debug.ON else kwargs.get('verbose')
 
                 if verbose:
-                    tic = time.time()
+                    tic: float = time.time()
 
-                self._cache.count[col] = result = \
-                    self[col] \
-                    .map(
-                        ((lambda series:
-                            series.notnull().sum(skipna=True, min_count=0))
-                            if isnull(upperNumericNull)
-                            else (lambda series:
-                                  (series < upperNumericNull)
-                                  .sum(skipna=True, min_count=0)))
-                        if isnull(lowerNumericNull)
-                        else ((lambda series:
-                               (series > lowerNumericNull)
-                               .sum(skipna=True, min_count=0))
-                              if isnull(upperNumericNull)
-                              else (lambda series:
-                                    series.between(left=lowerNumericNull,
-                                                   right=upperNumericNull,
-                                                   inclusive='neither')
-                                    .sum(skipna=True, min_count=0)))) \
-                    .reduce(
-                        cols=col,
-                        reducer=sum)
+                self._cache.count[col] = result = (
+                    self[col]
+                    .map(((lambda series: (series.notnull()
+                                           .sum(axis='index',
+                                                skipna=True,
+                                                level=None,
+                                                # numeric_only=True,
+                                                min_count=0)))
 
-                assert isinstance(result, int), \
-                    f'*** "{col}" COUNT = {result} ***'
+                          if isnull(upperNumericNull)
+
+                          else (lambda series: ((series < upperNumericNull)
+                                                .sum(axis='index',
+                                                     skipna=True,
+                                                     level=None,
+                                                     # numeric_only=True,
+                                                     min_count=0))))
+
+                         if isnull(lowerNumericNull)
+
+                         else ((lambda series: ((series > lowerNumericNull)
+                                                .sum(axis='index',
+                                                     skipna=True,
+                                                     level=None,
+                                                     # numeric_only=True,
+                                                     min_count=0)))
+
+                               if isnull(upperNumericNull)
+
+                               else (lambda series: (series
+                                                     .between(left=lowerNumericNull,
+                                                              right=upperNumericNull,
+                                                              inclusive='neither')
+                                                     .sum(axis='index',
+                                                          skipna=True,
+                                                          level=None,
+                                                          # numeric_only=True,
+                                                          min_count=0)))))
+                    .reduce(cols=col, reducer=sum)
+                )
+
+                assert isinstance(result, INT_TYPES), \
+                    TypeError(f'*** "{col}" COUNT = {result} ({type(result)}) ***')
 
                 if verbose:
-                    toc = time.time()
+                    toc: float = time.time()
                     self.stdOutLogger.info(
                         msg=(f'No. of Non-NULLs of Column "{col}" = '
                              f'{result:,}   <{toc - tic:,.1f} s>'))
 
             return self._cache.count[col]
 
-        return (
-            (pandasDF[col].notnull().sum(skipna=True, min_count=0)
-             if isnull(upperNumericNull)
-             else (pandasDF[col] < upperNumericNull).sum(skipna=True,
-                                                         min_count=0))
+        series = pandasDF[col]
 
-            if isnull(lowerNumericNull)
+        series = ((series.notnull()
 
-            else ((pandasDF[col] > lowerNumericNull).sum(skipna=True,
-                                                         min_count=0)
+                   if isnull(upperNumericNull)
 
-                  if isnull(upperNumericNull)
+                   else (series < upperNumericNull))
 
-                  else pandasDF[col].between(left=lowerNumericNull,
-                                             right=upperNumericNull,
-                                             inclusive='neither').sum(
-                                                 skipna=True,
-                                                 min_count=0))
-        )
+                  if isnull(lowerNumericNull)
+
+                  else ((series > lowerNumericNull)
+
+                        if isnull(upperNumericNull)
+
+                        else series.between(left=lowerNumericNull,
+                                            right=upperNumericNull,
+                                            inclusive='neither')))
+
+        return series.sum(axis='index',
+                          skipna=True,
+                          level=None,
+                          # numeric_only=True,
+                          min_count=0)
 
     def nonNullProportion(self, *cols: str, **kwargs: Any):
         """Calculate non-NULL data proportion(s) of specified column(s).
