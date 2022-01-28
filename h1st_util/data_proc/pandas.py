@@ -4,6 +4,8 @@
 from numpy import array, hstack
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 
+from ..data_types.spark_sql import _STR_TYPE
+
 
 __all__ = 'PandasNullFiller', 'PandasMLPreprocessor'
 

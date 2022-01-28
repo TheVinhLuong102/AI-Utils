@@ -22,6 +22,7 @@ import botocore
 import boto3
 from numpy import allclose, cumsum, isfinite, nan, ndarray, vstack
 from pandas import DataFrame, Series, concat, isnull, notnull, read_parquet
+from pandas._libs.missing import NAType   # pylint: disable=no-name-in-module
 from tqdm import tqdm
 
 from pyarrow.dataset import dataset
@@ -34,7 +35,6 @@ from ..data_types.arrow import (
     DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)
 from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY_NUM_TYPES
-from ..data_types.spark_sql import _STR_TYPE
 from ..default_dict import DefaultDict
 from ..iter import to_iterable
 from ..namespace import Namespace
@@ -1691,7 +1691,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 elif isinstance(result, NUMPY_INT_TYPES):
                     result: int = int(result)
 
-                assert isinstance(result, PY_NUM_TYPES), \
+                assert isinstance(result, PY_NUM_TYPES + (NAType,)), \
                     TypeError(f'*** "{col}" SAMPLE '
                               f'{capitalizedStatName.upper()} = '
                               f'{result} ({type(result)}) ***')
@@ -1774,7 +1774,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 elif isinstance(result, NUMPY_INT_TYPES):
                     result: int = int(result)
 
-                assert isinstance(result, PY_NUM_TYPES), \
+                assert isinstance(result, PY_NUM_TYPES + (NAType,)), \
                     TypeError(f'*** "{col}" '
                               f'OUTLIER-RESISTANT {capitalizedStatName.upper()}'
                               f' = {result} ({type(result)}) ***')
@@ -1833,7 +1833,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 elif isinstance(result, NUMPY_INT_TYPES):
                     result: int = int(result)
 
-                assert isinstance(result, PY_NUM_TYPES), \
+                assert isinstance(result, PY_NUM_TYPES + (NAType,)), \
                     TypeError(f'*** "{col}" OUTLIER-RESISTANT MIN = '
                               f'{result} ({type(result)}) ***')
 
@@ -1890,7 +1890,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 elif isinstance(result, NUMPY_INT_TYPES):
                     result: int = int(result)
 
-                assert isinstance(result, PY_NUM_TYPES), \
+                assert isinstance(result, PY_NUM_TYPES + (NAType,)), \
                     TypeError(f'*** "{col}" OUTLIER-RESISTANT MAX = {result} '
                               f'({type(result)}) ***')
 
@@ -1962,11 +1962,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             if kwargs.get('profileNum', True) and is_num(colType):
                 outlierTailProportion: float = self._outlierTailProportion[col]
 
-                quantilesOfInterest = Series(index=(0,
-                                                    outlierTailProportion,
-                                                    .5,
-                                                    1 - outlierTailProportion,
-                                                    1))
+                quantilesOfInterest: Series = Series(index=(0,
+                                                            outlierTailProportion,
+                                                            .5,
+                                                            1 - outlierTailProportion,
+                                                            1))
                 quantileProbsToQuery: List[float] = []
 
                 sampleMin: Optional[Union[float, int]] = self._cache.sampleMin.get(col)
