@@ -977,14 +977,14 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         return reducer(results)
 
     @staticmethod
-    def _getCols(cols: Union[str, Collection[str]], /, pandasDF: DataFrame):
+    def _getCols(cols: Union[str, Tuple[str]], /, pandasDF: DataFrame):
         for missingCol in to_iterable(cols, iterable_type=set).difference(pandasDF.columns):
             pandasDF.loc[:, missingCol] = None
 
         return pandasDF[cols if isinstance(cols, str) else list(cols)]
 
     @lru_cache(maxsize=None, typed=False)
-    def __getitem__(self, cols: Union[str, Collection[str]]) -> S3ParquetDataFeeder:
+    def __getitem__(self, cols: Union[str, Tuple[str]]) -> S3ParquetDataFeeder:
         """Get column(s)."""
         return self.map(partial(self._getCols, cols), inheritNRows=True)
 
