@@ -107,17 +107,6 @@ class AbstractS3FileDataHandler(AbstractDataHandler):
                                               self.nPieces)
 
 
-class _S3ParquetDataFeeder__drop__pandasDFTransform:
-    def __init__(self, cols):
-        self.cols = list(cols)
-
-    def __call__(self, pandasDF):
-        return pandasDF.drop(columns=self.cols,
-                             level=None,
-                             inplace=False,
-                             errors='ignore')
-
-
 class _S3ParquetDataFeeder__fillna__pandasDFTransform:
     def __init__(self, nullFillDetails):
         self.nullFillDetails = nullFillDetails
@@ -1256,13 +1245,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def __getitem__(self, cols: Union[str, Collection[str]]) -> S3ParquetDataFeeder:
         """Get column(s)."""
         return self.map(partial(self._getCols, cols), inheritNRows=True)
-
-    def drop(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
-        """Drop column(s)."""
-        return self.map(
-            _S3ParquetDataFeeder__drop__pandasDFTransform(cols=cols),
-            inheritNRows=True,
-            **kwargs)
 
     def rename(self, **kwargs: Union[str, Any]) -> S3ParquetDataFeeder:
         """Rename data columns (``newColName`` = ``existingColName``)."""
