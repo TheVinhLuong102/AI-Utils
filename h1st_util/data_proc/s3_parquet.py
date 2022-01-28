@@ -3484,18 +3484,14 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         if (not weights) or weights == (1,):
             return self
 
-        nWeights = len(weights)
-        cumuWeights = cumsum(weights) / sum(weights)
+        nWeights: int = len(weights)
+        cumuWeights: ndarray = cumsum(weights) / sum(weights)
 
-        nPieces = self.nPieces
-
-        piecePaths = list(self.piecePaths)
+        piecePaths: List[str] = list(self.piecePaths)
         random.shuffle(piecePaths)
 
-        cumuIndices = \
-            [0] + \
-            [int(round(cumuWeights[i] * nPieces))
-                for i in range(nWeights)]
+        cumuIndices: List[int] = [0] + [int(round(cumuWeights[i] * self.nPieces))
+                                        for i in range(nWeights)]
 
         return [self._subset(*piecePaths[cumuIndices[i]:cumuIndices[i + 1]],
                              **kwargs)
