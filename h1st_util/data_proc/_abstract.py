@@ -480,11 +480,13 @@ class AbstractDataHandler:
     # fillna
     # prep
 
-    def fillna(self, *cols: str, **kwargs: Any):
+    def fillNull(self, *cols: str, **kwargs: Any) -> AbstractDataHandler:   # noqa: E501,N802
+        # pylint: disable=invalid-name
         """Fill NULL values for specified column(s)."""
         raise NotImplementedError
 
-    def prep(self, *cols: str, **kwargs: Any):
+    def prepForML(self, *cols: str, **kwargs: Any) -> AbstractDataHandler:   # noqa: E501,N802
+        # pylint: disable=invalid-name
         """Pre-process specified column(s) for ML model training/inference."""
         raise NotImplementedError
 

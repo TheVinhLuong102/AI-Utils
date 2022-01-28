@@ -2353,10 +2353,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # =========
     # DATA PREP
     # ---------
-    # fillna
-    # prep
+    # fillNull
+    # prepForML
 
-    def fillna(self, *cols: str, **kwargs: Any):
+    def fillNull(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
         # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Fill/interpolate ``NULL``/``NaN`` values.
 
@@ -2737,7 +2737,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 if returnDetails
                 else arrowADF)
 
-    def prep(self, *cols: str, **kwargs: Any):
+    def prepForML(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
         # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Pre-process selected column(s) in standard ways.
 
@@ -3131,7 +3131,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                          for col in numCols}
 
                 _, numNullFillDetails = \
-                    self.fillna(
+                    self.fillNull(
                         *numCols,
                         nulls=nulls,
                         method=fill.get('method', 'mean'),
