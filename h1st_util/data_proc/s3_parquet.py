@@ -1923,8 +1923,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         return self[col].reduce(cols=col).quantile(q=kwargs.get('q', .5),
                                                    interpolation='linear')
 
-    def sampleStat(self, *cols: str, **kwargs: Any) \
-            -> Union[Collection, Namespace]:
+    def sampleStat(self, *cols: str, **kwargs: Any) -> Union[float, int, Namespace]:
         """Approximate measurements of a certain stat on numerical columns.
 
         Args:
@@ -1937,55 +1936,48 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     - ``max``
         """
         if not cols:
-            cols = self.possibleNumContentCols
+            cols: Set[str] = self.possibleNumContentCols
 
         if len(cols) > 1:
             return Namespace(**{col: self.sampleStat(col, **kwargs)
                                 for col in cols})
 
-        col = cols[0]
+        col: str = cols[0]
 
         if self.typeIsNum(col):
-            stat = kwargs.pop('stat', 'mean').lower()
+            stat: str = kwargs.pop('stat', 'mean').lower()
             if stat == 'avg':
-                stat = 'mean'
-            capitalizedStatName = stat.capitalize()
-            s = f'sample{capitalizedStatName}'
-
-            if hasattr(self, s):
-                return getattr(self, s)(col, **kwargs)
+                stat: str = 'mean'
+            capitalizedStatName: str = stat.capitalize()
+            s: str = f'sample{capitalizedStatName}'
 
             if s not in self._cache:
-                setattr(self._cache, s, {})
-            _cache = getattr(self._cache, s)
+                setattr(self._cache, s, Namespace())
+            _cache: Namespace = getattr(self._cache, s)
 
             if col not in _cache:
-                verbose = True \
-                    if debug.ON \
-                    else kwargs.get('verbose')
+                verbose: Optional[bool] = True if debug.ON else kwargs.get('verbose')
 
                 if verbose:
-                    tic = time.time()
+                    tic: float = time.time()
 
-                result = \
-                    getattr(self.reprSample[col], stat)(
-                        axis='index',
-                        skipna=True,
-                        level=None)
+                result = getattr(self.reprSample[col], stat)(axis='index',
+                                                             skipna=True,
+                                                             level=None)
 
                 if isinstance(result, NUMPY_FLOAT_TYPES):
-                    result = float(result)
+                    result: float = float(result)
 
                 elif isinstance(result, NUMPY_INT_TYPES):
-                    result = int(result)
+                    result: int = int(result)
 
                 assert isinstance(result, PY_NUM_TYPES), \
-                    (f'*** "{col}" SAMPLE '
-                        f'{capitalizedStatName.upper()} = '
-                        f'{result} ({type(result)}) ***')
+                    TypeError(f'*** "{col}" SAMPLE '
+                              f'{capitalizedStatName.upper()} = '
+                              f'{result} ({type(result)}) ***')
 
                 if verbose:
-                    toc = time.time()
+                    toc: float = time.time()
                     self.stdOutLogger.info(
                         msg=(f'Sample {capitalizedStatName} for '
                              f'Column "{col}" = '
@@ -1995,9 +1987,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             return _cache[col]
 
-        raise ValueError(
-            f'{self}.sampleStat({col}, ...): '
-            f'Column "{col}" Is Not of Numeric Type')
+        raise ValueError(f'*** {self}.sampleStat({col}, ...): '
+                         f'COLUMN "{col}" NOT NUMERICAL ***')
 
     def outlierRstStat(self, *cols: str, **kwargs: Any):
         # pylint: disable=too-many-branches

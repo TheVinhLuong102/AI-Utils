@@ -386,7 +386,7 @@ class AbstractDataHandler:
     # suffNonNull
     # distinct
     # quantile
-    # sampleStat / sampleMedian
+    # sampleStat
     # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
     # profile
 
@@ -459,7 +459,7 @@ class AbstractDataHandler:
         raise NotImplementedError
 
     def sampleStat(self, *cols: str, **kwargs: Any) \
-            -> Union[float, int, Collection, Namespace]:   # noqa: N802
+            -> Union[float, int, Namespace]:   # noqa: N802
         # pylint: disable=invalid-name:
         """Return certain sample statistics for specified columns."""
         raise NotImplementedError
