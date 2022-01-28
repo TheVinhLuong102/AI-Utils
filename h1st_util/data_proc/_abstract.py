@@ -448,7 +448,8 @@ class AbstractDataHandler:
 
         return self._cache.suffNonNull[col]
 
-    def distinct(self, *cols: str, **kwargs: Any) -> Union[Collection, Namespace]:   # noqa: E501
+    def distinct(self, *cols: str, **kwargs: Any) -> Union[Dict[str, float],
+                                                           Series, Namespace]:
         """Return distinct values for specified column(s)."""
         raise NotImplementedError
 

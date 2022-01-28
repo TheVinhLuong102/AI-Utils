@@ -1873,7 +1873,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return self._cache.nonNullProportion[col]
 
-    def distinct(self, *cols, **kwargs):
+    def distinct(self, *cols: str, **kwargs: Any) -> Union[Dict[str, float],
+                                                           Series, Namespace]:
         """Return distinct values in specified column(s).
 
         Return:
@@ -1885,28 +1886,25 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             count (bool): whether to count the number of appearances
             of each distinct value of the specified ``col``
-
-            **kwargs:
         """
         if not cols:
-            cols = self.contentCols
+            cols: Set[str] = self.contentCols
 
-        asDict = kwargs.pop('asDict', False)
+        asDict: bool = kwargs.pop('asDict', False)
 
         if len(cols) > 1:
             return Namespace(**{col: self.distinct(col, **kwargs)
                                 for col in cols})
 
-        col = cols[0]
+        col: str = cols[0]
 
         if col not in self._cache.distinct:
             self._cache.distinct[col] = \
-                self.reprSample[col].value_counts(
-                    normalize=True,
-                    sort=True,
-                    ascending=False,
-                    bins=None,
-                    dropna=False)
+                self.reprSample[col].value_counts(normalize=True,
+                                                  sort=True,
+                                                  ascending=False,
+                                                  bins=None,
+                                                  dropna=False)
 
         return (Namespace(**{col: self._cache.distinct[col]})
                 if asDict
