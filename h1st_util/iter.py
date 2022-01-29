@@ -13,7 +13,7 @@ __all__ = ('to_iterable',)
 
 def to_iterable(obj: Any, /, *, iterable_type=tuple) -> collections.Iterable:
     # pylint: disable=invalid-name
-    """Return an iterable collection."""
+    """Return non-string iterable collection of specified type."""
     if isinstance(obj, iterable_type):
         return obj
 
