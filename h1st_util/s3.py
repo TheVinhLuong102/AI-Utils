@@ -14,7 +14,7 @@ from .iter import to_iterable
 from .log import STDOUT_HANDLER
 
 
-__all__ = 'cp', 'mv', 'rm', 'sync'
+__all__ = 'client', 'cp', 'mv', 'rm', 'sync'
 
 
 _LOGGER: Logger = getLogger(name=__name__)
@@ -49,7 +49,7 @@ def cp(from_path: PathType, to_path: PathType,
        *, is_dir: bool = True,
        quiet: bool = True, verbose: bool = True):
     # pylint: disable=invalid-name,too-many-arguments
-    """S3 Copy."""
+    """Copy a directory or a file between S3 paths or between S3 and local."""
     s3_command: str = (f'aws s3 cp {from_path} {to_path}' +
                        (' --recursive' if is_dir else '') +
                        (' --quiet' if quiet else ''))
@@ -70,7 +70,7 @@ def mv(from_path: PathType, to_path: PathType,
        *, is_dir: bool = True,
        quiet: bool = True, verbose: bool = True):
     # pylint: disable=invalid-name,too-many-arguments
-    """S3 Move."""
+    """Move a directory or a file between S3 paths or between S3 and local."""
     s3_command: str = (f'aws s3 mv {from_path} {to_path}' +
                        (' --recursive' if is_dir else '') +
                        (' --quiet' if quiet else ''))
@@ -91,7 +91,7 @@ def rm(path: PathType,
        *, is_dir: bool = True, globs: Optional[str] = None,
        quiet: bool = True, verbose: bool = True):
     # pylint: disable=invalid-name,too-many-arguments
-    """S3 Remove."""
+    """Remove a directory, a file, or glob-pattern-matched items from S3."""
     s3_command: str = (f'aws s3 rm {path}' +
                        ((' --recursive' +
                          ((' --exclude "*" ' +
@@ -125,7 +125,7 @@ def sync(from_dir_path: PathType, to_dir_path: PathType,
          *, delete: bool = True,
          quiet: bool = True, verbose=True):
     # pylint: disable=too-many-arguments
-    """S3 Sync."""
+    """Sync a directory between S3 paths or between S3 and local."""
     s3_command: str = (f'aws s3 sync {from_dir_path} {to_dir_path}' +
                        (' --delete' if delete else '') +
                        (' --quiet' if quiet else ''))
