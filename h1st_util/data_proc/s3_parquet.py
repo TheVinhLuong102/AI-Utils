@@ -37,7 +37,7 @@ from ..default_dict import DefaultDict
 from ..iter import to_iterable
 from ..namespace import Namespace
 
-from ._abstract import AbstractDataHandler, ReducedDataSetType
+from ._abstract import AbstractS3FileDataHandler, ReducedDataSetType
 from .pandas import PandasNullFiller, PandasMLPreprocessor
 
 
@@ -66,31 +66,6 @@ __all__ = ('S3ParquetDataFeeder',)
 
 
 # pylint: disable=consider-using-f-string
-
-
-class AbstractS3FileDataHandler(AbstractDataHandler):
-    # pylint: disable=abstract-method
-    """Abstract S3 File Data Handler."""
-
-    S3_CLIENT = s3.client()
-
-    _SCHEMA_MIN_N_PIECES: int = 10
-    _REPR_SAMPLE_MIN_N_PIECES: int = 100
-
-    @property
-    def reprSampleMinNPieces(self) -> int:
-        """Minimum number of pieces for reprensetative sample."""
-        return self._reprSampleMinNPieces
-
-    @reprSampleMinNPieces.setter
-    def reprSampleMinNPieces(self, n: int, /):
-        if (n <= self.nPieces) and (n != self._reprSampleMinNPieces):
-            self._reprSampleMinNPieces: int = n
-
-    @reprSampleMinNPieces.deleter
-    def reprSampleMinNPieces(self):
-        self._reprSampleMinNPieces: int = min(self._REPR_SAMPLE_MIN_N_PIECES,
-                                              self.nPieces)
 
 
 def randomSample(population: Collection[Any], sampleSize: int,

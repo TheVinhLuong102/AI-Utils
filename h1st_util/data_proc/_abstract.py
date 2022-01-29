@@ -12,12 +12,16 @@ from typing import Collection, Dict, Set, Tuple   # Py3.9+: built-ins
 from numpy import ndarray
 from pandas import DataFrame, Series
 
-from .. import debug
+from .. import debug, s3
 from ..log import STDOUT_HANDLER
 from ..namespace import Namespace
 
 
-__all__ = 'AbstractDataHandler', 'ReducedDataSetType'
+__all__ = (
+    'AbstractDataHandler',
+    'AbstractS3FileDataHandler',
+    'ReducedDataSetType',
+)
 
 
 ReducedDataSetType = Union[Any, Collection, ndarray, DataFrame, Series]
@@ -499,3 +503,28 @@ class AbstractDataHandler:
             -> Union[ReducedDataSetType, Any]:
         """Sample from data set."""
         raise NotImplementedError
+
+
+class AbstractS3FileDataHandler(AbstractDataHandler):
+    # pylint: disable=abstract-method
+    """Abstract S3 File Data Handler."""
+
+    S3_CLIENT = s3.client()
+
+    _SCHEMA_MIN_N_PIECES: int = 10
+    _REPR_SAMPLE_MIN_N_PIECES: int = 100
+
+    @property
+    def reprSampleMinNPieces(self) -> int:
+        """Minimum number of pieces for reprensetative sample."""
+        return self._reprSampleMinNPieces
+
+    @reprSampleMinNPieces.setter
+    def reprSampleMinNPieces(self, n: int, /):
+        if (n <= self.nPieces) and (n != self._reprSampleMinNPieces):
+            self._reprSampleMinNPieces: int = n
+
+    @reprSampleMinNPieces.deleter
+    def reprSampleMinNPieces(self):
+        self._reprSampleMinNPieces: int = min(self._REPR_SAMPLE_MIN_N_PIECES,
+                                              self.nPieces)
