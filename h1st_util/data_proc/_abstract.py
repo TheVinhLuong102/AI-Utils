@@ -1,4 +1,4 @@
-"""Abstract Data Handler."""
+"""Abstract Data Handlers."""
 
 
 from __future__ import annotations
