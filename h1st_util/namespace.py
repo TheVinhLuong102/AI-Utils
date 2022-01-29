@@ -283,30 +283,30 @@ class Namespace(ArgParseNamespace):
         return [k for k in self.__dict__ if k != '__metadata__']
 
     def values(self) -> List[Any]:
-        """Get values."""
+        """Get top-level values."""
         return [v for k, v in self.__dict__.items() if k != '__metadata__']
 
     def items(self) -> List[Tuple[str, Any]]:
-        """Get items."""
+        """Get top-level items."""
         return [i for i in self.__dict__.items() if i[0] != '__metadata__']
 
     def get(self, key: str, default: Optional[Any] = None):
-        """Get item by key string, with a default fall-back value."""
+        """Get top-level item by key string, with a default fall-back value."""
         return self.__dict__.get(key, default)
 
     def __len__(self):
-        """Count number of items."""
+        """Count number of top-level items."""
         return len(self.keys())
 
     def __call__(self, key: str, /):
-        """Get metadata of a certain key."""
+        """Get metadata of a certain (nested) key."""
         nested_attr_names: List[str] = key.split(sep='.', maxsplit=-1)
 
         return (self._get_nested_attr(nested_attr_names[:-1])
                     .__metadata__.get(nested_attr_names[-1], Namespace()))
 
     def to_dict(self):
-        """Convert to Dict."""
+        """Convert content to dict."""
         def _dict_no_inf(d: dict, /) -> dict:   # pylint: disable=invalid-name
             return {k: (_dict_no_inf(v)
                         if isinstance(v, dict)
