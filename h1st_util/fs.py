@@ -126,7 +126,7 @@ def exist(path: PathType, *, hdfs: bool = False, is_dir: bool = False) -> bool:
 
 def mkdir(dir_path: PathType,
           *, hdfs: bool = True, hadoop_home: PathType = '/opt/hadoop'):
-    """Make Directory."""
+    """Make directory."""
     cmd_prefix: str = command_prefix(hdfs=hdfs, hadoop_home=hadoop_home)
 
     command: str = (f'{cmd_prefix}mkdir -p "{dir_path}"' +
@@ -139,7 +139,7 @@ def mkdir(dir_path: PathType,
 def rm(path: PathType, *, hdfs: bool = True, is_dir: bool = True,
        hadoop_home: PathType = '/opt/hadoop'):
     # pylint: disable=invalid-name
-    """Remove."""
+    """Remove directory or file."""
     if not _ON_LINUX_CLUSTER_WITH_HDFS:
         hdfs: bool = False
 
@@ -171,7 +171,7 @@ def rm(path: PathType, *, hdfs: bool = True, is_dir: bool = True,
 
 def empty(dir_path: PathType,
           *, hdfs: bool = True, hadoop_home: PathType = '/opt/hadoop'):
-    """Empty Directory."""
+    """Empty directory."""
     if exist(path=dir_path, hdfs=hdfs, is_dir=True):
         rm(path=dir_path, hdfs=hdfs, is_dir=True, hadoop_home=hadoop_home)
 
@@ -182,7 +182,7 @@ def cp(from_path: PathType, to_path: PathType,
        *, hdfs: bool = True, is_dir: bool = True,
        hadoop_home: PathType = '/opt/hadoop'):
     # pylint: disable=invalid-name
-    """Copy."""
+    """Copy directory or file."""
     rm(path=to_path, hdfs=hdfs, is_dir=is_dir, hadoop_home=hadoop_home)
 
     to_path = Path(to_path).resolve(strict=True)
@@ -209,7 +209,7 @@ def mv(from_path: PathType, to_path: PathType,
        *, hdfs: bool = True, is_dir: bool = True,
        hadoop_home: PathType = '/opt/hadoop'):
     # pylint: disable=invalid-name
-    """Move."""
+    """Move directory or file."""
     rm(path=to_path, hdfs=hdfs, is_dir=is_dir, hadoop_home=hadoop_home)
 
     to_path = Path(to_path).resolve(strict=True)
@@ -233,7 +233,7 @@ def get(from_hdfs: PathType, to_local: PathType,
         hadoop_home: PathType = '/opt/hadoop',
         must_succeed: bool = False,
         _on_linux_cluster_with_hdfs: bool = _ON_LINUX_CLUSTER_WITH_HDFS):
-    """Get from HDFS to Local."""
+    """Get directory or file from HDFS to local."""
     if _on_linux_cluster_with_hdfs:
         if overwrite:
             rm(path=to_local, hdfs=False, is_dir=is_dir)
@@ -269,7 +269,7 @@ def get(from_hdfs: PathType, to_local: PathType,
 def put(from_local: PathType, to_hdfs: PathType,
         *, is_dir: bool = True, _mv: bool = True,
         hadoop_home: PathType = '/opt/hadoop'):
-    """Put from Local to HDFS."""
+    """Put directory or file from local to HDFS."""
     if _ON_LINUX_CLUSTER_WITH_HDFS:
         rm(path=to_hdfs, hdfs=True, is_dir=is_dir, hadoop_home=hadoop_home)
 
