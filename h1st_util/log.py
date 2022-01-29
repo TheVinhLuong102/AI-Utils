@@ -13,10 +13,10 @@ __all__ = 'STDOUT_HANDLER', 'enable_live_print'
 STDOUT_HANDLER: StreamHandler = StreamHandler(stream=sys.stdout)
 
 STDOUT_HANDLER.setFormatter(
-    fmt=Formatter(fmt=('%(asctime)s   '
-                       '%(levelname)s   '
-                       '%(name)s:   '
-                       '%(message)s\n'),
+    fmt=Formatter(fmt='%(asctime)s   '
+                      '%(levelname)s   '
+                      '%(name)s:   '
+                      '%(message)s\n',
                   datefmt='%Y-%m-%d %H:%M',
                   style='%',
                   validate=True))
