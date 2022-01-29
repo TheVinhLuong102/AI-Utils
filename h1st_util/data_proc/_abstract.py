@@ -17,11 +17,7 @@ from ..log import STDOUT_HANDLER
 from ..namespace import Namespace
 
 
-__all__ = (
-    'AbstractDataHandler',
-    'AbstractS3FileDataHandler',
-    'ReducedDataSetType',
-)
+__all__ = 'AbstractDataHandler', 'AbstractS3FileDataHandler', 'ReducedDataSetType'   # noqa: E501
 
 
 ReducedDataSetType = Union[Any, Collection, ndarray, DataFrame, Series]
@@ -515,16 +511,19 @@ class AbstractS3FileDataHandler(AbstractDataHandler):
     _REPR_SAMPLE_MIN_N_PIECES: int = 100
 
     @property
-    def reprSampleMinNPieces(self) -> int:
+    def reprSampleMinNPieces(self) -> int:   # noqa: N802
+        # pylint: disable=invalid-name
         """Minimum number of pieces for reprensetative sample."""
         return self._reprSampleMinNPieces
 
     @reprSampleMinNPieces.setter
-    def reprSampleMinNPieces(self, n: int, /):
+    def reprSampleMinNPieces(self, n: int, /):   # noqa: N802
+        # pylint: disable=invalid-name,no-member
         if (n <= self.nPieces) and (n != self._reprSampleMinNPieces):
             self._reprSampleMinNPieces: int = n
 
     @reprSampleMinNPieces.deleter
-    def reprSampleMinNPieces(self):
+    def reprSampleMinNPieces(self):   # noqa: N802
+        # pylint: disable=invalid-name,no-member
         self._reprSampleMinNPieces: int = min(self._REPR_SAMPLE_MIN_N_PIECES,
                                               self.nPieces)
