@@ -1,4 +1,4 @@
-"""Default Dict utilities."""
+"""Dict with Default Value."""
 
 
 from typing import Any, Callable
