@@ -17,7 +17,12 @@ from ..log import STDOUT_HANDLER
 from ..namespace import Namespace
 
 
-__all__ = 'AbstractDataHandler', 'AbstractS3FileDataHandler', 'ReducedDataSetType'   # noqa: E501
+__all__ = (
+    'AbstractDataHandler',
+    'AbstractFileDataHandler',
+    'AbstractS3FileDataHandler',
+    'ReducedDataSetType',
+)
 
 
 ReducedDataSetType = Union[Any, Collection, ndarray, DataFrame, Series]
@@ -41,9 +46,6 @@ class AbstractDataHandler:
     _DEFAULT_MAX_N_CATS: int = 12   # MoY is likely most numerous-category var
     _DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS: float = .9
 
-    # NULL-filling
-    _NULL_FILL_SQL_STATEMENT_FILE_NAME: str = 'nullFillSQLStatement.json'
-
     # prep column prefixes/suffixes
     _NULL_FILL_PREFIX: str = '__NullFill__'
 
@@ -56,10 +58,8 @@ class AbstractDataHandler:
 
     _PREP_SUFFIX: str = '__'
 
-    _CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'catOrigToPrepColMap.json'
-    _NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'numOrigToPrepColMap.json'
-
-    _PREP_SQL_STATEMENT_FILE_NAME: str = 'prepSQLStatement.json'
+    _CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'cat-orig-to-prep-col-map.json'
+    _NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'num-orig-to-prep-col-map.json'
 
     # temp dir
     _TMP_DIR_PATH: Path = (Path(tempfile.gettempdir()).resolve(strict=True) /
@@ -501,9 +501,9 @@ class AbstractDataHandler:
         raise NotImplementedError
 
 
-class AbstractS3FileDataHandler(AbstractDataHandler):
+class AbstractFileDataHandler(AbstractDataHandler):
     # pylint: disable=abstract-method
-    """Abstract S3 File Data Handler."""
+    """Abstract File Data Handler."""
 
     S3_CLIENT = s3.client()
 
@@ -527,3 +527,10 @@ class AbstractS3FileDataHandler(AbstractDataHandler):
         # pylint: disable=invalid-name,no-member
         self._reprSampleMinNPieces: int = min(self._REPR_SAMPLE_MIN_N_PIECES,
                                               self.nPieces)
+
+
+class AbstractS3FileDataHandler(AbstractFileDataHandler):
+    # pylint: disable=abstract-method
+    """Abstract S3 File Data Handler."""
+
+    S3_CLIENT = s3.client()
