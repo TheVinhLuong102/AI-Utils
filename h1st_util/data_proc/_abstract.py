@@ -400,8 +400,7 @@ class AbstractDataHandler:
         """Count non-NULL data proportion(s) in specified column(s)."""
         raise NotImplementedError
 
-    def suffNonNull(self, *cols: str, **kwargs: Any) \
-            -> Union[bool, Namespace]:   # noqa: E501,N802
+    def suffNonNull(self, *cols: str, **kwargs: Any) -> Union[bool, Namespace]:   # noqa: E501,N802
         # pylint: disable=invalid-name:
         """Check whether columns have sufficient non-NULL values.
 
@@ -495,8 +494,7 @@ class AbstractDataHandler:
     # --------
     # sample
 
-    def sample(self, *cols: str, **kwargs: Any) \
-            -> Union[ReducedDataSetType, Any]:
+    def sample(self, *cols: str, **kwargs: Any) -> Union[ReducedDataSetType, Any]:   # noqa: E501
         """Sample from data set."""
         raise NotImplementedError
 
