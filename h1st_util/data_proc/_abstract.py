@@ -387,7 +387,7 @@ class AbstractDataHandler:
     # distinct
     # quantile
     # sampleStat
-    # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
+    # outlierRstStat
     # profile
 
     def count(self, *cols: str, **kwargs: Any) -> Union[int, Namespace]:
@@ -504,8 +504,6 @@ class AbstractDataHandler:
 class AbstractFileDataHandler(AbstractDataHandler):
     # pylint: disable=abstract-method
     """Abstract File Data Handler."""
-
-    S3_CLIENT = s3.client()
 
     _SCHEMA_MIN_N_PIECES: int = 10
     _REPR_SAMPLE_MIN_N_PIECES: int = 100
