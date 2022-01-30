@@ -105,6 +105,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def __init__(self, path: str, *, reCache: bool = False,
                  awsRegion: Optional[str] = None,
                  _mappers: Optional[Union[callable, Sequence[callable]]] = None,
+                 _reduceMustInclCols: Optional[Union[str, Collection[str]]] = None,
                  verbose: bool = True, **kwargs: Any):
         # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Init S3 Parquet Data Feeder."""
@@ -281,6 +282,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                           else to_iterable(_mappers,
                                                            iterable_type=tuple))
 
+        self._reduceMustInclCols: Set[str] = (set()
+                                              if _reduceMustInclCols is None
+                                              else to_iterable(_reduceMustInclCols,
+                                                               iterable_type=set))
+
         # extract standard keyword arguments
         self._extractStdKwArgs(kwargs, resetToClassDefaults=True, inplace=True)
 
@@ -430,6 +436,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def copy(self, **kwargs: Any) -> S3ParquetDataFeeder:
         """Make a copy."""
         resetMappers: bool = kwargs.pop('resetMappers', False)
+        resetReduceMustInclCols: bool = kwargs.pop('resetReduceMustInclCols', False)
         inheritCache: bool = kwargs.pop('inheritCache', not resetMappers)
         inheritNRows: bool = kwargs.pop('inheritNRows', inheritCache)
 
@@ -440,6 +447,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 iCol=self._iCol, tCol=self._tCol,
 
                 _mappers=() if resetMappers else self._mappers,
+                _reduceMustInclCols=set() if resetReduceMustInclCols else self._reduceMustInclCols,
 
                 reprSampleMinNPieces=self._reprSampleMinNPieces,
                 reprSampleSize=self._reprSampleSize,
@@ -592,21 +600,26 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
     def map(self,
             mappers: Optional[Union[callable, Sequence[callable]]] = None, /,
+            reduceMustInclCols: Optional[Union[str, Collection[str]]] = None,
             **kwargs: Any) -> S3ParquetDataFeeder:
         """Apply mapper function(s) to pieces."""
         if mappers is None:
             mappers: Tuple[callable] = ()
+
+        if reduceMustInclCols is None:
+            reduceMustInclCols: Set[str] = set()
 
         inheritCache: bool = kwargs.pop('inheritCache', False)
         inheritNRows: bool = kwargs.pop('inheritNRows', inheritCache)
 
         s3ParquetDF: S3ParquetDataFeeder = \
             S3ParquetDataFeeder(
-                path=self.path,
-                awsRegion=self.awsRegion,
+                path=self.path, awsRegion=self.awsRegion,
 
                 iCol=self._iCol, tCol=self._tCol,
                 _mappers=self._mappers + to_iterable(mappers, iterable_type=tuple),
+                _reduceMustInclCols=(self._reduceMustInclCols |
+                                     to_iterable(reduceMustInclCols, iterable_type=set)),
 
                 reprSampleMinNPieces=self._reprSampleMinNPieces,
                 reprSampleSize=self._reprSampleSize,
@@ -695,9 +708,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             cols: Optional[Collection[str]] = kwargs.get('cols')
 
-            cols: Set[str] = (to_iterable(cols, iterable_type=set)
-                              if cols
-                              else pieceCache.srcColsInclPartitionKVs)
+            cols: Set[str] = (
+                to_iterable(cols, iterable_type=set)
+                if cols
+                else pieceCache.srcColsInclPartitionKVs
+            ) | self._reduceMustInclCols
 
             srcCols: Set[str] = cols & pieceCache.srcColsExclPartitionKVs
 
@@ -942,21 +957,24 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         return reducer(results)
 
     @staticmethod
-    def _getCols(cols: Union[str, Tuple[str]], /, pandasDF: DataFrame):
+    def _getCols(pandasDF: DataFrame, cols: Union[str, Tuple[str]]) -> DataFrame:
         for missingCol in to_iterable(cols, iterable_type=set).difference(pandasDF.columns):
             pandasDF.loc[:, missingCol] = None
 
         return pandasDF[cols if isinstance(cols, str) else list(cols)]
 
     @lru_cache(maxsize=None, typed=False)
-    def __getitem__(self, cols: Union[str, Tuple[str]]) -> S3ParquetDataFeeder:
+    def __getitem__(self, cols: Union[str, Tuple[str]], /) -> S3ParquetDataFeeder:
         """Get column(s)."""
-        return self.map(partial(self._getCols, cols), inheritNRows=True)
+        return self.map(partial(self._getCols, cols=cols),
+                        reduceMustInclCols=cols,
+                        inheritNRows=True)
 
     @lru_cache(maxsize=None, typed=False)
     def castType(self, **colsToTypes: Dict[str, Any]) -> S3ParquetDataFeeder:
         """Cast data type(s) of column(s)."""
         return self.map(lambda df: df.astype(colsToTypes, copy=False, errors='raise'),
+                        reduceMustInclCols=set(colsToTypes),
                         inheritNRows=True)
 
     @lru_cache(maxsize=None, typed=False)
@@ -979,6 +997,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                              inplace=False,
                                              level=None,
                                              errors='ignore'),
+                        reduceMustInclCols=set(renameDict),
                         inheritNRows=True,
                         **remainingKwargs)
 
@@ -1247,6 +1266,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
     @lru_cache(maxsize=None, typed=False)   # computationally expensive, so cached
     def _subset(self, *piecePaths: str, **kwargs: Any) -> S3ParquetDataFeeder:
+        # pylint: disable=too-many-locals
         if piecePaths:
             assert self.piecePaths.issuperset(piecePaths)
 
@@ -1300,6 +1320,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 iCol=self._iCol, tCol=self._tCol,
                 _mappers=self._mappers,
+                _reduceMustInclCols=self._reduceMustInclCols,
 
                 reprSampleMinNPieces=self._reprSampleMinNPieces,
                 reprSampleSize=self._reprSampleSize,
@@ -1507,7 +1528,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                           skipna=True,
                                                           level=None,
                                                           # numeric_only=True,
-                                                          min_count=0)))))
+                                                          min_count=0)))),
+                         reduceMustInclCols=col)
                     .reduce(cols=col, reducer=sum))
 
                 if verbose:
