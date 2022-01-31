@@ -31,7 +31,6 @@ from pandas.api.types import (   # noqa: F401
 
 __all__ = (
     'NUMPY_FLOAT_TYPES', 'NUMPY_INT_TYPES', 'NUMPY_NUM_TYPES',
-    'PY_NUM_TYPES',
     'FLOAT_TYPES', 'INT_TYPES', 'NUM_TYPES',
 )
 
@@ -60,10 +59,6 @@ NUMPY_INT_TYPES = (
 )
 
 NUMPY_NUM_TYPES = NUMPY_FLOAT_TYPES + NUMPY_INT_TYPES
-
-
-PY_NUM_TYPES = float, int
-
 
 FLOAT_TYPES = (float,) + NUMPY_FLOAT_TYPES
 INT_TYPES = (int,) + NUMPY_INT_TYPES

@@ -8,7 +8,6 @@ from functools import lru_cache, partial
 import json
 from logging import Logger
 import math
-import os
 from pathlib import Path
 import random
 import re
@@ -32,13 +31,15 @@ from .. import debug, fs, s3
 from ..data_types.arrow import (
     DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)
-from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES, PY_NUM_TYPES
+from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES
+from ..data_types.python import PY_NUM_TYPES
+from ..data_types.typing import PyNumType
 from ..default_dict import DefaultDict
 from ..iter import to_iterable
 from ..namespace import Namespace
 
 from ._abstract import AbstractS3FileDataHandler, ReducedDataSetType
-from .pandas import PandasNullFiller, PandasMLPreprocessor
+from .pandas import PandasNumericalNullFiller, PandasMLPreprocessor
 
 
 __all__ = ('S3ParquetDataFeeder',)
@@ -63,9 +64,6 @@ __all__ = ('S3ParquetDataFeeder',)
 
 # pylint: disable=too-many-lines
 # (this whole module)
-
-
-# pylint: disable=consider-using-f-string
 
 
 def randomSample(population: Collection[Any], sampleSize: int,
@@ -274,8 +272,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             _cache.cachedLocally = False
 
         self.__dict__.update(_cache)
-
-        self._cachedLocally: bool = False
 
         self._mappers: Tuple[callable] = (()
                                           if _mappers is None
