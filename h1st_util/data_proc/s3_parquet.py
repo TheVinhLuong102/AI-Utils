@@ -3143,27 +3143,3 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                  else (arrowADF, catOrigToPrepColMap, numOrigToPrepColMap))
                 if returnOrigToPrepColMaps
                 else arrowADF)
-
-    # ============
-    # MISC / OTHER
-    # ------------
-    # split
-
-    def split(self, *weights: float, **kwargs: Any) \
-            -> Union[S3ParquetDataFeeder, List[S3ParquetDataFeeder]]:
-        """Split into multiple S3 Parquet Data Feeders by weight."""
-        if (not weights) or weights == (1,):
-            return self
-
-        nWeights: int = len(weights)
-        cumuWeights: ndarray = cumsum(weights) / sum(weights)
-
-        piecePaths: List[str] = list(self.piecePaths)
-        random.shuffle(piecePaths)
-
-        cumuIndices: List[int] = [0] + [int(round(cumuWeights[i] * self.nPieces))
-                                        for i in range(nWeights)]
-
-        return [self._subset(*piecePaths[cumuIndices[i]:cumuIndices[i + 1]],
-                             **kwargs)
-                for i in range(nWeights)]
