@@ -1721,7 +1721,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 series: Series = self.reprSample[col]
 
-                outlierTails: str = kwargs.pop('outlierTails', 'both')
+                outlierTails: Optional[str] = kwargs.pop('outlierTails', 'both')
 
                 if outlierTails == 'both':
                     series: Series = series.loc[
@@ -2110,9 +2110,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             else:
                 nulls[col] = None, None
 
-        outlierTails: Union[str, Dict[str, str]] = kwargs.pop('outlierTails', {})
-        if isinstance(outlierTails, str):
-            outlierTails: Dict[str, str] = {col: outlierTails for col in cols}
+        outlierTails: Optional[Union[str, Dict[str, Optional[str]]]] = \
+            kwargs.pop('outlierTails', {})
+        if not isinstance(outlierTails, dict):
+            outlierTails: Dict[str, Optional[str]] = {col: outlierTails for col in cols}
 
         nullFillDetails: Namespace = Namespace()
 
@@ -2364,8 +2365,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         catPrepCol: str = catIdxCol
                         catIdxCols.add(catPrepCol)
 
-                    catOrigToPrepColMap[catCol] = (catPrepCol,
-                                                   {'cats': cats, 'n-cats': nCats})
+                    catOrigToPrepColMap[catCol] = catPrepCol, {'cats': cats, 'n-cats': nCats}
 
                 if verbose:
                     cat_prep_toc: float = time.time()
