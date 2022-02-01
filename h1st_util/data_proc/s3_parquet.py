@@ -2575,8 +2575,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             self.map(
                 PandasMLPreprocessor(
                     addCols=addCols,
-                    typeStrs={catCol: str(self.type(catCol))
-                              for catCol in (set(catOrigToPrepColMap) - {'__SCALE__'})},
+                    typeStrs=Namespace(**{catCol: str(self.type(catCol))
+                                          for catCol in (set(catOrigToPrepColMap)
+                                                         - {'__SCALE__'})}),
                     catOrigToPrepColMap=catOrigToPrepColMap,
                     numOrigToPrepColMap=numOrigToPrepColMap,
                     returnNumPyForCols=returnNumPyForCols if returnNumPy else None),
