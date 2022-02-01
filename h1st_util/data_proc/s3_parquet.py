@@ -2312,25 +2312,20 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             cols: Set[str] = catCols | numCols
 
             if verbose:
-                message = \
-                    'Prepping Columns {}...'.format(
-                        ', '.join(f'"{col}"' for col in cols))
-                self.stdOutLogger.info(message)
-                tic = time.time()
+                self.stdOutLogger.info(msg=(msg := ('Preprocessing Columns ' +
+                                                    ', '.join(f'"{col}"' for col in cols) +
+                                                    '...')))
+                tic: float = time.time()
 
-            prepSqlItems = {}
-
-            catOrigToPrepColMap = \
-                dict(__OHE__=False,
-                     __SCALE__=scaleCat)
+            catOrigToPrepColMap = {'__SCALE__': scaleCat}
 
             if catCols:
                 if verbose:
-                    msg = ('Transforming Categorical Features ' +
-                           ', '.join(f'"{catCol}"' for catCol in catCols) +
-                           '...')
-                    self.stdOutLogger.info(msg)
-                    _tic = time.time()
+                    self.stdOutLogger.info(
+                        msg=(cat_prep_msg := ('Transforming Categorical Features ' +
+                                              ', '.join(f'"{catCol}"' for catCol in catCols) +
+                                              '...')))
+                    cat_prep_tic: float = time.time()
 
                 catIdxCols = []
 
