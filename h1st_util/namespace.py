@@ -7,11 +7,12 @@ from argparse import Namespace as ArgParseNamespace
 import copy
 import datetime
 import json
+from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any, Optional, Union
 from typing import Collection, List, Tuple   # Py3.9+: use built-ins
 
-from .fs import PathType
+from .fs import PathType, mkdir
 
 
 __all__ = ('Namespace',)
@@ -361,6 +362,8 @@ class Namespace(ArgParseNamespace):
 
     def to_json(self, path: PathType):
         """Dump content to JSON file."""
+        mkdir(dir_path=Path(path).resolve(strict=True).parent, hdfs=False)
+
         with open(file=path,
                   mode='wt',
                   buffering=-1,
