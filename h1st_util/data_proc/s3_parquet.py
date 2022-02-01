@@ -32,7 +32,7 @@ from ..data_types.arrow import (DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
                                 is_binary, is_boolean, is_num, is_possible_cat, is_string)
 from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES
 from ..data_types.python import PY_NUM_TYPES
-from ..data_types.typing import PyNumType
+from ..data_types.typing import PyNumType, PyPossibleFeatureType
 from ..default_dict import DefaultDict
 from ..iter import to_iterable
 from ..namespace import Namespace
@@ -2327,32 +2327,24 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                               '...')))
                     cat_prep_tic: float = time.time()
 
-                catIdxCols = []
+                catIdxCols: Set[str] = set()
 
                 if scaleCat:
-                    catScaledIdxCols = []
+                    catScaledIdxCols: Set[str] = set()
 
                 for catCol in catCols:
-                    catIdxCol = (self._CAT_IDX_PREFIX +
-                                 catCol +
-                                 self._PREP_SUFFIX)
+                    catIdxCol: str = self._CAT_IDX_PREFIX + catCol
 
-                    catColType = self.type(catCol)
+                    catColType: DataType = self.type(catCol)
 
                     if is_boolean(catColType):
-                        cats = [0, 1]
-
-                        nCats = 2
-
-                        catIdxSqlItem = \
-                            f'CASE WHEN {catCol} IS NULL THEN 2 \
-                                   WHEN {catCol} THEN 1 \
-                                   ELSE 0 END'
+                        cats: Tuple[bool] = False, True
+                        nCats: int = 2
 
                     else:
-                        isStr = is_string(catColType)
+                        isStr: bool = is_string(catColType)
 
-                        cats = [
+                        cats: Tuple[PyPossibleFeatureType] = Tuple(
                             cat
                             for cat in
                             (profile[catCol].distinctProportions.index
@@ -2360,53 +2352,25 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                              else (profile[catCol].distinctProportions
                                    .index[:self._maxNCats[catCol]]))
                             if notnull(cat) and
-                            ((cat != '') if isStr else isfinite(cat))]
+                            ((cat != '') if isStr else isfinite(cat)))
 
-                        nCats = len(cats)
-
-                        catIdxSqlItem = \
-                            'CASE {} ELSE {} END'.format(
-                                ' '.join('WHEN {} THEN {}'.format(
-                                         "{} = '{}'".format(
-                                             catCol,
-                                             cat.replace("'", "''")
-                                             .replace('"', '""'))
-                                         if isStr
-                                         else f'ABS({catCol} - {cat}) < 1e-9',
-                                         i)
-                                         for i, cat in enumerate(cats)),
-                                nCats)
+                        nCats: int = len(cats)
 
                     if scaleCat:
-                        catPrepCol = (self._MIN_MAX_SCL_PREFIX +
-                                      self._CAT_IDX_PREFIX +
-                                      catCol +
-                                      self._PREP_SUFFIX)
-                        catScaledIdxCols.append(catPrepCol)
-
-                        prepSqlItems[catPrepCol] = \
-                            sqlMinMaxScl(
-                                sqlItem=catIdxSqlItem,
-                                origMin=0, origMax=nCats,
-                                targetMin=-1, targetMax=1)
+                        catPrepCol: str = self._MIN_MAX_SCL_PREFIX + catIdxCol
+                        catScaledIdxCols.add(catPrepCol)
 
                     else:
-                        catIdxCols.append(catIdxCol)
+                        catPrepCol: str = catIdxCol
+                        catIdxCols.add(catPrepCol)
 
-                        prepSqlItems[catIdxCol] = catIdxSqlItem
-
-                        catPrepCol = catIdxCol
-
-                    catOrigToPrepColMap[catCol] = \
-                        [catPrepCol,
-
-                         dict(Cats=cats,
-                              NCats=nCats)]
+                    catOrigToPrepColMap[catCol] = (catPrepCol,
+                                                   {'cats': cats, 'n-cats': nCats})
 
                 if verbose:
-                    _toc = time.time()
+                    cat_prep_toc: float = time.time()
                     self.stdOutLogger.info(
-                        msg + f' done!   <{_toc - tic:,.1f} s>')
+                        msg=f'{cat_prep_msg} done!   <{cat_prep_toc - cat_prep_tic:,.1f} s>')
 
             numOrigToPrepColMap = \
                 dict(__SCALER__=scaler)
