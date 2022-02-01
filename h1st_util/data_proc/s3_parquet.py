@@ -2504,92 +2504,53 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         if debug.ON:
             verbose: bool = True
 
-        if loadPath:   # pylint: disable=too-many-nested-blocks
+        if loadPath:
             if verbose:
-                message = ('Loading & Applying Data Transformations '
-                           f'from Path "{loadPath}"...')
-                self.stdOutLogger.info(message)
-                tic = time.time()
+                self.stdOutLogger.info(msg=(msg := ('Loading & Applying Data Transformations '
+                                                    f'from "{loadPath}"...')))
+                tic: float = time.time()
 
             if loadPath in self._PREP_CACHE:
                 prepCache = self._PREP_CACHE[loadPath]
 
                 catOrigToPrepColMap = prepCache.catOrigToPrepColMap
                 numOrigToPrepColMap = prepCache.numOrigToPrepColMap
-                defaultVecCols = prepCache.defaultVecCols
-
-                sqlStatement = prepCache.sqlStatement
-                # sqlTransformer = prepCache.sqlTransformer
-
-                # catOHETransformer = prepCache.catOHETransformer
-                # pipelineModelWithoutVectors = \
-                #     prepCache.pipelineModelWithoutVectors
 
             else:
-                if fs._ON_LINUX_CLUSTER_WITH_HDFS:
-                    localDirExists = os.path.isdir(loadPath)
+                with open(file=Path(loadPath) / self._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME,
+                          mode='rt',
+                          buffering=-1,
+                          encoding='utf-8',
+                          errors='strict',
+                          newline=None,
+                          closefd=True,
+                          opener=None) as f:
+                    catOrigToPrepColMap: Dict[str, Any] = json.load(fp=f,
+                                                                    cls=None,
+                                                                    object_hook=None,
+                                                                    parse_float=None,
+                                                                    parse_int=None,
+                                                                    parse_constant=None,
+                                                                    object_pairs_hook=None)
 
-                    hdfsDirExists = ...   # TODO   # pylint: disable=fixme
+                with open(file=Path(loadPath) / self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME,
+                          mode='rt',
+                          buffering=-1,
+                          encoding='utf-8',
+                          errors='strict',
+                          newline=None,
+                          closefd=True,
+                          opener=None) as f:
+                    numOrigToPrepColMap: Dict[str, Any] = json.load(fp=f,
+                                                                    cls=None,
+                                                                    object_hook=None,
+                                                                    parse_float=None,
+                                                                    parse_int=None,
+                                                                    parse_constant=None,
+                                                                    object_pairs_hook=None)
 
-                    if localDirExists and (not hdfsDirExists):
-                        fs.put(
-                            from_local=loadPath,
-                            to_hdfs=loadPath,
-                            is_dir=True,
-                            _mv=False)
-
-                    elif hdfsDirExists and (not localDirExists):
-                        fs.get(
-                            from_hdfs=loadPath,
-                            to_local=loadPath,
-                            is_dir=True,
-                            overwrite=True, _mv=False,
-                            must_succeed=True,
-                            _on_linux_cluster_with_hdfs=True)
-
-                with open(
-                        os.path.join(
-                            loadPath,
-                            self._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME),
-                        mode='r',
-                        encoding='utf-8') as f:
-                    catOrigToPrepColMap = json.load(f)
-
-                with open(
-                        os.path.join(
-                            loadPath,
-                            self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME),
-                        mode='r',
-                        encoding='utf-8') as f:
-                    numOrigToPrepColMap = json.load(f)
-
-                defaultVecCols = \
-                    [catOrigToPrepColMap[catCol][0]
-                     for catCol in sorted(set(catOrigToPrepColMap)
-                                          .difference(('__OHE__',
-                                                       '__SCALE__')))] + \
-                    [numOrigToPrepColMap[numCol][0]
-                     for numCol in sorted(set(numOrigToPrepColMap)
-                                          .difference(('__TS_WINDOW_CLAUSE__',
-                                                       '__SCALER__')))]
-
-                with open(os.path.join(loadPath,
-                                       self._PREP_SQL_STATEMENT_FILE_NAME),
-                          mode='r',
-                          encoding='utf-8') as f:
-                    sqlStatement = json.load(f)
-
-                self._PREP_CACHE[loadPath] = \
-                    Namespace(
-                        catOrigToPrepColMap=catOrigToPrepColMap,
-                        numOrigToPrepColMap=numOrigToPrepColMap,
-                        defaultVecCols=defaultVecCols,
-
-                        sqlStatement=sqlStatement,
-                        sqlTransformer=None,
-
-                        catOHETransformer=None,
-                        pipelineModelWithoutVectors=None)
+                self._PREP_CACHE[loadPath] = Namespace(catOrigToPrepColMap=catOrigToPrepColMap,
+                                                       numOrigToPrepColMap=numOrigToPrepColMap)
 
         else:
             if cols:
