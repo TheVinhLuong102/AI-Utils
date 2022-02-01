@@ -362,7 +362,7 @@ class Namespace(ArgParseNamespace):
 
     def to_json(self, path: PathType):
         """Dump content to JSON file."""
-        mkdir(dir_path=Path(path).resolve(strict=True).parent, hdfs=False)
+        mkdir(dir_path=Path(path).resolve(strict=False).parent, hdfs=False)
 
         with open(file=path,
                   mode='wt',
@@ -372,7 +372,7 @@ class Namespace(ArgParseNamespace):
                   newline=None,
                   closefd=True,
                   opener=None) as json_file:
-            json.dump(obj=self,
+            json.dump(obj=self.__dict__,
                       fp=json_file,
                       skipkeys=False,
                       ensure_ascii=False,
