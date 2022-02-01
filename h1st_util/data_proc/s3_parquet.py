@@ -30,7 +30,7 @@ from .. import debug, s3
 from ..data_types.arrow import (DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
                                 is_binary, is_boolean, is_num, is_possible_cat, is_string)
 from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES
-from ..data_types.python import PY_NUM_TYPES, PyNumType, PyPossibleFeatureType
+from ..data_types.python import PY_NUM_TYPES, PyNumType, PyPossibleFeatureType, PY_LIST_OR_TUPLE
 from ..default_dict import DefaultDict
 from ..fs import PathType, mkdir
 from ..iter import to_iterable
@@ -1323,7 +1323,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         _samplePiecePath: str = next(iter(self.piecePaths))
 
         for filterCriteriaTuple in filterCriteriaTuples:
-            assert isinstance(filterCriteriaTuple, (list, tuple))
+            assert isinstance(filterCriteriaTuple, PY_LIST_OR_TUPLE)
             filterCriteriaTupleLen = len(filterCriteriaTuple)
 
             col: str = filterCriteriaTuple[0]
@@ -2101,7 +2101,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             if col in nulls:
                 colNulls = nulls[col]
 
-                assert (isinstance(colNulls, (list, tuple)) and
+                assert (isinstance(colNulls, PY_LIST_OR_TUPLE) and
                         (len(colNulls) == 2) and
                         ((colNulls[0] is None) or isinstance(colNulls[0], PY_NUM_TYPES)) and
                         ((colNulls[1] is None) or isinstance(colNulls[1], PY_NUM_TYPES)))
@@ -2249,7 +2249,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         if debug.ON:
             verbose: bool = True
 
-        if loadPath:
+        if loadPath:   # pylint: disable=too-many-nested-blocks
             if verbose:
                 self.stdOutLogger.info(msg=(msg := ('Loading & Applying Data Transformations '
                                                     f'from "{loadPath}"...')))
@@ -2514,43 +2514,43 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                    numOrigToPrepColMap=numOrigToPrepColMap)
 
         if returnNumPy:
-            returnNumPyForCols = \
+            returnNumPyForCols: Tuple[str] = Tuple(
                 sorted(catPrepColDetails[0]
-                       for catCol, catPrepColDetails in
-                       catOrigToPrepColMap.items()
-                       if (catCol not in ('__OHE__', '__SCALE__')) and
-                       isinstance(catPrepColDetails, list) and
-                       (len(catPrepColDetails) == 2)) + \
+                       for catCol, catPrepColDetails in catOrigToPrepColMap.items()
+                       if (catCol != '__SCALE__') and
+                       isinstance(catPrepColDetails, PY_LIST_OR_TUPLE) and
+                       (len(catPrepColDetails) == 2))
+                +
                 sorted(numPrepColDetails[0]
-                       for numCol, numPrepColDetails in
-                       numOrigToPrepColMap.items()
-                       if (numCol not in ('__TS_WINDOW_CLAUSE__',
-                                          '__SCALER__')) and
-                       isinstance(numPrepColDetails, list) and
-                       (len(numPrepColDetails) == 2))
+                       for numCol, numPrepColDetails in numOrigToPrepColMap.items()
+                       if (numCol != '__SCALER__') and
+                       isinstance(numPrepColDetails, PY_LIST_OR_TUPLE) and
+                       (len(numPrepColDetails) == 2)))
 
         else:
-            colsToKeep = \
-                self.columns + \
-                (([catPrepColDetails[0]
-                   for catCol, catPrepColDetails in catOrigToPrepColMap.items()
-                   if (catCol not in ('__OHE__', '__SCALE__')) and
-                   isinstance(catPrepColDetails, list) and
-                   (len(catPrepColDetails) == 2)] +
-                  [numPrepColDetails[0]
-                   for numCol, numPrepColDetails in numOrigToPrepColMap.items()
-                   if (numCol not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and
-                   isinstance(numPrepColDetails, list) and
-                   (len(numPrepColDetails) == 2)])
-                 if loadPath
-                 else (((catScaledIdxCols
-                         if scaleCat
-                         else catIdxCols)
-                        if catCols
-                        else []) +
-                       (numScaledCols
-                        if numCols
-                        else [])))
+            colsToKeep: Set[str] = self.columns | (
+
+                ({catPrepColDetails[0]
+                  for catCol, catPrepColDetails in catOrigToPrepColMap.items()
+                  if (catCol != '__SCALE__') and
+                  isinstance(catPrepColDetails, PY_LIST_OR_TUPLE) and
+                  (len(catPrepColDetails) == 2)}
+                 |
+                 {numPrepColDetails[0]
+                  for numCol, numPrepColDetails in numOrigToPrepColMap.items()
+                  if (numCol not in ('__SCALER__', )) and
+                  isinstance(numPrepColDetails, PY_LIST_OR_TUPLE) and
+                  (len(numPrepColDetails) == 2)})
+
+                if loadPath
+
+                else (((catScaledIdxCols if scaleCat else catIdxCols)
+                       if catCols
+                       else set())
+                      |
+                      (numScaledCols
+                       if numCols
+                       else set())))
 
         missingCatCols = \
             set(catOrigToPrepColMap) \
