@@ -1,6 +1,8 @@
 """NumPy & Pandas data types."""
 
 
+from typing import Tuple   # Py3.9+: use built-ins
+
 import numpy
 
 # pylint: disable=unused-import
@@ -35,7 +37,7 @@ __all__ = (
 )
 
 
-NUMPY_FLOAT_TYPES = (
+NUMPY_FLOAT_TYPES: Tuple[type] = (
     numpy.float_,
     numpy.float16,
     numpy.float32,
@@ -43,7 +45,7 @@ NUMPY_FLOAT_TYPES = (
     numpy.float128,
 )
 
-NUMPY_INT_TYPES = (
+NUMPY_INT_TYPES: Tuple[type] = (
     numpy.int_,
     numpy.int8,
     numpy.int16,
@@ -58,8 +60,8 @@ NUMPY_INT_TYPES = (
     numpy.ulonglong,
 )
 
-NUMPY_NUM_TYPES = NUMPY_FLOAT_TYPES + NUMPY_INT_TYPES
+NUMPY_NUM_TYPES: Tuple[type] = NUMPY_FLOAT_TYPES + NUMPY_INT_TYPES
 
-FLOAT_TYPES = (float,) + NUMPY_FLOAT_TYPES
-INT_TYPES = (int,) + NUMPY_INT_TYPES
-NUM_TYPES = FLOAT_TYPES + INT_TYPES
+FLOAT_TYPES: Tuple[type] = (float,) + NUMPY_FLOAT_TYPES
+INT_TYPES: Tuple[type] = (int,) + NUMPY_INT_TYPES
+NUM_TYPES: Tuple[type] = FLOAT_TYPES + INT_TYPES

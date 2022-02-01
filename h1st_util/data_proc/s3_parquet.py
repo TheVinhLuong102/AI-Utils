@@ -30,8 +30,7 @@ from .. import debug, s3
 from ..data_types.arrow import (DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
                                 is_binary, is_boolean, is_num, is_possible_cat, is_string)
 from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES
-from ..data_types.python import PY_NUM_TYPES
-from ..data_types.typing import PyNumType, PyPossibleFeatureType
+from ..data_types.python import PY_NUM_TYPES, PyNumType, PyPossibleFeatureType
 from ..default_dict import DefaultDict
 from ..fs import PathType, mkdir
 from ..iter import to_iterable

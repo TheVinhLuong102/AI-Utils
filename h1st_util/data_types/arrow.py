@@ -86,28 +86,27 @@ __all__ = (
 )
 
 
-_ARROW_NULL_TYPE = null()
+_ARROW_NULL_TYPE: DataType = null()
 
 
-_ARROW_BOOL_TYPE = bool_()
-__arrow_bool_type_str = str(_ARROW_BOOL_TYPE)   # pylint: disable=invalid-name
-assert __arrow_bool_type_str == bool.__name__
+_ARROW_BOOL_TYPE: DataType = bool_()
+assert (__arrow_bool_type_str := str(_ARROW_BOOL_TYPE)) == bool.__name__
 assert _BOOL_TYPE.startswith(__arrow_bool_type_str)
 
 
-_ARROW_STR_TYPE = string()
+_ARROW_STR_TYPE: DataType = string()
 assert str(_ARROW_STR_TYPE) == _STR_TYPE
 
 
-_ARROW_BINARY_TYPE = binary(-1)
+_ARROW_BINARY_TYPE: DataType = binary(-1)
 assert str(_ARROW_BINARY_TYPE) == _BINARY_TYPE
 
 
-_ARROW_INT_TYPE = int64()
-_ARROW_DOUBLE_TYPE = float64()
+_ARROW_INT_TYPE: DataType = int64()
+_ARROW_DOUBLE_TYPE: DataType = float64()
 
-_ARROW_DATE_TYPE = date32()
-_ARROW_TIMESTAMP_TYPE = timestamp(unit='ns', tz=None)
+_ARROW_DATE_TYPE: DataType = date32()
+_ARROW_TIMESTAMP_TYPE: DataType = timestamp(unit='ns', tz=None)
 
 
 def is_float(arrow_type: DataType, /) -> bool:
