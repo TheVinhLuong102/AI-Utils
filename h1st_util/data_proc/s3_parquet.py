@@ -2165,7 +2165,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         return (s3ParquetDF, nullFillDetails) if returnDetails else s3ParquetDF
 
     def preprocessForML(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
-        # pylint: disable=too-many-branches,too-many-locals
+        # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Preprocess selected column(s) for ML training/inferencing.
 
         Return:
@@ -2552,21 +2552,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                        if numCols
                        else set())))
 
-        missingCatCols = \
-            set(catOrigToPrepColMap) \
-            .difference(
-                self.columns +
-                ['__OHE__', '__SCALE__'])
+        missingCatCols: Set[str] = set(catOrigToPrepColMap) - self.columns - {'__SCALE__'}
+        missingNumCols: Set[str] = set(numOrigToPrepColMap) - self.columns - {'__SCALER__'}
+        missingCols: Set[str] = missingCatCols | missingNumCols
 
-        missingNumCols = \
-            set(numOrigToPrepColMap) \
-            .difference(
-                self.columns +
-                ['__TS_WINDOW_CLAUSE__', '__SCALER__'])
-
-        missingCols = missingCatCols | missingNumCols
-
-        addCols = {}
+        addCols: Namespace = Namespace()
 
         if missingCols:
             if debug.ON:
@@ -2574,38 +2564,28 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     msg=f'*** FILLING MISSING COLS {missingCols} ***')
 
             for missingCol in missingCols:
-                addCols[missingCol] = \
-                    nan \
-                    if missingCol in missingCatCols \
-                    else numOrigToPrepColMap[missingCol][1]['NullFillValue']
+                addCols[missingCol] = (nan
+                                       if missingCol in missingCatCols
+                                       else numOrigToPrepColMap[missingCol][1]['null-fill-value'])
 
                 if not returnNumPy:
-                    colsToKeep.append(missingCol)
+                    colsToKeep.add(missingCol)
 
-        arrowADF = \
+        s3ParquetDF: S3ParquetDataFeeder = \
             self.map(
                 PandasMLPreprocessor(
                     addCols=addCols,
-                    typeStrs={
-                        catCol: str(self.type(catCol))
-                        for catCol in (set(catOrigToPrepColMap)
-                                       .difference(('__OHE__', '__SCALE__')))},
+                    typeStrs={catCol: str(self.type(catCol))
+                              for catCol in (set(catOrigToPrepColMap) - {'__SCALE__'})},
                     catOrigToPrepColMap=catOrigToPrepColMap,
                     numOrigToPrepColMap=numOrigToPrepColMap,
-                    returnNumPyForCols=(returnNumPyForCols
-                                        if returnNumPy
-                                        else None)),
-                inheritNRows=True,
-                **kwargs)
+                    returnNumPyForCols=returnNumPyForCols if returnNumPy else None),
+                inheritNRows=True, **kwargs)
 
         if not returnNumPy:
-            arrowADF = arrowADF[colsToKeep]
-
-            arrowADF._inheritCache(
-                self,
-                *(() if loadPath else colsToKeep))
-
-            arrowADF._cache.reprSample = self._cache.reprSample
+            s3ParquetDF: S3ParquetDataFeeder = s3ParquetDF[colsToKeep]
+            s3ParquetDF._inheritCache(self, *(() if loadPath else colsToKeep))
+            s3ParquetDF._cache.reprSample = self._cache.reprSample
 
         if verbose:
             toc: float = time.time()
