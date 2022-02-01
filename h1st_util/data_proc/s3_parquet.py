@@ -2124,7 +2124,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             tic: float = time.time()
 
         for col in cols:
-            colOutlierTails: str = outlierTails.get(col, 'both')
+            colOutlierTails: Optional[str] = outlierTails.get(col, 'both')
 
             methodForCol: Optional[str] = (method[col]
                                            if isinstance(method, dict) and (col in method)
@@ -2230,10 +2230,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                  if forceNumExcl is None
                                  else to_iterable(forceNumExcl, iterable_type=set)))
 
-        fill: Dict[str, Optional[Union[str, PyNumType]]] = kwargs.pop('fill',
-                                                                      dict(method='mean',
-                                                                           value=None,
-                                                                           outlierTails='both'))
+        fill: Dict[str, Optional[Union[str, Optional[PyNumType]]]] = \
+            kwargs.pop('fill', dict(method='mean', value=None, outlierTails='both'))
 
         assert fill, ValueError(f'*** {type(self)}.preprocessForML(...) MUST INVOLVE NULL-FILLING '
                                 f'FOR NUMERICAL COLS ***')
