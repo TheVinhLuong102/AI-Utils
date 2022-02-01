@@ -54,8 +54,6 @@ __all__ = ('S3ParquetDataFeeder',)
 # pylint: disable=invalid-name
 # e.g., camelCase names
 
-# pylint: disable=logging-fstring-interpolation,logging-not-lazy
-
 # pylint: disable=no-member
 # e.g., `._cache`
 
@@ -467,7 +465,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # STRING REPR/STR
     # ---------------
     # __repr__
-    # __short_repr__
+    # __shortRepr__
 
     def __repr__(self) -> str:
         """Return string repr."""
@@ -1104,7 +1102,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                              verbose=True)
 
         # pylint: disable=attribute-defined-outside-init
-        self._reprSampleSize = len(self._cache.reprSample)
+        self._reprSampleSize: int = len(self._cache.reprSample)
 
         self._cache.nonNullProportion = {}
         self._cache.suffNonNull = {}
@@ -2052,6 +2050,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # preprocessForML
 
     def fillNumNull(self, *cols: str, **kwargs: Dict[str, Any]) -> S3ParquetDataFeeder:
+        # pylint: disable=too-many-branches,too-many-locals
         """Fill ``NULL``/``NaN`` values for numerical columns.
 
         Return:
@@ -2172,6 +2171,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         return (s3ParquetDF, nullFillDetails) if returnDetails else s3ParquetDF
 
     def preprocessForML(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
+        # pylint: disable=too-many-branches,too-many-locals
         """Preprocess selected column(s) for ML training/inferencing.
 
         Return:
@@ -2235,10 +2235,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                  if forceNumExcl is None
                                  else to_iterable(forceNumExcl, iterable_type=set)))
 
-        fill: Dict[str, Optional[PyNumType]] = kwargs.pop('fill',
-                                                          dict(method='mean',
-                                                               value=None,
-                                                               outlierTails='both'))
+        fill: Dict[str, Optional[Union[str, PyNumType]]] = kwargs.pop('fill',
+                                                                      dict(method='mean',
+                                                                           value=None,
+                                                                           outlierTails='both'))
 
         assert fill, ValueError(f'*** {type(self)}.preprocessForML(...) MUST INVOLVE NULL-FILLING '
                                 f'FOR NUMERICAL COLS ***')
