@@ -268,7 +268,7 @@ class AbstractDataHandler:
     # __len__ / nRows
     # nCols
     # shape
-    # types / type / typeIsNum / typeIsComplex
+    # types / type / typeIsNum
 
     def __len__(self) -> int:
         """Return number of rows."""
@@ -308,11 +308,6 @@ class AbstractDataHandler:
     def typeIsNum(self, col: str) -> bool:   # noqa: N802
         # pylint: disable=invalid-name
         """Check whether specified column's data type is numerical."""
-        raise NotImplementedError
-
-    def typeIsComplex(self, col: str) -> bool:   # noqa: N802
-        # pylint: disable=invalid-name
-        """Check whether specified column's data type is complex."""
         raise NotImplementedError
 
     # =============

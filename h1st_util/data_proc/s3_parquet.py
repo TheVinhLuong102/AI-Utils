@@ -1115,7 +1115,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # __len__
     # columns
     # types
-    # type / typeIsNum / typeIsComplex
+    # type / typeIsNum
 
     def _readMetadataAndSchema(self, piecePath: str) -> Namespace:
         pieceLocalPath: Path = self.pieceLocalPath(piecePath=piecePath)
@@ -1208,11 +1208,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def typeIsNum(self, col: str) -> bool:
         """Check whether specified column's data type is numerical."""
         return is_num(self.type(col))
-
-    @lru_cache(maxsize=None, typed=False)
-    def typeIsComplex(self, col: str) -> bool:
-        """Check whether specified column's data type is complex."""
-        return is_complex(self.type(col))
 
     # =============
     # COLUMN GROUPS
