@@ -1,55 +1,71 @@
 """Pandas data processors."""
 
 
+from dataclasses import dataclass
+from typing import List   # Py3.9+: use built-ins
+
 from numpy import array, hstack
+from pandas import DataFrame, Series
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 
 from ..data_types.spark_sql import _STR_TYPE
+from ..iter import to_iterable
+from ..namespace import Namespace
+
+from ._abstract import AbstractDataHandler
 
 
-__all__ = 'PandasNullFiller', 'PandasMLPreprocessor'
+__all__ = 'PandasNumericalNullFiller', 'PandasMLPreprocessor'
 
 
-class PandasNullFiller:
-    def __init__(self, nullFillDetails):
-        self.nullFillDetails = nullFillDetails
+# flake8: noqa
+# (too many camelCase names)
 
-    def __call__(self, pandasDF):
-        for col, nullFillColNameNDetails in self.nullFillDetails.items():
-            if (col not in ('__TS_WINDOW_CLAUSE__', '__SCALER__')) and \
-                    isinstance(nullFillColNameNDetails, list) and \
-                    (len(nullFillColNameNDetails) == 2):
-                _, nullFill = nullFillColNameNDetails
+# pylint: disable=invalid-name
+# e.g., camelCase names
 
-                lowerNull, upperNull = nullFill['Nulls']
 
-                series = pandasDF[col]
+@dataclass(init=True,
+           repr=True,
+           eq=True,
+           order=False,
+           unsafe_hash=False,
+           frozen=True)
+class PandasNumericalNullFiller:
+    """Numerical NULL-Filling processor for Pandas Data Frames."""
 
-                chks = series.notnull()
+    nullFillDetails: Namespace
+
+    def __call__(self, pandasDF: DataFrame) -> DataFrame:
+        """NULL-fill numerical columns of a Pandas Data Frame."""
+        for col, nullFillColNameAndDetails in self.nullFillDetails.items():
+            if (col != '__SCALER__') and \
+                    isinstance(nullFillColNameAndDetails, (list, tuple)) and \
+                    (len(nullFillColNameAndDetails) == 2):
+                _, nullFill = nullFillColNameAndDetails
+
+                lowerNull, upperNull = nullFill.nulls
+
+                series: Series = pandasDF[col]
+
+                checks: Series = series.notnull()
 
                 if lowerNull is not None:
-                    chks &= (series > lowerNull)
+                    checks &= (series > lowerNull)
 
                 if upperNull is not None:
-                    chks &= (series < upperNull)
+                    checks &= (series < upperNull)
 
-                pandasDF.loc[
-                    :,
-                    (AbstractDataHandler._NULL_FILL_PREFIX +
-                     col +
-                     AbstractDataHandler._PREP_SUFFIX)] = \
-                    series.where(
-                        cond=chks,
-                        other=nullFill['NullFillValue'],
-                        inplace=False,
-                        axis=None,
-                        level=None,
-                        errors='raise',
-                        try_cast=False)
-                # ^^^ SettingWithCopyWarning (?)
-                # A value is trying to be set
-                # on a copy of a slice from a DataFrame.
-                # Try using .loc[row_indexer,col_indexer] = value instead
+                pandasDF.loc[:, AbstractDataHandler._NULL_FILL_PREFIX + col] = \
+                    series.where(cond=checks,
+                                 other=(getattr(series.loc[checks], nullFillMethod)
+                                        (axis='index', skipna=True, level=None)
+                                        if (nullFillMethod := nullFill['null-fill-method'])
+                                        else nullFill['null-fill-value']),
+                                 inplace=False,
+                                 axis=None,
+                                 level=None,
+                                 errors='raise')
 
         return pandasDF
 
