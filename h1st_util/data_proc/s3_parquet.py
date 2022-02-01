@@ -2584,7 +2584,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 inheritNRows=True, **kwargs)
 
         if not returnNumPy:
-            s3ParquetDF: S3ParquetDataFeeder = s3ParquetDF[colsToKeep]
+            s3ParquetDF: S3ParquetDataFeeder = s3ParquetDF[tuple(colsToKeep)]
             s3ParquetDF._inheritCache(self, *(() if loadPath else colsToKeep))
             s3ParquetDF._cache.reprSample = self._cache.reprSample
 
