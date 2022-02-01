@@ -11,6 +11,8 @@ from types import ModuleType, SimpleNamespace
 from typing import Any, Optional, Union
 from typing import Collection, List, Tuple   # Py3.9+: use built-ins
 
+from .fs import PathType
+
 
 __all__ = ('Namespace',)
 
@@ -338,7 +340,26 @@ class Namespace(ArgParseNamespace):
 
             return json.JSONEncoder.default(self, obj)
 
-    def to_json(self, path: str):
+    @classmethod
+    def from_json(cls, path: PathType) -> Namespace:
+        """Load content from JSON file."""
+        with open(file=path,
+                  mode='rt',
+                  buffering=-1,
+                  encoding='utf-8',
+                  errors='strict',
+                  newline=None,
+                  closefd=True,
+                  opener=None) as json_file:
+            return cls(**json.load(fp=json_file,
+                                   cls=None,
+                                   object_hook=None,
+                                   parse_float=None,
+                                   parse_int=None,
+                                   parse_constant=None,
+                                   object_pairs_hook=None))
+
+    def to_json(self, path: PathType):
         """Dump content to JSON file."""
         with open(file=path,
                   mode='wt',
