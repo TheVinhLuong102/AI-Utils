@@ -2300,21 +2300,16 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             if not cols:
                 return self.copy()
 
-            catCols = [
-                col
-                for col in (cols
-                            .intersection(self.possibleCatCols)
-                            .difference(forceNum))
-                if (col in forceCat) or
-                (profile[col].distinctProportions
-                 .iloc[:self._maxNCats[col]].sum()
-                 >= self._minProportionByMaxNCats[col])]
+            catCols: Set[str] = {col
+                                 for col in ((cols & self.possibleCatCols) - forceNum)
+                                 if (col in forceCat) or
+                                    (profile[col].distinctProportions
+                                     .iloc[:self._maxNCats[col]].sum()
+                                     >= self._minProportionByMaxNCats[col])}
 
-            numCols = [col
-                       for col in cols.difference(catCols)
-                       if self.typeIsNum(col)]
+            numCols: Set[str] = {col for col in (cols - catCols) if self.typeIsNum(col)}
 
-            cols = catCols + numCols
+            cols: Set[str] = catCols | numCols
 
             if verbose:
                 message = \
