@@ -2511,10 +2511,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 tic: float = time.time()
 
             if loadPath in self._PREP_CACHE:
-                prepCache = self._PREP_CACHE[loadPath]
+                prepCache: Namespace = self._PREP_CACHE[loadPath]
 
-                catOrigToPrepColMap = prepCache.catOrigToPrepColMap
-                numOrigToPrepColMap = prepCache.numOrigToPrepColMap
+                catOrigToPrepColMap: Dict[str, Any] = prepCache.catOrigToPrepColMap
+                numOrigToPrepColMap: Dict[str, Any] = prepCache.numOrigToPrepColMap
 
             else:
                 with open(file=Path(loadPath) / self._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME,
@@ -2554,20 +2554,16 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         else:
             if cols:
-                cols = set(cols)
+                cols: Set[str] = set(cols)
 
-                cols = cols.intersection(self.possibleFeatureTAuxCols).union(
-                    possibleFeatureContentCol
-                    for possibleFeatureContentCol in
-                    cols.intersection(self.possibleFeatureContentCols)
-                    if self.suffNonNull(possibleFeatureContentCol))
+                cols |= {possibleFeatureContentCol
+                         for possibleFeatureContentCol in (cols & self.possibleFeatureContentCols)
+                         if self.suffNonNull(possibleFeatureContentCol)}
 
             else:
-                cols = self.possibleFeatureTAuxCols + \
-                    tuple(possibleFeatureContentCol
-                          for possibleFeatureContentCol
-                          in self.possibleFeatureContentCols
-                          if self.suffNonNull(possibleFeatureContentCol))
+                cols: Set[str] = {possibleFeatureContentCol
+                                  for possibleFeatureContentCol in self.possibleFeatureContentCols
+                                  if self.suffNonNull(possibleFeatureContentCol)}
 
             if cols:
                 profile = \
