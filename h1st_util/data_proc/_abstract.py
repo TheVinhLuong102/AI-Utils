@@ -47,16 +47,13 @@ class AbstractDataHandler:
     _DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS: float = .9
 
     # prep column prefixes/suffixes
-    _NULL_FILL_PREFIX: str = '__NullFill__'
+    _NULL_FILL_PREFIX: str = 'NULL_FILLED__'
 
-    _CAT_IDX_PREFIX: str = '__CatIdx__'
-    _OHE_PREFIX: str = '__OHE__'
+    _CAT_IDX_PREFIX: str = 'CAT_INDEX__'
 
-    _STD_SCL_PREFIX: str = '__StdScl__'
-    _MAX_ABS_SCL_PREFIX: str = '__MaxAbsScl__'
-    _MIN_MAX_SCL_PREFIX: str = '__MinMaxScl__'
-
-    _PREP_SUFFIX: str = '__'
+    _STD_SCL_PREFIX: str = 'STD_SCALED__'
+    _MAX_ABS_SCL_PREFIX: str = 'MAXABS_SCALED__'
+    _MIN_MAX_SCL_PREFIX: str = 'MINMAX_SCALED__'
 
     _CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'cat-orig-to-prep-col-map.json'
     _NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'num-orig-to-prep-col-map.json'

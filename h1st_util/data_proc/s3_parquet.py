@@ -17,7 +17,7 @@ from typing import Collection, Dict, List, Set, Sequence, Tuple   # Py3.9+: use 
 from urllib.parse import ParseResult, urlparse
 from uuid import uuid4
 
-from numpy import allclose, cumsum, isfinite, nan, ndarray, vstack
+from numpy import allclose, isfinite, nan, ndarray, vstack
 from pandas import DataFrame, Series, concat, isnull, notnull, read_parquet
 from pandas._libs.missing import NAType   # pylint: disable=no-name-in-module
 from tqdm import tqdm
@@ -83,7 +83,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     _PIECE_CACHES: Dict[str, Namespace] = {}
 
     # default arguments dict
-    _DEFAULT_KWARGS = dict(
+    _DEFAULT_KWARGS = Namespace(
         iCol=AbstractS3FileDataHandler._DEFAULT_I_COL,
         tCol=None,
 
@@ -310,15 +310,15 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             _privateK: str = f'_{k}'
 
             if not resetToClassDefaults:
-                existingInstanceV = getattr(self, _privateK, None)
+                existingInstanceV: Any = getattr(self, _privateK, None)
 
-            v = kwargs.pop(k,
-                           existingInstanceV
-                           if (not resetToClassDefaults) and existingInstanceV
-                           else classDefaultV)
+            v: Any = kwargs.pop(k,
+                                existingInstanceV
+                                if (not resetToClassDefaults) and existingInstanceV
+                                else classDefaultV)
 
             if (k == 'reprSampleMinNPieces') and (v > self.nPieces):
-                v = self.nPieces
+                v: int = self.nPieces
 
             setattr(namespace,
                     _privateK   # USE _k TO NOT INVOKE @k.setter RIGHT AWAY
@@ -328,10 +328,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         if inplace:
             if self._iCol not in self.columns:
-                self._iCol = None
+                self._iCol: Optional[str] = None
 
             if self._tCol not in self.columns:
-                self._tCol = None
+                self._tCol: Optional[str] = None
 
         else:
             return namespace
@@ -643,21 +643,20 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         nSamplesPerPiece: int = kwargs.get('nSamplesPerPiece')
 
-        reducer: callable = kwargs.get(
-            'reducer',
-            lambda results:
-                vstack(tup=results)
-                if isinstance(results[0], ndarray)
-                else concat(objs=results,
-                            axis='index',
-                            join='outer',
-                            ignore_index=False,
-                            keys=None,
-                            levels=None,
-                            names=None,
-                            verify_integrity=False,
-                            sort=False,
-                            copy=False))
+        reducer: callable = kwargs.get('reducer',
+                                       lambda results:
+                                           vstack(tup=results)
+                                           if isinstance(results[0], ndarray)
+                                           else concat(objs=results,
+                                                       axis='index',
+                                                       join='outer',
+                                                       ignore_index=False,
+                                                       keys=None,
+                                                       levels=None,
+                                                       names=None,
+                                                       verify_integrity=False,
+                                                       sort=False,
+                                                       copy=False))
 
         verbose: bool = kwargs.pop('verbose', True)
 
@@ -1450,7 +1449,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # distinct
     # quantile
     # sampleStat
-    # outlierRstStat / outlierRstMin / outlierRstMax / outlierRstMedian
+    # outlierRstStat / outlierRstMin / outlierRstMax
     # profile
 
     def count(self, *cols: str, **kwargs: Any) -> Union[int, Namespace]:
