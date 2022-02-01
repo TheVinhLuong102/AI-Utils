@@ -588,7 +588,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # rename
     # filter
     # collect
-    # toPandas
 
     def map(self,
             mappers: Optional[CallablesType] = None, /,
@@ -1008,10 +1007,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def collect(self, *cols: str, **kwargs: Any) -> ReducedDataSetType:
         """Collect content."""
         return self.reduce(cols=cols if cols else None, **kwargs)
-
-    def toPandas(self, *cols: str, **kwargs: Any) -> Union[DataFrame, Series]:
-        """Collect content to Pandas form."""
-        return self.collect(*cols, **kwargs)
 
     # =========================
     # KEY (SETTABLE) PROPERTIES
