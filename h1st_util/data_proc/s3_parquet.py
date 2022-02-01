@@ -2148,7 +2148,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 colFallBackVal: Optional[PyNumType] = None
 
             nullFillDetails[col] = (self._NULL_FILL_PREFIX + col,
-                                    {'nulls': colNulls,
+                                    {'nulls': nulls[col],
                                      'null-fill-method': methodForCol,
                                      'null-fill-value': colFallBackVal})
 
@@ -2342,7 +2342,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     else:
                         isStr: bool = is_string(catColType)
 
-                        cats: Tuple[PyPossibleFeatureType] = Tuple(
+                        cats: Tuple[PyPossibleFeatureType] = tuple(
                             cat
                             for cat in
                             (profile[catCol].distinctProportions.index
@@ -2411,7 +2411,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         numColNullFillDetails: Namespace = numNullFillDetails[numCol][1]
 
                         numColNulls: Tuple[Optional[PyNumType], Optional[PyNumType]] = \
-                            numColNullFillDetails.nulls
+                            numColNullFillDetails['nulls']
 
                         numColNullFillMethod: Optional[PyNumType] = \
                             numColNullFillDetails['null-fill-method']
@@ -2514,7 +2514,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                    numOrigToPrepColMap=numOrigToPrepColMap)
 
         if returnNumPy:
-            returnNumPyForCols: Tuple[str] = Tuple(
+            returnNumPyForCols: Tuple[str] = tuple(
                 sorted(catPrepColDetails[0]
                        for catCol, catPrepColDetails in catOrigToPrepColMap.items()
                        if (catCol != '__SCALE__') and

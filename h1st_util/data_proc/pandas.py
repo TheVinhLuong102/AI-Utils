@@ -46,7 +46,7 @@ class PandasNumericalNullFiller:
                     (len(nullFillColNameAndDetails) == 2):
                 _, nullFill = nullFillColNameAndDetails
 
-                lowerNull, upperNull = nullFill.nulls
+                lowerNull, upperNull = nullFill['nulls']
 
                 series: Series = pandasDF[col]
 
