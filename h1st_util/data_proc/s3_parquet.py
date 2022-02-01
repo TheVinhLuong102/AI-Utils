@@ -1652,7 +1652,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             if s not in self._cache:
                 setattr(self._cache, s, {})
-            _cache: Dict[str, Union[float, int]] = getattr(self._cache, s)
+            _cache: Dict[str, PyNumType] = getattr(self._cache, s)
 
             if col not in _cache:
                 verbose: Optional[bool] = True if debug.ON else kwargs.get('verbose')
@@ -1711,7 +1711,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             if s not in self._cache:
                 setattr(self._cache, s, {})
-            _cache: Dict[str, Union[float, int]] = getattr(self._cache, s)
+            _cache: Dict[str, PyNumType] = getattr(self._cache, s)
 
             if col not in _cache:
                 verbose: Optional[bool] = True if debug.ON else kwargs.get('verbose')
@@ -1743,7 +1743,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                             f'{capitalizedStatName.upper()} = '
                             f'{result} ***')
 
-                    result: Union[float, int] = self.outlierRstMin(col)
+                    result: PyNumType = self.outlierRstMin(col)
 
                 if isinstance(result, NUMPY_FLOAT_TYPES):
                     result: float = float(result)
@@ -1793,12 +1793,12 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 series: Series = self.reprSample[col]
 
-                outlierRstMin: Union[float, int] = \
+                outlierRstMin: PyNumType = \
                     series.quantile(q=self._outlierTailProportion[col],
                                     interpolation='linear')
 
-                sampleMin: Union[float, int] = self.sampleStat(col, stat='min')
-                sampleMedian: Union[float, int] = self.sampleStat(col, stat='median')
+                sampleMin: PyNumType = self.sampleStat(col, stat='min')
+                sampleMedian: PyNumType = self.sampleStat(col, stat='median')
 
                 result = (series.loc[series > sampleMin].min(axis='index', skipna=True, level=None)
                           if (outlierRstMin == sampleMin) and (outlierRstMin < sampleMedian)
@@ -1850,12 +1850,12 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 series: Series = self.reprSample[col]
 
-                outlierRstMax: Union[float, int] = \
+                outlierRstMax: PyNumType = \
                     series.quantile(q=1 - self._outlierTailProportion[col],
                                     interpolation='linear')
 
-                sampleMax: Union[float, int] = self.sampleStat(col, stat='max')
-                sampleMedian: Union[float, int] = self.sampleStat(col, stat='median')
+                sampleMax: PyNumType = self.sampleStat(col, stat='max')
+                sampleMedian: PyNumType = self.sampleStat(col, stat='median')
 
                 result = (series.loc[series < sampleMax].max(axis='index', skipna=True, level=None)
                           if (outlierRstMax == sampleMax) and (outlierRstMax > sampleMedian)
@@ -1946,31 +1946,31 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                             1))
                 quantileProbsToQuery: List[float] = []
 
-                sampleMin: Optional[Union[float, int]] = self._cache.sampleMin.get(col)
+                sampleMin: Optional[PyNumType] = self._cache.sampleMin.get(col)
                 if calcAndCacheSampleMin := (sampleMin is None):
                     quantileProbsToQuery.append(0.)
                 else:
                     quantilesOfInterest[0] = sampleMin
 
-                outlierRstMin: Optional[Union[float, int]] = self._cache.outlierRstMin.get(col)
+                outlierRstMin: Optional[PyNumType] = self._cache.outlierRstMin.get(col)
                 if calcAndCacheOutlierRstMin := (outlierRstMin is None):
                     quantileProbsToQuery.append(outlierTailProportion)
                 else:
                     quantilesOfInterest[outlierTailProportion] = outlierRstMin
 
-                sampleMedian: Optional[Union[float, int]] = self._cache.sampleMedian.get(col)
+                sampleMedian: Optional[PyNumType] = self._cache.sampleMedian.get(col)
                 if calcAndCacheSampleMedian := (sampleMedian is None):
                     quantileProbsToQuery.append(.5)
                 else:
                     quantilesOfInterest[.5] = sampleMedian
 
-                outlierRstMax: Optional[Union[float, int]] = self._cache.outlierRstMax.get(col)
+                outlierRstMax: Optional[PyNumType] = self._cache.outlierRstMax.get(col)
                 if calcAndCacheOutlierRstMax := (outlierRstMax is None):
                     quantileProbsToQuery.append(1 - outlierTailProportion)
                 else:
                     quantilesOfInterest[1 - outlierTailProportion] = outlierRstMax
 
-                sampleMax: Optional[Union[float, int]] = self._cache.sampleMax.get(col)
+                sampleMax: Optional[PyNumType] = self._cache.sampleMax.get(col)
                 if calcAndCacheSampleMax := (sampleMax is None):
                     quantileProbsToQuery.append(1.)
                 else:
@@ -1996,7 +1996,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if calcAndCacheOutlierRstMin:
                     if (outlierRstMin == sampleMin) and (outlierRstMin < sampleMedian):
-                        outlierRstMin: Union[float, int] = (
+                        outlierRstMin: PyNumType = (
                             series.loc[series > sampleMin]
                             .min(axis='index', skipna=True, level=None))
 
@@ -2007,7 +2007,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if calcAndCacheOutlierRstMax:
                     if (outlierRstMax == sampleMax) and (outlierRstMax > sampleMedian):
-                        outlierRstMax: Union[float, int] = (
+                        outlierRstMax: PyNumType = (
                             series.loc[series < sampleMax]
                             .max(axis='index', skipna=True, level=None))
 
