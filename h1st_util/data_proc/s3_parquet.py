@@ -2553,43 +2553,30 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                        numOrigToPrepColMap=numOrigToPrepColMap)
 
         else:
-            if cols:
-                cols: Set[str] = set(cols)
-
-                cols |= {possibleFeatureContentCol
-                         for possibleFeatureContentCol in (cols & self.possibleFeatureContentCols)
-                         if self.suffNonNull(possibleFeatureContentCol)}
-
-            else:
-                cols: Set[str] = {possibleFeatureContentCol
-                                  for possibleFeatureContentCol in self.possibleFeatureContentCols
-                                  if self.suffNonNull(possibleFeatureContentCol)}
+            cols: Set[str] = {possibleFeatureContentCol
+                              for possibleFeatureContentCol
+                              in ((set(cols) & self.possibleFeatureContentCols)
+                                  if cols
+                                  else self.possibleFeatureContentCols)
+                              if self.suffNonNull(possibleFeatureContentCol)}
 
             if cols:
-                profile = \
-                    self.profile(
-                        *cols,
-                        profileCat=True,
-                        profileNum=False,   # or bool(fill) or bool(scaler)?
-                        skipIfInsuffNonNull=True,
-                        asDict=True,
-                        verbose=verbose)
+                profile: Namespace = self.profile(*cols,
+                                                  profileCat=True,
+                                                  profileNum=False,
+                                                  skipIfInsuffNonNull=True,
+                                                  asDict=True,
+                                                  verbose=verbose)
 
             else:
                 return self.copy()
 
-            cols = {col for col in cols
-                    if self.suffNonNull(col) and
-                    (len(profile[col].distinctProportions.loc[
-                        # (profile[col].distinctProportions.index != '') &
-                        # FutureWarning:
-                        # elementwise comparison failed;
-                        # returning scalar instead,
-                        # but in the future will perform
-                        # elementwise comparison
-                        notnull(
-                            profile[col].distinctProportions.index)]) > 1
-                     )}
+            cols: Set[str] = {col
+                              for col in cols
+                              if self.suffNonNull(col) and
+                              (len(profile[col].distinctProportions.loc[
+                                (profile[col].distinctProportions.index != '') &
+                                notnull(profile[col].distinctProportions.index)]) > 1)}
 
             if not cols:
                 return self.copy()
