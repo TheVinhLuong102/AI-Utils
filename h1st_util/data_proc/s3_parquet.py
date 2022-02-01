@@ -83,7 +83,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     _PIECE_CACHES: Dict[str, Namespace] = {}
 
     # default arguments dict
-    _DEFAULT_KWARGS = Namespace(
+    _DEFAULT_KWARGS: Dict[str, Optional[Union[str, DefaultDict]]] = dict(
         iCol=AbstractS3FileDataHandler._DEFAULT_I_COL,
         tCol=None,
 
