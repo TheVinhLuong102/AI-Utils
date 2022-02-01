@@ -2395,17 +2395,17 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                          verbose=verbose > 1)
 
                 for numCol in numCols:
-                    colOutlierTails = outlierTails.get(numCol, 'both')
+                    colOutlierTails: Optional[str] = outlierTails.get(numCol, 'both')
 
-                    excludeLowerTail = colOutlierTails in ('lower', 'both')
-                    colMin = self.outlierRstMin(numCol) \
-                        if excludeLowerTail \
-                        else self.sampleStat(numCol, stat='min')
+                    excludeLowerTail: bool = colOutlierTails in ('lower', 'both')
+                    colMin: PyNumType = (self.outlierRstMin(numCol)
+                                         if excludeLowerTail
+                                         else self.sampleStat(numCol, stat='min'))
 
-                    excludeUpperTail = colOutlierTails in ('upper', 'both')
-                    colMax = self.outlierRstMax(numCol) \
-                        if excludeUpperTail \
-                        else self.sampleStat(numCol, stat='max')
+                    excludeUpperTail: bool = colOutlierTails in ('upper', 'both')
+                    colMax: PyNumType = (self.outlierRstMax(numCol)
+                                         if excludeUpperTail
+                                         else self.sampleStat(numCol, stat='max'))
 
                     if colMin < colMax:
                         numColNullFillDetails = numNullFillDetails[numCol][1]
