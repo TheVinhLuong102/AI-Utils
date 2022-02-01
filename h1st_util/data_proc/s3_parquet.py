@@ -2520,10 +2520,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 loadPath: Path = Path(loadPath).resolve(strict=True)
 
                 self._PREP_CACHE[loadPath] = \
-                    Namespace(catOrigToPrepColMap=Namespace.from_json(
-                                loadPath / self._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME),
-                              numOrigToPrepColMap=Namespace.from_json(
-                                loadPath / self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME))
+                    Namespace(
+                        catOrigToPrepColMap=Namespace.from_json(
+                            loadPath / self._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME),
+                        numOrigToPrepColMap=Namespace.from_json(
+                            loadPath / self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME))
 
         else:
             cols: Set[str] = {possibleFeatureContentCol
