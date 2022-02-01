@@ -97,8 +97,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             AbstractS3FileDataHandler._DEFAULT_OUTLIER_TAIL_PROPORTION),
         maxNCats=DefaultDict(AbstractS3FileDataHandler._DEFAULT_MAX_N_CATS),
         minProportionByMaxNCats=DefaultDict(
-            AbstractS3FileDataHandler._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS),
-    )
+            AbstractS3FileDataHandler._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
 
     def __init__(self, path: str, *, reCache: bool = False,
                  awsRegion: Optional[str] = None,
@@ -246,17 +245,16 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         nRows: Optional[int] = None
 
                     self._PIECE_CACHES[piecePath] = pieceCache = \
-                        Namespace(
-                            localPath=localPath,
-                            partitionKVs=partitionKVs,
+                        Namespace(localPath=localPath,
+                                  partitionKVs=partitionKVs,
 
-                            srcColsExclPartitionKVs=srcColsExclPartitionKVs,
-                            srcColsInclPartitionKVs=srcColsInclPartitionKVs,
+                                  srcColsExclPartitionKVs=srcColsExclPartitionKVs,
+                                  srcColsInclPartitionKVs=srcColsInclPartitionKVs,
 
-                            srcTypesExclPartitionKVs=srcTypesExclPartitionKVs,
-                            srcTypesInclPartitionKVs=srcTypesInclPartitionKVs,
+                                  srcTypesExclPartitionKVs=srcTypesExclPartitionKVs,
+                                  srcTypesInclPartitionKVs=srcTypesInclPartitionKVs,
 
-                            nCols=nCols, nRows=nRows)
+                                  nCols=nCols, nRows=nRows)
 
                 _cache.srcColsInclPartitionKVs |= pieceCache.srcColsInclPartitionKVs
 
@@ -304,7 +302,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def _extractStdKwArgs(self, kwargs: Dict[str, Any], /, *,
                           resetToClassDefaults: bool = False,
                           inplace: bool = False) -> Optional[Namespace]:
-        namespace: Namespace = self if inplace else Namespace()
+        namespace: Union[S3ParquetDataFeeder, Namespace] = self if inplace else Namespace()
 
         for k, classDefaultV in self._DEFAULT_KWARGS.items():
             _privateK: str = f'_{k}'
@@ -381,9 +379,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 assert newCol in self.columns
                 assert oldCol in oldS3ParquetDF.columns
 
-            for sameCol in (commonCols
-                            .difference(newColToOldColMap)
-                            .intersection(sameCols)):
+            for sameCol in commonCols.difference(newColToOldColMap).intersection(sameCols):
                 newColToOldColMap[sameCol] = sameCol
 
         else:
@@ -483,8 +479,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         if self._tCol:
             colAndTypeStrs.append(f'(tCol) {self._tCol}: {self.type(self._tCol)}')
 
-        colAndTypeStrs.extend(f'{col}: {self.type(col)}'
-                              for col in self.contentCols)
+        colAndTypeStrs.extend(f'{col}: {self.type(col)}' for col in self.contentCols)
 
         return (f'{self.nPieces:,}-piece ' +
                 (f'{self._cache.nRows:,}-row '
@@ -539,10 +534,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             localPath: str = str(self._TMP_DIR_PATH / parsedURL.netloc / parsedURL.path[1:])
 
-            s3.sync(from_dir_path=self.path,
-                    to_dir_path=localPath,
-                    delete=True, quiet=True,
-                    verbose=True)
+            s3.sync(from_dir_path=self.path, to_dir_path=localPath,
+                    delete=True, quiet=True, verbose=True)
 
             for piecePath in self.piecePaths:
                 self._PIECE_CACHES[piecePath].localPath = \
