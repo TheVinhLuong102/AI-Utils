@@ -33,7 +33,7 @@ from ..data_types.arrow import (
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)
 from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES
 from ..data_types.python import PY_NUM_TYPES
-from ..data_types.typing import PyNumType
+from ..data_types.typing import PyNumType, PyPossibleFeatureType
 from ..default_dict import DefaultDict
 from ..iter import to_iterable
 from ..namespace import Namespace
@@ -64,6 +64,10 @@ __all__ = ('S3ParquetDataFeeder',)
 
 # pylint: disable=too-many-lines
 # (this whole module)
+
+
+CallablesType = Union[callable, Sequence[callable]]
+ColsType = Union[str, Collection[str]]
 
 
 def randomSample(population: Collection[Any], sampleSize: int,
@@ -99,10 +103,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         minProportionByMaxNCats=DefaultDict(
             AbstractS3FileDataHandler._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
 
-    def __init__(self, path: str, *, reCache: bool = False,
-                 awsRegion: Optional[str] = None,
-                 _mappers: Optional[Union[callable, Sequence[callable]]] = None,
-                 _reduceMustInclCols: Optional[Union[str, Collection[str]]] = None,
+    def __init__(self, path: str, *, awsRegion: Optional[str] = None,
+                 _mappers: Optional[CallablesType] = None,
+                 _reduceMustInclCols: Optional[ColsType] = None,
                  verbose: bool = True, **kwargs: Any):
         # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Init S3 Parquet Data Feeder."""
@@ -115,8 +118,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         self.awsRegion: Optional[str] = awsRegion
 
-        if (not reCache) and (path in self._CACHE):
-            _cache = self._CACHE[path]
+        if path in self._CACHE:
+            _cache: Namespace = self._CACHE[path]
         else:
             self._CACHE[path] = _cache = Namespace()
 
@@ -588,8 +591,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # toPandas
 
     def map(self,
-            mappers: Optional[Union[callable, Sequence[callable]]] = None, /,
-            reduceMustInclCols: Optional[Union[str, Collection[str]]] = None,
+            mappers: Optional[CallablesType] = None, /,
+            reduceMustInclCols: Optional[ColsType] = None,
             **kwargs: Any) -> S3ParquetDataFeeder:
         """Apply mapper function(s) to pieces."""
         if mappers is None:
@@ -2051,14 +2054,13 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # DATA PREP
     # ---------
     # fillNull
-    # prepForML
+    # preprocessForML
 
-    def fillNull(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
-        # pylint: disable=too-many-branches,too-many-locals,too-many-statements
-        """Fill/interpolate ``NULL``/``NaN`` values.
+    def fillNull(self, *cols: str, **kwargs: Dict[str, Any]) -> S3ParquetDataFeeder:
+        """Fill ``NULL``/``NaN`` values.
 
         Return:
-            ``ADF`` with ``NULL``/``NaN`` values filled/interpolated
+            ``S3ParquetDataFeeder`` with ``NULL``/``NaN`` values filled.
 
         Args:
             *args (str): names of column(s) to fill/interpolate
@@ -2072,21 +2074,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     - ``avg``/``mean`` (default)
                     - ``min``
                     - ``max``
-                    - ``avg_before``/``mean_before``
-                    - ``min_before``
-                    - ``max_before``
-                    - ``avg_after``/``mean_after``
-                    - ``min_after``
-                    - ``max_after``
-                    - ``linear`` (**TO-DO**)
-                    - ``before`` (**TO-DO**)
-                    - ``after`` (**TO-DO**)
                     - ``None`` (do nothing)
-
-                    (*NOTE:* for an ``ADF`` with a ``.tCol`` set,
-                     ``NumPy/Pandas NaN`` values cannot be filled;
-                     it is best that such *Python* values be cleaned up
-                     before they get into Spark)
 
                 - **value**: single value, or *dict* of values by column name,
                     to use if ``method`` is ``None`` or not applicable
@@ -2100,12 +2088,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 *(bool or list of column names, default = False)*:
                 whether to treat detected out-lying values as ``NULL``
                 values to be replaced in the same way
-
-                - **loadPath** *(str)*:
-                path to load existing ``NULL``-filling data transformations
-
-                - **savePath** *(str)*: path to save new
-                ``NULL``-filling data transformations
         """
         _TS_FILL_METHODS = (
             'avg_partition', 'mean_partition',
@@ -2434,17 +2416,14 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 if returnDetails
                 else arrowADF)
 
-    def prepForML(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
-        # pylint: disable=too-many-branches,too-many-locals,too-many-statements
-        """Pre-process selected column(s) in standard ways.
-
-        One-hot-encode categorical columns and scale numerical columns.
+    def preprocessForML(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
+        """Preprocess selected column(s) for ML training/inferencing.
 
         Return:
-            Standard-pre-processed ``ADF``
+            Preprocessed ``S3ParquetDataFeeder``
 
         Args:
-            *args: column(s) to pre-process
+            *args: column(s) to preprocess
 
             **kwargs:
                 - **forceCat** *(str or list/tuple of str, default = None)*:
@@ -2455,108 +2434,75 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 - **fill**:
                     - *dict* ( ``method`` = ... *(default: 'mean')*,
-                    ``value`` = ... *(default: None)*,
-                    ``outlierTails`` = ... *(default: False)*,
-                    ``fillOutliers`` = ... *(default: False)*)
+                               ``value`` = ... *(default: None)*,
+                               ``outlierTails`` = ... *(default: False)*,
+                               ``fillOutliers`` = ... *(default: False)* )
                     as per ``.fillna(...)`` method;
                     - *OR* ``None`` to not apply any ``NULL``/``NaN``-filling
 
-                - **scaler** *(str)*: one of the following methods
-                to use on numerical columns
-                (*ignored* if loading existing
-                ``prep`` pipeline from ``loadPath``):
-
+                - **scaler** *(str)*: one of the following methods to use on numerical columns
+                (*ignored* if loading existing ``prep`` pipeline from ``loadPath``):
                     - ``standard`` (default)
                     - ``maxabs``
                     - ``minmax``
                     - ``None`` *(do not apply any scaling)*
 
-                - **assembleVec** *(str, default = '__X__')*:
-                name of vector column to build from pre-processed features;
-                *ignored* if loading existing ``prep`` pipeline from
-                ``loadPath``
+                - **loadPath** *(str)*: path to load existing data transformations
 
-                - **loadPath** *(str)*: path to
-                load existing data transformations
-
-                - **savePath** *(str)*: path to save
-                new fitted data transformations
+                - **savePath** *(str)*: path to save new fitted data transformations
         """
-        def sqlStdScl(sqlItem, mean, std):
-            return f'(({sqlItem}) - {mean}) / {std}'
+        nulls: Dict[str, Tuple[Optional[PyNumType], Optional[PyNumType]]] = kwargs.pop('nulls', {})
 
-        def sqlMaxAbsScl(sqlItem, maxAbs):
-            return f'({sqlItem}) / {maxAbs}'
+        forceCatIncl: Optional[ColsType] = kwargs.pop('forceCatIncl', None)
+        forceCatExcl: Optional[ColsType] = kwargs.pop('forceCatExcl', None)
+        forceCat: Optional[ColsType] = kwargs.pop('forceCat', None)
+        forceCat: Set[str] = (((set()
+                                if forceCat is None
+                                else to_iterable(forceCat, iterable_type=set))
+                               | (set()
+                                  if forceCatIncl is None
+                                  else to_iterable(forceCatIncl, iterable_type=set)))
+                              - (set()
+                                 if forceCatExcl is None
+                                 else to_iterable(forceCatExcl, iterable_type=set)))
 
-        def sqlMinMaxScl(sqlItem, origMin, origMax, targetMin, targetMax):
-            origRange = origMax - origMin
-            targetRange = targetMax - targetMin
-            return (f'({targetRange} * '
-                    f'(({sqlItem}) - ({origMin})) / {origRange})'
-                    f' + ({targetMin})')
+        scaleCat: bool = kwargs.pop('scaleCat', True)
 
-        nulls = kwargs.pop('nulls', {})
+        forceNumIncl: Optional[ColsType] = kwargs.pop('forceNumIncl', None)
+        forceNumExcl: Optional[ColsType] = kwargs.pop('forceNumExcl', None)
+        forceNum: Optional[ColsType] = kwargs.pop('forceNum', None)
+        forceNum: Set[str] = (((set()
+                                if forceNum is None
+                                else to_iterable(forceNum, iterable_type=set))
+                               | (set()
+                                  if forceNumIncl is None
+                                  else to_iterable(forceNumIncl, iterable_type=set)))
+                              - (set()
+                                 if forceNumExcl is None
+                                 else to_iterable(forceNumExcl, iterable_type=set)))
 
-        forceCatIncl = kwargs.pop('forceCatIncl', None)
-        forceCatExcl = kwargs.pop('forceCatExcl', None)
-        forceCat = kwargs.pop('forceCat', None)
-        forceCat = \
-            (set()
-             if forceCat is None
-             else to_iterable(forceCat, iterable_type=set)) \
-            .union(
-                ()
-                if forceCatIncl is None
-                else to_iterable(forceCatIncl)) \
-            .difference(
-                ()
-                if forceCatExcl is None
-                else to_iterable(forceCatExcl))
+        fill: Dict[str, Optional[PyPossibleFeatureType]] = kwargs.pop('fill',
+                                                                      dict(method='mean',
+                                                                           value=None,
+                                                                           outlierTails='both',
+                                                                           fillOutliers=False))
 
-        kwargs.pop('oheCat', None)   # *** NOT USED ***
-        scaleCat = kwargs.pop('scaleCat', True)
+        assert fill, ValueError(f'*** {type(self)}.preprocessForML(...) MUST INVOLVE NULL-FILLING '
+                                f'FOR NUMERICAL COLS ***')
 
-        forceNumIncl = kwargs.pop('forceNumIncl', None)
-        forceNumExcl = kwargs.pop('forceNumExcl', None)
-        forceNum = kwargs.pop('forceNum', None)
-        forceNum = \
-            (set()
-             if forceNum is None
-             else to_iterable(forceNum, iterable_type=set)) \
-            .union(
-                ()
-                if forceNumIncl is None
-                else to_iterable(forceNumIncl)) \
-            .difference(
-                ()
-                if forceNumExcl is None
-                else to_iterable(forceNumExcl))
-
-        fill = kwargs.pop(
-            'fill',
-            dict(method='mean',
-                 value=None,
-                 outlierTails='both',
-                 fillOutliers=False))
-
-        assert fill, \
-            (f'*** {type(self)}.prep(...) MUST INVOLVE NULL-FILLING '
-             f'FOR NUMERIC COLS ***')
-
-        scaler = kwargs.pop('scaler', 'standard')
+        scaler: Optional[str] = kwargs.pop('scaler', 'standard')
         if scaler:
             scaler = scaler.lower()
 
-        returnNumPy = kwargs.pop('returnNumPy', False)
-        returnOrigToPrepColMaps = kwargs.pop('returnOrigToPrepColMaps', False)
-        returnSQLStatement = kwargs.pop('returnSQLStatement', False)
+        returnNumPy: bool = kwargs.pop('returnNumPy', False)
+        returnOrigToPrepColMaps: bool = kwargs.pop('returnOrigToPrepColMaps', False)
 
-        loadPath = kwargs.pop('loadPath', None)
-        savePath = kwargs.pop('savePath', None)
+        loadPath: Optional[str] = kwargs.pop('loadPath', None)
+        savePath: Optional[str] = kwargs.pop('savePath', None)
 
-        verbose = kwargs.pop('verbose', False)
+        verbose: bool = kwargs.pop('verbose', False)
         if debug.ON:
-            verbose = True
+            verbose: bool = True
 
         if loadPath:   # pylint: disable=too-many-nested-blocks
             if verbose:
