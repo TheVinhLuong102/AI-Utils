@@ -63,7 +63,7 @@ class AbstractDataHandler:
                            '.h1st/tmp')
 
     # data prep cache
-    _PREP_CACHE: Dict[str, Namespace] = {}
+    _PREP_CACHE: Dict[Path, Namespace] = {}
 
     # ============
     # REPR METHODS

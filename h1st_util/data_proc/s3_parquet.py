@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import datetime
 from functools import lru_cache, partial
-import json
 from logging import Logger
 import math
 from pathlib import Path
@@ -27,13 +26,14 @@ from pyarrow.fs import S3FileSystem
 from pyarrow.lib import RecordBatch, Schema, Table   # pylint: disable=no-name-in-module
 from pyarrow.parquet import FileMetaData, read_metadata, read_schema, read_table
 
-from .. import debug, fs, s3
+from .. import debug, s3
 from ..data_types.arrow import (DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
                                 is_binary, is_boolean, is_num, is_possible_cat, is_string)
 from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES
 from ..data_types.python import PY_NUM_TYPES
 from ..data_types.typing import PyNumType, PyPossibleFeatureType
 from ..default_dict import DefaultDict
+from ..fs import PathType, mkdir
 from ..iter import to_iterable
 from ..namespace import Namespace
 
@@ -557,7 +557,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         localPath: Path = self._TMP_DIR_PATH / parsedURL.netloc / parsedURL.path[1:]
 
         localDirPath: Path = localPath.parent
-        fs.mkdir(dir_path=localDirPath, hdfs=False)
+        mkdir(dir_path=localDirPath, hdfs=False)
         # make sure the dir has been created
         while not localDirPath.is_dir():
             time.sleep(1)
@@ -2244,8 +2244,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         returnNumPy: bool = kwargs.pop('returnNumPy', False)
         returnOrigToPrepColMaps: bool = kwargs.pop('returnOrigToPrepColMaps', False)
 
-        loadPath: Optional[str] = kwargs.pop('loadPath', None)
-        savePath: Optional[str] = kwargs.pop('savePath', None)
+        loadPath: Optional[PathType] = kwargs.pop('loadPath', None)
+        savePath: Optional[PathType] = kwargs.pop('savePath', None)
 
         verbose: bool = kwargs.pop('verbose', False)
         if debug.ON:
@@ -2257,6 +2257,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                     f'from "{loadPath}"...')))
                 tic: float = time.time()
 
+            loadPath: Path = Path(loadPath).resolve(strict=True)
+
             if loadPath in self._PREP_CACHE:
                 prepCache: Namespace = self._PREP_CACHE[loadPath]
 
@@ -2264,8 +2266,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 numOrigToPrepColMap: Namespace = prepCache.numOrigToPrepColMap
 
             else:
-                loadPath: Path = Path(loadPath).resolve(strict=True)
-
                 self._PREP_CACHE[loadPath] = \
                     Namespace(
                         catOrigToPrepColMap=Namespace.from_json(
@@ -2546,51 +2546,25 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                               for prepCol, sqlItem in prepSqlItems.items()),
                     numNullFillDetails.get('__TS_WINDOW_CLAUSE__', ''))
 
-        if savePath and (savePath != loadPath):
+        if savePath:
             if verbose:
-                msg = ('Saving Data Transformations '
-                       f'to Local Path "{savePath}"...')
-                self.stdOutLogger.info(msg)
-                _tic = time.time()
-
-            fs.mkdir(
-                dir_path=savePath,
-                hdfs=False)
-
-            with open(os.path.join(savePath,
-                                   self._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME),
-                      mode='w',
-                      encoding='utf-8') as f:
-                json.dump(catOrigToPrepColMap, f, indent=2)
-
-            with open(os.path.join(savePath,
-                                   self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME),
-                      mode='w',
-                      encoding='utf-8') as f:
-                json.dump(numOrigToPrepColMap, f, indent=2)
-
-            with open(os.path.join(savePath,
-                                   self._PREP_SQL_STATEMENT_FILE_NAME),
-                      mode='w',
-                      encoding='utf-8') as f:
-                json.dump(sqlStatement, f, indent=2)
-
-            if verbose:
-                _toc = time.time()
                 self.stdOutLogger.info(
-                    msg + f' done!   <{_toc - _tic:,.1f} s>')
+                    msg=(prep_save_msg := ('Saving Data Transformations '
+                                           f'to Local Path "{savePath}"...')))
+                prep_save_tic: float = time.time()
 
-            self._PREP_CACHE[savePath] = \
-                Namespace(
-                    catOrigToPrepColMap=catOrigToPrepColMap,
-                    numOrigToPrepColMap=numOrigToPrepColMap,
-                    defaultVecCols=defaultVecCols,
+            savePath: Path = Path(savePath).resolve(strict=True)
 
-                    sqlStatement=sqlStatement,
-                    sqlTransformer=None,
+            catOrigToPrepColMap.to_json(savePath / self._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME)
+            numOrigToPrepColMap.to_json(savePath / self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME)
 
-                    catOHETransformer=None,
-                    pipelineModelWithoutVectors=None)
+            if verbose:
+                prep_save_toc: float = time.time()
+                self.stdOutLogger.info(
+                    msg=f'{prep_save_msg} done!   <{prep_save_toc - prep_save_tic:,.1f} s>')
+
+            self._PREP_CACHE[savePath] = Namespace(catOrigToPrepColMap=catOrigToPrepColMap,
+                                                   numOrigToPrepColMap=numOrigToPrepColMap)
 
         if returnNumPy:
             returnNumPyForCols = \
