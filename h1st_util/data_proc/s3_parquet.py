@@ -32,7 +32,7 @@ from ..data_types.arrow import (
     DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)
 from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES
-from ..data_types.python import PY_NUM_TYPES
+from ..data_types.python import PY_NUM_TYPES, PY_POSSIBLE_FEATURE_TYPES
 from ..data_types.typing import PyNumType, PyPossibleFeatureType
 from ..default_dict import DefaultDict
 from ..iter import to_iterable
@@ -1949,7 +1949,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 profile.distinctProportions = self.distinct(col, verbose=verbose > 1)
 
             # profile numerical column
-            if kwargs.get('profileNum', True) and is_num(colType):
+            if kwargs.get('profileNum', True) and self.typeIsNum(col):
                 outlierTailProportion: float = self._outlierTailProportion[col]
 
                 quantilesOfInterest: Series = Series(index=(0,
@@ -2053,11 +2053,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # =========
     # DATA PREP
     # ---------
-    # fillNull
+    # fillNumNull
     # preprocessForML
 
-    def fillNull(self, *cols: str, **kwargs: Dict[str, Any]) -> S3ParquetDataFeeder:
-        """Fill ``NULL``/``NaN`` values.
+    def fillNumNull(self, *cols: str, **kwargs: Dict[str, Any]) -> S3ParquetDataFeeder:
+        """Fill ``NULL``/``NaN`` values for numerical columns.
 
         Return:
             ``S3ParquetDataFeeder`` with ``NULL``/``NaN`` values filled.
@@ -2066,7 +2066,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             *args (str): names of column(s) to fill/interpolate
 
             **kwargs:
-
                 - **method** *(str)*: one of the following methods to fill
                     ``NULL`` values in **numerical** columns,
                     or *dict* of such method specifications by column name
@@ -2083,338 +2082,99 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 specification of in which distribution tail
                 (``None``, ``lower``, ``upper`` and ``both`` (default))
                 of each numerical column out-lying values may exist
-
-                - **fillOutliers**
-                *(bool or list of column names, default = False)*:
-                whether to treat detected out-lying values as ``NULL``
-                values to be replaced in the same way
         """
-        _TS_FILL_METHODS = (
-            'avg_partition', 'mean_partition',
-            'min_partition', 'max_partition',
-            'avg_before', 'mean_before', 'min_before', 'max_before',
-            'avg_after', 'mean_after', 'min_after', 'max_after')
+        returnDetails: bool = kwargs.pop('returnDetails', False)
 
-        if self.hasTS:
-            _TS_OPPOSITE_METHODS = \
-                Namespace(
-                    avg='avg',
-                    mean='mean',
-                    min='max',
-                    max='min')
-
-            _TS_WINDOW_NAMES = \
-                Namespace(
-                    partition='partitionByI',
-                    before='partitionByI_orderByT_before',
-                    after='partitionByI_orderByT_after')
-
-            _TS_OPPOSITE_WINDOW_NAMES = \
-                Namespace(
-                    partition='partition',
-                    before='after',
-                    after='before')
-
-            _TS_WINDOW_DEFS = \
-                Namespace(
-                    partition=   # noqa: E251
-                    (f'{_TS_WINDOW_NAMES.partition} AS '
-                     f'(PARTITION BY {self._iCol}, __tChunk__)'),
-
-                    before=   # noqa: E251
-                    (f'{_TS_WINDOW_NAMES.before} AS '
-                     f'(PARTITION BY {self._iCol}, __tChunk__ '
-                     f'ORDER BY {self._T_ORD_COL} '
-                     'ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING)'),
-
-                    after=   # noqa: E251
-                    (f'{_TS_WINDOW_NAMES.after} AS '
-                     f'(PARTITION BY {self._iCol}, __tChunk__ '
-                     f'ORDER BY {self._T_ORD_COL} '
-                     'ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)'))
-
-        returnDetails = kwargs.pop('returnDetails', False)
-        returnSQLStatement = kwargs.pop('returnSQLStatement', False)
-        loadPath = kwargs.pop('loadPath', None)
-        savePath = kwargs.pop('savePath', None)
-
-        verbose = kwargs.pop('verbose', False)
+        verbose: Union[bool, int] = kwargs.pop('verbose', False)
         if debug.ON:
-            verbose = True
+            verbose: bool = True
 
-        if loadPath:   # pylint: disable=too-many-nested-blocks
-            if verbose:
-                message = ('Loading NULL-Filling SQL Statement '
-                           f'from Path "{loadPath}"...')
-                self.stdOutLogger.info(message)
-                tic = time.time()
+        value: Optional[Union[PyNumType, Dict[str, PyNumType]]] = kwargs.pop('value', None)
 
-            with open(os.path.join(loadPath,
-                                   self._NULL_FILL_SQL_STATEMENT_FILE_NAME),
-                      mode='r',
-                      encoding='urf-8') as f:
-                sqlStatement = json.load(f)
+        method: Optional[Union[str, Dict[str, Optional[str]]]] = \
+            kwargs.pop('method', 'mean' if value is None else None)
 
-            details = None
+        cols: Set[str] = set(cols)
 
-        else:
-            value = kwargs.pop('value', None)
+        if isinstance(method, dict):
+            cols.update(method)
 
-            method = kwargs.pop(
-                'method',
-                'mean' if value is None else None)
+        if isinstance(value, dict):
+            cols.update(value)
 
-            cols = set(cols)
+        cols &= self.possibleNumContentCols
+        cols.difference_update(self.indexCols)
 
-            if isinstance(method, dict):
-                cols.update(method)
+        if not cols:
+            return self.copy()
 
-            if isinstance(value, dict):
-                cols.update(value)
+        nulls: Dict[str, Tuple[Optional[PyNumType], Optional[PyNumType]]] = kwargs.pop('nulls', {})
 
-            if not cols:
-                cols = set(self.contentCols)
+        for col in cols:
+            if col in nulls:
+                colNulls = nulls[col]
 
-            cols.difference_update(self.indexCols)
-
-            nulls = kwargs.pop('nulls', {})
-
-            for col in cols:
-                if col in nulls:
-                    colNulls = nulls[col]
-
-                    assert (isinstance(colNulls, (list, tuple)) and
-                            (len(colNulls) == 2) and
-                            ((colNulls[0] is None) or
-                             isinstance(colNulls[0], PY_NUM_TYPES)) and
-                            ((colNulls[1] is None) or
-                             isinstance(colNulls[1], PY_NUM_TYPES)))
-
-                else:
-                    nulls[col] = (None, None)
-
-            outlierTails = kwargs.pop('outlierTails', {})
-            if isinstance(outlierTails, str):
-                outlierTails = {col: outlierTails for col in cols}
-
-            fillOutliers = kwargs.pop('fillOutliers', False)
-            fillOutliers = \
-                cols \
-                if fillOutliers is True \
-                else to_iterable(fillOutliers)
-
-            tsWindowDefs = set()
-            details = {}
-
-            if verbose:
-                message = 'NULL-Filling Columns {}...'.format(
-                    ', '.join(f'"{col}"' for col in cols))
-                self.stdOutLogger.info(message)
-                tic = time.time()
-
-            for col in cols:
-                colType = self.type(col)
-                colFallBackVal = None
-
-                if is_num(colType):
-                    isNum = True
-
-                    colOutlierTails = outlierTails.get(col, 'both')
-                    fixLowerTail = colOutlierTails in ('lower', 'both')
-                    fixUpperTail = colOutlierTails in ('upper', 'both')
-
-                    methodForCol = \
-                        method[col] \
-                        if isinstance(method, dict) and (col in method) \
-                        else method
-
-                    if methodForCol:
-                        methodForCol = methodForCol.lower().split('_')
-
-                        if len(methodForCol) == 2:
-                            assert self.hasTS, \
-                                ('NULL-Filling Methods '
-                                 f"{', '.join(s.upper() for s in _TS_FILL_METHODS)} "
-                                 'Not Supported for Non-Time-Series ADFs')
-
-                            methodForCol, window = methodForCol
-
-                        else:
-                            methodForCol = methodForCol[0]
-
-                            if self.hasTS:
-                                window = None
-
-                        colFallBackVal = \
-                            self.outlierRstStat(
-                                col,
-                                stat=(methodForCol
-                                      if (not self.hasTS) or (window is None)
-                                      or (window == 'partition')
-                                      else 'mean'),
-                                outlierTails=colOutlierTails,
-                                verbose=verbose > 1)
-
-                    elif isinstance(value, dict):
-                        colFallBackVal = value.get(col)
-                        if not isinstance(colFallBackVal, PY_NUM_TYPES):
-                            colFallBackVal = None
-
-                    elif isinstance(value, PY_NUM_TYPES):
-                        colFallBackVal = value
-
-                else:
-                    isNum = False
-
-                    if isinstance(value, dict):
-                        colFallBackVal = value.get(col)
-                        if isinstance(colFallBackVal, PY_NUM_TYPES):
-                            colFallBackVal = None
-
-                    elif not isinstance(value, PY_NUM_TYPES):
-                        colFallBackVal = value
-
-                if notnull(colFallBackVal):
-                    fallbackStrs = \
-                        [f"'{colFallBackVal}'"
-                         if is_string(colType) and
-                         isinstance(colFallBackVal, str)
-                         else repr(colFallBackVal)]
-
-                    lowerNull, upperNull = colNulls = nulls[col]
-
-                    if isNum and self.hasTS and window:
-                        partitionFallBackStrTemplate = \
-                            ("{}(CASE WHEN (STRING({}) = 'NaN'){}{}{}{} "
-                             "THEN NULL ELSE {} END) OVER {}")
-
-                        fallbackStrs.insert(
-                            0,
-                            partitionFallBackStrTemplate.format(
-                                methodForCol,
-                                col,
-                                '' if lowerNull is None
-                                else f' OR ({col} <= {lowerNull})',
-                                '' if upperNull is None
-                                else f' OR ({col} >= {upperNull})',
-                                f' OR ({col} < {self.outlierRstMin(col)})'
-                                if fixLowerTail
-                                else '',
-                                f' OR ({col} > {self.outlierRstMax(col)})'
-                                if fixUpperTail
-                                else '',
-                                col,
-                                _TS_WINDOW_NAMES[window]))
-                        tsWindowDefs.add(_TS_WINDOW_DEFS[window])
-
-                        if window != 'partition':
-                            oppositeWindow = _TS_OPPOSITE_WINDOW_NAMES[window]
-                            fallbackStrs.insert(
-                                1,
-                                partitionFallBackStrTemplate.format(
-                                    _TS_OPPOSITE_METHODS[methodForCol],
-                                    col,
-                                    '' if lowerNull is None
-                                    else f' OR ({col} <= {lowerNull})',
-                                    '' if upperNull is None
-                                    else f' OR ({col} >= {upperNull})',
-                                    f' OR ({col} < {self.outlierRstMin(col)})'
-                                    if fixLowerTail
-                                    else '',
-                                    f' OR ({col} > {self.outlierRstMax(col)})'
-                                    if fixUpperTail
-                                    else '',
-                                    col,
-                                    _TS_WINDOW_NAMES[oppositeWindow]))
-                            tsWindowDefs.add(_TS_WINDOW_DEFS[oppositeWindow])
-
-                    details[col] = [
-                        self._NULL_FILL_PREFIX + col + self._PREP_SUFFIX,
-
-                        # pylint: disable=line-too-long
-                        dict(
-                            SQL="COALESCE(CASE WHEN (STRING({0}) = 'NaN'){1}{2}{3}{4} THEN NULL ELSE {0} END, {5})"
-                                .format(
-                                    col,
-                                    '' if lowerNull is None
-                                    else f' OR ({col} <= {lowerNull})',
-                                    '' if upperNull is None
-                                    else f' OR ({col} >= {upperNull})',
-                                    f' OR ({col} < {self.outlierRstMin(col)})'
-                                    if isNum and (col in fillOutliers)
-                                    and fixLowerTail
-                                    else '',
-                                    f' OR ({col} > {self.outlierRstMax(col)})'
-                                    if isNum and (col in fillOutliers)
-                                    and fixUpperTail
-                                    else '',
-                                    ', '.join(fallbackStrs)),
-
-                            Nulls=colNulls,
-                            NullFillValue=colFallBackVal)]
-
-            if tsWindowDefs:
-                details['__TS_WINDOW_CLAUSE__'] = \
-                    _tsWindowClause = \
-                    f"WINDOW {', '.join(tsWindowDefs)}"
+                assert (isinstance(colNulls, (list, tuple)) and
+                        (len(colNulls) == 2) and
+                        ((colNulls[0] is None) or isinstance(colNulls[0], PY_NUM_TYPES)) and
+                        ((colNulls[1] is None) or isinstance(colNulls[1], PY_NUM_TYPES)))
 
             else:
-                _tsWindowClause = ''
+                nulls[col] = None, None
 
-            sqlStatement = \
-                'SELECT *, {} FROM __THIS__ {}'.format(
-                    ', '.join(
-                        '{} AS {}'.format(nullFillDetails['SQL'], nullFillCol)
-                        for col, (nullFillCol, nullFillDetails) in
-                        details.items()
-                        if col != '__TS_WINDOW_CLAUSE__'),
-                    _tsWindowClause)
+        outlierTails: Union[str, Dict[str, str]] = kwargs.pop('outlierTails', {})
+        if isinstance(outlierTails, str):
+            outlierTails: Dict[str, str] = {col: outlierTails for col in cols}
 
-        if savePath and (savePath != loadPath):
-            if verbose:
-                msg = ('Saving NULL-Filling SQL Statement '
-                       f'to Path "{savePath}"...')
-                self.stdOutLogger.info(msg)
-                _tic = time.time()
-
-            fs.mkdir(
-                dir_path=savePath,
-                hdfs=False)
-
-            with open(os.path.join(savePath,
-                                   self._NULL_FILL_SQL_STATEMENT_FILE_NAME),
-                      mode='w',
-                      encoding='utf-8') as f:
-                json.dump(sqlStatement, f, indent=2)
-
-            if verbose:
-                _toc = time.time()
-                self.stdOutLogger.info(
-                    msg + f' done!   <{_toc - _tic:,.1f} s>')
-
-        arrowADF = \
-            self.map(
-                PandasNullFiller(
-                    nullFillDetails=details),
-                inheritNRows=True,
-                **kwargs)
-
-        arrowADF._inheritCache(
-            self,
-            *(() if loadPath else cols))
-
-        arrowADF._cache.reprSample = self._cache.reprSample
+        nullFillDetails: Namespace = Namespace()
 
         if verbose:
-            toc = time.time()
-            self.stdOutLogger.info(
-                message + f' done!   <{((toc - tic) / 60):,.1f} m>')
+            self.stdOutLogger.info(msg = (msg := ('NULL-Filling Columns ' +
+                                                  ', '.join(f'"{col}"' for col in cols) +
+                                                  '...')))
+            tic: float = time.time()
 
-        return (((arrowADF, details, sqlStatement)
-                 if returnSQLStatement
-                 else (arrowADF, details))
-                if returnDetails
-                else arrowADF)
+        for col in cols:
+            colOutlierTails: str = outlierTails.get(col, 'both')
+
+            methodForCol: Optional[str] = (method[col]
+                                           if isinstance(method, dict) and (col in method)
+                                           else method)
+
+            if methodForCol:
+                colFallBackVal: PyNumType = self.outlierRstStat(col,
+                                                                stat=methodForCol,
+                                                                outlierTails=colOutlierTails,
+                                                                verbose=verbose > 1)
+
+            elif isinstance(value, dict):
+                colFallBackVal: Optional[PyNumType] = value.get(col)
+
+                if not isinstance(colFallBackVal, PY_NUM_TYPES):
+                    colFallBackVal: Optional[PyNumType] = None
+
+            elif isinstance(value, PY_NUM_TYPES):
+                colFallBackVal: PyNumType = value
+
+            else:
+                colFallBackVal: Optional[PyNumType] = None
+
+            nullFillDetails[col] = (self._NULL_FILL_PREFIX + col,
+                                    {'nulls': colNulls,
+                                     'null-fill-method': methodForCol,
+                                     'null-fill-value': colFallBackVal})
+
+        s3ParquetDF: S3ParquetDataFeeder = \
+            self.map(PandasNumericalNullFiller(nullFillDetails=nullFillDetails),
+                     inheritNRows=True, **kwargs)
+        s3ParquetDF._inheritCache(self, *cols)
+        s3ParquetDF._cache.reprSample = self._cache.reprSample
+
+        if verbose:
+            toc: float = time.time()
+            self.stdOutLogger.info(msg=f'{msg} done!   <{(toc - tic) / 60:,.1f} m>')
+
+        return (s3ParquetDF, nullFillDetails) if returnDetails else s3ParquetDF
 
     def preprocessForML(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
         """Preprocess selected column(s) for ML training/inferencing.
@@ -2435,8 +2195,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 - **fill**:
                     - *dict* ( ``method`` = ... *(default: 'mean')*,
                                ``value`` = ... *(default: None)*,
-                               ``outlierTails`` = ... *(default: False)*,
-                               ``fillOutliers`` = ... *(default: False)* )
+                               ``outlierTails`` = ... *(default: False)* )
                     as per ``.fillna(...)`` method;
                     - *OR* ``None`` to not apply any ``NULL``/``NaN``-filling
 
@@ -2484,8 +2243,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         fill: Dict[str, Optional[PyPossibleFeatureType]] = kwargs.pop('fill',
                                                                       dict(method='mean',
                                                                            value=None,
-                                                                           outlierTails='both',
-                                                                           fillOutliers=False))
+                                                                           outlierTails='both'))
 
         assert fill, ValueError(f'*** {type(self)}.preprocessForML(...) MUST INVOLVE NULL-FILLING '
                                 f'FOR NUMERICAL COLS ***')
@@ -2547,8 +2305,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             cols: Set[str] = {col
                               for col in cols
                               if len(profile[col].distinctProportions.loc[
-                                (profile[col].distinctProportions.index != '') &
-                                notnull(profile[col].distinctProportions.index)]) > 1}
+                                  (profile[col].distinctProportions.index != '') &
+                                  notnull(profile[col].distinctProportions.index)]) > 1}
 
             if not cols:
                 return self.copy()
