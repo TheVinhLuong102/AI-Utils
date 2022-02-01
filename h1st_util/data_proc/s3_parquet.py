@@ -28,9 +28,8 @@ from pyarrow.lib import RecordBatch, Schema, Table   # pylint: disable=no-name-i
 from pyarrow.parquet import FileMetaData, read_metadata, read_schema, read_table
 
 from .. import debug, fs, s3
-from ..data_types.arrow import (
-    DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
-    is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)
+from ..data_types.arrow import (DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
+                                is_binary, is_boolean, is_num, is_possible_cat, is_string)
 from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES
 from ..data_types.python import PY_NUM_TYPES
 from ..data_types.typing import PyNumType
@@ -2294,9 +2293,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             cols: Set[str] = {col
                               for col in cols
-                              if len(profile[col].distinctProportions.loc[
-                                  (profile[col].distinctProportions.index != '') &
-                                  notnull(profile[col].distinctProportions.index)]) > 1}
+                              if ((distinctProportionsIndex :=
+                                   profile[col].distinctProportions.index).notnull() &
+                                  (distinctProportionsIndex != '')).sum() > 1}
 
             if not cols:
                 return self.copy()
