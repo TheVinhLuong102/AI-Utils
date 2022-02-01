@@ -32,8 +32,8 @@ from ..data_types.arrow import (
     DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
     is_binary, is_boolean, is_complex, is_num, is_possible_cat, is_string)
 from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES
-from ..data_types.python import PY_NUM_TYPES, PY_POSSIBLE_FEATURE_TYPES
-from ..data_types.typing import PyNumType, PyPossibleFeatureType
+from ..data_types.python import PY_NUM_TYPES
+from ..data_types.typing import PyNumType
 from ..default_dict import DefaultDict
 from ..iter import to_iterable
 from ..namespace import Namespace
@@ -2240,10 +2240,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                  if forceNumExcl is None
                                  else to_iterable(forceNumExcl, iterable_type=set)))
 
-        fill: Dict[str, Optional[PyPossibleFeatureType]] = kwargs.pop('fill',
-                                                                      dict(method='mean',
-                                                                           value=None,
-                                                                           outlierTails='both'))
+        fill: Dict[str, Optional[PyNumType]] = kwargs.pop('fill',
+                                                          dict(method='mean',
+                                                               value=None,
+                                                               outlierTails='both'))
 
         assert fill, ValueError(f'*** {type(self)}.preprocessForML(...) MUST INVOLVE NULL-FILLING '
                                 f'FOR NUMERICAL COLS ***')
