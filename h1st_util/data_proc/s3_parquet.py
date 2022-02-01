@@ -2513,8 +2513,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             if loadPath in self._PREP_CACHE:
                 prepCache: Namespace = self._PREP_CACHE[loadPath]
 
-                catOrigToPrepColMap: Dict[str, Any] = prepCache.catOrigToPrepColMap
-                numOrigToPrepColMap: Dict[str, Any] = prepCache.numOrigToPrepColMap
+                catOrigToPrepColMap: Namespace = prepCache.catOrigToPrepColMap
+                numOrigToPrepColMap: Namespace = prepCache.numOrigToPrepColMap
 
             else:
                 loadPath: Path = Path(loadPath).resolve(strict=True)
@@ -2527,12 +2527,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                             loadPath / self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME))
 
         else:
-            cols: Set[str] = {possibleFeatureContentCol
-                              for possibleFeatureContentCol
-                              in ((set(cols) & self.possibleFeatureContentCols)
-                                  if cols
-                                  else self.possibleFeatureContentCols)
-                              if self.suffNonNull(possibleFeatureContentCol)}
+            cols: Set[str] = {col
+                              for col in ((set(cols) & self.possibleFeatureContentCols)
+                                          if cols
+                                          else self.possibleFeatureContentCols)
+                              if self.suffNonNull(col)}
 
             if cols:
                 profile: Namespace = self.profile(*cols,
@@ -2547,10 +2546,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             cols: Set[str] = {col
                               for col in cols
-                              if self.suffNonNull(col) and
-                              (len(profile[col].distinctProportions.loc[
-                                  (profile[col].distinctProportions.index != '') &
-                                  notnull(profile[col].distinctProportions.index)]) > 1)}
+                              if len(profile[col].distinctProportions.loc[
+                                (profile[col].distinctProportions.index != '') &
+                                notnull(profile[col].distinctProportions.index)]) > 1}
 
             if not cols:
                 return self.copy()
