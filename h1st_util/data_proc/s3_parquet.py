@@ -2317,7 +2317,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                     '...')))
                 tic: float = time.time()
 
-            catOrigToPrepColMap = {'__SCALE__': scaleCat}
+            catOrigToPrepColMap: Namespace = Namespace(__SCALE__=scaleCat)
 
             if catCols:
                 if verbose:
@@ -2372,17 +2372,17 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     self.stdOutLogger.info(
                         msg=f'{cat_prep_msg} done!   <{cat_prep_toc - cat_prep_tic:,.1f} s>')
 
-            numOrigToPrepColMap = \
-                dict(__SCALER__=scaler)
+            numOrigToPrepColMap: Namespace = Namespace(__SCALER__=scaler)
 
             if numCols:
-                numScaledCols = []
+                numScaledCols: Set[str] = set()
 
                 if verbose:
-                    msg = 'Transforming Numerical Features {}...'.format(
-                        ', '.join(f'"{numCol}"' for numCol in numCols))
-                    self.stdOutLogger.info(msg)
-                    _tic = time.time()
+                    self.stdOutLogger.info(
+                        msg=(num_prep_msg := ('Transforming Numerical Features ' +
+                                              ', '.join(f'"{numCol}"' for numCol in numCols) +
+                                              '...')))
+                    num_prep_tic: float = time.time()
 
                 outlierTails = fill.get('outlierTails', {})
                 if isinstance(outlierTails, str):
@@ -2391,13 +2391,12 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                          for col in numCols}
 
                 _, numNullFillDetails = \
-                    self.fillNull(
+                    self.fillNumNull(
                         *numCols,
                         nulls=nulls,
                         method=fill.get('method', 'mean'),
                         value=fill.get('value'),
                         outlierTails=outlierTails,
-                        fillOutliers=fill.get('fillOutliers', False),
                         returnDetails=True,
                         verbose=verbose > 1)
 
