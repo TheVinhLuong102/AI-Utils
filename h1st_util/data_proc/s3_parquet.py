@@ -3015,13 +3015,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             arrowADF._cache.reprSample = self._cache.reprSample
 
         if verbose:
-            toc = time.time()
-            self.stdOutLogger.info(
-                message + f' done!   <{((toc - tic) / 60):,.1f} m>')
+            toc: float = time.time()
+            self.stdOutLogger.info(msg=f'{msg} done!   <{(toc - tic) / 60:,.1f} m>')
 
-        return (((arrowADF, catOrigToPrepColMap, numOrigToPrepColMap,
-                  sqlStatement)
-                 if returnSQLStatement
-                 else (arrowADF, catOrigToPrepColMap, numOrigToPrepColMap))
+        return ((s3ParquetDF, catOrigToPrepColMap, numOrigToPrepColMap)
                 if returnOrigToPrepColMaps
-                else arrowADF)
+                else s3ParquetDF)
