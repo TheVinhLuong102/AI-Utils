@@ -34,7 +34,7 @@ from ..data_types.python import PY_NUM_TYPES, PyNumType, PyPossibleFeatureType
 from ..default_dict import DefaultDict
 from ..fs import PathType, mkdir
 from ..iter import to_iterable
-from ..namespace import Namespace
+from ..namespace import Namespace, DICT_OR_NAMESPACE_TYPES
 
 from ._abstract import AbstractS3FileDataHandler, ReducedDataSetType
 from .pandas import PandasNumericalNullFiller, PandasMLPreprocessor
@@ -2111,7 +2111,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         outlierTails: Optional[Union[str, Dict[str, Optional[str]]]] = \
             kwargs.pop('outlierTails', {})
-        if not isinstance(outlierTails, dict):
+        if not isinstance(outlierTails, DICT_OR_NAMESPACE_TYPES):
             outlierTails: Dict[str, Optional[str]] = {col: outlierTails for col in cols}
 
         nullFillDetails: Namespace = Namespace()
@@ -2381,21 +2381,18 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                               '...')))
                     num_prep_tic: float = time.time()
 
-                outlierTails = fill.get('outlierTails', {})
-                if isinstance(outlierTails, str):
-                    outlierTails = \
-                        {col: outlierTails
-                         for col in numCols}
+                outlierTails: Optional[Union[str, Dict[str, Optional[str]]]] = \
+                    fill.get('outlierTails', {})
+                if not isinstance(outlierTails, DICT_OR_NAMESPACE_TYPES):
+                    outlierTails: Dict[str, Optional[str]] = {col: outlierTails for col in numCols}
 
-                _, numNullFillDetails = \
-                    self.fillNumNull(
-                        *numCols,
-                        nulls=nulls,
-                        method=fill.get('method', 'mean'),
-                        value=fill.get('value'),
-                        outlierTails=outlierTails,
-                        returnDetails=True,
-                        verbose=verbose > 1)
+                _, numNullFillDetails = self.fillNumNull(*numCols,
+                                                         nulls=nulls,
+                                                         method=fill.get('method', 'mean'),
+                                                         value=fill.get('value'),
+                                                         outlierTails=outlierTails,
+                                                         returnDetails=True,
+                                                         verbose=verbose > 1)
 
                 for numCol in numCols:
                     colOutlierTails = outlierTails.get(numCol, 'both')
