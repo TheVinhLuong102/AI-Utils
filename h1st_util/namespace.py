@@ -15,7 +15,7 @@ from typing import Collection, List, Tuple   # Py3.9+: use built-ins
 from .fs import PathType, mkdir
 
 
-__all__ = ('Namespace',)
+__all__ = 'Namespace', 'DICT_OR_NAMESPACE_TYPES'
 
 
 class Namespace(ArgParseNamespace):
@@ -383,3 +383,9 @@ class Namespace(ArgParseNamespace):
                       separators=None,
                       default=None,
                       sort_keys=False)
+
+
+DICT_OR_NAMESPACE_TYPES: Tuple[type] = (dict,
+                                        ArgParseNamespace,
+                                        SimpleNamespace,
+                                        Namespace)
