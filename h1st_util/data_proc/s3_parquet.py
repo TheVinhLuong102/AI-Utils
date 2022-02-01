@@ -2492,7 +2492,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         scaler: Optional[str] = kwargs.pop('scaler', 'standard')
         if scaler:
-            scaler = scaler.lower()
+            scaler: str = scaler.lower()
 
         returnNumPy: bool = kwargs.pop('returnNumPy', False)
         returnOrigToPrepColMaps: bool = kwargs.pop('returnOrigToPrepColMaps', False)
@@ -2517,40 +2517,13 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 numOrigToPrepColMap: Dict[str, Any] = prepCache.numOrigToPrepColMap
 
             else:
-                with open(file=Path(loadPath) / self._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME,
-                          mode='rt',
-                          buffering=-1,
-                          encoding='utf-8',
-                          errors='strict',
-                          newline=None,
-                          closefd=True,
-                          opener=None) as f:
-                    catOrigToPrepColMap: Dict[str, Any] = json.load(fp=f,
-                                                                    cls=None,
-                                                                    object_hook=None,
-                                                                    parse_float=None,
-                                                                    parse_int=None,
-                                                                    parse_constant=None,
-                                                                    object_pairs_hook=None)
+                loadPath: Path = Path(loadPath).resolve(strict=True)
 
-                with open(file=Path(loadPath) / self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME,
-                          mode='rt',
-                          buffering=-1,
-                          encoding='utf-8',
-                          errors='strict',
-                          newline=None,
-                          closefd=True,
-                          opener=None) as f:
-                    numOrigToPrepColMap: Dict[str, Any] = json.load(fp=f,
-                                                                    cls=None,
-                                                                    object_hook=None,
-                                                                    parse_float=None,
-                                                                    parse_int=None,
-                                                                    parse_constant=None,
-                                                                    object_pairs_hook=None)
-
-                self._PREP_CACHE[loadPath] = Namespace(catOrigToPrepColMap=catOrigToPrepColMap,
-                                                       numOrigToPrepColMap=numOrigToPrepColMap)
+                self._PREP_CACHE[loadPath] = \
+                    Namespace(catOrigToPrepColMap=Namespace.from_json(
+                                loadPath / self._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME),
+                              numOrigToPrepColMap=Namespace.from_json(
+                                loadPath / self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME))
 
         else:
             cols: Set[str] = {possibleFeatureContentCol
@@ -2575,8 +2548,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                               for col in cols
                               if self.suffNonNull(col) and
                               (len(profile[col].distinctProportions.loc[
-                                (profile[col].distinctProportions.index != '') &
-                                notnull(profile[col].distinctProportions.index)]) > 1)}
+                                  (profile[col].distinctProportions.index != '') &
+                                  notnull(profile[col].distinctProportions.index)]) > 1)}
 
             if not cols:
                 return self.copy()
