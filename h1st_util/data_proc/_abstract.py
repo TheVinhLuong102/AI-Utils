@@ -266,8 +266,6 @@ class AbstractDataHandler:
     # ROWS, COLUMNS & TYPES
     # ---------------------
     # __len__ / nRows
-    # nCols
-    # shape
     # types / type / typeIsNum
 
     def __len__(self) -> int:
@@ -284,17 +282,6 @@ class AbstractDataHandler:
     def nRows(self):   # noqa: N802
         # pylint: disable=invalid-name
         self._cache.nRows = None
-
-    @property
-    def nCols(self) -> int:   # noqa: N802
-        # pylint: disable=invalid-name
-        """Return number of columns."""
-        return len(self.columns)
-
-    @property
-    def shape(self) -> Tuple[int, int]:
-        """Return (number of rows, number of columns) tuple."""
-        return self.nRows, self.nCols
 
     @property
     def types(self) -> Namespace:
