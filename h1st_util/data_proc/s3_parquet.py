@@ -16,7 +16,7 @@ from typing import Collection, Dict, List, Set, Sequence, Tuple   # Py3.9+: use 
 from urllib.parse import ParseResult, urlparse
 from uuid import uuid4
 
-from numpy import allclose, isfinite, nan, ndarray, vstack
+from numpy import isfinite, nan, ndarray, vstack
 from pandas import DataFrame, Series, concat, isnull, notnull, read_parquet
 from pandas._libs.missing import NAType   # pylint: disable=no-name-in-module
 from tqdm import tqdm
@@ -2408,137 +2408,90 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                          else self.sampleStat(numCol, stat='max'))
 
                     if colMin < colMax:
-                        numColNullFillDetails = numNullFillDetails[numCol][1]
+                        numColNullFillDetails: Namespace = numNullFillDetails[numCol][1]
 
-                        numColSqlItem = numColNullFillDetails['SQL']
-                        numColNulls = numColNullFillDetails['Nulls']
+                        numColNulls: Tuple[Optional[PyNumType], Optional[PyNumType]] = \
+                            numColNullFillDetails.nulls
 
-                        numColNullFillValue = \
-                            numColNullFillDetails['NullFillValue']
-                        assert allclose(numColNullFillValue, self.outlierRstStat(numCol))
+                        numColNullFillMethod: Optional[PyNumType] = \
+                            numColNullFillDetails['null-fill-method']
+
+                        numColNullFillValue: Optional[PyNumType] = \
+                            numColNullFillDetails['null-fill-value']
 
                         if scaler:
                             if scaler == 'standard':
-                                scaledCol = (
-                                    self._STD_SCL_PREFIX +
-                                    numCol +
-                                    self._PREP_SUFFIX)
+                                scaledCol: str = self._STD_SCL_PREFIX + numCol
 
-                                series = self.reprSample[numCol]
+                                series: Series = self.reprSample[numCol]
 
                                 if colOutlierTails == 'both':
-                                    series = series.loc[
-                                        series.between(
-                                            left=colMin,
-                                            right=colMax,
-                                            inclusive='both')]
+                                    series: Series = series.loc[series.between(left=colMin,
+                                                                               right=colMax,
+                                                                               inclusive='both')]
 
                                 elif colOutlierTails == 'lower':
-                                    series = series.loc[series > colMin]
+                                    series: Series = series.loc[series > colMin]
 
                                 elif colOutlierTails == 'upper':
-                                    series = series.loc[series < colMax]
+                                    series: Series = series.loc[series < colMax]
 
-                                stdDev = float(
-                                    series.std(
-                                        axis='index',
-                                        skipna=True,
-                                        level=None,
-                                        ddof=1))
-
-                                prepSqlItems[scaledCol] = \
-                                    sqlStdScl(
-                                        sqlItem=numColSqlItem,
-                                        mean=numColNullFillValue,
-                                        std=stdDev)
+                                stdDev: float = float(series.std(axis='index',
+                                                                 skipna=True,
+                                                                 level=None,
+                                                                 ddof=1))
 
                                 numOrigToPrepColMap[numCol] = \
-                                    [scaledCol,
-
-                                     dict(Nulls=numColNulls,
-                                          NullFillValue=numColNullFillValue,
-                                          Mean=numColNullFillValue,
-                                          StdDev=stdDev)]
+                                    (scaledCol,
+                                     {'nulls': numColNulls,
+                                      'null-fill-method': numColNullFillMethod,
+                                      'null-fill-value': numColNullFillValue,
+                                      'mean': numColNullFillValue,
+                                      'std': stdDev})
 
                             elif scaler == 'maxabs':
-                                scaledCol = (self._MAX_ABS_SCL_PREFIX +
-                                             numCol +
-                                             self._PREP_SUFFIX)
+                                scaledCol: str = self._MAX_ABS_SCL_PREFIX + numCol
 
-                                maxAbs = float(max(abs(colMin), abs(colMax)))
-
-                                prepSqlItems[scaledCol] = \
-                                    sqlMaxAbsScl(
-                                        sqlItem=numColSqlItem,
-                                        maxAbs=maxAbs)
+                                maxAbs: PyNumType = max(abs(colMin), abs(colMax))
 
                                 numOrigToPrepColMap[numCol] = \
-                                    [scaledCol,
-
-                                     dict(Nulls=numColNulls,
-                                          NullFillValue=numColNullFillValue,
-                                          MaxAbs=maxAbs)]
+                                    (scaledCol,
+                                     {'nulls': numColNulls,
+                                      'null-fill-method': numColNullFillMethod,
+                                      'null-fill-value': numColNullFillValue,
+                                      'max-abs': maxAbs})
 
                             elif scaler == 'minmax':
-                                scaledCol = (self._MIN_MAX_SCL_PREFIX +
-                                             numCol +
-                                             self._PREP_SUFFIX)
-
-                                prepSqlItems[scaledCol] = \
-                                    sqlMinMaxScl(
-                                        sqlItem=numColSqlItem,
-                                        origMin=colMin, origMax=colMax,
-                                        targetMin=-1, targetMax=1)
+                                scaledCol: str = self._MIN_MAX_SCL_PREFIX + numCol
 
                                 numOrigToPrepColMap[numCol] = \
-                                    [scaledCol,
-
-                                     dict(Nulls=numColNulls,
-                                          NullFillValue=numColNullFillValue,
-                                          OrigMin=colMin, OrigMax=colMax,
-                                          TargetMin=-1, TargetMax=1)]
+                                    (scaledCol,
+                                     {'nulls': numColNulls,
+                                      'null-fill-method': numColNullFillMethod,
+                                      'null-fill-value': numColNullFillValue,
+                                      'orig-min': colMin, 'orig-max': colMax,
+                                      'target-min': -1, 'target-max': 1})
 
                             else:
-                                raise ValueError(
-                                    '*** Scaler must be one of '
-                                    '"standard", "maxabs", "minmax" '
-                                    'and None ***')
+                                raise ValueError('*** Scaler must be one of '
+                                                 '"standard", "maxabs", "minmax" '
+                                                 'and None ***')
 
                         else:
-                            scaledCol = (self._NULL_FILL_PREFIX +
-                                         numCol +
-                                         self._PREP_SUFFIX)
-
-                            prepSqlItems[scaledCol] = numColSqlItem
+                            scaledCol: str = self._NULL_FILL_PREFIX + numCol
 
                             numOrigToPrepColMap[numCol] = \
-                                [scaledCol,
+                                (scaledCol,
+                                 {'nulls': numColNulls,
+                                  'null-fill-method': numColNullFillMethod,
+                                  'null-fill-value': numColNullFillValue})
 
-                                 dict(Nulls=numColNulls,
-                                      NullFillValue=numColNullFillValue)]
-
-                        numScaledCols.append(scaledCol)
+                        numScaledCols.add(scaledCol)
 
                 if verbose:
-                    _toc = time.time()
+                    num_prep_toc: float = time.time()
                     self.stdOutLogger.info(
-                        msg + f' done!   <{_toc - _tic:,.1f} s>')
-
-            defaultVecCols = \
-                [catOrigToPrepColMap[catCol][0]
-                 for catCol in sorted(set(catOrigToPrepColMap)
-                                      .difference(('__OHE__',
-                                                   '__SCALE__')))] + \
-                [numOrigToPrepColMap[numCol][0]
-                 for numCol in sorted(set(numOrigToPrepColMap)
-                                      .difference(('__TS_WINDOW_CLAUSE__',
-                                                   '__SCALER__')))]
-
-            sqlStatement = \
-                'SELECT *, {} FROM __THIS__ {}'.format(
-                    ', '.join(f'{sqlItem} AS {prepCol}'
-                              for prepCol, sqlItem in prepSqlItems.items()),
-                    numNullFillDetails.get('__TS_WINDOW_CLAUSE__', ''))
+                        msg=f'{num_prep_msg} done!   <{num_prep_toc - num_prep_tic:,.1f} s>')
 
         if savePath:
             if verbose:
