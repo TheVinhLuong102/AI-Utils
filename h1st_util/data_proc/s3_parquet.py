@@ -584,8 +584,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # reduce
     # __getitem__
     # castType
-    # rename
-    # filter
     # collect
 
     def map(self,
@@ -963,19 +961,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         return self.map(lambda df: df.astype(colsToTypes, copy=False, errors='raise'),
                         reduceMustInclCols=set(colsToTypes),
                         inheritNRows=True)
-
-    @lru_cache(maxsize=None, typed=False)
-    def filter(self, *conditions: str, **kwargs: Any) -> S3ParquetDataFeeder:
-        """Apply filtering mapper."""
-        s3ParquetDF: S3ParquetDataFeeder = self
-
-        for condition in conditions:
-            # pylint: disable=cell-var-from-loop
-            s3ParquetDF: S3ParquetDataFeeder = \
-                s3ParquetDF.map(lambda df: df.query(expr=condition, inplace=False),
-                                **kwargs)
-
-        return s3ParquetDF
 
     def collect(self, *cols: str, **kwargs: Any) -> ReducedDataSetType:
         """Collect content."""
