@@ -19,8 +19,8 @@ from ._abstract import AbstractDataHandler
 
 __all__ = (
     'PandasFlatteningSubsampler',
-    'PandasMLPreprocessor',
     'PandasNumericalNullFiller',
+    'PandasMLPreprocessor',
 )
 
 
@@ -29,6 +29,23 @@ __all__ = (
 
 # pylint: disable=invalid-name
 # e.g., camelCase names
+
+
+@dataclass(init=True,
+           repr=True,
+           eq=True,
+           order=False,
+           unsafe_hash=False,
+           frozen=True)
+class PandasFlatteningSubsampler:
+    """Flattening Subsampler for Pandas Data Frames."""
+
+    everyNRows: int
+    columns: Sequence[str]
+
+    def __call__(self, pandasDF: DataFrame) -> DataFrame:
+        """Subsample a Pandas Data Frame's certain columns and flatten them."""
+        return pandasDF.iloc[range(0, len(pandasDF), self.everyNRows)]
 
 
 @dataclass(init=True,
@@ -246,20 +263,3 @@ class PandasMLPreprocessor:
             pandasDF[self.numPrepCols] = self.numScaler.transform(X=pandasDF[self.numNullFillCols])
 
         return pandasDF
-
-
-@dataclass(init=True,
-           repr=True,
-           eq=True,
-           order=False,
-           unsafe_hash=False,
-           frozen=True)
-class PandasFlatteningSubsampler:
-    """Flattening Subsampler for Pandas Data Frames."""
-
-    everyNRows: int
-    columns: Sequence[str]
-
-    def __call__(self, pandasDF: DataFrame) -> DataFrame:
-        """Subsample a Pandas Data Frame's certain columns and flatten them."""
-        return pandasDF.iloc[range(0, len(pandasDF), self.everyNRows)]
