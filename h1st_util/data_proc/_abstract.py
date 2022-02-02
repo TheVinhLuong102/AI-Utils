@@ -303,9 +303,6 @@ class AbstractDataHandler:
     # columns
     # indexCols
     # contentCols
-    # possibleFeatureContentCols
-    # possibleCatContentCols
-    # possibleNumContentCols
     # possibleFeatureCols
     # possibleCatCols
     # possibleNumCols
