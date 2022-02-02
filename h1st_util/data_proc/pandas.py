@@ -216,12 +216,10 @@ class PandasMLPreprocessor:
                                  ) for cat in cats))
                            * nCats)))
 
-                # *** NOTE NumPy BUG ***
-                # *** abs(...) of a data type most negative value equals to
-                # the same most negative value ***
-                # https://github.com/numpy/numpy/issues/5657
-                # https://github.com/numpy/numpy/issues/9463
-                # http://numpy-discussion.10968.n7.nabble.com/abs-for-max-negative-integers-desired-behavior-td8939.html
+                # *** NOTE: NumPy BUG ***
+                # abs(...) of a data type most negative value equals to the same most negative value
+                # github.com/numpy/numpy/issues/5657
+                # github.com/numpy/numpy/issues/9463
 
                 if self.scaleCat:
                     pandasDF.loc[:, prepCatCol] = minMaxScaledIndices = \
