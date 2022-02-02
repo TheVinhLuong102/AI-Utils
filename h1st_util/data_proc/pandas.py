@@ -80,11 +80,8 @@ class PandasMLPreprocessor:
     # pylint: disable=too-many-instance-attributes,too-few-public-methods
     """ML Preprocessor for Pandas Data Frames."""
 
-    def __init__(self,
-                 addCols: Namespace,
-                 typeStrs: Namespace,
-                 catOrigToPrepColMap: Namespace,
-                 numOrigToPrepColMap: Namespace,
+    def __init__(self, addCols: Namespace, typeStrs: Namespace,
+                 catOrigToPrepColMap: Namespace, numOrigToPrepColMap: Namespace,
                  returnNumPyForCols: Optional[Sequence[str]] = None):
         # pylint: disable=too-many-arguments
         """Init ML Preprocessor."""
@@ -95,7 +92,8 @@ class PandasMLPreprocessor:
         self.catOrigToPrepColMap: Namespace = catOrigToPrepColMap
         self.scaleCat: bool = catOrigToPrepColMap.__SCALE__
 
-        self.numNullFiller = PandasNumericalNullFiller(nullFillDetails=numOrigToPrepColMap)
+        self.numNullFiller: PandasNumericalNullFiller = \
+            PandasNumericalNullFiller(nullFillDetails=numOrigToPrepColMap)
 
         self.numNullFillCols: List[str] = []
         self.numPrepCols: List[str] = []
@@ -114,18 +112,18 @@ class PandasMLPreprocessor:
         if returnNumPyForCols:
             self.returnNumPyForCols: List[str] = to_iterable(returnNumPyForCols, iterable_type=list)
 
-            nCatCols: int = len(catOrigToPrepColMap)
+            nCatCols: int = len(set(catOrigToPrepColMap) - {'__SCALE__'})
             self.catPrepCols: List[str] = self.returnNumPyForCols[:nCatCols]
 
-            numPrepCols: List[str] = returnNumPyForCols[nCatCols:]
-            numPrepColListIndices: List[int] = [numPrepCols.index(numPrepCol)
-                                                for numPrepCol in self.numPrepCols]
+            _numPrepCols: List[str] = self.returnNumPyForCols[nCatCols:]
+            _numPrepColListIndices: List[int] = [_numPrepCols.index(numPrepCol)
+                                                 for numPrepCol in self.numPrepCols]
             self.numNullFillCols: List[str] = [self.numNullFillCols[i]
-                                               for i in numPrepColListIndices]
+                                               for i in _numPrepColListIndices]
             self.numPrepCols: List[str] = [self.numPrepCols[i]
-                                           for i in numPrepColListIndices]
+                                           for i in _numPrepColListIndices]
             self.numPrepDetails: List[Namespace] = [self.numPrepDetails[i]
-                                                    for i in numPrepColListIndices]
+                                                    for i in _numPrepColListIndices]
 
         else:
             self.returnNumPyForCols: Optional[Sequence[str]] = None
@@ -188,7 +186,7 @@ class PandasMLPreprocessor:
         _FLOAT_ABS_TOL: float = 1e-9
 
         for col, value in self.addCols.items():
-            pandasDF[col] = value
+            pandasDF.loc[:, col] = value
 
         for catCol, prepCatColNameNDetails in self.catOrigToPrepColMap.items():
             if (catCol != '__SCALE__') and \
