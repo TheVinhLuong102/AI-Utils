@@ -2538,7 +2538,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                  |
                  {numPrepColDetails[0]
                   for numCol, numPrepColDetails in numOrigToPrepColMap.items()
-                  if (numCol not in ('__SCALER__', )) and
+                  if (numCol != '__SCALER__') and
                   isinstance(numPrepColDetails, PY_LIST_OR_TUPLE) and
                   (len(numPrepColDetails) == 2)})
 

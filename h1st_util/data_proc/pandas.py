@@ -179,8 +179,9 @@ class PandasMLPreprocessor:
             self.numScaler.n_features_in_ = len(self.numPrepDetails)
 
     def __call__(self, pandasDF: DataFrame) -> DataFrame:
+        # pylint: disable=too-many-locals
         """Preprocess a Pandas Data Frame."""
-        _FLOAT_ABS_TOL = 1e-9
+        _FLOAT_ABS_TOL: float = 1e-9
 
         for col, value in self.addCols.items():
             pandasDF[col] = value
@@ -208,11 +209,13 @@ class PandasMLPreprocessor:
                                                        inclusive='both') * i)
                               for i, cat in enumerate(cats)) +
                           ((1 -
-                            sum((s - cat).abs().between(left=0,
-                                                        right=_FLOAT_ABS_TOL,
-                                                        inclusive='both')
-                                for cat in cats)) *
-                           nCats)))
+                            sum(((s - cat).abs().between(left=0,
+                                                         right=_FLOAT_ABS_TOL,
+                                                         inclusive='both')
+                                 * 1   # force into numeric array
+                                 ) for cat in cats))
+                           * nCats)))
+
                 # *** NOTE NumPy BUG ***
                 # *** abs(...) of a data type most negative value equals to
                 # the same most negative value ***
