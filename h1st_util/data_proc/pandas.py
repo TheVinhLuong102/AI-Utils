@@ -112,10 +112,10 @@ class PandasMLPreprocessor:
         if returnNumPyForCols:
             self.returnNumPyForCols: List[str] = to_iterable(returnNumPyForCols, iterable_type=list)
 
-            nCatCols: int = len(set(catOrigToPrepColMap) - {'__SCALE__'})
-            self.catPrepCols: List[str] = self.returnNumPyForCols[:nCatCols]
+            _nCatCols: int = len(set(catOrigToPrepColMap) - {'__SCALE__'})
+            self.catPrepCols: List[str] = self.returnNumPyForCols[:_nCatCols]
 
-            _numPrepCols: List[str] = self.returnNumPyForCols[nCatCols:]
+            _numPrepCols: List[str] = self.returnNumPyForCols[_nCatCols:]
             _numPrepColListIndices: List[int] = [_numPrepCols.index(numPrepCol)
                                                  for numPrepCol in self.numPrepCols]
             self.numNullFillCols: List[str] = [self.numNullFillCols[i]
