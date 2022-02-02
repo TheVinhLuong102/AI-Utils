@@ -310,7 +310,7 @@ class AbstractDataHandler:
     # possibleNumCols
 
     @property
-    def indexCols(self) -> Tuple[str]:   # noqa: N802
+    def indexCols(self) -> Set[str]:   # noqa: N802
         # pylint: disable=invalid-name
         """Return index columns."""
         raise NotImplementedError

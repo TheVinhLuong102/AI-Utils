@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import datetime
 from functools import lru_cache, partial
+from itertools import chain
 from logging import Logger
 import math
 from pathlib import Path
@@ -1215,11 +1216,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # possibleCatContentCols
 
     @property
-    def indexCols(self) -> Tuple[str]:
+    def indexCols(self) -> Set[str]:
         """Return index columns."""
-        return (((self._iCol,) if self._iCol else ()) +
-                ((self._dCol,) if self._dCol else ()) +
-                ((self._tCol,) if self._tCol else ()))
+        return (({self._iCol} if self._iCol else set()) |
+                ({self._dCol} if self._dCol else set()) |
+                ({self._tCol} if self._tCol else set()))
 
     @property
     def possibleFeatureContentCols(self) -> Set[str]:
@@ -2090,7 +2091,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             cols.update(value)
 
         cols &= self.possibleNumContentCols
-        cols.difference_update(self.indexCols)
+        cols -= self.indexCols
 
         if not cols:
             return self.copy()
@@ -2258,6 +2259,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             loadPath: Path = Path(loadPath).resolve(strict=True)
 
             if loadPath in self._PREP_CACHE:
+                if debug.ON:
+                    self.stdOutLogger.debug(
+                        msg=f'*** RETRIEVING PREPROCESSING CACHE FROM {loadPath} ***')
+
                 prepCache: Namespace = self._PREP_CACHE[loadPath]
 
                 catOrigToPrepColMap: Namespace = prepCache.catOrigToPrepColMap
@@ -2528,27 +2533,29 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                        (len(numPrepColDetails) == 2)))
 
         else:
-            colsToKeep: Set[str] = self.columns | (
+            colsToKeep: Set[str] = self.indexCols | (
 
-                ({catPrepColDetails[0]
-                  for catCol, catPrepColDetails in catOrigToPrepColMap.items()
-                  if (catCol != '__SCALE__') and
-                  isinstance(catPrepColDetails, PY_LIST_OR_TUPLE) and
-                  (len(catPrepColDetails) == 2)}
+                (set(chain.from_iterable(
+                     (catCol, catPrepColDetails[0])
+                     for catCol, catPrepColDetails in catOrigToPrepColMap.items()
+                     if (catCol != '__SCALE__') and
+                     isinstance(catPrepColDetails, PY_LIST_OR_TUPLE) and
+                     (len(catPrepColDetails) == 2)))
                  |
-                 {numPrepColDetails[0]
-                  for numCol, numPrepColDetails in numOrigToPrepColMap.items()
-                  if (numCol != '__SCALER__') and
-                  isinstance(numPrepColDetails, PY_LIST_OR_TUPLE) and
-                  (len(numPrepColDetails) == 2)})
+                 set(chain.from_iterable(
+                     (numCol, numPrepColDetails[0])
+                     for numCol, numPrepColDetails in numOrigToPrepColMap.items()
+                     if (numCol != '__SCALER__') and
+                     isinstance(numPrepColDetails, PY_LIST_OR_TUPLE) and
+                     (len(numPrepColDetails) == 2))))
 
                 if loadPath
 
-                else (((catScaledIdxCols if scaleCat else catIdxCols)
+                else (((catCols | (catScaledIdxCols if scaleCat else catIdxCols))
                        if catCols
                        else set())
                       |
-                      (numScaledCols
+                      ((numCols | numScaledCols)
                        if numCols
                        else set())))
 
