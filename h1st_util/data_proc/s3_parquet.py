@@ -387,14 +387,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         else:
             newColToOldColMap: Dict[str, str] = {col: col for col in commonCols}
 
-        for cacheCategory in ('count', 'distinct',
-                              'nonNullProportion',
-                              'suffNonNullProportionThreshold',
-                              'suffNonNull',
-                              'sampleMin', 'sampleMax',
-                              'sampleMean', 'sampleMedian',
-                              'outlierRstMin', 'outlierRstMax',
-                              'outlierRstMean', 'outlierRstMedian'):
+        for cacheCategory in (
+                'count', 'distinct',
+                'nonNullProportion', 'suffNonNullProportionThreshold', 'suffNonNull',
+                'sampleMin', 'sampleMax', 'sampleMean', 'sampleMedian',
+                'outlierRstMin', 'outlierRstMax', 'outlierRstMean', 'outlierRstMedian'):
             for newCol, oldCol in newColToOldColMap.items():
                 if oldCol in oldS3ParquetDF._cache.__dict__[cacheCategory]:
                     self._cache.__dict__[cacheCategory][newCol] = \
