@@ -817,17 +817,16 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                             chunkPandasDFs.append(chunkPandasDF)
 
-                        piecePandasDF: DataFrame = \
-                            concat(objs=chunkPandasDFs,
-                                   axis='index',
-                                   join='outer',
-                                   ignore_index=False,
-                                   keys=None,
-                                   levels=None,
-                                   names=None,
-                                   verify_integrity=False,
-                                   sort=False,
-                                   copy=False)
+                        piecePandasDF: DataFrame = concat(objs=chunkPandasDFs,
+                                                          axis='index',
+                                                          join='outer',
+                                                          ignore_index=False,
+                                                          keys=None,
+                                                          levels=None,
+                                                          names=None,
+                                                          verify_integrity=False,
+                                                          sort=False,
+                                                          copy=False)
 
                         pandasDFConstructed: bool = True
 
