@@ -1363,6 +1363,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 for col, (fromVal, toVal, inSet) in filterCriteria.items():
                     v: str = re.search(f'{col}=(.*?)/', piecePath).group(1)
 
+                    # pylint: disable=too-many-boolean-expressions
                     if ((fromVal is not None) and (v < fromVal)) or \
                             ((toVal is not None) and (v > toVal)) or \
                             ((inSet is not None) and (v not in inSet)):
@@ -1372,9 +1373,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 if pieceSatisfiesCriteria:
                     piecePaths.add(piecePath)
 
-            assert piecePaths, \
-                FileNotFoundError(f'*** {self}: NO PIECE PATHS SATISFYING '
-                                  f'FILTER CRITERIA {filterCriteria} ***')
+            assert piecePaths, FileNotFoundError(f'*** {self}: NO PIECE PATHS SATISFYING '
+                                                 f'FILTER CRITERIA {filterCriteria} ***')
 
             return self._subset(*piecePaths, **kwargs)
 
