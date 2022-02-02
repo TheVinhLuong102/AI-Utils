@@ -17,7 +17,11 @@ from ..namespace import Namespace
 from ._abstract import AbstractDataHandler
 
 
-__all__ = 'PandasNumericalNullFiller', 'PandasMLPreprocessor'
+__all__ = (
+    'PandasFlatteningSubsampler',
+    'PandasMLPreprocessor',
+    'PandasNumericalNullFiller',
+)
 
 
 # flake8: noqa
@@ -244,3 +248,20 @@ class PandasMLPreprocessor:
             pandasDF[self.numPrepCols] = self.numScaler.transform(X=pandasDF[self.numNullFillCols])
 
         return pandasDF
+
+
+@dataclass(init=True,
+           repr=True,
+           eq=True,
+           order=False,
+           unsafe_hash=False,
+           frozen=True)
+class PandasFlatteningSubsampler:
+    """Flattening Subsampler for Pandas Data Frames."""
+
+    everyNRows: int
+    columns: Sequence[str]
+
+    def __call__(self, pandasDF: DataFrame) -> DataFrame:
+        """Subsample a Pandas Data Frame's certain columns and flatten them."""
+        return pandasDF.iloc[range(0, len(pandasDF), self.everyNRows)]
