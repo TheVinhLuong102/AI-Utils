@@ -22,14 +22,15 @@ PySpark = '^3.2.1'
 
 # ML/DL
 SciKit-Learn = '*'
-TensorFlow = '^2.7.0'
+TensorFlow = '^2.8.0'
 
 # AWS deps: often conflict w/ other deps, so need separate installation
 # AWSCLI = '*'
 # Boto3 = '*'
 
 # misc/other
-Tqdm = '*' 
+'Ruamel.YAML' = '^0.17.17'
+Tqdm = '*'
 
 
 [build-system]

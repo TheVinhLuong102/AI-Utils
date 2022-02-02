@@ -154,11 +154,11 @@ class PandasMLPreprocessor:
 
             # mean value for each feature in the training set
             self.numScaler.mean_ = array([numPrepDetails['mean']
-                                         for numPrepDetails in self.numPrepDetails])
+                                          for numPrepDetails in self.numPrepDetails])
 
             # per-feature relative scaling of the data
             self.numScaler.scale_ = array([numPrepDetails['std']
-                                          for numPrepDetails in self.numPrepDetails])
+                                           for numPrepDetails in self.numPrepDetails])
 
         elif self.numScaler == 'maxabs':
             self.numScaler: MaxAbsScaler = MaxAbsScaler(copy=True)
@@ -167,7 +167,7 @@ class PandasMLPreprocessor:
             # per-feature relative scaling of the data
             self.numScaler.max_abs_ = self.numScaler.scale_ = \
                 array([numPrepDetails['max-abs']
-                      for numPrepDetails in self.numPrepDetails])
+                       for numPrepDetails in self.numPrepDetails])
 
         elif self.numScaler == 'minmax':
             self.numScaler: MinMaxScaler = MinMaxScaler(feature_range=(-1, 1),
@@ -176,11 +176,11 @@ class PandasMLPreprocessor:
 
             # per-feature minimum seen in the data
             self.numScaler.data_min_ = array([numPrepDetails['orig-min']
-                                             for numPrepDetails in self.numPrepDetails])
+                                              for numPrepDetails in self.numPrepDetails])
 
             # per-feature maximum seen in the data
             self.numScaler.data_max_ = array([numPrepDetails['orig-max']
-                                             for numPrepDetails in self.numPrepDetails])
+                                              for numPrepDetails in self.numPrepDetails])
 
             # per-feature range (data_max_ - data_min_) seen in the data
             self.numScaler.data_range_ = self.numScaler.data_max_ - self.numScaler.data_min_
