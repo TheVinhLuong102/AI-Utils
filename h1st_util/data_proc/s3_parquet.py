@@ -577,9 +577,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return localPath
 
-    # =======================
-    # MAP-REDUCE (PARTITIONS)
-    # -----------------------
+    # ====================
+    # MAP/REDUCE & related
+    # --------------------
     # map
     # reduce
     # __getitem__
