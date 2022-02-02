@@ -697,11 +697,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             cols: Optional[Collection[str]] = kwargs.get('cols')
 
-            cols: Set[str] = (
-                to_iterable(cols, iterable_type=set)
-                if cols
-                else pieceCache.srcColsInclPartitionKVs
-            ) | self._reduceMustInclCols
+            cols: Set[str] = (to_iterable(cols, iterable_type=set)
+                              if cols
+                              else pieceCache.srcColsInclPartitionKVs) | self._reduceMustInclCols
 
             srcCols: Set[str] = cols & pieceCache.srcColsExclPartitionKVs
 
