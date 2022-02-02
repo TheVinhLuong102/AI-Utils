@@ -84,6 +84,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     _PIECE_CACHES: Dict[str, Namespace] = {}
 
     # default arguments dict
+    # (cannot be h1st_util.namespace.Namespace
+    # because that makes nested dicts into normal dicts)
     _DEFAULT_KWARGS: Dict[str, Optional[Union[str, DefaultDict]]] = dict(
         iCol=AbstractS3FileDataHandler._DEFAULT_I_COL,
         tCol=None,
@@ -319,7 +321,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 v: int = self.nPieces
 
             setattr(namespace,
-                    _privateK   # USE _k TO NOT INVOKE @k.setter RIGHT AWAY
+                    _privateK   # use _k to not invoke @k.setter right away
                     if inplace
                     else k,
                     v)
@@ -1212,8 +1214,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # COLUMN GROUPS
     # -------------
     # indexCols
-    # possibleFeatureContentCols
-    # possibleCatContentCols
+    # possibleFeatureCols
+    # possibleCatCols
 
     @property
     def indexCols(self) -> Set[str]:
@@ -1223,7 +1225,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 ({self._tCol} if self._tCol else set()))
 
     @property
-    def possibleFeatureContentCols(self) -> Set[str]:
+    def possibleFeatureCols(self) -> Set[str]:
         """Possible feature columns for ML modeling."""
         def is_possible_feature(t: DataType) -> bool:
             return is_boolean(t) or is_string(t) or is_num(t)
@@ -1231,7 +1233,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         return {col for col in self.contentCols if is_possible_feature(self.type(col))}
 
     @property
-    def possibleCatContentCols(self) -> Set[str]:
+    def possibleCatCols(self) -> Set[str]:
         """Possible categorical content columns."""
         return {col for col in self.contentCols if is_possible_cat(self.type(col))}
 
@@ -1635,7 +1637,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     - ``max``
         """
         if not cols:
-            cols: Set[str] = self.possibleNumContentCols
+            cols: Set[str] = self.possibleNumCols
 
         if len(cols) > 1:
             return Namespace(**{col: self.sampleStat(col, **kwargs)
@@ -1691,7 +1693,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         # pylint: disable=too-many-branches
         """Return outlier-resistant stat for specified column(s)."""
         if not cols:
-            cols: Set[str] = self.possibleNumContentCols
+            cols: Set[str] = self.possibleNumCols
 
         if len(cols) > 1:
             return Namespace(**{col: self.outlierRstStat(col, **kwargs)
@@ -1773,7 +1775,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def outlierRstMin(self, *cols: str, **kwargs: Any) -> Union[float, int, Namespace]:
         """Return outlier-resistant minimum for specified column(s)."""
         if not cols:
-            cols: Set[str] = self.possibleNumContentCols
+            cols: Set[str] = self.possibleNumCols
 
         if len(cols) > 1:
             return Namespace(**{col: self.outlierRstMin(col, **kwargs)
@@ -1830,7 +1832,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     def outlierRstMax(self, *cols: str, **kwargs: Any) -> Union[float, int, Namespace]:
         """Return outlier-resistant maximum for specified column(s)."""
         if not cols:
-            cols: Set[str] = self.possibleNumContentCols
+            cols: Set[str] = self.possibleNumCols
 
         if len(cols) > 1:
             return Namespace(**{col: self.outlierRstMax(col, **kwargs)
@@ -2090,7 +2092,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         if isinstance(value, dict):
             cols.update(value)
 
-        cols &= self.possibleNumContentCols
+        cols &= self.possibleNumCols
         cols -= self.indexCols
 
         if not cols:
@@ -2278,9 +2280,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         else:
             cols: Set[str] = {col
-                              for col in ((set(cols) & self.possibleFeatureContentCols)
+                              for col in ((set(cols) & self.possibleFeatureCols)
                                           if cols
-                                          else self.possibleFeatureContentCols)
+                                          else self.possibleFeatureCols)
                               if self.suffNonNull(col)}
 
             if cols:

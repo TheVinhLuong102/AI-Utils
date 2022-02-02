@@ -322,40 +322,22 @@ class AbstractDataHandler:
         return {col for col in self.columns if col not in self.indexCols}
 
     @property
-    def possibleFeatureContentCols(self) -> Set[str]:   # noqa: N802
+    def possibleFeatureCols(self) -> Set[str]:   # noqa: N802
         # pylint: disable=invalid-name
         """Return possible feature content columns."""
         raise NotImplementedError
 
     @property
-    def possibleCatContentCols(self) -> Set[str]:   # noqa: N802
+    def possibleCatCols(self) -> Set[str]:   # noqa: N802
         # pylint: disable=invalid-name
         """Return possible categorical content columns."""
         raise NotImplementedError
 
     @property
-    def possibleNumContentCols(self) -> Set[str]:   # noqa: N802
+    def possibleNumCols(self) -> Set[str]:   # noqa: N802
         # pylint: disable=invalid-name
         """Return possible numerical content columns."""
         return {col for col in self.contentCols if self.typeIsNum(col)}
-
-    @property
-    def possibleFeatureCols(self) -> Set[str]:   # noqa: N802
-        # pylint: disable=invalid-name
-        """Return possible feature columns."""
-        return self.possibleFeatureContentCols
-
-    @property
-    def possibleCatCols(self) -> Set[str]:   # noqa: N802
-        # pylint: disable=invalid-name
-        """Return possible categorical columns."""
-        return self.possibleCatContentCols
-
-    @property
-    def possibleNumCols(self) -> Set[str]:   # noqa: N802
-        # pylint: disable=invalid-name
-        """Return possible numerical columns."""
-        return self.possibleNumContentCols
 
     # ================
     # COLUMN PROFILING
