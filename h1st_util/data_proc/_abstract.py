@@ -300,6 +300,7 @@ class AbstractDataHandler:
     # =============
     # COLUMN GROUPS
     # -------------
+    # columns
     # indexCols
     # contentCols
     # possibleFeatureContentCols
@@ -308,6 +309,11 @@ class AbstractDataHandler:
     # possibleFeatureCols
     # possibleCatCols
     # possibleNumCols
+
+    @property
+    def columns(self) -> Set[str]:
+        """Return columns."""
+        raise NotImplementedError
 
     @property
     def indexCols(self) -> Set[str]:   # noqa: N802
@@ -319,7 +325,7 @@ class AbstractDataHandler:
     def contentCols(self) -> Set[str]:   # noqa: N802
         # pylint: disable=invalid-name
         """Return content columns."""
-        return {col for col in self.columns if col not in self.indexCols}
+        return self.columns - self.indexCols
 
     @property
     def possibleFeatureCols(self) -> Set[str]:   # noqa: N802
