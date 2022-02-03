@@ -478,4 +478,5 @@ class AbstractS3FileDataHandler(AbstractFileDataHandler):
     # pylint: disable=abstract-method
     """Abstract S3 File Data Handler."""
 
+    # AWS S3 Boto3 client
     S3_CLIENT = s3.client()
