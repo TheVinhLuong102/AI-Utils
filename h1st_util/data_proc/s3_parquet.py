@@ -1410,8 +1410,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             cols: Set[str] = self.contentCols
 
         if len(cols) > 1:
-            return Namespace(**{col: self.count(col, **kwargs)
-                                for col in cols})
+            return Namespace(**{col: self.count(col, **kwargs) for col in cols})
 
         col: str = cols[0]
 
@@ -1517,8 +1516,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             cols: Set[str] = self.contentCols
 
         if len(cols) > 1:
-            return Namespace(**{col: self.nonNullProportion(col, **kwargs)
-                                for col in cols})
+            return Namespace(**{col: self.nonNullProportion(col, **kwargs) for col in cols})
 
         col: str = cols[0]
 
@@ -1548,8 +1546,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         asDict: bool = kwargs.pop('asDict', False)
 
         if len(cols) > 1:
-            return Namespace(**{col: self.distinct(col, **kwargs)
-                                for col in cols})
+            return Namespace(**{col: self.distinct(col, **kwargs) for col in cols})
 
         col: str = cols[0]
 
@@ -1570,8 +1567,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                            Series, Namespace]:
         """Return quantile values in specified column(s)."""
         if len(cols) > 1:
-            return Namespace(**{col: self.quantile(col, **kwargs)
-                                for col in cols})
+            return Namespace(**{col: self.quantile(col, **kwargs) for col in cols})
 
         col: str = cols[0]
 
@@ -1595,8 +1591,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             cols: Set[str] = self.possibleNumCols
 
         if len(cols) > 1:
-            return Namespace(**{col: self.sampleStat(col, **kwargs)
-                                for col in cols})
+            return Namespace(**{col: self.sampleStat(col, **kwargs) for col in cols})
 
         col: str = cols[0]
 
@@ -1651,8 +1646,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             cols: Set[str] = self.possibleNumCols
 
         if len(cols) > 1:
-            return Namespace(**{col: self.outlierRstStat(col, **kwargs)
-                                for col in cols})
+            return Namespace(**{col: self.outlierRstStat(col, **kwargs) for col in cols})
 
         col: str = cols[0]
 
@@ -1733,8 +1727,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             cols: Set[str] = self.possibleNumCols
 
         if len(cols) > 1:
-            return Namespace(**{col: self.outlierRstMin(col, **kwargs)
-                                for col in cols})
+            return Namespace(**{col: self.outlierRstMin(col, **kwargs) for col in cols})
 
         col: str = cols[0]
 
@@ -1790,8 +1783,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             cols: Set[str] = self.possibleNumCols
 
         if len(cols) > 1:
-            return Namespace(**{col: self.outlierRstMax(col, **kwargs)
-                                for col in cols})
+            return Namespace(**{col: self.outlierRstMax(col, **kwargs) for col in cols})
 
         col: str = cols[0]
 
@@ -1870,8 +1862,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         asDict: bool = kwargs.pop('asDict', False)
 
         if len(cols) > 1:
-            return Namespace(**{col: self.profile(col, **kwargs)
-                                for col in cols})
+            return Namespace(**{col: self.profile(col, **kwargs) for col in cols})
 
         col: str = cols[0]
 
