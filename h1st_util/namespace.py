@@ -12,6 +12,8 @@ from types import ModuleType, SimpleNamespace
 from typing import Any, Optional, Union
 from typing import Collection, List, Tuple   # Py3.9+: use built-ins
 
+from ruamel import yaml
+
 from .fs import PathType, mkdir
 
 
@@ -383,6 +385,47 @@ class Namespace(ArgParseNamespace):
                       separators=None,
                       default=None,
                       sort_keys=False)
+
+    @classmethod
+    def from_yaml(cls, path: PathType) -> Namespace:
+        """Load content from YAML file."""
+        with open(file=path,
+                  mode='rt',
+                  buffering=-1,
+                  encoding='utf-8',
+                  errors='strict',
+                  newline=None,
+                  closefd=True,
+                  opener=None) as yaml_file:
+            return cls(**yaml.safe_load(stream=yaml_file, version=None))
+
+    def to_yaml(self, path: PathType):
+        """Dump content to YAML file."""
+        mkdir(dir_path=Path(path).resolve(strict=False).parent, hdfs=False)
+
+        with open(file=path,
+                  mode='wt',
+                  buffering=-1,
+                  encoding='utf-8',
+                  errors='strict',
+                  newline=None,
+                  closefd=True,
+                  opener=None) as yaml_file:
+            yaml.safe_dump(data=self.__dict__,
+                           stream=yaml_file,
+                           # Dumper=yaml.dumper.SafeDumper,
+                           default_style=None,
+                           default_flow_style=None,
+                           encoding='utf-8',
+                           explicit_start=None,
+                           explicit_end=None,
+                           version=None,
+                           tags=None,
+                           canonical=None,
+                           indent=None,
+                           width=None,
+                           allow_unicode=None,
+                           line_break=None)
 
 
 DICT_OR_NAMESPACE_TYPES: Tuple[type] = (dict,
