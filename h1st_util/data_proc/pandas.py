@@ -1,6 +1,8 @@
 """Pandas data processors."""
 
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Optional
 from typing import List, Sequence   # Py3.9+: use built-ins
@@ -11,6 +13,7 @@ from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 
 from ..data_types.python import PyPossibleFeatureType, PY_LIST_OR_TUPLE
 from ..data_types.spark_sql import _STR_TYPE
+from ..fs import PathType
 from ..iter import to_iterable
 from ..namespace import Namespace
 
@@ -91,6 +94,24 @@ class PandasNumericalNullFiller:
                                  errors='raise')
 
         return pandasDF
+
+    @classmethod
+    def from_json(cls, path: PathType) -> PandasNumericalNullFiller:
+        """Load from JSON file."""
+        return cls(nullFillDetails=Namespace.from_json(path=path))
+
+    def to_json(self, path: PathType):
+        """Save to JSON file."""
+        self.nullFillDetails.to_json(path=path)
+
+    @classmethod
+    def from_yaml(cls, path: PathType) -> PandasNumericalNullFiller:
+        """Load from YAML file."""
+        return cls(nullFillDetails=Namespace.from_yaml(path=path))
+
+    def to_yaml(self, path: PathType):
+        """Save to YAML file."""
+        self.nullFillDetails.to_yaml(path=path)
 
 
 class PandasMLPreprocessor:
