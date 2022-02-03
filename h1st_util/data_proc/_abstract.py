@@ -32,9 +32,7 @@ class AbstractDataHandler:
     # pylint: disable=no-member,too-many-public-methods
     """Abstract Data Handler."""
 
-    # default identity/entity, timestamp & date columns
-    _DEFAULT_I_COL: str = 'id'
-    _DEFAULT_T_COL: str = 't'
+    # default date column name
     _DEFAULT_D_COL: str = 'date'
 
     # default representative sample size

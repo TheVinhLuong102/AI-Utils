@@ -87,8 +87,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # (cannot be h1st_util.namespace.Namespace
     # because that makes nested dicts into normal dicts)
     _DEFAULT_KWARGS: Dict[str, Optional[Union[str, DefaultDict]]] = dict(
-        iCol=AbstractS3FileDataHandler._DEFAULT_I_COL,
-        tCol=None,
+        iCol=None, tCol=None,
 
         reprSampleMinNPieces=AbstractS3FileDataHandler._REPR_SAMPLE_MIN_N_PIECES,
         reprSampleSize=AbstractS3FileDataHandler._DEFAULT_REPR_SAMPLE_SIZE,
@@ -287,7 +286,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         self._extractStdKwArgs(kwargs, resetToClassDefaults=True, inplace=True)
 
         # organize time series if applicable
-        self._organizeTimeSeries()
+        self._organizeIndexCols()
 
         # set profiling settings and create empty profiling cache
         self._emptyCache()
@@ -296,7 +295,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # "INTERNAL / DON'T TOUCH" METHODS
     # --------------------------------
     # _extractStdKwArgs
-    # _organizeTimeSeries
+    # _organizeIndexCols
     # _emptyCache
     # _inheritCache
 
@@ -336,12 +335,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         else:
             return namespace
 
-    def _organizeTimeSeries(self):
+    def _organizeIndexCols(self):
         self._dCol: Optional[str] = (self._DEFAULT_D_COL
                                      if self._DEFAULT_D_COL in self.columns
                                      else None)
-
-        self.hasTS: bool = bool(self._iCol and self._tCol)
 
     def _emptyCache(self):
         self._cache: Namespace = \
@@ -978,19 +975,12 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         if iCol != self._iCol:
             self._iCol: Optional[str] = iCol
 
-            if iCol is None:
-                self.hasTS: bool = False
-
-            else:
+            if iCol is not None:
                 assert iCol, ValueError(f'*** iCol {iCol} INVALID ***')
-
-                self.hasTS: bool = bool(self._tCol)
 
     @iCol.deleter
     def iCol(self):
         self._iCol: Optional[str] = None
-
-        self.hasTS: bool = False
 
     @property
     def tCol(self) -> Optional[str]:
@@ -1002,19 +992,12 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         if tCol != self._tCol:
             self._tCol: Optional[str] = tCol
 
-            if tCol is None:
-                self.hasTS: bool = False
-
-            else:
+            if tCol is not None:
                 assert tCol, ValueError(f'*** tCol {tCol} INVALID ***')
-
-                self.hasTS: bool = bool(self._iCol)
 
     @tCol.deleter
     def tCol(self):
         self._tCol: Optional[str] = None
-
-        self.hasTS: bool = False
 
     # ===========
     # REPR SAMPLE
