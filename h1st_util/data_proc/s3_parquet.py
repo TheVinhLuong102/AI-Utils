@@ -17,9 +17,9 @@ from typing import Collection, Dict, List, Set, Sequence, Tuple   # Py3.9+: use 
 from urllib.parse import ParseResult, urlparse
 from uuid import uuid4
 
-from numpy import isfinite, nan, ndarray, vstack
+from numpy import isfinite, ndarray, vstack
 from pandas import DataFrame, Series, concat, isnull, notnull, read_parquet
-from pandas._libs.missing import NAType   # pylint: disable=no-name-in-module
+from pandas._libs.missing import NA, NAType   # pylint: disable=no-name-in-module
 from tqdm import tqdm
 
 from pyarrow.dataset import dataset
@@ -2519,7 +2519,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     msg=f'*** FILLING MISSING COLS {missingCols} ***')
 
             for missingCol in missingCols:
-                addCols[missingCol] = (nan
+                addCols[missingCol] = (NA
                                        if missingCol in missingCatCols
                                        else numOrigToPrepColMap[missingCol][1]['null-fill-value'])
 
