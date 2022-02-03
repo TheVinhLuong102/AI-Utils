@@ -288,7 +288,7 @@ class AbstractDataHandler:
         """Return column data types."""
         raise NotImplementedError
 
-    def type(self, col: str):
+    def type(self, col: str) -> type:
         """Return data type of specified column."""
         raise NotImplementedError
 
