@@ -39,7 +39,7 @@ __all__ = (
            order=False,
            unsafe_hash=False,
            frozen=True)
-class PandasFlatteningSubsampler:
+class PandasFlatteningSubsampler(callable):
     """Flattening Subsampler for Pandas Data Frames."""
 
     everyNRows: int
