@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-import logging
+from logging import getLogger, Logger, Handler, DEBUG, INFO
 from pathlib import Path
 import tempfile
 from typing import Any, Optional, Union
@@ -32,40 +32,38 @@ class AbstractDataHandler:
     # pylint: disable=no-member,too-many-public-methods
     """Abstract Data Handler."""
 
-    # default date column name
-    _DEFAULT_D_COL: str = 'date'
+    # ===========
+    # CLASS ATTRS
+    # -----------
+
+    # date column name
+    _DATE_COL: str = 'date'
 
     # default representative sample size
     _DEFAULT_REPR_SAMPLE_SIZE: int = 10 ** 6
 
-    # default profiling settings
+    # default column profiling settings
     _DEFAULT_MIN_NON_NULL_PROPORTION: float = .32
     _DEFAULT_OUTLIER_TAIL_PROPORTION: float = 1e-3   # 0.1% each tail
     _DEFAULT_MAX_N_CATS: int = 12   # MoY is likely most numerous-category var
     _DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS: float = .9
 
-    # prep column prefixes/suffixes
-    _NULL_FILL_PREFIX: str = 'NULL_FILLED__'
-
+    # preprocessing for ML
     _CAT_IDX_PREFIX: str = 'CAT_INDEX__'
+
+    _NULL_FILL_PREFIX: str = 'NULL_FILLED__'
 
     _STD_SCL_PREFIX: str = 'STD_SCALED__'
     _MAX_ABS_SCL_PREFIX: str = 'MAXABS_SCALED__'
     _MIN_MAX_SCL_PREFIX: str = 'MINMAX_SCALED__'
 
-    # temp dir
-    _TMP_DIR_PATH: Path = (Path(tempfile.gettempdir()).resolve(strict=True) /
-                           '.h1st/tmp')
+    _ORIG_TO_PREPROC_COL_MAP_FILE_NAME: str = 'orig-to-preproc-col-map.yaml'
 
-    # preprocessing metadata file name
-    _ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'orig-to-prep-col-map.yaml'
+    _PREPROC_CACHE: Dict[Path, Namespace] = {}
 
-    # data prep cache
-    _PREP_CACHE: Dict[Path, Namespace] = {}
-
-    # ============
-    # REPR METHODS
-    # ------------
+    # ===========
+    # STRING REPR
+    # -----------
     # __repr__
     # __shortRepr__
     # __str__
@@ -85,7 +83,7 @@ class AbstractDataHandler:
         return repr(self)
 
     # =======
-    # LOGGERS
+    # LOGGING
     # -------
     # classLogger
     # classStdOutLogger
@@ -93,16 +91,14 @@ class AbstractDataHandler:
     # stdOutLogger
 
     @classmethod
-    def classLogger(cls,   # noqa: N802
-                    *handlers: logging.Handler,
-                    **kwargs: Any) -> logging.Logger:
+    def classLogger(cls, *handlers: Handler, **kwargs: Any) -> Logger:   # noqa: E501,N802
         # pylint: disable=invalid-name
         """Get Class Logger."""
-        logger: logging.Logger = logging.getLogger(name=cls.__name__)
+        logger: Logger = getLogger(name=cls.__name__)
 
         level: Optional[int] = kwargs.get('level')
         if not level:
-            level: int = logging.DEBUG if debug.ON else logging.INFO
+            level: int = DEBUG if debug.ON else INFO
         logger.setLevel(level=level)
 
         for handler in handlers:
@@ -113,18 +109,18 @@ class AbstractDataHandler:
         return logger
 
     @classmethod
-    def classStdOutLogger(cls) -> logging.Logger:   # noqa: N802
+    def classStdOutLogger(cls) -> Logger:   # noqa: N802
         # pylint: disable=invalid-name
         """Get Class StdOut Logger."""
-        return cls.classLogger(level=logging.DEBUG, verbose=True)
+        return cls.classLogger(level=DEBUG, verbose=True)
 
-    def logger(self, *handlers: logging.Handler, **kwargs: Any) -> logging.Logger:   # noqa: E501
+    def logger(self, *handlers: Handler, **kwargs: Any) -> Logger:
         """Get Logger."""
-        logger: logging.Logger = logging.getLogger(name=self.__shortRepr__)
+        logger: Logger = getLogger(name=self.__shortRepr__)
 
         level: Optional[int] = kwargs.get('level')
         if not level:
-            level: int = logging.DEBUG if debug.ON else logging.INFO
+            level: int = DEBUG if debug.ON else INFO
         logger.setLevel(level=level)
 
         for handler in handlers:
@@ -135,14 +131,14 @@ class AbstractDataHandler:
         return logger
 
     @property
-    def stdOutLogger(self) -> logging.Logger:   # noqa: N802
+    def stdOutLogger(self) -> Logger:   # noqa: N802
         # pylint: disable=invalid-name
         """Get StdOut Logger."""
-        return self.logger(level=logging.DEBUG, verbose=True)
+        return self.logger(level=DEBUG, verbose=True)
 
-    # ===============
-    # CACHING METHODS
-    # ---------------
+    # =======
+    # CACHING
+    # -------
     # _emptyCache
     # _inheritCache
 
@@ -156,16 +152,93 @@ class AbstractDataHandler:
         """Inherit existing cache."""
         raise NotImplementedError
 
-    # =========================
-    # KEY (SETTABLE) PROPERTIES
-    # -------------------------
+    # =====================
+    # ROWS, COLUMNS & TYPES
+    # ---------------------
+    # __len__ / nRows
+    # columns
+    # indexCols
+    # contentCols
+    # types / type / typeIsNum
+    # possibleFeatureCols
+    # possibleCatCols
+    # possibleNumCols
+
+    def __len__(self) -> int:
+        """Return number of rows."""
+        return self.nRows
+
+    @property
+    def nRows(self) -> int:   # noqa: N802
+        # pylint: disable=invalid-name
+        """Return number of rows."""
+        raise NotImplementedError
+
+    @nRows.deleter
+    def nRows(self):   # noqa: N802
+        # pylint: disable=invalid-name
+        self._cache.nRows = None
+
+    @property
+    def columns(self) -> Set[str]:
+        """Return columns."""
+        raise NotImplementedError
+
+    @property
+    def indexCols(self) -> Set[str]:   # noqa: N802
+        # pylint: disable=invalid-name
+        """Return index columns."""
+        raise NotImplementedError
+
+    @property
+    def contentCols(self) -> Set[str]:   # noqa: N802
+        # pylint: disable=invalid-name
+        """Return content columns."""
+        return self.columns - self.indexCols
+
+    @property
+    def types(self) -> Namespace:
+        """Return column data types."""
+        raise NotImplementedError
+
+    def type(self, col: str) -> type:
+        """Return data type of specified column."""
+        raise NotImplementedError
+
+    def typeIsNum(self, col: str) -> bool:   # noqa: N802
+        # pylint: disable=invalid-name
+        """Check whether specified column's data type is numerical."""
+        raise NotImplementedError
+
+    @property
+    def possibleFeatureCols(self) -> Set[str]:   # noqa: N802
+        # pylint: disable=invalid-name
+        """Return possible feature content columns."""
+        raise NotImplementedError
+
+    @property
+    def possibleCatCols(self) -> Set[str]:   # noqa: N802
+        # pylint: disable=invalid-name
+        """Return possible categorical content columns."""
+        raise NotImplementedError
+
+    @property
+    def possibleNumCols(self) -> Set[str]:   # noqa: N802
+        # pylint: disable=invalid-name
+        """Return possible numerical content columns."""
+        return {col for col in self.contentCols if self.typeIsNum(col)}
+
+    # ========
+    # SAMPLING
+    # --------
+    # sample
     # _assignReprSample
     # reprSampleSize
     # reprSample
-    # minNonNullProportion
-    # outlierTailProportion
-    # maxNCats
-    # minProportionByMaxNCats
+
+    def sample(self, *cols: str, **kwargs: Any) -> Union[ReducedDataSetType, Any]:   # noqa: E501
+        """Sample from data set."""
+        raise NotImplementedError
 
     def _assignReprSample(self):   # noqa: N802
         # pylint: disable=invalid-name
@@ -198,6 +271,22 @@ class AbstractDataHandler:
             self._assignReprSample()
 
         return self._cache.reprSample
+
+    # ================
+    # COLUMN PROFILING
+    # ----------------
+    # minNonNullProportion
+    # outlierTailProportion
+    # maxNCats
+    # minProportionByMaxNCats
+    # count
+    # nonNullProportion
+    # suffNonNull
+    # distinct
+    # quantile
+    # sampleStat
+    # outlierRstStat
+    # profile
 
     @property
     def minNonNullProportion(self) -> float:   # noqa: N802
@@ -259,98 +348,6 @@ class AbstractDataHandler:
     def minProportionByMaxNCats(self, proportion: float, /):   # noqa: N802
         # pylint: disable=invalid-name
         self._minProportionByMaxNCats.default = proportion
-
-    # =====================
-    # ROWS, COLUMNS & TYPES
-    # ---------------------
-    # __len__ / nRows
-    # types / type / typeIsNum
-
-    def __len__(self) -> int:
-        """Return number of rows."""
-        return self.nRows
-
-    @property
-    def nRows(self) -> int:   # noqa: N802
-        # pylint: disable=invalid-name
-        """Return number of rows."""
-        raise NotImplementedError
-
-    @nRows.deleter
-    def nRows(self):   # noqa: N802
-        # pylint: disable=invalid-name
-        self._cache.nRows = None
-
-    @property
-    def types(self) -> Namespace:
-        """Return column data types."""
-        raise NotImplementedError
-
-    def type(self, col: str) -> type:
-        """Return data type of specified column."""
-        raise NotImplementedError
-
-    def typeIsNum(self, col: str) -> bool:   # noqa: N802
-        # pylint: disable=invalid-name
-        """Check whether specified column's data type is numerical."""
-        raise NotImplementedError
-
-    # =============
-    # COLUMN GROUPS
-    # -------------
-    # columns
-    # indexCols
-    # contentCols
-    # possibleFeatureCols
-    # possibleCatCols
-    # possibleNumCols
-
-    @property
-    def columns(self) -> Set[str]:
-        """Return columns."""
-        raise NotImplementedError
-
-    @property
-    def indexCols(self) -> Set[str]:   # noqa: N802
-        # pylint: disable=invalid-name
-        """Return index columns."""
-        raise NotImplementedError
-
-    @property
-    def contentCols(self) -> Set[str]:   # noqa: N802
-        # pylint: disable=invalid-name
-        """Return content columns."""
-        return self.columns - self.indexCols
-
-    @property
-    def possibleFeatureCols(self) -> Set[str]:   # noqa: N802
-        # pylint: disable=invalid-name
-        """Return possible feature content columns."""
-        raise NotImplementedError
-
-    @property
-    def possibleCatCols(self) -> Set[str]:   # noqa: N802
-        # pylint: disable=invalid-name
-        """Return possible categorical content columns."""
-        raise NotImplementedError
-
-    @property
-    def possibleNumCols(self) -> Set[str]:   # noqa: N802
-        # pylint: disable=invalid-name
-        """Return possible numerical content columns."""
-        return {col for col in self.contentCols if self.typeIsNum(col)}
-
-    # ================
-    # COLUMN PROFILING
-    # ----------------
-    # count
-    # nonNullProportion
-    # suffNonNull
-    # distinct
-    # quantile
-    # sampleStat
-    # outlierRstStat
-    # profile
 
     def count(self, *cols: str, **kwargs: Any) -> Union[int, Namespace]:
         """Count non-NULL data values in specified column(s)."""
@@ -438,20 +435,11 @@ class AbstractDataHandler:
     # =========
     # DATA PREP
     # ---------
-    # preprocessForML
+    # preprocForML
 
-    def preprocessForML(self, *cols: str, **kwargs: Any) -> AbstractDataHandler:   # noqa: E501,N802
+    def preprocForML(self, *cols: str, **kwargs: Any) -> AbstractDataHandler:   # noqa: E501,N802
         # pylint: disable=invalid-name
         """Pre-process specified column(s) for ML model training/inference."""
-        raise NotImplementedError
-
-    # ========
-    # SAMPLING
-    # --------
-    # sample
-
-    def sample(self, *cols: str, **kwargs: Any) -> Union[ReducedDataSetType, Any]:   # noqa: E501
-        """Sample from data set."""
         raise NotImplementedError
 
 
@@ -459,8 +447,13 @@ class AbstractFileDataHandler(AbstractDataHandler):
     # pylint: disable=abstract-method
     """Abstract File Data Handler."""
 
+    # min number of files for schema management & representative sampling
     _SCHEMA_MIN_N_PIECES: int = 10
     _REPR_SAMPLE_MIN_N_PIECES: int = 100
+
+    # local file cache dir
+    _LOCAL_CACHE_DIR_PATH: Path = (Path(tempfile.gettempdir()).resolve(strict=True) /   # noqa: E501
+                                   '.h1st/data-proc-cache')
 
     @property
     def reprSampleMinNPieces(self) -> int:   # noqa: N802
