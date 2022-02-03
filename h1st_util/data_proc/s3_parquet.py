@@ -2048,7 +2048,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         for col in cols:
             if col in nulls:
-                colNulls = nulls[col]
+                colNulls: Tuple[Optional[PyNumType], Optional[PyNumType]] = nulls[col]
 
                 assert (isinstance(colNulls, PY_LIST_OR_TUPLE) and
                         (len(colNulls) == 2) and
