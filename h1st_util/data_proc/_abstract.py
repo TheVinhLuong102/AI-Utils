@@ -432,9 +432,9 @@ class AbstractDataHandler:
         """Profile specified column(s)."""
         raise NotImplementedError
 
-    # =========
-    # DATA PREP
-    # ---------
+    # ====================
+    # PREPROCESSING FOR ML
+    # --------------------
     # preprocForML
 
     def preprocForML(self, *cols: str, **kwargs: Any) -> AbstractDataHandler:   # noqa: E501,N802
@@ -447,31 +447,36 @@ class AbstractFileDataHandler(AbstractDataHandler):
     # pylint: disable=abstract-method
     """Abstract File Data Handler."""
 
-    # min number of files for schema management & representative sampling
-    _SCHEMA_MIN_N_PIECES: int = 10
-    _REPR_SAMPLE_MIN_N_PIECES: int = 100
+    # minimum number of files for schema management & representative sampling
+    _SCHEMA_MIN_N_FILES: int = 10
+    _REPR_SAMPLE_MIN_N_FILES: int = 100
 
     # local file cache dir
     _LOCAL_CACHE_DIR_PATH: Path = (Path(tempfile.gettempdir()).resolve(strict=True) /   # noqa: E501
                                    '.h1st/data-proc-cache')
 
+    # ====================================
+    # MIN. NO. OF FILES FOR REPR. SAMPLING
+    # ------------------------------------
+    # reprSampleMinNFiles
+
     @property
-    def reprSampleMinNPieces(self) -> int:   # noqa: N802
+    def reprSampleMinNFiles(self) -> int:   # noqa: N802
         # pylint: disable=invalid-name
         """Minimum number of pieces for reprensetative sample."""
-        return self._reprSampleMinNPieces
+        return self._reprSampleMinNFiles
 
-    @reprSampleMinNPieces.setter
-    def reprSampleMinNPieces(self, n: int, /):   # noqa: N802
+    @reprSampleMinNFiles.setter
+    def reprSampleMinNFiles(self, n: int, /):   # noqa: N802
         # pylint: disable=invalid-name,no-member
-        if (n <= self.nPieces) and (n != self._reprSampleMinNPieces):
-            self._reprSampleMinNPieces: int = n
+        if (n <= self.nFiles) and (n != self._reprSampleMinNFiles):
+            self._reprSampleMinNFiles: int = n
 
-    @reprSampleMinNPieces.deleter
-    def reprSampleMinNPieces(self):   # noqa: N802
+    @reprSampleMinNFiles.deleter
+    def reprSampleMinNFiles(self):   # noqa: N802
         # pylint: disable=invalid-name,no-member
-        self._reprSampleMinNPieces: int = min(self._REPR_SAMPLE_MIN_N_PIECES,
-                                              self.nPieces)
+        self._reprSampleMinNFiles: int = min(self._REPR_SAMPLE_MIN_N_FILES,
+                                             self.nFiles)
 
 
 class AbstractS3FileDataHandler(AbstractFileDataHandler):
