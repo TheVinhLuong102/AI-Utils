@@ -59,6 +59,9 @@ class AbstractDataHandler:
     _TMP_DIR_PATH: Path = (Path(tempfile.gettempdir()).resolve(strict=True) /
                            '.h1st/tmp')
 
+    # preprocessing metadata file name
+    _ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'orig-to-prep-col-map.yaml'
+
     # data prep cache
     _PREP_CACHE: Dict[Path, Namespace] = {}
 

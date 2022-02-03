@@ -4,10 +4,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 from typing import List, Sequence   # Py3.9+: use built-ins
 
-from numpy import array, hstack
+from numpy import array, hstack, ndarray
 from pandas import DataFrame, Series
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 
@@ -118,12 +118,7 @@ class PandasMLPreprocessor:
     # pylint: disable=too-many-instance-attributes,too-few-public-methods
     """ML Preprocessor for Pandas Data Frames."""
 
-    _CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'cat-orig-to-prep-col-map.yaml'
-    _NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'num-orig-to-prep-col-map.yaml'
-
-    def __init__(self, addCols: Namespace, typeStrs: Namespace,
-                 catOrigToPrepColMap: Namespace, numOrigToPrepColMap: Namespace,
-                 returnNumPyForCols: Optional[Sequence[str]] = None):
+    def __init__(self, origToPrepColMap: Namespace):
         # pylint: disable=too-many-arguments
         """Init ML Preprocessor."""
         self.addCols: Namespace = addCols
@@ -287,3 +282,21 @@ class PandasMLPreprocessor:
             pandasDF[self.numPrepCols] = self.numScaler.transform(X=pandasDF[self.numNullFillCols])
 
         return pandasDF
+
+    @classmethod
+    def from_json(cls, path: PathType) -> PandasMLPreprocessor:
+        """Load from JSON file."""
+        return cls(origToPrepColMap=Namespace.from_json(path=path))
+
+    def to_json(self, path: PathType):
+        """Save to JSON file."""
+        self.origToPrepColMap.to_json(path=path)
+
+    @classmethod
+    def from_yaml(cls, path: PathType) -> PandasMLPreprocessor:
+        """Load from YAML file."""
+        return cls(origToPrepColMap=Namespace.from_yaml(path=path))
+
+    def to_yaml(self, path: PathType):
+        """Save to YAML file."""
+        self.origToPrepColMap.to_yaml(path=path)
