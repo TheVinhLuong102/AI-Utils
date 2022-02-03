@@ -438,13 +438,7 @@ class AbstractDataHandler:
     # =========
     # DATA PREP
     # ---------
-    # fillNumNull
     # preprocessForML
-
-    def fillNumNull(self, *cols: str, **kwargs: Any) -> AbstractDataHandler:   # noqa: E501,N802
-        # pylint: disable=invalid-name
-        """Fill NULL values for specified column(s)."""
-        raise NotImplementedError
 
     def preprocessForML(self, *cols: str, **kwargs: Any) -> AbstractDataHandler:   # noqa: E501,N802
         # pylint: disable=invalid-name

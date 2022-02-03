@@ -22,7 +22,6 @@ from ._abstract import AbstractDataHandler
 
 __all__ = (
     'PandasFlatteningSubsampler',
-    'PandasNumericalNullFiller',
     'PandasMLPreprocessor',
 )
 
@@ -49,69 +48,6 @@ class PandasFlatteningSubsampler:
     def __call__(self, pandasDF: DataFrame) -> DataFrame:
         """Subsample a Pandas Data Frame's certain columns and flatten them."""
         return pandasDF.iloc[range(0, len(pandasDF), self.everyNRows)]
-
-
-@dataclass(init=True,
-           repr=True,
-           eq=True,
-           order=False,
-           unsafe_hash=False,
-           frozen=True)
-class PandasNumericalNullFiller:
-    """Numerical NULL-Filling processor for Pandas Data Frames."""
-
-    nullFillDetails: Namespace
-
-    def __call__(self, pandasDF: DataFrame) -> DataFrame:
-        """NULL-fill numerical columns of a Pandas Data Frame."""
-        for col, nullFillColNameAndDetails in self.nullFillDetails.items():
-            if (col != '__SCALER__') and \
-                    isinstance(nullFillColNameAndDetails, PY_LIST_OR_TUPLE) and \
-                    (len(nullFillColNameAndDetails) == 2):
-                _, nullFill = nullFillColNameAndDetails
-
-                lowerNull, upperNull = nullFill['nulls']
-
-                series: Series = pandasDF[col]
-
-                checks: Series = series.notnull()
-
-                if lowerNull is not None:
-                    checks &= (series > lowerNull)
-
-                if upperNull is not None:
-                    checks &= (series < upperNull)
-
-                pandasDF.loc[:, AbstractDataHandler._NULL_FILL_PREFIX + col] = \
-                    series.where(cond=checks,
-                                 other=(getattr(series.loc[checks], nullFillMethod)
-                                        (axis='index', skipna=True, level=None)
-                                        if (nullFillMethod := nullFill['null-fill-method'])
-                                        else nullFill['null-fill-value']),
-                                 inplace=False,
-                                 axis=None,
-                                 level=None,
-                                 errors='raise')
-
-        return pandasDF
-
-    @classmethod
-    def from_json(cls, path: PathType) -> PandasNumericalNullFiller:
-        """Load from JSON file."""
-        return cls(nullFillDetails=Namespace.from_json(path=path))
-
-    def to_json(self, path: PathType):
-        """Save to JSON file."""
-        self.nullFillDetails.to_json(path=path)
-
-    @classmethod
-    def from_yaml(cls, path: PathType) -> PandasNumericalNullFiller:
-        """Load from YAML file."""
-        return cls(nullFillDetails=Namespace.from_yaml(path=path))
-
-    def to_yaml(self, path: PathType):
-        """Save to YAML file."""
-        self.nullFillDetails.to_yaml(path=path)
 
 
 class PandasMLPreprocessor:

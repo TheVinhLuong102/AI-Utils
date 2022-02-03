@@ -1971,10 +1971,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # =========
     # DATA PREP
     # ---------
-    # fillNumNull
     # preprocessForML
 
-    def fillNumNull(self, *cols: str, **kwargs: Dict[str, Any]) -> S3ParquetDataFeeder:
         # pylint: disable=too-many-branches,too-many-locals
         """Fill ``NULL``/``NaN`` values for numerical columns.
 
@@ -2096,41 +2094,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return (s3ParquetDF, nullFillDetails) if returnDetails else s3ParquetDF
 
-    def preprocessForML(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
-        # pylint: disable=too-many-branches,too-many-locals,too-many-statements
-        """Preprocess selected column(s) for ML training/inferencing.
-
-        Return:
-            Preprocessed ``S3ParquetDataFeeder``
-
-        Args:
-            *args: column(s) to preprocess
-
-            **kwargs:
-                - **forceCat** *(str or list/tuple of str, default = None)*:
-                columns to force to be categorical variables
-
-                - **forceNum** *(str or list/tuple of str, default = None)*:
-                columns to force to be numerical variables
-
-                - **fill**:
-                    - *dict* ( ``method`` = ... *(default: 'mean')*,
-                               ``value`` = ... *(default: None)*,
-                               ``outlierTails`` = ... *(default: False)* )
-                    as per ``.fillna(...)`` method;
-                    - *OR* ``None`` to not apply any ``NULL``/``NaN``-filling
-
-                - **scaler** *(str)*: one of the following methods to use on numerical columns
-                (*ignored* if loading existing ``prep`` pipeline from ``loadPath``):
-                    - ``standard`` (default)
-                    - ``maxabs``
-                    - ``minmax``
-                    - ``None`` *(do not apply any scaling)*
-
-                - **loadPath** *(str)*: path to load existing data transformations
-
-                - **savePath** *(str)*: path to save new fitted data transformations
-        """
         nulls: Dict[str, Tuple[Optional[PyNumType], Optional[PyNumType]]] = kwargs.pop('nulls', {})
 
         forceCatIncl: Optional[ColsType] = kwargs.pop('forceCatIncl', None)
