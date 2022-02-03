@@ -2220,9 +2220,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 self._PREP_CACHE[loadPath] = \
                     Namespace(
                         catOrigToPrepColMap=Namespace.from_yaml(
-                            loadPath / self._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME),
+                            loadPath / PandasMLPreprocessor._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME),
                         numOrigToPrepColMap=Namespace.from_yaml(
-                            loadPath / self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME))
+                            loadPath / PandasMLPreprocessor._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME))
 
         else:
             cols: Set[str] = {col
@@ -2455,8 +2455,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             savePath: Path = Path(savePath).resolve(strict=True)
 
-            catOrigToPrepColMap.to_yaml(savePath / self._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME)
-            numOrigToPrepColMap.to_yaml(savePath / self._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME)
+            catOrigToPrepColMap.to_yaml(
+                savePath / PandasMLPreprocessor._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME)
+            numOrigToPrepColMap.to_yaml(
+                savePath / PandasMLPreprocessor._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME)
 
             if verbose:
                 prep_save_toc: float = time.time()

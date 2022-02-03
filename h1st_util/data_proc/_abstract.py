@@ -55,9 +55,6 @@ class AbstractDataHandler:
     _MAX_ABS_SCL_PREFIX: str = 'MAXABS_SCALED__'
     _MIN_MAX_SCL_PREFIX: str = 'MINMAX_SCALED__'
 
-    _CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'cat-orig-to-prep-col-map.yaml'
-    _NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'num-orig-to-prep-col-map.yaml'
-
     # temp dir
     _TMP_DIR_PATH: Path = (Path(tempfile.gettempdir()).resolve(strict=True) /
                            '.h1st/tmp')

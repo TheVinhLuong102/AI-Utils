@@ -118,6 +118,9 @@ class PandasMLPreprocessor:
     # pylint: disable=too-many-instance-attributes,too-few-public-methods
     """ML Preprocessor for Pandas Data Frames."""
 
+    _CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'cat-orig-to-prep-col-map.yaml'
+    _NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME: str = 'num-orig-to-prep-col-map.yaml'
+
     def __init__(self, addCols: Namespace, typeStrs: Namespace,
                  catOrigToPrepColMap: Namespace, numOrigToPrepColMap: Namespace,
                  returnNumPyForCols: Optional[Sequence[str]] = None):
