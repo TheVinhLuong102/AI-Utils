@@ -1023,85 +1023,45 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         """Collect content."""
         return self.reduce(cols=cols if cols else None, **kwargs)
 
-    # =========================
-    # KEY (SETTABLE) PROPERTIES
-    # -------------------------
-    # iCol
-    # tCol
-
-    @property
-    def iCol(self) -> Optional[str]:
-        """Entity/Identity column."""
-        return self._iCol
-
-    @iCol.setter
-    def iCol(self, iCol: str):
-        if iCol != self._iCol:
-            self._iCol: Optional[str] = iCol
-
-            if iCol is not None:
-                assert iCol, ValueError(f'*** iCol {iCol} INVALID ***')
-
-    @iCol.deleter
-    def iCol(self):
-        self._iCol: Optional[str] = None
-
-    @property
-    def tCol(self) -> Optional[str]:
-        """Date-Time column."""
-        return self._tCol
-
-    @tCol.setter
-    def tCol(self, tCol: str):
-        if tCol != self._tCol:
-            self._tCol: Optional[str] = tCol
-
-            if tCol is not None:
-                assert tCol, ValueError(f'*** tCol {tCol} INVALID ***')
-
-    @tCol.deleter
-    def tCol(self):
-        self._tCol: Optional[str] = None
-
     # ===========
     # REPR SAMPLE
     # -----------
-    # prelimReprSamplePiecePaths
-    # reprSamplePiecePaths
+    # prelimReprSampleFilePaths
+    # reprSampleFilePaths
     # _assignReprSample
 
     @property
-    def prelimReprSamplePiecePaths(self) -> Set[str]:
-        """Prelim Representative Sample Piece Paths."""
-        if self._cache.prelimReprSamplePiecePaths is None:
-            self._cache.prelimReprSamplePiecePaths = \
-                randomSample(population=self.piecePaths,
-                             sampleSize=self._reprSampleMinNPieces)
+    def prelimReprSampleFilePaths(self) -> Set[str]:
+        """Prelim Representative Sample  Paths."""
+        if self._cache.prelimReprSampleFilePaths is None:
+            self._cache.prelimReprSampleFilePaths = \
+                randomSample(population=self.filePaths,
+                             sampleSize=self._reprSampleMinNFiles)
 
-        return self._cache.prelimReprSamplePiecePaths
+        return self._cache.prelimReprSampleFilePaths
 
     @property
-    def reprSamplePiecePaths(self) -> Set[str]:
-        """Return representative sample piece paths."""
-        if self._cache.reprSamplePiecePaths is None:
-            reprSampleNPieces: int = \
+    def reprSampleFilePaths(self) -> Set[str]:
+        """Return representative sample file paths."""
+        if self._cache.reprSampleFilePaths is None:
+            reprSampleNFiles: int = \
                 int(math.ceil(
                     ((min(self._reprSampleSize, self.approxNRows) / self.approxNRows) ** .5)
-                    * self.nPieces))
+                    * self.nFiles))
 
-            self._cache.reprSamplePiecePaths = (
-                self._cache.prelimReprSamplePiecePaths |
+            self._cache.reprSampleFilePaths = (
+                self._cache.prelimReprSampleFilePaths |
                 (randomSample(
-                    population=self.piecePaths - self._cache.prelimReprSamplePiecePaths,
-                    sampleSize=reprSampleNPieces - self._reprSampleMinNPieces)
-                 if reprSampleNPieces > self._reprSampleMinNPieces
+                    population=self.filePaths - self._cache.prelimReprSampleFilePaths,
+                    sampleSize=reprSampleNFiles - self._reprSampleMinNFiles)
+                 if reprSampleNFiles > self._reprSampleMinNFiles
                  else set()))
 
-        return self._cache.reprSamplePiecePaths
+        return self._cache.reprSampleFilePaths
 
     def _assignReprSample(self):
         self._cache.reprSample = self.sample(n=self._reprSampleSize,
-                                             piecePaths=self.reprSamplePiecePaths,
+                                             filePaths=self.reprSampleFilePaths,
                                              verbose=True)
 
         # pylint: disable=attribute-defined-outside-init

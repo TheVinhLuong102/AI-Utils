@@ -136,6 +136,52 @@ class AbstractDataHandler:
         """Get StdOut Logger."""
         return self.logger(level=DEBUG, verbose=True)
 
+    # ===================
+    # SETTABLE PROPERTIES
+    # -------------------
+    # iCol
+    # tCol
+
+    @property
+    def iCol(self) -> Optional[str]:   # noqa: N802
+        # pylint: disable=invalid-name
+        """Entity/Identity column."""
+        return self._iCol
+
+    @iCol.setter
+    def iCol(self, iCol: str):   # noqa: N802,N803
+        # pylint: disable=invalid-name
+        if iCol != self._iCol:
+            self._iCol: Optional[str] = iCol
+
+            if iCol is not None:
+                assert iCol, ValueError(f'*** iCol {iCol} INVALID ***')
+
+    @iCol.deleter
+    def iCol(self):   # noqa: N802
+        # pylint: disable=invalid-name
+        self._iCol: Optional[str] = None
+
+    @property
+    def tCol(self) -> Optional[str]:   # noqa: N802
+        # pylint: disable=invalid-name
+        """Date-Time column."""
+        return self._tCol
+
+    @tCol.setter
+    def tCol(self, tCol: str):   # noqa: N802,N803
+        # pylint: disable=invalid-name
+        if tCol != self._tCol:
+            self._tCol: Optional[str] = tCol
+
+            if tCol is not None:
+                assert tCol, ValueError(f'*** tCol {tCol} INVALID ***')
+
+    @tCol.deleter
+    def tCol(self):   # noqa: N802
+        # pylint: disable=invalid-name
+        self._tCol: Optional[str] = None
+
     # =======
     # CACHING
     # -------
@@ -158,7 +204,6 @@ class AbstractDataHandler:
     # copy
 
     def copy(self, **kwargs: Any) -> AbstractDataHandler:
-        # pylint: disable=invalid-name
         """Make a copy."""
         raise NotImplementedError
 
