@@ -1885,6 +1885,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         """
         returnNumPy: bool = kwargs.pop('returnNumPy', False)
 
+        returnPreproc: bool = kwargs.pop('returnPreproc', False)
+
         verbose: Union[bool, int] = kwargs.pop('verbose', True)
         if debug.ON:
             verbose: bool = True
@@ -2214,4 +2216,4 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             toc: float = time.time()
             self.stdOutLogger.info(msg=f'{msg} done!   <{(toc - tic) / 60:,.1f} m>')
 
-        return s3ParquetDF
+        return (s3ParquetDF, pandasMLPreproc) if returnPreproc else s3ParquetDF
