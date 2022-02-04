@@ -392,28 +392,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     self._cache.__dict__[cacheCategory][newCol] = \
                         oldS3ParquetDF._cache.__dict__[cacheCategory][oldCol]
 
-    # ========
-    # ITERATOR
-    # --------
-    # __iter__
-    # __next__
-
-    def __iter__(self) -> S3ParquetDataFeeder:
-        """Iterate through pieces."""
-        s3_parquet_df = self.copy(inheritCache=True, inheritNRows=True)
-
-        # pylint: disable=attribute-defined-outside-init
-        s3_parquet_df.piecePathsToIter = s3_parquet_df.piecePaths.copy()
-
-        return s3_parquet_df
-
-    def __next__(self) -> ReducedDataSetType:
-        """Iterate through next piece."""
-        if self.piecePathsToIter:
-            return self.reduce(self.piecePathsToIter.pop(), verbose=False)
-
-        raise StopIteration
-
     # ====
     # COPY
     # ----
