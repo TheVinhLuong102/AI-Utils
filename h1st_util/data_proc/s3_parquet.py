@@ -291,6 +291,63 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         # set profiling settings and create empty profiling cache
         self._emptyCache()
 
+    # ===========
+    # STRING REPR
+    # -----------
+    # __repr__
+    # __shortRepr__
+
+    def __repr__(self) -> str:
+        """Return string repr."""
+        colAndTypeStrs: List[str] = []
+
+        if self._iCol:
+            colAndTypeStrs.append(f'(iCol) {self._iCol}: {self.type(self._iCol)}')
+
+        if self._dCol:
+            colAndTypeStrs.append(f'(dCol) {self._dCol}: {self.type(self._dCol)}')
+
+        if self._tCol:
+            colAndTypeStrs.append(f'(tCol) {self._tCol}: {self.type(self._tCol)}')
+
+        colAndTypeStrs.extend(f'{col}: {self.type(col)}' for col in self.contentCols)
+
+        return (f'{self.nFiles:,}-piece ' +
+                (f'{self._cache.nRows:,}-row '
+                 if self._cache.nRows
+                 else (f'approx-{self._cache.approxNRows:,.0f}-row '
+                       if self._cache.approxNRows
+                       else '')) +
+                type(self).__name__ +
+                (f'[{self.path} + {len(self._mappers):,} transform(s)]'
+                 f"[{', '.join(colAndTypeStrs)}]"))
+
+    @property
+    def __shortRepr__(self) -> str:
+        """Short string repr."""
+        colsDescStr: List[str] = []
+
+        if self._iCol:
+            colsDescStr.append(f'iCol: {self._iCol}')
+
+        if self._dCol:
+            colsDescStr.append(f'dCol: {self._dCol}')
+
+        if self._tCol:
+            colsDescStr.append(f'tCol: {self._tCol}')
+
+        colsDescStr.append(f'{len(self.contentCols)} content col(s)')
+
+        return (f'{self.nFiles:,}-piece ' +
+                (f'{self._cache.nRows:,}-row '
+                 if self._cache.nRows
+                 else (f'approx-{self._cache.approxNRows:,.0f}-row '
+                       if self._cache.approxNRows
+                       else '')) +
+                type(self).__name__ +
+                (f'[{self.path} + {len(self._mappers):,} transform(s)]'
+                 f"[{', '.join(colsDescStr)}]"))
+
     # ================================
     # "INTERNAL / DON'T TOUCH" METHODS
     # --------------------------------
@@ -431,63 +488,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             s3ParquetDF._cache.nRows = self._cache.nRows
 
         return s3ParquetDF
-
-    # ===============
-    # STRING REPR/STR
-    # ---------------
-    # __repr__
-    # __shortRepr__
-
-    def __repr__(self) -> str:
-        """Return string repr."""
-        colAndTypeStrs: List[str] = []
-
-        if self._iCol:
-            colAndTypeStrs.append(f'(iCol) {self._iCol}: {self.type(self._iCol)}')
-
-        if self._dCol:
-            colAndTypeStrs.append(f'(dCol) {self._dCol}: {self.type(self._dCol)}')
-
-        if self._tCol:
-            colAndTypeStrs.append(f'(tCol) {self._tCol}: {self.type(self._tCol)}')
-
-        colAndTypeStrs.extend(f'{col}: {self.type(col)}' for col in self.contentCols)
-
-        return (f'{self.nPieces:,}-piece ' +
-                (f'{self._cache.nRows:,}-row '
-                 if self._cache.nRows
-                 else (f'approx-{self._cache.approxNRows:,.0f}-row '
-                       if self._cache.approxNRows
-                       else '')) +
-                type(self).__name__ +
-                (f'[{self.path} + {len(self._mappers):,} transform(s)]'
-                 f"[{', '.join(colAndTypeStrs)}]"))
-
-    @property
-    def __shortRepr__(self) -> str:
-        """Short string repr."""
-        colsDescStr: List[str] = []
-
-        if self._iCol:
-            colsDescStr.append(f'iCol: {self._iCol}')
-
-        if self._dCol:
-            colsDescStr.append(f'dCol: {self._dCol}')
-
-        if self._tCol:
-            colsDescStr.append(f'tCol: {self._tCol}')
-
-        colsDescStr.append(f'{len(self.contentCols)} content col(s)')
-
-        return (f'{self.nPieces:,}-piece ' +
-                (f'{self._cache.nRows:,}-row '
-                 if self._cache.nRows
-                 else (f'approx-{self._cache.approxNRows:,.0f}-row '
-                       if self._cache.approxNRows
-                       else '')) +
-                type(self).__name__ +
-                (f'[{self.path} + {len(self._mappers):,} transform(s)]'
-                 f"[{', '.join(colsDescStr)}]"))
 
     # ===============
     # CACHING METHODS
