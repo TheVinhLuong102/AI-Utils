@@ -240,7 +240,8 @@ class AbstractDataHandler:
         """Return columns."""
         raise NotImplementedError
 
-    def _organizeIndexCols(self):
+    def _organizeIndexCols(self):   # noqa: N802
+        # pylint: disable=invalid-name
         self._dCol: Optional[str] = (self._DATE_COL
                                      if self._DATE_COL in self.columns
                                      else None)
