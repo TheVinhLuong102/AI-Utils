@@ -485,3 +485,6 @@ class AbstractS3FileDataHandler(AbstractFileDataHandler):
 
     # AWS S3 Boto3 client
     S3_CLIENT = s3.client()
+
+    # temporary dir key
+    _TMP_DIR_S3_KEY: str = 'tmp'

@@ -37,8 +37,11 @@ from ..fs import PathType, mkdir
 from ..iter import to_iterable
 from ..namespace import Namespace, DICT_OR_NAMESPACE_TYPES
 
-from ._abstract import AbstractS3FileDataHandler, ReducedDataSetType
-from .pandas import PandasNumericalNullFiller, PandasMLPreprocessor
+from ._abstract import (AbstractDataHandler,
+                        AbstractFileDataHandler,
+                        AbstractS3FileDataHandler,
+                        ReducedDataSetType)
+from .pandas import PandasMLPreprocessor
 
 
 __all__ = ('S3ParquetDataFeeder',)
@@ -79,9 +82,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """S3 Parquet Data Feeder."""
 
+    # caches
     _CACHE: Dict[str, Namespace] = {}
-
-    _PIECE_CACHES: Dict[str, Namespace] = {}
+    _FILE_CACHES: Dict[str, Namespace] = {}
 
     # default arguments dict
     # (cannot be h1st_util.namespace.Namespace
@@ -89,17 +92,15 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     _DEFAULT_KWARGS: Dict[str, Optional[Union[str, DefaultDict]]] = dict(
         iCol=None, tCol=None,
 
-        reprSampleMinNPieces=AbstractS3FileDataHandler._REPR_SAMPLE_MIN_N_PIECES,
-        reprSampleSize=AbstractS3FileDataHandler._DEFAULT_REPR_SAMPLE_SIZE,
+        reprSampleMinNFiles=AbstractFileDataHandler._REPR_SAMPLE_MIN_N_FILES,
+        reprSampleSize=AbstractDataHandler._DEFAULT_REPR_SAMPLE_SIZE,
 
         nulls=DefaultDict((None, None)),
-        minNonNullProportion=DefaultDict(
-            AbstractS3FileDataHandler._DEFAULT_MIN_NON_NULL_PROPORTION),
-        outlierTailProportion=DefaultDict(
-            AbstractS3FileDataHandler._DEFAULT_OUTLIER_TAIL_PROPORTION),
-        maxNCats=DefaultDict(AbstractS3FileDataHandler._DEFAULT_MAX_N_CATS),
+        minNonNullProportion=DefaultDict(AbstractDataHandler._DEFAULT_MIN_NON_NULL_PROPORTION),
+        outlierTailProportion=DefaultDict(AbstractDataHandler._DEFAULT_OUTLIER_TAIL_PROPORTION),
+        maxNCats=DefaultDict(AbstractDataHandler._DEFAULT_MAX_N_CATS),
         minProportionByMaxNCats=DefaultDict(
-            AbstractS3FileDataHandler._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
+            AbstractDataHandler._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
 
     def __init__(self, path: str, *, awsRegion: Optional[str] = None,
                  _mappers: Optional[CallablesType] = None,
@@ -130,12 +131,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             _cache.s3Bucket = _parsedURL.netloc
             _cache.pathS3Key = _parsedURL.path[1:]
 
-            _cache.tmpDirS3Key = 'tmp'
-            _cache.tmpDirPath = f's3://{_cache.s3Bucket}/{_cache.tmpDirS3Key}'
+            _cache.tmpDirPath = f's3://{_cache.s3Bucket}/{self._TMP_DIR_S3_KEY}'
 
-            if path in self._PIECE_CACHES:
-                _cache.nPieces = 1
-                _cache.piecePaths = {path}
+            if path in self._FILE_CACHES:
+                _cache.nFiles = 1
+                _cache.filePaths = {path}
 
             else:
                 if verbose:
@@ -162,41 +162,41 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     toc: float = time.time()
                     logger.info(msg=f'{msg} done!   <{toc - tic:,.1f} s>')
 
-                if _file_paths := _cache._srcArrowDS.files:
-                    _cache.piecePaths = {f's3://{file_path}'
-                                         for file_path in _file_paths
-                                         if not file_path.endswith('_$folder$')}
-                    _cache.nPieces = len(_cache.piecePaths)
+                if _filePaths := _cache._srcArrowDS.files:
+                    _cache.filePaths = {f's3://{filePath}'
+                                        for filePath in _filePaths
+                                        if not filePath.endswith('_$folder$')}
+                    _cache.nFiles = len(_cache.filePaths)
 
                 else:
-                    _cache.nPieces = 1
-                    _cache.piecePaths = {path}
+                    _cache.nFiles = 1
+                    _cache.filePaths = {path}
 
             _cache.srcColsInclPartitionKVs = set()
             _cache.srcTypesInclPartitionKVs = Namespace()
 
-            for i, piecePath in enumerate(_cache.piecePaths):
-                if piecePath in self._PIECE_CACHES:
-                    pieceCache: Namespace = self._PIECE_CACHES[piecePath]
+            for i, filePath in enumerate(_cache.filePaths):
+                if filePath in self._FILE_CACHES:
+                    fileCache: Namespace = self._FILE_CACHES[filePath]
 
-                    if (pieceCache.nRows is None) and (i < self._SCHEMA_MIN_N_PIECES):
-                        pieceCache.localPath = self.pieceLocalPath(piecePath=piecePath)
+                    if (fileCache.nRows is None) and (i < self._SCHEMA_MIN_N_FILES):
+                        fileCache.localPath = self.fileLocalPath(filePath=filePath)
 
-                        schema: Schema = read_schema(where=pieceCache.localPath)
+                        schema: Schema = read_schema(where=fileCache.localPath)
 
-                        pieceCache.srcColsExclPartitionKVs = set(schema.names)
+                        fileCache.srcColsExclPartitionKVs = set(schema.names)
 
-                        pieceCache.srcColsInclPartitionKVs.update(schema.names)
+                        fileCache.srcColsInclPartitionKVs.update(schema.names)
 
-                        for col in (pieceCache.srcColsExclPartitionKVs
-                                    .difference(pieceCache.partitionKVs)):
-                            pieceCache.srcTypesExclPartitionKVs[col] = \
-                                pieceCache.srcTypesInclPartitionKVs[col] = \
+                        for col in (fileCache.srcColsExclPartitionKVs
+                                    .difference(fileCache.partitionKVs)):
+                            fileCache.srcTypesExclPartitionKVs[col] = \
+                                fileCache.srcTypesInclPartitionKVs[col] = \
                                 schema.field(col).type
 
-                        metadata: FileMetaData = read_metadata(where=pieceCache.localPath)
-                        pieceCache.nCols = metadata.num_columns
-                        pieceCache.nRows = metadata.num_rows
+                        metadata: FileMetaData = read_metadata(where=fileCache.localPath)
+                        fileCache.nCols = metadata.num_columns
+                        fileCache.nRows = metadata.num_rows
 
                 else:
                     srcColsInclPartitionKVs: Set[str] = set()
@@ -206,12 +206,12 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                     partitionKVs: Dict[str, Union[datetime.date, str]] = {}
 
-                    for partitionKV in re.findall(pattern='[^/]+=[^/]+/', string=piecePath):
+                    for partitionKV in re.findall(pattern='[^/]+=[^/]+/', string=filePath):
                         k, v = partitionKV.split(sep='=', maxsplit=1)
 
                         srcColsInclPartitionKVs.add(k)
 
-                        if k == self._DEFAULT_D_COL:
+                        if k == self._DATE_COL:
                             srcTypesInclPartitionKVs[k] = _ARROW_DATE_TYPE
                             partitionKVs[k] = datetime.datetime.strptime(v[:-1], '%Y-%m-%d').date()
 
@@ -219,8 +219,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                             srcTypesInclPartitionKVs[k] = _ARROW_STR_TYPE
                             partitionKVs[k] = v[:-1]
 
-                    if i < self._SCHEMA_MIN_N_PIECES:
-                        localPath: Path = self.pieceLocalPath(piecePath=piecePath)
+                    if i < self._SCHEMA_MIN_N_FILES:
+                        localPath: Path = self.fileLocalPath(filePath=filePath)
 
                         schema: Schema = read_schema(where=localPath)
 
@@ -240,13 +240,14 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     else:
                         localPath: Optional[Path] = None
 
-                        srcColsExclPartitionKVs: Optional[List[str]] = None
+                        srcColsExclPartitionKVs: Optional[Set[str]] = None
 
                         nCols: Optional[int] = None
                         nRows: Optional[int] = None
 
-                    self._PIECE_CACHES[piecePath] = pieceCache = \
+                    self._FILE_CACHES[filePath] = fileCache = \
                         Namespace(localPath=localPath,
+
                                   partitionKVs=partitionKVs,
 
                                   srcColsExclPartitionKVs=srcColsExclPartitionKVs,
@@ -257,12 +258,12 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                                   nCols=nCols, nRows=nRows)
 
-                _cache.srcColsInclPartitionKVs |= pieceCache.srcColsInclPartitionKVs
+                _cache.srcColsInclPartitionKVs |= fileCache.srcColsInclPartitionKVs
 
-                for col, arrowType in pieceCache.srcTypesInclPartitionKVs.items():
+                for col, arrowType in fileCache.srcTypesInclPartitionKVs.items():
                     if col in _cache.srcTypesInclPartitionKVs:
                         assert arrowType == _cache.srcTypesInclPartitionKVs[col], \
-                            TypeError(f'*** {piecePath} COLUMN {col}: '
+                            TypeError(f'*** {filePath} COLUMN {col}: '
                                       f'DETECTED TYPE {arrowType} != '
                                       f'{_cache.srcTypesInclPartitionKVs[col]} ***')
                     else:
@@ -274,8 +275,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         self._mappers: Tuple[callable] = (()
                                           if _mappers is None
-                                          else to_iterable(_mappers,
-                                                           iterable_type=tuple))
+                                          else to_iterable(_mappers, iterable_type=tuple))
 
         self._reduceMustInclCols: Set[str] = (set()
                                               if _reduceMustInclCols is None
@@ -316,8 +316,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                 if (not resetToClassDefaults) and existingInstanceV
                                 else classDefaultV)
 
-            if (k == 'reprSampleMinNPieces') and (v > self.nPieces):
-                v: int = self.nPieces
+            if (k == 'reprSampleMinNFiles') and (v > self.nFiles):
+                v: int = self.nFiles
 
             setattr(namespace,
                     _privateK   # use _k to not invoke @k.setter right away
@@ -336,9 +336,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             return namespace
 
     def _organizeIndexCols(self):
-        self._dCol: Optional[str] = (self._DEFAULT_D_COL
-                                     if self._DEFAULT_D_COL in self.columns
-                                     else None)
+        self._dCol: Optional[str] = self._DATE_COL if self._DATE_COL in self.columns else None
 
     def _emptyCache(self):
         self._cache: Namespace = \
