@@ -19,7 +19,7 @@ from uuid import uuid4
 
 from numpy import isfinite, ndarray, vstack
 from pandas import DataFrame, Series, concat, isnull, notnull, read_parquet
-from pandas._libs.missing import NA, NAType   # pylint: disable=no-name-in-module
+from pandas._libs.missing import NAType   # pylint: disable=no-name-in-module
 from tqdm import tqdm
 
 from pyarrow.dataset import dataset
@@ -34,7 +34,7 @@ from ..data_types.arrow import (
 from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES
 from ..data_types.python import PY_NUM_TYPES, PyNumType, PyPossibleFeatureType, PY_LIST_OR_TUPLE
 from ..default_dict import DefaultDict
-from ..fs import PathType, mkdir
+from ..fs import mkdir
 from ..iter import to_iterable
 from ..namespace import Namespace, DICT_OR_NAMESPACE_TYPES
 
@@ -1895,7 +1895,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                     f'from "{loadPath}"...')))
                 tic: float = time.time()
 
-            pandasMLPreproc: PandasMLPreprocessor = PandasMLPreprocessor.from_yaml(path=loadPath)
+            pandasMLPreproc: PandasMLPreprocessor = PandasMLPreprocessor.from_json(path=loadPath)
 
         else:
             cols: Set[str] = {col
@@ -2177,7 +2177,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                f'to Local Path "{savePath}"...')))
                     prep_save_tic: float = time.time()
 
-                pandasMLPreproc.to_yaml(path=savePath)
+                pandasMLPreproc.to_json(path=savePath)
 
                 if verbose:
                     prep_save_toc: float = time.time()
@@ -2195,15 +2195,15 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     (catCol, catPrepColDetails['transform-to'])
                     for catCol, catPrepColDetails in origToPreprocColMap.items()
                     if (catCol not in (PandasMLPreprocessor._CAT_INDEX_SCALED_FIELD_NAME,
-                                       PandasMLPreprocessor._NUM_SCALER_FIELD_NAME)) and
-                        (catPrepColDetails['logical-type'] == 'cat')))
+                                       PandasMLPreprocessor._NUM_SCALER_FIELD_NAME))
+                    and (catPrepColDetails['logical-type'] == 'cat')))
                 |
                 set(chain.from_iterable(
                     (numCol, numPrepColDetails['transform-to'])
                     for numCol, numPrepColDetails in origToPreprocColMap.items()
                     if (numCol not in (PandasMLPreprocessor._CAT_INDEX_SCALED_FIELD_NAME,
-                                       PandasMLPreprocessor._NUM_SCALER_FIELD_NAME)) and
-                        (numPrepColDetails['logical-type'] == 'num'))))
+                                       PandasMLPreprocessor._NUM_SCALER_FIELD_NAME))
+                    and (numPrepColDetails['logical-type'] == 'num'))))
 
             s3ParquetDF: S3ParquetDataFeeder = \
                 self.map(pandasMLPreproc, inheritNRows=True, **kwargs)[tuple(colsToKeep)]

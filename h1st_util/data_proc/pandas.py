@@ -4,20 +4,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional, Union
-from typing import List, Sequence   # Py3.9+: use built-ins
+from typing import Dict, List, Sequence   # Py3.9+: use built-ins
 
-from numpy import array, hstack, ndarray
+from numpy import array, ndarray
 from pandas import DataFrame, Series
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 
-from ..data_types.python import PyPossibleFeatureType, PY_LIST_OR_TUPLE
+from ..data_types.python import PyPossibleFeatureType
 from ..data_types.spark_sql import _STR_TYPE
 from ..fs import PathType
-from ..iter import to_iterable
-from ..namespace import Namespace
-
-from ._abstract import AbstractDataHandler
+from ..namespace import Namespace, DICT_OR_NAMESPACE_TYPES
 
 
 __all__ = (
@@ -39,7 +37,7 @@ __all__ = (
            order=False,
            unsafe_hash=False,
            frozen=True)
-class PandasFlatteningSubsampler(callable):
+class PandasFlatteningSubsampler:
     """Flattening Subsampler for Pandas Data Frames."""
 
     everyNRows: int
@@ -54,185 +52,197 @@ class PandasMLPreprocessor:
     # pylint: disable=too-many-instance-attributes,too-few-public-methods
     """ML Preprocessor for Pandas Data Frames."""
 
-    def __init__(self, origToPrepColMap: Namespace):
-        # pylint: disable=too-many-arguments
+    _CAT_INDEX_SCALED_FIELD_NAME: str = '__CAT_IDX_SCALED__'
+    _NUM_SCALER_FIELD_NAME: str = '__NUM_SCALER__'
+
+    _PREPROC_CACHE: Dict[Path, Namespace] = {}
+
+    def __init__(self, origToPreprocColMap: Namespace):
         """Init ML Preprocessor."""
-        self.addCols: Namespace = addCols
+        self.origToPreprocColMap: Namespace = origToPreprocColMap
 
-        self.typeStrs: Namespace = typeStrs
+        self.catOrigToPreprocColMap: Namespace = Namespace(**{
+            catCol: catPreprocDetails
+            for catCol, catPreprocDetails in origToPreprocColMap.items()
+            if isinstance(catPreprocDetails, DICT_OR_NAMESPACE_TYPES)
+            and (catPreprocDetails['logical-type'] == 'cat')})
 
-        self.catOrigToPrepColMap: Namespace = catOrigToPrepColMap
-        self.scaleCat: bool = catOrigToPrepColMap.__SCALE__
+        self.catCols: List[str] = sorted(self.catOrigToPreprocColMap)
 
-        self.numNullFiller: PandasNumericalNullFiller = \
-            PandasNumericalNullFiller(nullFillDetails=numOrigToPrepColMap)
+        if self.catCols:
+            self.catPreprocCols: List[str] = [self.catOrigToPreprocColMap[catCol]['transform-to']
+                                              for catCol in self.catCols]
 
-        self.numNullFillCols: List[str] = []
-        self.numPrepCols: List[str] = []
-        self.numPrepDetails: List[Namespace] = []
+            self.catIdxScaled: bool = origToPreprocColMap[self._CAT_INDEX_SCALED_FIELD_NAME]
 
-        for numCol, numPrepColNDetails in numOrigToPrepColMap.items():
-            if (numCol != '__SCALER__') and \
-                    isinstance(numPrepColNDetails, PY_LIST_OR_TUPLE) and \
-                    (len(numPrepColNDetails) == 2):
-                self.numNullFillCols.append(AbstractDataHandler._NULL_FILL_PREFIX + numCol)
+        self.numOrigToPreprocColMap: Namespace = Namespace(**{
+            numCol: numPreprocDetails
+            for numCol, numPreprocDetails in origToPreprocColMap.items()
+            if isinstance(numPreprocDetails, DICT_OR_NAMESPACE_TYPES)
+            and (numPreprocDetails['logical-type'] == 'num')})
 
-                numPrepCol, numPrepDetails = numPrepColNDetails
-                self.numPrepCols.append(numPrepCol)
-                self.numPrepDetails.append(numPrepDetails)
+        self.numCols: List[str] = sorted(self.numOrigToPreprocColMap)
 
-        if returnNumPyForCols:
-            self.returnNumPyForCols: List[str] = to_iterable(returnNumPyForCols, iterable_type=list)
+        if self.numCols:
+            self.numPreprocCols: List[str] = [self.numOrigToPreprocColMap[numCol]['transform-to']
+                                              for numCol in self.numCols]
 
-            _nCatCols: int = len(set(catOrigToPrepColMap) - {'__SCALE__'})
-            self.catPrepCols: List[str] = self.returnNumPyForCols[:_nCatCols]
+            self.numScaler: Optional[str] = origToPreprocColMap[self._NUM_SCALER_FIELD_NAME]
 
-            _numPrepCols: List[str] = self.returnNumPyForCols[_nCatCols:]
-            _numPrepColListIndices: List[int] = [_numPrepCols.index(numPrepCol)
-                                                 for numPrepCol in self.numPrepCols]
-            self.numNullFillCols: List[str] = [self.numNullFillCols[i]
-                                               for i in _numPrepColListIndices]
-            self.numPrepCols: List[str] = [self.numPrepCols[i]
-                                           for i in _numPrepColListIndices]
-            self.numPrepDetails: List[Namespace] = [self.numPrepDetails[i]
-                                                    for i in _numPrepColListIndices]
+            if self.numScaler == 'standard':
+                self.numScaler: StandardScaler = StandardScaler(copy=True,
+                                                                with_mean=True,
+                                                                with_std=True)
 
-        else:
-            self.returnNumPyForCols: Optional[Sequence[str]] = None
+                # mean value for each feature in the training set
+                self.numScaler.mean_ = array([self.numOrigToPreprocColMap[numCol]['mean']
+                                              for numCol in self.numCols])
 
-        self.numScaler: Optional[str] = numOrigToPrepColMap.__SCALER__
+                # per-feature relative scaling of the data
+                self.numScaler.scale_ = array([self.numOrigToPreprocColMap[numCol]['std']
+                                               for numCol in self.numCols])
 
-        if self.numScaler == 'standard':
-            self.numScaler: StandardScaler = StandardScaler(copy=True,
-                                                            with_mean=True,
-                                                            with_std=True)
+            elif self.numScaler == 'maxabs':
+                self.numScaler: MaxAbsScaler = MaxAbsScaler(copy=True)
 
-            # mean value for each feature in the training set
-            self.numScaler.mean_ = array([numPrepDetails['mean']
-                                          for numPrepDetails in self.numPrepDetails])
+                # per-feature maximum absolute value /
+                # per-feature relative scaling of the data
+                self.numScaler.max_abs_ = self.numScaler.scale_ = \
+                    array([self.numOrigToPreprocColMap[numCol]['max-abs']
+                           for numCol in self.numCols])
 
-            # per-feature relative scaling of the data
-            self.numScaler.scale_ = array([numPrepDetails['std']
-                                           for numPrepDetails in self.numPrepDetails])
+            elif self.numScaler == 'minmax':
+                self.numScaler: MinMaxScaler = MinMaxScaler(feature_range=(-1, 1),
+                                                            copy=True,
+                                                            clip=False)
 
-        elif self.numScaler == 'maxabs':
-            self.numScaler: MaxAbsScaler = MaxAbsScaler(copy=True)
+                # per-feature minimum seen in the data
+                self.numScaler.data_min_ = array([self.numOrigToPreprocColMap[numCol]['orig-min']
+                                                  for numCol in self.numCols])
 
-            # per-feature maximum absolute value /
-            # per-feature relative scaling of the data
-            self.numScaler.max_abs_ = self.numScaler.scale_ = \
-                array([numPrepDetails['max-abs']
-                       for numPrepDetails in self.numPrepDetails])
+                # per-feature maximum seen in the data
+                self.numScaler.data_max_ = array([self.numOrigToPreprocColMap[numCol]['orig-max']
+                                                  for numCol in self.numCols])
 
-        elif self.numScaler == 'minmax':
-            self.numScaler: MinMaxScaler = MinMaxScaler(feature_range=(-1, 1),
-                                                        copy=True,
-                                                        clip=False)
+                # per-feature range (data_max_ - data_min_) seen in the data
+                self.numScaler.data_range_ = self.numScaler.data_max_ - self.numScaler.data_min_
 
-            # per-feature minimum seen in the data
-            self.numScaler.data_min_ = array([numPrepDetails['orig-min']
-                                              for numPrepDetails in self.numPrepDetails])
+                # per-feature relative scaling of the data
+                self.numScaler.scale_ = 2 / self.numScaler.data_range_
 
-            # per-feature maximum seen in the data
-            self.numScaler.data_max_ = array([numPrepDetails['orig-max']
-                                              for numPrepDetails in self.numPrepDetails])
+                # per-feature adjustment for minimum
+                self.numScaler.min_ = -1 - (self.numScaler.scale_ * self.numScaler.data_min_)
 
-            # per-feature range (data_max_ - data_min_) seen in the data
-            self.numScaler.data_range_ = self.numScaler.data_max_ - self.numScaler.data_min_
+            else:
+                assert self.numScaler is None
 
-            # per-feature relative scaling of the data
-            self.numScaler.scale_ = 2 / self.numScaler.data_range_
+            if self.numScaler is not None:
+                self.numScaler.n_features_in_ = len(self.numCols)
 
-            # per-feature adjustment for minimum
-            self.numScaler.min_ = -1 - (self.numScaler.scale_ * self.numScaler.data_min_)
-
-        else:
-            assert self.numScaler is None
-
-        if self.numScaler is not None:
-            self.numScaler.n_features_in_ = len(self.numPrepDetails)
-
-    def __call__(self, pandasDF: DataFrame) -> DataFrame:
+    def __call__(self, pandasDF: DataFrame, returnNumPy: bool = False) -> Union[DataFrame, ndarray]:
         # pylint: disable=too-many-locals
         """Preprocess a Pandas Data Frame."""
         _FLOAT_ABS_TOL: float = 1e-9
 
-        for col, value in self.addCols.items():
-            pandasDF.loc[:, col] = value
-
-        for catCol, prepCatColNameNDetails in self.catOrigToPrepColMap.items():
-            if (catCol != '__SCALE__') and \
-                    isinstance(prepCatColNameNDetails, PY_LIST_OR_TUPLE) and \
-                    (len(prepCatColNameNDetails) == 2):
-                prepCatCol, catColDetails = prepCatColNameNDetails
-
-                cats: Sequence[PyPossibleFeatureType] = catColDetails['cats']
-                nCats: int = catColDetails['n-cats']
+        if self.catCols:   # preprocess categorical columns
+            for catCol, catPreprocDetails in self.catOrigToPreprocColMap.items():
+                cats: Sequence[PyPossibleFeatureType] = catPreprocDetails['cats']
+                nCats: int = catPreprocDetails['n-cats']
 
                 s: Series = pandasDF[catCol]
 
-                pandasDF.loc[:, prepCatCol] = (
+                pandasDF.loc[:, catPreprocDetails['transform-to']] = (
 
                     (sum(((s == cat) * i) for i, cat in enumerate(cats)) +
                      ((~s.isin(cats)) * nCats))
 
-                    if self.typeStrs[catCol] == _STR_TYPE
+                    if catPreprocDetails['physical-type'] == _STR_TYPE
 
-                    else (sum(((s - cat).abs().between(left=0,
-                                                       right=_FLOAT_ABS_TOL,
-                                                       inclusive='both') * i)
+                    else (sum(((s - cat).abs().between(left=0, right=_FLOAT_ABS_TOL) * i)
                               for i, cat in enumerate(cats)) +
-                          ((1 -
-                            sum(((s - cat).abs().between(left=0,
-                                                         right=_FLOAT_ABS_TOL,
-                                                         inclusive='both')
-                                 * 1   # force into numeric array
-                                 ) for cat in cats))
-                           * nCats)))
+                          ((1 - sum(((s - cat).abs().between(left=0, right=_FLOAT_ABS_TOL) * 1)
+                                    for cat in cats)) * nCats)))
 
                 # *** NOTE: NumPy BUG ***
                 # abs(...) of a data type most negative value equals to the same most negative value
                 # github.com/numpy/numpy/issues/5657
                 # github.com/numpy/numpy/issues/9463
 
-                if self.scaleCat:
-                    pandasDF.loc[:, prepCatCol] = minMaxScaledIndices = \
-                        2 * pandasDF[prepCatCol] / nCats - 1
+            if self.catIdxScaled:
+                pandasDF.loc[:, self.catPreprocCols] = minMaxScaledIndices = \
+                    2 * pandasDF[self.catPreprocCols] / nCats - 1
 
-                    assert minMaxScaledIndices.between(left=-1, right=1, inclusive='both').all(), \
-                        ValueError(f'*** "{prepCatCol}" ({nCats:,} CATS) '
-                                   'CERTAIN MIN-MAX SCALED INT INDICES '
-                                   'NOT BETWEEN -1 AND 1: '
-                                   f'({minMaxScaledIndices.min()}, '
-                                   f'{minMaxScaledIndices.max()}) ***')
+                assert ((minMaxScaledIndices >= -1) & (minMaxScaledIndices <= 1)).all(axis=None), \
+                    ValueError('CERTAIN MIN-MAX SCALED INT INDICES '
+                               'NOT BETWEEN -1 AND 1: '
+                               f'({minMaxScaledIndices.min().min()}, '
+                               f'{minMaxScaledIndices.max().max()}) ***')
 
-        pandasDF: DataFrame = self.numNullFiller(pandasDF=pandasDF)
+        if self.numCols:   # NULL-fill numerical columns
+            for numCol, numPreprocDetails in self.numOrigToPreprocColMap.items():
+                lowerNull, upperNull = numPreprocDetails['nulls']
 
-        if self.returnNumPyForCols:
-            return (hstack((pandasDF[self.catPrepCols].values,
-                            self.numScaler.transform(X=pandasDF[self.numNullFillCols])))
-                    if self.numScaler
-                    else pandasDF[self.returnNumPyForCols].values)
+                series: Series = pandasDF[numCol]
 
-        if self.numScaler:
-            pandasDF[self.numPrepCols] = self.numScaler.transform(X=pandasDF[self.numNullFillCols])
+                checks: Series = series.notnull()
 
-        return pandasDF
+                if lowerNull is not None:
+                    checks &= (series > lowerNull)
+
+                if upperNull is not None:
+                    checks &= (series < upperNull)
+
+                pandasDF.loc[:, numPreprocDetails['transform-to']] = \
+                    series.where(cond=checks,
+                                 other=(getattr(series.loc[checks], nullFillMethod)
+                                        (axis='index', skipna=True, level=None)
+                                        if (nullFillMethod := numPreprocDetails['null-fill-method'])
+                                        else numPreprocDetails['null-fill-value']),
+                                 inplace=False,
+                                 axis=None,
+                                 level=None,
+                                 errors='raise')
+
+            if self.numScaler:
+                pandasDF.loc[:, self.numPreprocCols] = \
+                    self.numScaler.transform(X=pandasDF[self.numPreprocCols])
+
+        return (pandasDF[self.catPreprocCols + self.numPreprocCols].values
+                if returnNumPy
+                else pandasDF)
 
     @classmethod
     def from_json(cls, path: PathType) -> PandasMLPreprocessor:
         """Load from JSON file."""
-        return cls(origToPrepColMap=Namespace.from_json(path=path))
+        path: Path = Path(path).resolve(strict=True)
+
+        if path not in cls._PREPROC_CACHE:
+            cls._PREPROC_CACHE[path] = cls(origToPreprocColMap=Namespace.from_json(path=path))
+
+        return cls._PREPROC_CACHE[path]
 
     def to_json(self, path: PathType):
         """Save to JSON file."""
-        self.origToPrepColMap.to_json(path=path)
+        path: Path = Path(path).resolve(strict=True)
+
+        self.origToPreprocColMap.to_json(path=path)
+
+        self._PREPROC_CACHE[path] = self
 
     @classmethod
     def from_yaml(cls, path: PathType) -> PandasMLPreprocessor:
         """Load from YAML file."""
-        return cls(origToPrepColMap=Namespace.from_yaml(path=path))
+        path: Path = Path(path).resolve(strict=True)
+
+        if path not in cls._PREPROC_CACHE:
+            cls._PREPROC_CACHE[path] = cls(origToPreprocColMap=Namespace.from_yaml(path=path))
+
+        return cls._PREPROC_CACHE[path]
 
     def to_yaml(self, path: PathType):
         """Save to YAML file."""
-        self.origToPrepColMap.to_yaml(path=path)
+        path: Path = Path(path).resolve(strict=True)
+
+        self.origToPreprocColMap.to_yaml(path=path)
+
+        self._PREPROC_CACHE[path] = self
