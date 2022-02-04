@@ -212,6 +212,7 @@ class AbstractDataHandler:
     # ---------------------
     # __len__ / nRows
     # columns
+    # _organizeIndexCols
     # indexCols
     # contentCols
     # types / type / typeIsNum
@@ -238,6 +239,11 @@ class AbstractDataHandler:
     def columns(self) -> Set[str]:
         """Return columns."""
         raise NotImplementedError
+
+    def _organizeIndexCols(self):
+        self._dCol: Optional[str] = (self._DATE_COL
+                                     if self._DATE_COL in self.columns
+                                     else None)
 
     @property
     def indexCols(self) -> Set[str]:   # noqa: N802

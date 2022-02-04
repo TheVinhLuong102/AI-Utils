@@ -353,7 +353,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # "INTERNAL / DON'T TOUCH" METHODS
     # --------------------------------
     # _extractStdKwArgs
-    # _organizeIndexCols
 
     # pylint: disable=inconsistent-return-statements
     def _extractStdKwArgs(self, kwargs: Dict[str, Any], /, *,
@@ -390,9 +389,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         else:
             return namespace
-
-    def _organizeIndexCols(self):
-        self._dCol: Optional[str] = self._DATE_COL if self._DATE_COL in self.columns else None
 
     # =======
     # CACHING
