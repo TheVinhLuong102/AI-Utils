@@ -562,9 +562,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 _mappers=() if resetMappers else self._mappers,
                 _reduceMustInclCols=set() if resetReduceMustInclCols else self._reduceMustInclCols,
 
-                reprSampleMinNFiles=self._reprSampleMinNFiles,
-                reprSampleSize=self._reprSampleSize,
+                reprSampleMinNFiles=self._reprSampleMinNFiles, reprSampleSize=self._reprSampleSize,
 
+                nulls=self._nulls,
                 minNonNullProportion=self._minNonNullProportion,
                 outlierTailProportion=self._outlierTailProportion,
                 maxNCats=self._maxNCats,
@@ -688,14 +688,15 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             S3ParquetDataFeeder(
                 path=self.path, awsRegion=self.awsRegion,
 
-                iCol=self._iCol, tCol=self._tCol,
                 _mappers=self._mappers + to_iterable(mappers, iterable_type=tuple),
                 _reduceMustInclCols=(self._reduceMustInclCols |
                                      to_iterable(reduceMustInclCols, iterable_type=set)),
 
-                reprSampleMinNFiles=self._reprSampleMinNFiles,
-                reprSampleSize=self._reprSampleSize,
+                iCol=self._iCol, tCol=self._tCol,
 
+                reprSampleMinNFiles=self._reprSampleMinNFiles, reprSampleSize=self._reprSampleSize,
+
+                nulls=self._nulls,
                 minNonNullProportion=self._minNonNullProportion,
                 outlierTailProportion=self._outlierTailProportion,
                 maxNCats=self._maxNCats,
@@ -1020,6 +1021,144 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         """Collect content."""
         return self.reduce(cols=cols if cols else None, **kwargs)
 
+    # =========
+    # FILTERING
+    # ---------
+    # _subset
+    # filterByPartitionKeys
+
+    @lru_cache(maxsize=None, typed=False)   # computationally expensive, so cached
+    def _subset(self, *filePaths: str, **kwargs: Any) -> S3ParquetDataFeeder:
+        # pylint: disable=too-many-locals
+        if filePaths:
+            assert self.filePaths.issuperset(filePaths)
+
+            nFilePaths: int = len(filePaths)
+
+            if nFilePaths == self.nFiles:
+                return self
+
+            if nFilePaths > 1:
+                verbose: bool = kwargs.pop('verbose', True)
+
+                subsetDirS3Key: str = f'{self._TMP_DIR_S3_KEY}/{uuid4()}'
+
+                _pathPlusSepLen: int = len(self.path) + 1
+
+                subsetPath: str = f's3://{self.s3Bucket}/{subsetDirS3Key}'
+
+                if verbose:
+                    self.stdOutLogger.info(
+                        msg=(msg := f'Subsetting {len(filePaths):,} Files to "{subsetPath}"...'))
+                    tic: float = time.time()
+
+                for filePath in (tqdm(filePaths) if verbose else filePaths):
+                    filePandasDFSubPath: str = filePath[_pathPlusSepLen:]
+
+                    _from_key: str = f'{self.pathS3Key}/{filePandasDFSubPath}'
+                    _to_key: str = f'{subsetDirS3Key}/{filePandasDFSubPath}'
+
+                    try:
+                        self.S3_CLIENT.copy(CopySource=dict(Bucket=self.s3Bucket, Key=_from_key),
+                                            Bucket=self.s3Bucket,
+                                            Key=_to_key)
+
+                    except Exception as err:
+                        print(f'*** FAILED TO COPY FROM "{_from_key}" TO "{_to_key}" ***')
+                        raise err
+
+                if verbose:
+                    toc: float = time.time()
+                    self.stdOutLogger.info(msg=f'{msg} done!   <{toc-tic:.1f}>')
+
+            else:
+                subsetPath: str = filePaths[0]
+
+            return S3ParquetDataFeeder(
+                path=subsetPath, awsRegion=self.awsRegion,
+
+                _mappers=self._mappers, _reduceMustInclCols=self._reduceMustInclCols,
+
+                iCol=self._iCol, tCol=self._tCol,
+
+                reprSampleMinNFiles=self._reprSampleMinNFiles, reprSampleSize=self._reprSampleSize,
+
+                nulls=self._nulls,
+                minNonNullProportion=self._minNonNullProportion,
+                outlierTailProportion=self._outlierTailProportion,
+                maxNCats=self._maxNCats,
+                minProportionByMaxNCats=self._minProportionByMaxNCats,
+
+                **kwargs)
+
+        return self
+
+    @lru_cache(maxsize=None, typed=False)
+    def filterByPartitionKeys(self,
+                              *filterCriteriaTuples: Union[Tuple[str, str], Tuple[str, str, str]],
+                              **kwargs: Any) -> S3ParquetDataFeeder:
+        # pylint: disable=too-many-branches
+        """Filter by partition keys."""
+        filterCriteria: Dict[str, Tuple[Optional[str], Optional[str], Optional[Set[str]]]] = {}
+
+        _samplePath: str = next(iter(self.filePaths))
+
+        for filterCriteriaTuple in filterCriteriaTuples:
+            assert isinstance(filterCriteriaTuple, PY_LIST_OR_TUPLE)
+            filterCriteriaTupleLen: int = len(filterCriteriaTuple)
+
+            col: str = filterCriteriaTuple[0]
+
+            if f'{col}=' in _samplePath:
+                if filterCriteriaTupleLen == 2:
+                    fromVal: Optional[str] = None
+                    toVal: Optional[str] = None
+                    inSet: Set[str] = {str(v) for v in to_iterable(filterCriteriaTuple[1])}
+
+                elif filterCriteriaTupleLen == 3:
+                    fromVal: Optional[str] = filterCriteriaTuple[1]
+                    if fromVal is not None:
+                        fromVal: str = str(fromVal)
+
+                    toVal: Optional[str] = filterCriteriaTuple[2]
+                    if toVal is not None:
+                        toVal: str = str(toVal)
+
+                    inSet: Optional[Set[str]] = None
+
+                else:
+                    raise ValueError(f'*** {type(self)} FILTER CRITERIA MUST BE EITHER '
+                                     '(<colName>, <fromVal>, <toVal>) OR '
+                                     '(<colName>, <inValsSet>) ***')
+
+                filterCriteria[col] = fromVal, toVal, inSet
+
+        if filterCriteria:
+            filePaths: Set[str] = set()
+
+            for filePath in self.filePaths:
+                filePandasDFSatisfiesCriteria: bool = True
+
+                for col, (fromVal, toVal, inSet) in filterCriteria.items():
+                    v: str = re.search(f'{col}=(.*?)/', filePath).group(1)
+
+                    # pylint: disable=too-many-boolean-expressions
+                    if ((fromVal is not None) and (v < fromVal)) or \
+                            ((toVal is not None) and (v > toVal)) or \
+                            ((inSet is not None) and (v not in inSet)):
+                        filePandasDFSatisfiesCriteria: bool = False
+                        break
+
+                if filePandasDFSatisfiesCriteria:
+                    filePaths.add(filePath)
+
+            assert filePaths, FileNotFoundError(f'*** {self}: NO  PATHS SATISFYING '
+                                                f'FILTER CRITERIA {filterCriteria} ***')
+
+            return self._subset(*filePaths, **kwargs)
+
+        return self
+
     # ========
     # SAMPLING
     # --------
@@ -1108,150 +1247,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         self._cache.nonNullProportion = {}
         self._cache.suffNonNull = {}
-
-    # ==============
-    # SUBSET METHODS
-    # --------------
-    # _subset
-    # filterByPartitionKeys
-
-    @lru_cache(maxsize=None, typed=False)   # computationally expensive, so cached
-    def _subset(self, *piecePaths: str, **kwargs: Any) -> S3ParquetDataFeeder:
-        # pylint: disable=too-many-locals
-        if piecePaths:
-            assert self.piecePaths.issuperset(piecePaths)
-
-            nPiecePaths: int = len(piecePaths)
-
-            if nPiecePaths == self.nPieces:
-                return self
-
-            if nPiecePaths > 1:
-                verbose: bool = kwargs.pop('verbose', True)
-
-                subsetDirS3Key: str = f'{self.tmpDirS3Key}/{uuid4()}'
-
-                _pathPlusSepLen: int = len(self.path) + 1
-
-                subsetPath: str = f's3://{self.s3Bucket}/{subsetDirS3Key}'
-
-                if verbose:
-                    self.stdOutLogger.info(
-                        msg=(msg := f'Subsetting {len(piecePaths):,} Pieces to "{subsetPath}"...'))
-                    tic: float = time.time()
-
-                for piecePath in (tqdm(piecePaths) if verbose else piecePaths):
-                    pieceSubPath: str = piecePath[_pathPlusSepLen:]
-
-                    _from_key: str = f'{self.pathS3Key}/{pieceSubPath}'
-                    _to_key: str = f'{subsetDirS3Key}/{pieceSubPath}'
-
-                    try:
-                        self.S3_CLIENT.copy(
-                            CopySource=dict(Bucket=self.s3Bucket,
-                                            Key=_from_key),
-                            Bucket=self.s3Bucket,
-                            Key=_to_key)
-
-                    except Exception as err:
-                        print(f'*** FAILED TO COPY FROM "{_from_key}" '
-                              f'TO "{_to_key}" ***')
-
-                        raise err
-
-                if verbose:
-                    toc: float = time.time()
-                    self.stdOutLogger.info(msg=f'{msg} done!   <{toc-tic:.1f}>')
-
-            else:
-                subsetPath: str = piecePaths[0]
-
-            return S3ParquetDataFeeder(
-                path=subsetPath, awsRegion=self.awsRegion,
-
-                iCol=self._iCol, tCol=self._tCol,
-                _mappers=self._mappers,
-                _reduceMustInclCols=self._reduceMustInclCols,
-
-                reprSampleMinNPieces=self._reprSampleMinNPieces,
-                reprSampleSize=self._reprSampleSize,
-
-                minNonNullProportion=self._minNonNullProportion,
-                outlierTailProportion=self._outlierTailProportion,
-                maxNCats=self._maxNCats,
-                minProportionByMaxNCats=self._minProportionByMaxNCats,
-
-                **kwargs)
-
-        return self
-
-    @lru_cache(maxsize=None, typed=False)
-    def filterByPartitionKeys(self,
-                              *filterCriteriaTuples: Union[Tuple[str, str],
-                                                           Tuple[str, str, str]],
-                              **kwargs: Any) -> S3ParquetDataFeeder:
-        # pylint: disable=too-many-branches
-        """Filter by partition keys."""
-        filterCriteria: Dict[str, Tuple[Optional[str], Optional[str], Optional[Set[str]]]] = {}
-
-        _samplePiecePath: str = next(iter(self.piecePaths))
-
-        for filterCriteriaTuple in filterCriteriaTuples:
-            assert isinstance(filterCriteriaTuple, PY_LIST_OR_TUPLE)
-            filterCriteriaTupleLen = len(filterCriteriaTuple)
-
-            col: str = filterCriteriaTuple[0]
-
-            if f'{col}=' in _samplePiecePath:
-                if filterCriteriaTupleLen == 2:
-                    fromVal: Optional[str] = None
-                    toVal: Optional[str] = None
-                    inSet: Set[str] = {str(v) for v in to_iterable(filterCriteriaTuple[1])}
-
-                elif filterCriteriaTupleLen == 3:
-                    fromVal: Optional[str] = filterCriteriaTuple[1]
-                    if fromVal is not None:
-                        fromVal: str = str(fromVal)
-
-                    toVal: Optional[str] = filterCriteriaTuple[2]
-                    if toVal is not None:
-                        toVal: str = str(toVal)
-
-                    inSet: Optional[Set[str]] = None
-
-                else:
-                    raise ValueError(
-                        f'*** {type(self)} FILTER CRITERIA MUST BE EITHER '
-                        '(<colName>, <fromVal>, <toVal>) OR '
-                        '(<colName>, <inValsSet>) ***')
-
-                filterCriteria[col] = fromVal, toVal, inSet
-
-        if filterCriteria:
-            piecePaths: Set[str] = set()
-
-            for piecePath in self.piecePaths:
-                pieceSatisfiesCriteria: bool = True
-
-                for col, (fromVal, toVal, inSet) in filterCriteria.items():
-                    v: str = re.search(f'{col}=(.*?)/', piecePath).group(1)
-
-                    # pylint: disable=too-many-boolean-expressions
-                    if ((fromVal is not None) and (v < fromVal)) or \
-                            ((toVal is not None) and (v > toVal)) or \
-                            ((inSet is not None) and (v not in inSet)):
-                        pieceSatisfiesCriteria: bool = False
-                        break
-
-                if pieceSatisfiesCriteria:
-                    piecePaths.add(piecePath)
-
-            assert piecePaths, FileNotFoundError(f'*** {self}: NO PIECE PATHS SATISFYING '
-                                                 f'FILTER CRITERIA {filterCriteria} ***')
-
-            return self._subset(*piecePaths, **kwargs)
-
-        return self
 
     # ================
     # COLUMN PROFILING
