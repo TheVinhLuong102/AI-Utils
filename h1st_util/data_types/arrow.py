@@ -79,9 +79,8 @@ __all__ = (
     '_ARROW_DOUBLE_TYPE',
     '_ARROW_DATE_TYPE',
     '_ARROW_TIMESTAMP_TYPE',
-    'is_float',
-    'is_num',
-    'is_possible_cat',
+    'is_float', 'is_num',
+    'is_possible_cat', 'is_possible_feature',
     'is_complex',
 )
 
@@ -124,6 +123,11 @@ def is_possible_cat(arrow_type: DataType, /) -> bool:
     return (is_boolean(arrow_type) or
             is_string(arrow_type) or
             is_num(arrow_type))
+
+
+def is_possible_feature(arrow_type: DataType) -> bool:
+    """Check if data type is possibly an ML feature."""
+    return is_boolean(arrow_type) or is_string(arrow_type) or is_num(arrow_type)   # noqa: E501
 
 
 def is_complex(arrow_type: DataType, /) -> bool:

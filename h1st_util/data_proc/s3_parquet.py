@@ -28,8 +28,9 @@ from pyarrow.lib import RecordBatch, Schema, Table   # pylint: disable=no-name-i
 from pyarrow.parquet import FileMetaData, read_metadata, read_schema, read_table
 
 from .. import debug, s3
-from ..data_types.arrow import (DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
-                                is_binary, is_boolean, is_num, is_possible_cat, is_string)
+from ..data_types.arrow import (
+    DataType, _ARROW_STR_TYPE, _ARROW_DATE_TYPE,
+    is_binary, is_boolean, is_num, is_possible_cat, is_possible_feature, is_string)
 from ..data_types.numpy_pandas import NUMPY_FLOAT_TYPES, NUMPY_INT_TYPES
 from ..data_types.python import PY_NUM_TYPES, PyNumType, PyPossibleFeatureType, PY_LIST_OR_TUPLE
 from ..default_dict import DefaultDict
@@ -522,7 +523,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             self.srcColsInclPartitionKVs.update(schema.names)
 
             for col in fileCache.srcColsExclPartitionKVs.difference(fileCache.partitionKVs):
-                fileCache.srcTypesExclPartitionKVs[col] = fileCache.srcTypesInclPartitionKVs[col] = \
+                fileCache.srcTypesExclPartitionKVs[col] = \
+                    fileCache.srcTypesInclPartitionKVs[col] = \
                     _arrowType = schema.field(col).type
 
                 assert not is_binary(_arrowType), \
@@ -581,6 +583,86 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             s3ParquetDF._cache.nRows = self._cache.nRows
 
         return s3ParquetDF
+
+    # =====================
+    # ROWS, COLUMNS & TYPES
+    # ---------------------
+    # approxNRows / nRows / __len__
+    # columns
+    # indexCols
+    # types
+    # type / typeIsNum
+    # possibleFeatureCols
+    # possibleCatCols
+
+    @property
+    def approxNRows(self) -> int:
+        """Approximate number of rows."""
+        if self._cache.approxNRows is None:
+            self.stdOutLogger.info(msg='Counting Approx. No. of Rows...')
+
+            self._cache.approxNRows = (
+                self.nFiles
+                * sum(self._readMetadataAndSchema(filePath=filePath).nRows
+                      for filePath in (tqdm(self.prelimReprSamplePiecePaths)
+                                       if len(self.prelimReprSamplePiecePaths) > 1
+                                       else self.prelimReprSamplePiecePaths))
+                / self._reprSampleMinNFiles)
+
+        return self._cache.approxNRows
+
+    @property
+    def nRows(self) -> int:
+        """Return number of rows."""
+        if self._cache.nRows is None:
+            self.stdOutLogger.info(msg='Counting No. of Rows...')
+
+            self._cache.nRows = \
+                sum(self._readMetadataAndSchema(filePath=filePath).nRows
+                    for filePath in (tqdm(self.filePaths) if self.nFiles > 1 else self.filePaths))
+
+        return self._cache.nRows
+
+    def __len__(self) -> int:
+        """Return (approximate) number of rows."""
+        return self._cache.nRows if self._cache.nRows else self.approxNRows
+
+    @property
+    def columns(self) -> Set[str]:
+        """Column names."""
+        return self.srcColsInclPartitionKVs
+
+    @property
+    def indexCols(self) -> Set[str]:
+        """Return index columns."""
+        return (({self._iCol} if self._iCol else set()) |
+                ({self._dCol} if self._dCol else set()) |
+                ({self._tCol} if self._tCol else set()))
+
+    @property
+    def types(self) -> Namespace:
+        """Return column data types."""
+        return self.srcTypesInclPartitionKVs
+
+    @lru_cache(maxsize=None, typed=False)
+    def type(self, col: str) -> DataType:
+        """Return data type of specified column."""
+        return self.types[col]
+
+    @lru_cache(maxsize=None, typed=False)
+    def typeIsNum(self, col: str) -> bool:
+        """Check whether specified column's data type is numerical."""
+        return is_num(self.type(col))
+
+    @property
+    def possibleFeatureCols(self) -> Set[str]:
+        """Possible feature columns for ML modeling."""
+        return {col for col in self.contentCols if is_possible_feature(self.type(col))}
+
+    @property
+    def possibleCatCols(self) -> Set[str]:
+        """Possible categorical content columns."""
+        return {col for col in self.contentCols if is_possible_cat(self.type(col))}
 
     # ====================
     # MAP/REDUCE & related
@@ -1056,98 +1138,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         self._cache.nonNullProportion = {}
         self._cache.suffNonNull = {}
-
-    # =====================
-    # ROWS, COLUMNS & TYPES
-    # ---------------------
-    # approxNRows
-    # nRows
-    # __len__
-    # columns
-    # types
-    # type / typeIsNum
-
-    @property
-    def approxNRows(self) -> int:
-        """Approximate number of rows."""
-        if self._cache.approxNRows is None:
-            self.stdOutLogger.info(msg='Counting Approx. No. of Rows...')
-
-            self._cache.approxNRows = (
-                self.nPieces
-                * sum(self._readMetadataAndSchema(piecePath=piecePath).nRows
-                      for piecePath in
-                      (tqdm(self.prelimReprSamplePiecePaths)
-                       if len(self.prelimReprSamplePiecePaths) > 1
-                       else self.prelimReprSamplePiecePaths))
-                / self._reprSampleMinNPieces)
-
-        return self._cache.approxNRows
-
-    @property
-    def nRows(self) -> int:
-        """Return number of rows."""
-        if self._cache.nRows is None:
-            self.stdOutLogger.info(msg='Counting No. of Rows...')
-
-            self._cache.nRows = \
-                sum(self._readMetadataAndSchema(piecePath=piecePath).nRows
-                    for piecePath in (tqdm(self.piecePaths)
-                                      if self.nPieces > 1
-                                      else self.piecePaths))
-
-        return self._cache.nRows
-
-    def __len__(self) -> int:
-        """Return (approximate) number of rows."""
-        return self._cache.nRows if self._cache.nRows else self.approxNRows
-
-    @property
-    def columns(self) -> Set[str]:
-        """Column names."""
-        return self.srcColsInclPartitionKVs
-
-    @property
-    def types(self) -> Namespace:
-        """Return column data types."""
-        return self.srcTypesInclPartitionKVs
-
-    @lru_cache(maxsize=None, typed=False)
-    def type(self, col: str) -> DataType:
-        """Return data type of specified column."""
-        return self.types[col]
-
-    @lru_cache(maxsize=None, typed=False)
-    def typeIsNum(self, col: str) -> bool:
-        """Check whether specified column's data type is numerical."""
-        return is_num(self.type(col))
-
-    # =============
-    # COLUMN GROUPS
-    # -------------
-    # indexCols
-    # possibleFeatureCols
-    # possibleCatCols
-
-    @property
-    def indexCols(self) -> Set[str]:
-        """Return index columns."""
-        return (({self._iCol} if self._iCol else set()) |
-                ({self._dCol} if self._dCol else set()) |
-                ({self._tCol} if self._tCol else set()))
-
-    @property
-    def possibleFeatureCols(self) -> Set[str]:
-        """Possible feature columns for ML modeling."""
-        def is_possible_feature(t: DataType) -> bool:
-            return is_boolean(t) or is_string(t) or is_num(t)
-
-        return {col for col in self.contentCols if is_possible_feature(self.type(col))}
-
-    @property
-    def possibleCatCols(self) -> Set[str]:
-        """Possible categorical content columns."""
-        return {col for col in self.contentCols if is_possible_cat(self.type(col))}
 
     # ==============
     # SUBSET METHODS
