@@ -57,10 +57,6 @@ class AbstractDataHandler:
     _MAX_ABS_SCL_PREFIX: str = 'MAXABS_SCALED__'
     _MIN_MAX_SCL_PREFIX: str = 'MINMAX_SCALED__'
 
-    _ORIG_TO_PREPROC_COL_MAP_FILE_NAME: str = 'orig-to-preproc-col-map.yaml'
-
-    _PREPROC_CACHE: Dict[Path, Namespace] = {}
-
     # ===========
     # STRING REPR
     # -----------

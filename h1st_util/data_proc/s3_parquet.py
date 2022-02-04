@@ -1852,21 +1852,52 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return Namespace(**{col: profile}) if asDict else profile
 
-    # =========
-    # DATA PREP
-    # ---------
-    # preprocessForML
+    # ====================
+    # PREPROCESSING FOR ML
+    # --------------------
+    # preprocForML
 
-        # pylint: disable=too-many-branches,too-many-locals
-        """Fill ``NULL``/``NaN`` values for numerical columns.
+    def preprocForML(self, *cols: str, **kwargs: Any) -> S3ParquetDataFeeder:
+        # pylint: disable=too-many-branches,too-many-locals,too-many-statements
+        """Preprocess column(s) for ML training/inferencing.
 
         Return:
-            ``S3ParquetDataFeeder`` with ``NULL``/``NaN`` values filled.
+            Preprocessed (incl. numerical-``NULL``-filled) ``S3ParquetDataFeeder``
 
         Args:
-            *args (str): names of column(s) to fill/interpolate
+            *cols: column(s) to preprocess
 
             **kwargs:
+                - **forceCat** / **forceCatIncl** / **forceCatExcl**
+                *(str or list/set/tuple of str, default = None)*:
+                column(s) to force/include/exclude as categorical variable(s)
+
+                - **catIdxScaled**: whether to scale categorical indices *(bool, default = True)*
+
+                - **forceNum** / **forceNumIncl** / **forceNumExcl**
+                *(str or list/set/tuple of str, default = None)*:
+                column(s) to force/include/exclude as numerical variable(s)
+
+                - **numNulls**: *(dict of column names mapping to (numerical, numerical) tuples,
+                default = None)*: pairs of lower & upper numerical nulls of certain columns
+
+                - **numNullFill**:
+                    - *dict* ( ``method`` = ... *(default: 'mean')*,
+                               ``value`` = ... *(default: None)*,
+                               ``outlierTails`` = ... *(default: False)* )
+                    - *OR* ``None`` to not apply any ``NULL``/``NaN``-filling
+
+                - **numScaler** *(str)*: one of the following methods to use on numerical columns
+                (*ignored* if loading existing ``prep`` pipeline from ``loadPath``):
+                    - ``standard`` (default)
+                    - ``maxabs``
+                    - ``minmax``
+                    - ``None`` *(do not apply any scaling)*
+
+                - **loadPath** *(str)*: path to load existing data transformations
+
+                - **savePath** *(str)*: path to save new fitted data transformations
+
                 - **method** *(str)*: one of the following methods to fill
                     ``NULL`` values in **numerical** columns,
                     or *dict* of such method specifications by column name
@@ -1883,106 +1914,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 specification of in which distribution tail
                 (``None``, ``lower``, ``upper`` and ``both`` (default))
                 of each numerical column out-lying values may exist
+
         """
-        returnDetails: bool = kwargs.pop('returnDetails', False)
-
-        verbose: Union[bool, int] = kwargs.pop('verbose', False)
-        if debug.ON:
-            verbose: bool = True
-
-        value: Optional[Union[PyNumType, Dict[str, PyNumType]]] = kwargs.pop('value', None)
-
-        method: Optional[Union[str, Dict[str, Optional[str]]]] = \
-            kwargs.pop('method', 'mean' if value is None else None)
-
-        cols: Set[str] = set(cols)
-
-        if isinstance(method, dict):
-            cols.update(method)
-
-        if isinstance(value, dict):
-            cols.update(value)
-
-        cols &= self.possibleNumCols
-        cols -= self.indexCols
-
-        if not cols:
-            return self.copy()
-
-        nulls: Dict[str, Tuple[Optional[PyNumType], Optional[PyNumType]]] = kwargs.pop('nulls', {})
-
-        for col in cols:
-            if col in nulls:
-                colNulls: Tuple[Optional[PyNumType], Optional[PyNumType]] = nulls[col]
-
-                assert (isinstance(colNulls, PY_LIST_OR_TUPLE) and
-                        (len(colNulls) == 2) and
-                        ((colNulls[0] is None) or isinstance(colNulls[0], PY_NUM_TYPES)) and
-                        ((colNulls[1] is None) or isinstance(colNulls[1], PY_NUM_TYPES)))
-
-            else:
-                nulls[col] = None, None
-
-        outlierTails: Optional[Union[str, Dict[str, Optional[str]]]] = \
-            kwargs.pop('outlierTails', {})
-        if not isinstance(outlierTails, DICT_OR_NAMESPACE_TYPES):
-            outlierTails: Dict[str, Optional[str]] = {col: outlierTails for col in cols}
-
-        nullFillDetails: Namespace = Namespace()
-
-        if verbose:
-            self.stdOutLogger.info(msg = (msg := ('NULL-Filling Columns ' +
-                                                  ', '.join(f'"{col}"' for col in cols) +
-                                                  '...')))
-            tic: float = time.time()
-
-        for col in cols:
-            colOutlierTails: Optional[str] = outlierTails.get(col, 'both')
-
-            methodForCol: Optional[str] = (method[col]
-                                           if isinstance(method, dict) and (col in method)
-                                           else method)
-
-            if methodForCol:
-                colFallBackVal: PyNumType = self.outlierRstStat(col,
-                                                                stat=methodForCol,
-                                                                outlierTails=colOutlierTails,
-                                                                verbose=verbose > 1)
-
-            elif isinstance(value, dict):
-                colFallBackVal: Optional[PyNumType] = value.get(col)
-
-                if not isinstance(colFallBackVal, PY_NUM_TYPES):
-                    colFallBackVal: Optional[PyNumType] = None
-
-            elif isinstance(value, PY_NUM_TYPES):
-                colFallBackVal: PyNumType = value
-
-            else:
-                colFallBackVal: Optional[PyNumType] = None
-
-            nullFillDetails[col] = (self._NULL_FILL_PREFIX + col,
-                                    {'nulls': nulls[col],
-                                     'null-fill-method': methodForCol,
-                                     'null-fill-value': colFallBackVal})
-
-        s3ParquetDF: S3ParquetDataFeeder = \
-            self.map(PandasNumericalNullFiller(nullFillDetails=nullFillDetails),
-                     inheritNRows=True, **kwargs)
-        s3ParquetDF._inheritCache(self, *cols)
-        s3ParquetDF._cache.reprSample = self._cache.reprSample
-
-        if verbose:
-            toc: float = time.time()
-            self.stdOutLogger.info(msg=f'{msg} done!   <{(toc - tic) / 60:,.1f} m>')
-
-        return (s3ParquetDF, nullFillDetails) if returnDetails else s3ParquetDF
-
-        nulls: Dict[str, Tuple[Optional[PyNumType], Optional[PyNumType]]] = kwargs.pop('nulls', {})
-
+        forceCat: Optional[ColsType] = kwargs.pop('forceCat', None)
         forceCatIncl: Optional[ColsType] = kwargs.pop('forceCatIncl', None)
         forceCatExcl: Optional[ColsType] = kwargs.pop('forceCatExcl', None)
-        forceCat: Optional[ColsType] = kwargs.pop('forceCat', None)
         forceCat: Set[str] = (((set()
                                 if forceCat is None
                                 else to_iterable(forceCat, iterable_type=set))
@@ -1993,11 +1929,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                  if forceCatExcl is None
                                  else to_iterable(forceCatExcl, iterable_type=set)))
 
-        scaleCat: bool = kwargs.pop('scaleCat', True)
+        catIdxScaled: bool = kwargs.pop('catIdxScaled', True)
 
+        forceNum: Optional[ColsType] = kwargs.pop('forceNum', None)
         forceNumIncl: Optional[ColsType] = kwargs.pop('forceNumIncl', None)
         forceNumExcl: Optional[ColsType] = kwargs.pop('forceNumExcl', None)
-        forceNum: Optional[ColsType] = kwargs.pop('forceNum', None)
         forceNum: Set[str] = (((set()
                                 if forceNum is None
                                 else to_iterable(forceNum, iterable_type=set))
@@ -2008,23 +1944,25 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                  if forceNumExcl is None
                                  else to_iterable(forceNumExcl, iterable_type=set)))
 
-        fill: Dict[str, Optional[Union[str, Optional[PyNumType]]]] = \
-            kwargs.pop('fill', dict(method='mean', value=None, outlierTails='both'))
+        numNulls: Dict[str, Tuple[Optional[PyNumType], Optional[PyNumType]]] = \
+            kwargs.pop('numNulls', {})
 
-        assert fill, ValueError(f'*** {type(self)}.preprocessForML(...) MUST INVOLVE NULL-FILLING '
-                                f'FOR NUMERICAL COLS ***')
+        numNullFill: Dict[str, Optional[Union[str, Optional[PyNumType]]]] = \
+            kwargs.pop('numNullFill', dict(method='mean', value=None, outlierTails='both'))
 
-        scaler: Optional[str] = kwargs.pop('scaler', 'standard')
-        if scaler:
-            scaler: str = scaler.lower()
+        assert numNullFill, \
+            ValueError(f'*** {type(self)}.preprocForML(...) MUST FILL NUMERICAL NULLS ***')
 
-        returnNumPy: bool = kwargs.pop('returnNumPy', False)
-        returnOrigToPrepColMaps: bool = kwargs.pop('returnOrigToPrepColMaps', False)
+        numScaler: Optional[str] = kwargs.pop('numScaler', 'standard')
+        if numScaler:
+            numScaler: str = numScaler.lower()
 
         loadPath: Optional[PathType] = kwargs.pop('loadPath', None)
         savePath: Optional[PathType] = kwargs.pop('savePath', None)
 
-        verbose: bool = kwargs.pop('verbose', False)
+        returnNumPy: bool = kwargs.pop('returnNumPy', False)
+
+        verbose: Union[bool, int] = kwargs.pop('verbose', True)
         if debug.ON:
             verbose: bool = True
 
@@ -2034,25 +1972,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                     f'from "{loadPath}"...')))
                 tic: float = time.time()
 
-            loadPath: Path = Path(loadPath).resolve(strict=True)
-
-            if loadPath in self._PREP_CACHE:
-                if debug.ON:
-                    self.stdOutLogger.debug(
-                        msg=f'*** RETRIEVING PREPROCESSING CACHE FROM {loadPath} ***')
-
-                prepCache: Namespace = self._PREP_CACHE[loadPath]
-
-                catOrigToPrepColMap: Namespace = prepCache.catOrigToPrepColMap
-                numOrigToPrepColMap: Namespace = prepCache.numOrigToPrepColMap
-
-            else:
-                self._PREP_CACHE[loadPath] = \
-                    Namespace(
-                        catOrigToPrepColMap=Namespace.from_yaml(
-                            loadPath / PandasMLPreprocessor._CAT_ORIG_TO_PREP_COL_MAP_FILE_NAME),
-                        numOrigToPrepColMap=Namespace.from_yaml(
-                            loadPath / PandasMLPreprocessor._NUM_ORIG_TO_PREP_COL_MAP_FILE_NAME))
+            origToPreprocColMap: Namespace = PandasMLPreprocessor.from_yaml(path=loadPath)
 
         else:
             cols: Set[str] = {col
@@ -2098,7 +2018,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                     '...')))
                 tic: float = time.time()
 
-            catOrigToPrepColMap: Namespace = Namespace(__SCALE__=scaleCat)
+            origToPreprocColMap: Namespace = Namespace(**{
+                PandasMLPreprocessor._CAT_INDEX_SCALED_FIELD_NAME: catIdxScaled})
 
             if catCols:
                 if verbose:
@@ -2110,7 +2031,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 catIdxCols: Set[str] = set()
 
-                if scaleCat:
+                if catIdxScaled:
                     catScaledIdxCols: Set[str] = set()
 
                 for catCol in catCols:
@@ -2137,7 +2058,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                         nCats: int = len(cats)
 
-                    if scaleCat:
+                    if catIdxScaled:
                         catPrepCol: str = self._MIN_MAX_SCL_PREFIX + catIdxCol
                         catScaledIdxCols.add(catPrepCol)
 
@@ -2145,14 +2066,17 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                         catPrepCol: str = catIdxCol
                         catIdxCols.add(catPrepCol)
 
-                    catOrigToPrepColMap[catCol] = catPrepCol, {'cats': cats, 'n-cats': nCats}
+                    origToPreprocColMap[catCol] = {'logical-type': 'cat',
+                                                   'physical-type': str(catColType),
+                                                   'cats': cats, 'n-cats': nCats,
+                                                   'transform-to': catPrepCol}
 
                 if verbose:
                     cat_prep_toc: float = time.time()
                     self.stdOutLogger.info(
                         msg=f'{cat_prep_msg} done!   <{cat_prep_toc - cat_prep_tic:,.1f} s>')
 
-            numOrigToPrepColMap: Namespace = Namespace(__SCALER__=scaler)
+            origToPreprocColMap[PandasMLPreprocessor._NUM_SCALER_FIELD_NAME] = numScaler
 
             if numCols:
                 numScaledCols: Set[str] = set()
@@ -2379,6 +2303,4 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             toc: float = time.time()
             self.stdOutLogger.info(msg=f'{msg} done!   <{(toc - tic) / 60:,.1f} m>')
 
-        return ((s3ParquetDF, catOrigToPrepColMap, numOrigToPrepColMap)
-                if returnOrigToPrepColMaps
-                else s3ParquetDF)
+        return s3ParquetDF
