@@ -400,6 +400,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # _inheritCache
     # cacheLocally
     # fileLocalPath
+    # _readMetadataAndSchema
 
     def _emptyCache(self):
         self._cache: Namespace = \
@@ -505,6 +506,41 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             self._FILE_CACHES[filePath].localPath = localPath
 
         return localPath
+
+    def _readMetadataAndSchema(self, filePath: str) -> Namespace:
+        fileLocalPath: Path = self.fileLocalPath(filePath=filePath)
+
+        fileCache: Namespace = self._FILE_CACHES[filePath]
+
+        if fileCache.nRows is None:
+            schema: Schema = read_schema(where=fileLocalPath)
+
+            fileCache.srcColsExclPartitionKVs = set(schema.names)
+
+            fileCache.srcColsInclPartitionKVs.update(schema.names)
+
+            self.srcColsInclPartitionKVs.update(schema.names)
+
+            for col in fileCache.srcColsExclPartitionKVs.difference(fileCache.partitionKVs):
+                fileCache.srcTypesExclPartitionKVs[col] = fileCache.srcTypesInclPartitionKVs[col] = \
+                    _arrowType = schema.field(col).type
+
+                assert not is_binary(_arrowType), \
+                    TypeError(f'*** {filePath}: {col} IS OF BINARY TYPE ***')
+
+                if col in self.srcTypesInclPartitionKVs:
+                    assert _arrowType == self.srcTypesInclPartitionKVs[col], \
+                        TypeError(f'*** {filePath} COLUMN {col}: '
+                                  f'DETECTED TYPE {_arrowType} != '
+                                  f'{self.srcTypesInclPartitionKVs[col]} ***')
+                else:
+                    self.srcTypesInclPartitionKVs[col] = _arrowType
+
+            metadata: FileMetaData = read_metadata(where=fileCache.localPath)
+            fileCache.nCols = metadata.num_columns
+            fileCache.nRows = metadata.num_rows
+
+        return fileCache
 
     # ====
     # COPY
@@ -1030,43 +1066,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # columns
     # types
     # type / typeIsNum
-
-    def _readMetadataAndSchema(self, piecePath: str) -> Namespace:
-        pieceLocalPath: Path = self.pieceLocalPath(piecePath=piecePath)
-
-        pieceCache: Namespace = self._PIECE_CACHES[piecePath]
-
-        if pieceCache.nRows is None:
-            schema: Schema = read_schema(where=pieceLocalPath)
-
-            pieceCache.srcColsExclPartitionKVs = set(schema.names)
-
-            pieceCache.srcColsInclPartitionKVs.update(schema.names)
-
-            self.srcColsInclPartitionKVs.update(schema.names)
-
-            for col in (pieceCache.srcColsExclPartitionKVs
-                        .difference(pieceCache.partitionKVs)):
-                pieceCache.srcTypesExclPartitionKVs[col] = \
-                    pieceCache.srcTypesInclPartitionKVs[col] = \
-                    _arrowType = schema.field(col).type
-
-                assert not is_binary(_arrowType), \
-                    f'*** {piecePath}: {col} IS OF BINARY TYPE ***'
-
-                if col in self.srcTypesInclPartitionKVs:
-                    assert _arrowType == self.srcTypesInclPartitionKVs[col], \
-                        TypeError(f'*** {piecePath} COLUMN {col}: '
-                                  f'DETECTED TYPE {_arrowType} != '
-                                  f'{self.srcTypesInclPartitionKVs[col]} ***')
-                else:
-                    self.srcTypesInclPartitionKVs[col] = _arrowType
-
-            metadata: FileMetaData = read_metadata(where=pieceCache.localPath)
-            pieceCache.nCols = metadata.num_columns
-            pieceCache.nRows = metadata.num_rows
-
-        return pieceCache
 
     @property
     def approxNRows(self) -> int:
