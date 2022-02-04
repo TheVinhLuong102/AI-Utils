@@ -504,7 +504,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return localPath
 
-    def _readMetadataAndSchema(self, filePath: str) -> Namespace:
+    def _cacheMetadataAndSchema(self, filePath: str) -> Namespace:
         fileLocalPath: Path = self.fileLocalPath(filePath=filePath)
 
         fileCache: Namespace = self._FILE_CACHES[filePath]
@@ -599,7 +599,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
             self._cache.approxNRows = (
                 self.nFiles
-                * sum(self._readMetadataAndSchema(filePath=filePath).nRows
+                * sum(self._cacheMetadataAndSchema(filePath=filePath).nRows
                       for filePath in (tqdm(self.prelimReprSampleFilePaths)
                                        if len(self.prelimReprSampleFilePaths) > 1
                                        else self.prelimReprSampleFilePaths))
@@ -614,7 +614,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             self.stdOutLogger.info(msg='Counting No. of Rows...')
 
             self._cache.nRows = \
-                sum(self._readMetadataAndSchema(filePath=filePath).nRows
+                sum(self._cacheMetadataAndSchema(filePath=filePath).nRows
                     for filePath in (tqdm(self.filePaths) if self.nFiles > 1 else self.filePaths))
 
         return self._cache.nRows
@@ -747,7 +747,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         for filePath in (tqdm(filePaths) if verbose and (len(filePaths) > 1) else filePaths):
             fileLocalPath: Path = self.fileLocalPath(filePath=filePath)
 
-            fileCache: Namespace = self._readMetadataAndSchema(filePath=filePath)
+            fileCache: Namespace = self._cacheMetadataAndSchema(filePath=filePath)
 
             colsForFile: Set[str] = (
                 cols
