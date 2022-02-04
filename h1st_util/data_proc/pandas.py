@@ -8,13 +8,14 @@ from pathlib import Path
 from typing import Optional, Union
 from typing import Dict, List, Sequence   # Py3.9+: use built-ins
 
-from numpy import array, ndarray
+from numpy import array, expand_dims, ndarray
 from pandas import DataFrame, Series
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 
 from ..data_types.python import PyPossibleFeatureType
 from ..data_types.spark_sql import _STR_TYPE
 from ..fs import PathType
+from ..iter import to_iterable
 from ..namespace import Namespace, DICT_OR_NAMESPACE_TYPES
 
 
@@ -40,12 +41,16 @@ __all__ = (
 class PandasFlatteningSubsampler:
     """Flattening Subsampler for Pandas Data Frames."""
 
+    columns: Union[str, Sequence[str]]
     everyNRows: int
-    columns: Sequence[str]
+    totalNRows: int
 
-    def __call__(self, pandasDF: DataFrame) -> DataFrame:
+    def __call__(self, pandasDF: DataFrame) -> ndarray:
         """Subsample a Pandas Data Frame's certain columns and flatten them."""
-        return pandasDF.iloc[range(0, len(pandasDF), self.everyNRows)]
+        return expand_dims(pandasDF[to_iterable(self.columns, iterable_type=list)]
+                           .iloc[range(0, self.totalNRows, self.everyNRows)]
+                           .values.flatten(order='F'),
+                           axis=0)
 
 
 class PandasMLPreprocessor:
