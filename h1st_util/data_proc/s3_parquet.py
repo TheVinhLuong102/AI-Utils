@@ -313,7 +313,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         colAndTypeStrs.extend(f'{col}: {self.type(col)}' for col in self.contentCols)
 
-        return (f'{self.nFiles:,}-piece ' +
+        return (f'{self.nFiles:,}-file ' +
                 (f'{self._cache.nRows:,}-row '
                  if self._cache.nRows
                  else (f'approx-{self._cache.approxNRows:,.0f}-row '
@@ -339,7 +339,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         colsDescStr.append(f'{len(self.contentCols)} content col(s)')
 
-        return (f'{self.nFiles:,}-piece ' +
+        return (f'{self.nFiles:,}-file ' +
                 (f'{self._cache.nRows:,}-row '
                  if self._cache.nRows
                  else (f'approx-{self._cache.approxNRows:,.0f}-row '
@@ -405,8 +405,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
     def _emptyCache(self):
         self._cache: Namespace = \
-            Namespace(prelimReprSamplePiecePaths=None,
-                      reprSamplePiecePaths=None,
+            Namespace(prelimReprSampleFilePaths=None,
+                      reprSampleFilePaths=None,
                       reprSample=None,
 
                       approxNRows=None, nRows=None,
@@ -604,9 +604,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             self._cache.approxNRows = (
                 self.nFiles
                 * sum(self._readMetadataAndSchema(filePath=filePath).nRows
-                      for filePath in (tqdm(self.prelimReprSamplePiecePaths)
-                                       if len(self.prelimReprSamplePiecePaths) > 1
-                                       else self.prelimReprSamplePiecePaths))
+                      for filePath in (tqdm(self.prelimReprSampleFilePaths)
+                                       if len(self.prelimReprSampleFilePaths) > 1
+                                       else self.prelimReprSampleFilePaths))
                 / self._reprSampleMinNFiles)
 
         return self._cache.approxNRows
@@ -677,7 +677,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             mappers: Optional[CallablesType] = None, /,
             reduceMustInclCols: Optional[ColsType] = None,
             **kwargs: Any) -> S3ParquetDataFeeder:
-        """Apply mapper function(s) to pieces."""
+        """Apply mapper function(s) to files."""
         if mappers is None:
             mappers: Tuple[callable] = ()
 
@@ -696,7 +696,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 _reduceMustInclCols=(self._reduceMustInclCols |
                                      to_iterable(reduceMustInclCols, iterable_type=set)),
 
-                reprSampleMinNPieces=self._reprSampleMinNPieces,
+                reprSampleMinNFiles=self._reprSampleMinNFiles,
                 reprSampleSize=self._reprSampleSize,
 
                 minNonNullProportion=self._minNonNullProportion,
@@ -715,12 +715,15 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return s3ParquetDF
 
-    def reduce(self, *piecePaths: str, **kwargs: Any) -> ReducedDataSetType:
+    def reduce(self, *filePaths: str, **kwargs: Any) -> ReducedDataSetType:
         # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Reduce from mapped content."""
         _CHUNK_SIZE: int = 10 ** 5
 
-        nSamplesPerPiece: int = kwargs.get('nSamplesPerPiece')
+        cols: Optional[Collection[str]] = kwargs.get('cols')
+        cols: Set[str] = to_iterable(cols, iterable_type=set) if cols else set()
+
+        nSamplesPerFile: int = kwargs.get('nSamplesPerFile')
 
         reducer: callable = kwargs.get('reducer',
                                        lambda results:
@@ -739,98 +742,68 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         verbose: bool = kwargs.pop('verbose', True)
 
-        if not piecePaths:
-            piecePaths: Set[str] = self.piecePaths
+        if not filePaths:
+            filePaths: Set[str] = self.filePaths
 
         results: List[ReducedDataSetType] = []
 
         # pylint: disable=too-many-nested-blocks
-        for piecePath in (tqdm(piecePaths) if verbose and (len(piecePaths) > 1) else piecePaths):
-            pieceLocalPath: Path = self.pieceLocalPath(piecePath=piecePath)
+        for filePath in (tqdm(filePaths) if verbose and (len(filePaths) > 1) else filePaths):
+            fileLocalPath: Path = self.fileLocalPath(filePath=filePath)
 
-            pieceCache: Namespace = self._PIECE_CACHES[piecePath]
+            fileCache: Namespace = self._readMetadataAndSchema(filePath=filePath)
 
-            if pieceCache.nRows is None:
-                schema: Schema = read_schema(where=pieceLocalPath)
+            colsForFile: Set[str] = (
+                cols
+                if cols
+                else fileCache.srcColsInclPartitionKVs
+            ) | self._reduceMustInclCols
 
-                pieceCache.srcColsExclPartitionKVs = set(schema.names)
+            srcCols: Set[str] = colsForFile & fileCache.srcColsExclPartitionKVs
 
-                pieceCache.srcColsInclPartitionKVs.update(schema.names)
-
-                self.srcColsInclPartitionKVs.update(schema.names)
-
-                for col in (pieceCache.srcColsExclPartitionKVs
-                            .difference(pieceCache.partitionKVs)):
-                    pieceCache.srcTypesExclPartitionKVs[col] = \
-                        pieceCache.srcTypesInclPartitionKVs[col] = \
-                        _arrowType = schema.field(col).type
-
-                    assert not is_binary(_arrowType), \
-                        TypeError(f'*** {piecePath}: {col} IS OF BINARY TYPE ***')
-
-                    if col in self.srcTypesInclPartitionKVs:
-                        assert _arrowType == self.srcTypesInclPartitionKVs[col], \
-                            TypeError(f'*** {piecePath} COLUMN {col}: '
-                                      f'DETECTED TYPE {_arrowType} != '
-                                      f'{self.srcTypesInclPartitionKVs[col]} ***')
-                    else:
-                        self.srcTypesInclPartitionKVs[col] = _arrowType
-
-                metadata: FileMetaData = read_metadata(where=pieceCache.localPath)
-                pieceCache.nCols = metadata.num_columns
-                pieceCache.nRows = metadata.num_rows
-
-            cols: Optional[Collection[str]] = kwargs.get('cols')
-
-            cols: Set[str] = (to_iterable(cols, iterable_type=set)
-                              if cols
-                              else pieceCache.srcColsInclPartitionKVs) | self._reduceMustInclCols
-
-            srcCols: Set[str] = cols & pieceCache.srcColsExclPartitionKVs
-
-            partitionKeyCols: Set[str] = cols.intersection(pieceCache.partitionKVs)
+            partitionKeyCols: Set[str] = colsForFile.intersection(fileCache.partitionKVs)
 
             if srcCols:
                 pandasDFConstructed: bool = False
 
-                if toSubSample := nSamplesPerPiece and (nSamplesPerPiece < pieceCache.nRows):
-                    intermediateN: float = (nSamplesPerPiece * pieceCache.nRows) ** .5
+                if toSubSample := nSamplesPerFile and (nSamplesPerFile < fileCache.nRows):
+                    intermediateN: float = (nSamplesPerFile * fileCache.nRows) ** .5
 
                     if ((nChunksForIntermediateN := int(math.ceil(intermediateN / _CHUNK_SIZE)))
-                            < (approxNChunks := int(math.ceil(pieceCache.nRows / _CHUNK_SIZE)))):
+                            < (approxNChunks := int(math.ceil(fileCache.nRows / _CHUNK_SIZE)))):
                         # arrow.apache.org/docs/python/generated/pyarrow.parquet.read_table
-                        pieceArrowTable: Table = read_table(source=pieceLocalPath,
-                                                            columns=list(srcCols),
-                                                            use_threads=True,
-                                                            metadata=None,
-                                                            use_pandas_metadata=True,
-                                                            memory_map=False,
-                                                            read_dictionary=None,
-                                                            filesystem=None,
-                                                            filters=None,
-                                                            buffer_size=0,
-                                                            partitioning='hive',
-                                                            use_legacy_dataset=False,
-                                                            ignore_prefixes=None,
-                                                            pre_buffer=True,
-                                                            coerce_int96_timestamp_unit=None)
+                        fileArrowTable: Table = read_table(source=fileLocalPath,
+                                                           columns=list(srcCols),
+                                                           use_threads=True,
+                                                           metadata=None,
+                                                           use_pandas_metadata=True,
+                                                           memory_map=False,
+                                                           read_dictionary=None,
+                                                           filesystem=None,
+                                                           filters=None,
+                                                           buffer_size=0,
+                                                           partitioning='hive',
+                                                           use_legacy_dataset=False,
+                                                           ignore_prefixes=None,
+                                                           pre_buffer=True,
+                                                           coerce_int96_timestamp_unit=None)
 
                         chunkRecordBatches: List[RecordBatch] = \
-                            pieceArrowTable.to_batches(max_chunksize=_CHUNK_SIZE)
+                            fileArrowTable.to_batches(max_chunksize=_CHUNK_SIZE)
 
                         nChunks: int = len(chunkRecordBatches)
 
                         assert nChunks in (approxNChunks - 1, approxNChunks), \
-                            ValueError(f'*** {piecePath}: {nChunks} vs. '
+                            ValueError(f'*** {filePath}: {nChunks} vs. '
                                        f'{approxNChunks} Record Batches ***')
 
                         assert nChunksForIntermediateN <= nChunks, \
-                            ValueError(f'*** {piecePath}: {nChunksForIntermediateN} vs. '
+                            ValueError(f'*** {filePath}: {nChunksForIntermediateN} vs. '
                                        f'{nChunks} Record Batches ***')
 
                         chunkPandasDFs: List[DataFrame] = []
 
-                        nSamplesPerChunk: int = int(math.ceil(nSamplesPerPiece /
+                        nSamplesPerChunk: int = int(math.ceil(nSamplesPerFile /
                                                               nChunksForIntermediateN))
 
                         for chunkRecordBatch in randomSample(population=chunkRecordBatches,
@@ -893,7 +866,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                     types_mapper=None)
 
                             for k in partitionKeyCols:
-                                chunkPandasDF[k] = pieceCache.partitionKVs[k]
+                                chunkPandasDF[k] = fileCache.partitionKVs[k]
 
                             if nSamplesPerChunk < len(chunkPandasDF):
                                 chunkPandasDF: DataFrame = \
@@ -907,23 +880,23 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                             chunkPandasDFs.append(chunkPandasDF)
 
-                        piecePandasDF: DataFrame = concat(objs=chunkPandasDFs,
-                                                          axis='index',
-                                                          join='outer',
-                                                          ignore_index=False,
-                                                          keys=None,
-                                                          levels=None,
-                                                          names=None,
-                                                          verify_integrity=False,
-                                                          sort=False,
-                                                          copy=False)
+                        filePandasDF: DataFrame = concat(objs=chunkPandasDFs,
+                                                         axis='index',
+                                                         join='outer',
+                                                         ignore_index=False,
+                                                         keys=None,
+                                                         levels=None,
+                                                         names=None,
+                                                         verify_integrity=False,
+                                                         sort=False,
+                                                         copy=False)
 
                         pandasDFConstructed: bool = True
 
                 if not pandasDFConstructed:
                     # pandas.pydata.org/docs/reference/api/pandas.read_parquet
-                    piecePandasDF: DataFrame = read_parquet(
-                        path=pieceLocalPath,
+                    filePandasDF: DataFrame = read_parquet(
+                        path=fileLocalPath,
                         engine='pyarrow',
                         columns=list(srcCols),
                         storage_options=None,
@@ -997,29 +970,27 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     )
 
                     for k in partitionKeyCols:
-                        piecePandasDF[k] = pieceCache.partitionKVs[k]
+                        filePandasDF[k] = fileCache.partitionKVs[k]
 
                     if toSubSample:
-                        piecePandasDF: DataFrame = \
-                            piecePandasDF.sample(n=nSamplesPerPiece,
-                                                 # frac=None,
-                                                 replace=False,
-                                                 weights=None,
-                                                 random_state=None,
-                                                 axis='index',
-                                                 ignore_index=False)
+                        filePandasDF: DataFrame = filePandasDF.sample(n=nSamplesPerFile,
+                                                                      # frac=None,
+                                                                      replace=False,
+                                                                      weights=None,
+                                                                      random_state=None,
+                                                                      axis='index',
+                                                                      ignore_index=False)
 
             else:
-                piecePandasDF: DataFrame = DataFrame(
-                    index=range(nSamplesPerPiece
-                                if nSamplesPerPiece and
-                                (nSamplesPerPiece < pieceCache.nRows)
-                                else pieceCache.nRows))
+                filePandasDF: DataFrame = DataFrame(index=range(nSamplesPerFile
+                                                                if nSamplesPerFile and
+                                                                (nSamplesPerFile < fileCache.nRows)
+                                                                else fileCache.nRows))
 
                 for k in partitionKeyCols:
-                    piecePandasDF[k] = pieceCache.partitionKVs[k]
+                    filePandasDF[k] = fileCache.partitionKVs[k]
 
-            result: ReducedDataSetType = piecePandasDF
+            result: ReducedDataSetType = filePandasDF
             for mapper in self._mappers:
                 result: ReducedDataSetType = mapper(result)
 
