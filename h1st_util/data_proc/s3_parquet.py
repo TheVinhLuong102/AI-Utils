@@ -505,6 +505,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         return localPath
 
     def cacheFileMetadataAndSchema(self, filePath: str) -> Namespace:
+        """Cache file metadata and schema."""
         fileLocalPath: Path = self.fileLocalPath(filePath=filePath)
 
         fileCache: Namespace = self._FILE_CACHES[filePath]
@@ -1019,16 +1020,17 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         """Collect content."""
         return self.reduce(cols=cols if cols else None, **kwargs)
 
-    # ===========
-    # REPR SAMPLE
-    # -----------
+    # ========
+    # SAMPLING
+    # --------
     # prelimReprSampleFilePaths
     # reprSampleFilePaths
+    # sample
     # _assignReprSample
 
     @property
     def prelimReprSampleFilePaths(self) -> Set[str]:
-        """Prelim Representative Sample  Paths."""
+        """Prelim representative sample file paths."""
         if self._cache.prelimReprSampleFilePaths is None:
             self._cache.prelimReprSampleFilePaths = \
                 randomSample(population=self.filePaths,
@@ -1055,6 +1057,47 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return self._cache.reprSampleFilePaths
 
+    def sample(self, *cols: str, **kwargs: Any) -> ReducedDataSetType:
+        """Sample."""
+        n: int = kwargs.pop('n', self._DEFAULT_REPR_SAMPLE_SIZE)
+
+        filePaths: Optional[Collection[str]] = kwargs.pop('filePaths', None)
+
+        verbose: bool = kwargs.pop('verbose', True)
+
+        if filePaths:
+            nSamples: int = len(filePaths)
+
+        else:
+            minNFiles: int = kwargs.pop('minNFiles', self._reprSampleMinNFiles)
+            maxNFiles: Optional[int] = kwargs.pop('maxNFiles', None)
+
+            nSamples: int = (max(int(math.ceil(((min(n, self.approxNRows) / self.approxNRows) ** .5)
+                                               * self.nFiles)),
+                                 minNFiles)
+                             if (self.nFiles > 1) and ((maxNFiles is None) or (maxNFiles > 1))
+                             else 1)
+
+            if maxNFiles:
+                nSamples: int = min(nSamples, maxNFiles)
+
+            if nSamples < self.nFiles:
+                filePaths: Set[str] = randomSample(population=self.filePaths, sampleSize=nSamples)
+            else:
+                nSamples: int = self.nFiles
+                filePaths: Set[str] = self.filePaths
+
+        if verbose or debug.ON:
+            self.stdOutLogger.info(
+                msg=f"Sampling {n:,} Rows{f' of Columns {cols}' if cols else ''} "
+                    f'from {nSamples:,} s...')
+
+        return self.reduce(*filePaths,
+                           cols=cols,
+                           nSamplesPerFile=int(math.ceil(n / nSamples)),
+                           verbose=verbose,
+                           **kwargs)
+
     def _assignReprSample(self):
         self._cache.reprSample = self.sample(n=self._reprSampleSize,
                                              filePaths=self.reprSampleFilePaths,
@@ -1071,7 +1114,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # --------------
     # _subset
     # filterByPartitionKeys
-    # sample
 
     @lru_cache(maxsize=None, typed=False)   # computationally expensive, so cached
     def _subset(self, *piecePaths: str, **kwargs: Any) -> S3ParquetDataFeeder:
@@ -1210,50 +1252,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             return self._subset(*piecePaths, **kwargs)
 
         return self
-
-    def sample(self, *cols: str, **kwargs: Any) -> ReducedDataSetType:
-        """Sample."""
-        n: int = kwargs.pop('n', self._DEFAULT_REPR_SAMPLE_SIZE)
-
-        piecePaths: Optional[Collection[str]] = kwargs.pop('piecePaths', None)
-
-        verbose: bool = kwargs.pop('verbose', True)
-
-        if piecePaths:
-            nSamplePieces: int = len(piecePaths)
-
-        else:
-            minNPieces: int = kwargs.pop('minNPieces', self._reprSampleMinNPieces)
-            maxNPieces: Optional[int] = kwargs.pop('maxNPieces', None)
-
-            nSamplePieces: int = (
-                max(int(math.ceil(
-                        ((min(n, self.approxNRows) / self.approxNRows) ** .5)
-                        * self.nPieces)),
-                    minNPieces)
-                if (self.nPieces > 1) and ((maxNPieces is None) or (maxNPieces > 1))
-                else 1)
-
-            if maxNPieces:
-                nSamplePieces: int = min(nSamplePieces, maxNPieces)
-
-            if nSamplePieces < self.nPieces:
-                piecePaths: Set[str] = randomSample(population=self.piecePaths,
-                                                    sampleSize=nSamplePieces)
-            else:
-                nSamplePieces: int = self.nPieces
-                piecePaths: Set[str] = self.piecePaths
-
-        if verbose or debug.ON:
-            self.stdOutLogger.info(
-                msg=f"Sampling {n:,} Rows{f' of Columns {cols}' if cols else ''} "
-                    f'from {nSamplePieces:,} Pieces...')
-
-        return self.reduce(*piecePaths,
-                           cols=cols,
-                           nSamplesPerPiece=int(math.ceil(n / nSamplePieces)),
-                           verbose=verbose,
-                           **kwargs)
 
     # ================
     # COLUMN PROFILING
