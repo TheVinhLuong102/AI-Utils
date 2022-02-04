@@ -541,46 +541,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
         return fileCache
 
-    # ====
-    # COPY
-    # ----
-    # copy
-
-    def copy(self, **kwargs: Any) -> S3ParquetDataFeeder:
-        """Make a copy."""
-        resetMappers: bool = kwargs.pop('resetMappers', False)
-        resetReduceMustInclCols: bool = kwargs.pop('resetReduceMustInclCols', False)
-        inheritCache: bool = kwargs.pop('inheritCache', not resetMappers)
-        inheritNRows: bool = kwargs.pop('inheritNRows', inheritCache)
-
-        s3ParquetDF: S3ParquetDataFeeder = \
-            S3ParquetDataFeeder(
-                path=self.path, awsRegion=self.awsRegion,
-
-                iCol=self._iCol, tCol=self._tCol,
-
-                _mappers=() if resetMappers else self._mappers,
-                _reduceMustInclCols=set() if resetReduceMustInclCols else self._reduceMustInclCols,
-
-                reprSampleMinNFiles=self._reprSampleMinNFiles, reprSampleSize=self._reprSampleSize,
-
-                nulls=self._nulls,
-                minNonNullProportion=self._minNonNullProportion,
-                outlierTailProportion=self._outlierTailProportion,
-                maxNCats=self._maxNCats,
-                minProportionByMaxNCats=self._minProportionByMaxNCats,
-
-                **kwargs)
-
-        if inheritCache:
-            s3ParquetDF._inheritCache(self)
-
-        if inheritNRows:
-            s3ParquetDF._cache.approxNRows = self._cache.approxNRows
-            s3ParquetDF._cache.nRows = self._cache.nRows
-
-        return s3ParquetDF
-
     # =====================
     # ROWS, COLUMNS & TYPES
     # ---------------------
