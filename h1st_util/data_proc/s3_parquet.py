@@ -353,8 +353,6 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # --------------------------------
     # _extractStdKwArgs
     # _organizeIndexCols
-    # _emptyCache
-    # _inheritCache
 
     # pylint: disable=inconsistent-return-statements
     def _extractStdKwArgs(self, kwargs: Dict[str, Any], /, *,
@@ -394,6 +392,12 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
     def _organizeIndexCols(self):
         self._dCol: Optional[str] = self._DATE_COL if self._DATE_COL in self.columns else None
+
+    # =======
+    # CACHING
+    # -------
+    # _emptyCache
+    # _inheritCache
 
     def _emptyCache(self):
         self._cache: Namespace = \
@@ -470,7 +474,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                 _mappers=() if resetMappers else self._mappers,
                 _reduceMustInclCols=set() if resetReduceMustInclCols else self._reduceMustInclCols,
 
-                reprSampleMinNPieces=self._reprSampleMinNPieces,
+                reprSampleMinNFiles=self._reprSampleMinNFiles,
                 reprSampleSize=self._reprSampleSize,
 
                 minNonNullProportion=self._minNonNullProportion,

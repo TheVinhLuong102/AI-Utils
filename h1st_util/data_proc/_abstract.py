@@ -152,6 +152,16 @@ class AbstractDataHandler:
         """Inherit existing cache."""
         raise NotImplementedError
 
+    # ====
+    # COPY
+    # ----
+    # copy
+
+    def copy(self, **kwargs: Any) -> AbstractDataHandler:
+        # pylint: disable=invalid-name
+        """Make a copy."""
+        raise NotImplementedError
+
     # =====================
     # ROWS, COLUMNS & TYPES
     # ---------------------
