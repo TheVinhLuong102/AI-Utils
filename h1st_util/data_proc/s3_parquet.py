@@ -1991,13 +1991,13 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                     catColType: DataType = self.type(catCol)
 
                     if is_boolean(catColType):
-                        cats: Tuple[bool] = False, True
+                        sortedCats: Tuple[bool] = False, True
                         nCats: int = 2
 
                     else:
                         isStr: bool = is_string(catColType)
 
-                        cats: Tuple[PyPossibleFeatureType] = tuple(
+                        sortedCats: Tuple[PyPossibleFeatureType] = tuple(
                             cat
                             for cat in
                             (profile[catCol].distinctProportions.index
@@ -2007,7 +2007,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                             if notnull(cat) and
                             ((cat != '') if isStr else isfinite(cat)))
 
-                        nCats: int = len(cats)
+                        nCats: int = len(sortedCats)
 
                     if catIdxScaled:
                         catPrepCol: str = self._MIN_MAX_SCL_PREFIX + catIdxCol
@@ -2019,7 +2019,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                     origToPreprocColMap[catCol] = {'logical-type': 'cat',
                                                    'physical-type': str(catColType),
-                                                   'cats': cats, 'n-cats': nCats,
+                                                   'n-cats': nCats, 'sorted-cats': sortedCats,
                                                    'transform-to': catPrepCol}
 
                 if verbose:

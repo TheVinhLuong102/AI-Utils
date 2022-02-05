@@ -163,22 +163,22 @@ class PandasMLPreprocessor:
 
         if self.catCols:   # preprocess categorical columns
             for catCol, catPreprocDetails in self.catOrigToPreprocColMap.items():
-                cats: Sequence[PyPossibleFeatureType] = catPreprocDetails['cats']
                 nCats: int = catPreprocDetails['n-cats']
+                sortedCats: Sequence[PyPossibleFeatureType] = catPreprocDetails['sorted-cats']
 
                 s: Series = pandasDF[catCol]
 
                 pandasDF.loc[:, catPreprocDetails['transform-to']] = (
 
-                    (sum(((s == cat) * i) for i, cat in enumerate(cats)) +
-                     ((~s.isin(cats)) * nCats))
+                    (sum(((s == cat) * i) for i, cat in enumerate(sortedCats)) +
+                     ((~s.isin(sortedCats)) * nCats))
 
                     if catPreprocDetails['physical-type'] == _STR_TYPE
 
                     else (sum(((s - cat).abs().between(left=0, right=_FLOAT_ABS_TOL) * i)
-                              for i, cat in enumerate(cats)) +
+                              for i, cat in enumerate(sortedCats)) +
                           ((1 - sum(((s - cat).abs().between(left=0, right=_FLOAT_ABS_TOL) * 1)
-                                    for cat in cats)) * nCats)))
+                                    for cat in sortedCats)) * nCats)))
 
                 # *** NOTE: NumPy BUG ***
                 # abs(...) of a data type most negative value equals to the same most negative value
