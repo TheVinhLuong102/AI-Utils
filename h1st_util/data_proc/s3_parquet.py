@@ -592,9 +592,18 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     @property
     def indexCols(self) -> Set[str]:
         """Return index columns."""
-        return (({self._iCol} if self._iCol else set()) |
-                ({self._dCol} if self._dCol else set()) |
-                ({self._tCol} if self._tCol else set()))
+        s: Set[str] = set()
+
+        if self._iCol:
+            s.add(self._iCol)
+
+        if self._dCol:
+            s.add(self._dCol)
+
+        if self._tCol:
+            s.add(self._tCol)
+
+        return s
 
     @property
     def types(self) -> Namespace:

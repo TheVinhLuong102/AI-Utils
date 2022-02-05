@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
 from typing import Optional, Union
-from typing import Dict, List, Sequence   # Py3.9+: use built-ins
+from typing import Dict, List, Sequence, Tuple   # Py3.9+: use built-ins
 
 from numpy import array, expand_dims, ndarray
 from pandas import DataFrame, Series
@@ -42,7 +42,7 @@ __all__ = (
 class PandasFlatteningSubsampler:
     """Flattening Subsampler for Pandas Data Frames."""
 
-    columns: Union[str, Sequence[str]]
+    columns: Union[str, Tuple[str]]
     everyNRows: int
     totalNRows: int
 
