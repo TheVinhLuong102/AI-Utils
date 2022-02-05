@@ -1181,7 +1181,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             maxNFiles: Optional[int] = kwargs.pop('maxNFiles', None)
 
             nFiles: int = (max(int(math.ceil(((min(n, self.approxNRows) / self.approxNRows) ** .5)
-                                               * self.nFiles)),
+                                             * self.nFiles)),
                                minNFiles)
                            if (self.nFiles > 1) and ((maxNFiles is None) or (maxNFiles > 1))
                            else 1)
