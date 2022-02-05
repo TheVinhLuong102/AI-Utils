@@ -1174,35 +1174,35 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         verbose: bool = kwargs.pop('verbose', True)
 
         if filePaths:
-            nSamples: int = len(filePaths)
+            nFiles: int = len(filePaths)
 
         else:
             minNFiles: int = kwargs.pop('minNFiles', self._reprSampleMinNFiles)
             maxNFiles: Optional[int] = kwargs.pop('maxNFiles', None)
 
-            nSamples: int = (max(int(math.ceil(((min(n, self.approxNRows) / self.approxNRows) ** .5)
+            nFiles: int = (max(int(math.ceil(((min(n, self.approxNRows) / self.approxNRows) ** .5)
                                                * self.nFiles)),
-                                 minNFiles)
-                             if (self.nFiles > 1) and ((maxNFiles is None) or (maxNFiles > 1))
-                             else 1)
+                               minNFiles)
+                           if (self.nFiles > 1) and ((maxNFiles is None) or (maxNFiles > 1))
+                           else 1)
 
             if maxNFiles:
-                nSamples: int = min(nSamples, maxNFiles)
+                nFiles: int = min(nFiles, maxNFiles)
 
-            if nSamples < self.nFiles:
-                filePaths: Set[str] = randomSample(population=self.filePaths, sampleSize=nSamples)
+            if nFiles < self.nFiles:
+                filePaths: Set[str] = randomSample(population=self.filePaths, sampleSize=nFiles)
             else:
-                nSamples: int = self.nFiles
+                nFiles: int = self.nFiles
                 filePaths: Set[str] = self.filePaths
 
         if verbose or debug.ON:
             self.stdOutLogger.info(
                 msg=f"Sampling {n:,} Rows{f' of Columns {cols}' if cols else ''} "
-                    f'from {nSamples:,} s...')
+                    f'from {nFiles:,} Files...')
 
         return self.reduce(*filePaths,
                            cols=cols,
-                           nSamplesPerFile=int(math.ceil(n / nSamples)),
+                           nSamplesPerFile=int(math.ceil(n / nFiles)),
                            verbose=verbose,
                            **kwargs)
 
