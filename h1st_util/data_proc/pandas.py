@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import chain
 from pathlib import Path
 from typing import Optional, Union
 from typing import Dict, List, Sequence   # Py3.9+: use built-ins
@@ -45,12 +46,23 @@ class PandasFlatteningSubsampler:
     everyNRows: int
     totalNRows: int
 
-    def __call__(self, pandasDF: DataFrame) -> ndarray:
+    @property
+    def rowIndexRange(self):
+        """Integer row index range."""
+        return range(0, self.totalNRows, self.everyNRows)
+
+    @property
+    def transformedCols(self) -> List[str]:
+        """Flattened column names."""
+        r: range = self.rowIndexRange
+        return list(chain.from_iterable((f'{col}__{i}' for i in r) for col in self.columns))
+
+    def __call__(self, pandasDF: DataFrame) -> DataFrame:
         """Subsample a Pandas Data Frame's certain columns and flatten them."""
-        return expand_dims(pandasDF[to_iterable(self.columns, iterable_type=list)]
-                           .iloc[range(0, self.totalNRows, self.everyNRows)]
-                           .values.flatten(order='F'),
-                           axis=0)
+        return DataFrame(columns=self.transformedCols,
+                         data=expand_dims(pandasDF[to_iterable(self.columns, iterable_type=list)]
+                                          .iloc[self.rowIndexRange].values.flatten(order='F'),
+                                          axis=0))
 
 
 class PandasMLPreprocessor:
