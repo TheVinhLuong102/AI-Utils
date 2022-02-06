@@ -6,7 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 from typing import Dict, List, Sequence, Tuple   # Py3.9+: use built-ins
 
 from numpy import array, expand_dims, ndarray
@@ -59,7 +59,7 @@ class PandasFlatteningSubsampler:
 
     def __call__(self, pandasDF: DataFrame, /) -> DataFrame:
         """Subsample a Pandas Data Frame's certain columns and flatten them."""
-        return DataFrame(columns=self.transformedCols, index=pandasDF.index[:1],
+        return DataFrame(columns=self.transformedCols, index=pandasDF.index[0],
                          data=expand_dims(pandasDF[to_iterable(self.columns, iterable_type=list)]
                                           .iloc[self.rowIndexRange].values.flatten(order='F'),
                                           axis=0))
