@@ -6,7 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 from typing import Dict, List, Sequence, Tuple   # Py3.9+: use built-ins
 
 from numpy import array, expand_dims, ndarray
@@ -57,9 +57,9 @@ class PandasFlatteningSubsampler:
         r: range = self.rowIndexRange
         return list(chain.from_iterable((f'{col}__{i}' for i in r) for col in self.columns))
 
-    def __call__(self, pandasDF: DataFrame) -> DataFrame:
+    def __call__(self, pandasDF: DataFrame, /) -> DataFrame:
         """Subsample a Pandas Data Frame's certain columns and flatten them."""
-        return DataFrame(columns=self.transformedCols,
+        return DataFrame(columns=self.transformedCols, index=pandasDF.index[0],
                          data=expand_dims(pandasDF[to_iterable(self.columns, iterable_type=list)]
                                           .iloc[self.rowIndexRange].values.flatten(order='F'),
                                           axis=0))
@@ -156,7 +156,8 @@ class PandasMLPreprocessor:
             if self.numScaler is not None:
                 self.numScaler.n_features_in_ = len(self.numCols)
 
-    def __call__(self, pandasDF: DataFrame, returnNumPy: bool = False) -> Union[DataFrame, ndarray]:
+    def __call__(self, pandasDF: DataFrame, /, *, returnNumPy: bool = False) \
+            -> Union[DataFrame, ndarray]:
         # pylint: disable=too-many-locals
         """Preprocess a Pandas Data Frame."""
         _FLOAT_ABS_TOL: float = 1e-9
