@@ -57,12 +57,12 @@ class PandasFlatteningSubsampler:
         r: range = self.rowIndexRange
         return list(chain.from_iterable((f'{col}__{i}' for i in r) for col in self.columns))
 
-    def __call__(self, pandasDF: DataFrame, /) -> DataFrame:
+    def __call__(self, pandasDF: DataFrame, /) -> Series:
         """Subsample a Pandas Data Frame's certain columns and flatten them."""
-        return DataFrame(columns=self.transformedCols,
-                         data=expand_dims(pandasDF[to_iterable(self.columns, iterable_type=list)]
-                                          .iloc[self.rowIndexRange].values.flatten(order='F'),
-                                          axis=0))
+        return Series(data=(pandasDF[to_iterable(self.columns, iterable_type=list)]
+                            .iloc[self.rowIndexRange].values.flatten(order='F')),
+                      index=self.transformedCols,
+                      dtype=None, name=None, copy=False, fastpath=False)
 
 
 class PandasMLPreprocessor:

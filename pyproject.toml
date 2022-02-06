@@ -1,6 +1,6 @@
 [tool.poetry]
 name = 'H1st-Util'
-version = '0.1.5'
+version = '0.1.5.1'
 description = 'H1st Utilities'
 authors = ['Aitomatic, Inc. <Engineering@Aitomatic.com>']
 license = 'Apache-2.0'
