@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional, Union
 from typing import Dict, List, Sequence, Tuple   # Py3.9+: use built-ins
 
-from numpy import array, expand_dims, ndarray
+from numpy import array, ndarray
 from pandas import DataFrame, Series
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 
