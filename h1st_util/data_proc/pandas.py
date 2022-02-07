@@ -154,6 +154,7 @@ class PandasMLPreprocessor:
                 assert self.numScaler is None
 
             if self.numScaler is not None:
+                self.numScaler.feature_names_in_ = self.numPreprocCols
                 self.numScaler.n_features_in_ = len(self.numCols)
 
     def __call__(self, pandasDF: DataFrame, /, *, returnNumPy: bool = False) \
