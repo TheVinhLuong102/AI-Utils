@@ -1,6 +1,6 @@
 [tool.poetry]
 name = 'H1st-Util'
-version = '0.1.5.1'
+version = '0.1.5.2'
 description = 'H1st Utilities'
 authors = ['Aitomatic, Inc. <Engineering@Aitomatic.com>']
 license = 'Apache-2.0'
@@ -17,11 +17,11 @@ Python = '>= 3.8, < 3.10'
 
 # Data Processing
 NumPy = '*'
-PyArrow = '^6.0.1'
+PyArrow = '^7.0.0'
 PySpark = '^3.2.1'
 
 # ML/DL
-SciKit-Learn = '*'
+SciKit-Learn = '^1.0.2'
 TensorFlow = '^2.8.0'
 
 # AWS deps: often conflict w/ other deps, so need separate installation
@@ -29,8 +29,8 @@ TensorFlow = '^2.8.0'
 # Boto3 = '*'
 
 # misc/other
-'Ruamel.YAML' = '^0.17.17'
-Tqdm = '*'
+'Ruamel.YAML' = '^0.17.20'
+Tqdm = '^4.62.3'
 
 
 [build-system]
