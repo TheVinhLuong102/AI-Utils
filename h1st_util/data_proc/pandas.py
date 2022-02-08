@@ -66,17 +66,18 @@ class PandasFlatteningSubsampler:
         df: DataFrame = pandasDF[cols]
 
         if (nMissingRows := self.totalNRows - len(df)) > 0:
-            df.append(other=DataFrame(data=(tile(A=df.iloc[-1], reps=(nMissingRows, 1))
-                                            if padWithLastRow else
-                                            full(shape=(nMissingRows, nCols),
-                                                 fill_value=NA,
-                                                 dtype=None,
-                                                 order='C',
-                                                 like=None)),
-                                      columns=cols),
-                      ignore_index=True,
-                      verify_integrity=False,
-                      sort=False)
+            df: DataFrame = df.append(other=DataFrame(data=(tile(A=df.iloc[-1],
+                                                                 reps=(nMissingRows, 1))
+                                                            if padWithLastRow else
+                                                            full(shape=(nMissingRows, nCols),
+                                                                 fill_value=NA,
+                                                                 dtype=None,
+                                                                 order='C',
+                                                                 like=None)),
+                                                      columns=cols),
+                                      ignore_index=True,
+                                      verify_integrity=False,
+                                      sort=False)
 
         return Series(data=df.iloc[self.rowIndexRange].values.flatten(order='F'),
                       index=self.transformedCols,
