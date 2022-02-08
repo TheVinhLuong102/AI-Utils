@@ -11,6 +11,7 @@ from typing import Dict, List, Sequence, Tuple   # Py3.9+: use built-ins
 
 from numpy import array, ndarray
 from pandas import DataFrame, Series
+from pandas._libs.missing import NA   # pylint: disable=no-name-in-module
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, StandardScaler
 
 from ..data_types.python import PyPossibleFeatureType
@@ -57,10 +58,14 @@ class PandasFlatteningSubsampler:
         r: range = self.rowIndexRange
         return list(chain.from_iterable((f'{col}__{i}' for i in r) for col in self.columns))
 
-    def __call__(self, pandasDF: DataFrame, /) -> Series:
+    def __call__(self, pandasDF: DataFrame, /, *, pad_with_last_row: bool = False) -> Series:
         """Subsample a Pandas Data Frame's certain columns and flatten them."""
-        return Series(data=(pandasDF[to_iterable(self.columns, iterable_type=list)]
-                            .iloc[self.rowIndexRange].values.flatten(order='F')),
+        df: DataFrame = pandasDF[to_iterable(self.columns, iterable_type=list)]
+
+        if (n := len(df)) < self.totalNRows:
+            df.iloc[n:self.totalNRows] = df.iloc[-1] if pad_with_last_row else NA
+
+        return Series(data=df.iloc[self.rowIndexRange].values.flatten(order='F'),
                       index=self.transformedCols,
                       dtype=None, name=None, copy=False, fastpath=False)
 
