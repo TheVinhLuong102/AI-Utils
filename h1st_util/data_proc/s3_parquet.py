@@ -67,7 +67,6 @@ __all__ = ('S3ParquetDataFeeder',)
 # (this whole module)
 
 
-CallablesType = Union[callable, Sequence[callable]]
 ColsType = Union[str, Collection[str]]
 
 
@@ -104,7 +103,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             AbstractDataHandler._DEFAULT_MIN_PROPORTION_BY_MAX_N_CATS))
 
     def __init__(self, path: str, *, awsRegion: Optional[str] = None,
-                 _mappers: Optional[CallablesType] = None,
+                 _mappers: Optional[callable] = None,
                  _reduceMustInclCols: Optional[ColsType] = None,
                  verbose: bool = True, **kwargs: Any):
         # pylint: disable=too-many-branches,too-many-locals,too-many-statements
@@ -639,14 +638,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # castType
     # collect
 
-    def map(self,
-            mappers: Optional[CallablesType] = None, /,
+    def map(self, *mappers: callable,
             reduceMustInclCols: Optional[ColsType] = None,
             **kwargs: Any) -> S3ParquetDataFeeder:
         """Apply mapper function(s) to files."""
-        if mappers is None:
-            mappers: Tuple[callable] = ()
-
         if reduceMustInclCols is None:
             reduceMustInclCols: Set[str] = set()
 
@@ -657,7 +652,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             S3ParquetDataFeeder(
                 path=self.path, awsRegion=self.awsRegion,
 
-                _mappers=self._mappers + to_iterable(mappers, iterable_type=tuple),
+                _mappers=self._mappers + mappers,
                 _reduceMustInclCols=(self._reduceMustInclCols |
                                      to_iterable(reduceMustInclCols, iterable_type=set)),
 
