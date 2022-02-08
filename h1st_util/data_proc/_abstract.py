@@ -277,6 +277,15 @@ class AbstractDataHandler:
         """Return possible numerical content columns."""
         return {col for col in self.contentCols if self.typeIsNum(col)}
 
+    # =========
+    # FILTERING
+    # ---------
+    # filter
+
+    def filter(self, *conditions: str, **kwargs: Any) -> AbstractDataHandler:
+        """Apply filtering conditions."""
+        raise NotImplementedError
+
     # ========
     # SAMPLING
     # --------

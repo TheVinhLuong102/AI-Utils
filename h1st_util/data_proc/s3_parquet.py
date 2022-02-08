@@ -995,6 +995,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     # ---------
     # _subset
     # filterByPartitionKeys
+    # filter
 
     @lru_cache(maxsize=None, typed=False)   # computationally expensive, so cached
     def _subset(self, *filePaths: str, **kwargs: Any) -> S3ParquetDataFeeder:
@@ -1127,6 +1128,19 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
             return self._subset(*filePaths, **kwargs)
 
         return self
+
+    @lru_cache(maxsize=None, typed=False)
+    def filter(self, *conditions: str, **kwargs: Any) -> S3ParquetDataFeeder:
+        """Apply filtering mapper."""
+        s3ParquetDF: S3ParquetDataFeeder = self
+
+        for condition in conditions:
+            # pylint: disable=cell-var-from-loop
+            s3ParquetDF: S3ParquetDataFeeder = \
+                s3ParquetDF.map(lambda df: df.query(expr=condition, inplace=False),
+                                **kwargs)
+
+        return s3ParquetDF
 
     # ========
     # SAMPLING
