@@ -84,11 +84,12 @@ class PandasMLPreprocessor:
             if isinstance(catPreprocDetails, DICT_OR_NAMESPACE_TYPES)
             and (catPreprocDetails['logical-type'] == 'cat')})
 
-        self.catCols: List[str] = sorted(self.catOrigToPreprocColMap)
+        self.sortedCatCols: List[str] = sorted(self.catOrigToPreprocColMap)
 
-        if self.catCols:
-            self.catPreprocCols: List[str] = [self.catOrigToPreprocColMap[catCol]['transform-to']
-                                              for catCol in self.catCols]
+        if self.sortedCatCols:
+            self.sortedCatPreprocCols: List[str] = \
+                [self.catOrigToPreprocColMap[catCol]['transform-to']
+                 for catCol in self.sortedCatCols]
 
             self.catIdxScaled: bool = origToPreprocColMap[self._CAT_INDEX_SCALED_FIELD_NAME]
 
@@ -98,11 +99,12 @@ class PandasMLPreprocessor:
             if isinstance(numPreprocDetails, DICT_OR_NAMESPACE_TYPES)
             and (numPreprocDetails['logical-type'] == 'num')})
 
-        self.numCols: List[str] = sorted(self.numOrigToPreprocColMap)
+        self.sortedNumCols: List[str] = sorted(self.numOrigToPreprocColMap)
 
-        if self.numCols:
-            self.numPreprocCols: List[str] = [self.numOrigToPreprocColMap[numCol]['transform-to']
-                                              for numCol in self.numCols]
+        if self.sortedNumCols:
+            self.sortedNumPreprocCols: List[str] = \
+                [self.numOrigToPreprocColMap[numCol]['transform-to']
+                 for numCol in self.sortedNumCols]
 
             self.numScaler: Optional[str] = origToPreprocColMap[self._NUM_SCALER_FIELD_NAME]
 
@@ -113,11 +115,11 @@ class PandasMLPreprocessor:
 
                 # mean value for each feature in the training set
                 self.numScaler.mean_ = array([self.numOrigToPreprocColMap[numCol]['mean']
-                                              for numCol in self.numCols])
+                                              for numCol in self.sortedNumCols])
 
                 # per-feature relative scaling of the data
                 self.numScaler.scale_ = array([self.numOrigToPreprocColMap[numCol]['std']
-                                               for numCol in self.numCols])
+                                               for numCol in self.sortedNumCols])
 
             elif self.numScaler == 'maxabs':
                 self.numScaler: MaxAbsScaler = MaxAbsScaler(copy=True)
@@ -126,7 +128,7 @@ class PandasMLPreprocessor:
                 # per-feature relative scaling of the data
                 self.numScaler.max_abs_ = self.numScaler.scale_ = \
                     array([self.numOrigToPreprocColMap[numCol]['max-abs']
-                           for numCol in self.numCols])
+                           for numCol in self.sortedNumCols])
 
             elif self.numScaler == 'minmax':
                 self.numScaler: MinMaxScaler = MinMaxScaler(feature_range=(-1, 1),
@@ -135,11 +137,11 @@ class PandasMLPreprocessor:
 
                 # per-feature minimum seen in the data
                 self.numScaler.data_min_ = array([self.numOrigToPreprocColMap[numCol]['orig-min']
-                                                  for numCol in self.numCols])
+                                                  for numCol in self.sortedNumCols])
 
                 # per-feature maximum seen in the data
                 self.numScaler.data_max_ = array([self.numOrigToPreprocColMap[numCol]['orig-max']
-                                                  for numCol in self.numCols])
+                                                  for numCol in self.sortedNumCols])
 
                 # per-feature range (data_max_ - data_min_) seen in the data
                 self.numScaler.data_range_ = self.numScaler.data_max_ - self.numScaler.data_min_
@@ -154,8 +156,8 @@ class PandasMLPreprocessor:
                 assert self.numScaler is None
 
             if self.numScaler is not None:
-                self.numScaler.feature_names_in_ = self.numPreprocCols
-                self.numScaler.n_features_in_ = len(self.numCols)
+                self.numScaler.feature_names_in_ = self.sortedNumPreprocCols
+                self.numScaler.n_features_in_ = len(self.sortedNumCols)
 
     def __call__(self, pandasDF: DataFrame, /, *, returnNumPy: bool = False) \
             -> Union[DataFrame, ndarray]:
@@ -163,7 +165,7 @@ class PandasMLPreprocessor:
         """Preprocess a Pandas Data Frame."""
         _FLOAT_ABS_TOL: float = 1e-9
 
-        if self.catCols:   # preprocess categorical columns
+        if self.sortedCatCols:   # preprocess categorical columns
             for catCol, catPreprocDetails in self.catOrigToPreprocColMap.items():
                 nCats: int = catPreprocDetails['n-cats']
                 sortedCats: Sequence[PyPossibleFeatureType] = catPreprocDetails['sorted-cats']
@@ -188,8 +190,8 @@ class PandasMLPreprocessor:
                 # github.com/numpy/numpy/issues/9463
 
             if self.catIdxScaled:
-                pandasDF.loc[:, self.catPreprocCols] = minMaxScaledIndices = \
-                    2 * pandasDF[self.catPreprocCols] / nCats - 1
+                pandasDF.loc[:, self.sortedCatPreprocCols] = minMaxScaledIndices = \
+                    2 * pandasDF[self.sortedCatPreprocCols] / nCats - 1
 
                 assert ((minMaxScaledIndices >= -1) & (minMaxScaledIndices <= 1)).all(axis=None), \
                     ValueError('CERTAIN MIN-MAX SCALED INT INDICES '
@@ -197,7 +199,7 @@ class PandasMLPreprocessor:
                                f'({minMaxScaledIndices.min().min()}, '
                                f'{minMaxScaledIndices.max().max()}) ***')
 
-        if self.numCols:   # NULL-fill numerical columns
+        if self.sortedNumCols:   # NULL-fill numerical columns
             for numCol, numPreprocDetails in self.numOrigToPreprocColMap.items():
                 lowerNull, upperNull = numPreprocDetails['nulls']
 
@@ -223,10 +225,10 @@ class PandasMLPreprocessor:
                                  errors='raise')
 
             if self.numScaler:
-                pandasDF.loc[:, self.numPreprocCols] = \
-                    self.numScaler.transform(X=pandasDF[self.numPreprocCols])
+                pandasDF.loc[:, self.sortedNumPreprocCols] = \
+                    self.numScaler.transform(X=pandasDF[self.sortedNumPreprocCols])
 
-        return (pandasDF[self.catPreprocCols + self.numPreprocCols].values
+        return (pandasDF[self.sortedCatPreprocCols + self.sortedNumPreprocCols].values
                 if returnNumPy
                 else pandasDF)
 

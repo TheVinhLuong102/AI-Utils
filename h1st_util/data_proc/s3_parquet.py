@@ -13,7 +13,7 @@ import random
 import re
 import time
 from typing import Any, Optional, Union
-from typing import Collection, Dict, List, Set, Sequence, Tuple   # Py3.9+: use built-ins
+from typing import Collection, Dict, List, Set, Tuple   # Py3.9+: use built-ins
 from urllib.parse import ParseResult, urlparse
 from uuid import uuid4
 
