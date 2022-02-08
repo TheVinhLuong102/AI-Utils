@@ -86,11 +86,11 @@ class PandasMLPreprocessor:
 
         self.sortedCatCols: List[str] = sorted(self.catOrigToPreprocColMap)
 
-        if self.sortedCatCols:
-            self.sortedCatPreprocCols: List[str] = \
-                [self.catOrigToPreprocColMap[catCol]['transform-to']
-                 for catCol in self.sortedCatCols]
+        self.sortedCatPreprocCols: List[str] = \
+            [self.catOrigToPreprocColMap[catCol]['transform-to']
+             for catCol in self.sortedCatCols]
 
+        if self.sortedCatCols:
             self.catIdxScaled: bool = origToPreprocColMap[self._CAT_INDEX_SCALED_FIELD_NAME]
 
         self.numOrigToPreprocColMap: Namespace = Namespace(**{
@@ -101,11 +101,11 @@ class PandasMLPreprocessor:
 
         self.sortedNumCols: List[str] = sorted(self.numOrigToPreprocColMap)
 
-        if self.sortedNumCols:
-            self.sortedNumPreprocCols: List[str] = \
-                [self.numOrigToPreprocColMap[numCol]['transform-to']
-                 for numCol in self.sortedNumCols]
+        self.sortedNumPreprocCols: List[str] = \
+            [self.numOrigToPreprocColMap[numCol]['transform-to']
+             for numCol in self.sortedNumCols]
 
+        if self.sortedNumCols:
             self.numScaler: Optional[str] = origToPreprocColMap[self._NUM_SCALER_FIELD_NAME]
 
             if self.numScaler == 'standard':
@@ -158,6 +158,9 @@ class PandasMLPreprocessor:
             if self.numScaler is not None:
                 self.numScaler.feature_names_in_ = self.sortedNumPreprocCols
                 self.numScaler.n_features_in_ = len(self.sortedNumCols)
+
+        self.sortedPreprocCols: List[str] = (self.sortedCatPreprocCols +
+                                             self.sortedNumPreprocCols)
 
     def __call__(self, pandasDF: DataFrame, /, *, returnNumPy: bool = False) \
             -> Union[DataFrame, ndarray]:
@@ -228,9 +231,7 @@ class PandasMLPreprocessor:
                 pandasDF.loc[:, self.sortedNumPreprocCols] = \
                     self.numScaler.transform(X=pandasDF[self.sortedNumPreprocCols])
 
-        return (pandasDF[self.sortedCatPreprocCols + self.sortedNumPreprocCols].values
-                if returnNumPy
-                else pandasDF)
+        return pandasDF[self.sortedPreprocCols].values if returnNumPy else pandasDF
 
     @classmethod
     def from_json(cls, path: PathType) -> PandasMLPreprocessor:
