@@ -333,11 +333,12 @@ class Namespace(ArgParseNamespace):
                        for k, v in x.items()}
                       if isinstance(x, (dict, Namespace))
                       else (str(x)
-                            if isinstance(x, (datetime.datetime, datetime.time))
+                            if isinstance(x, (datetime.datetime, datetime.time))   # noqa: E501
                             else (None if str(x)[-3:] == 'inf' else x))))
 
     class _JSONEncoder(json.JSONEncoder):
-        def default(self, obj):   # pylint: disable=arguments-renamed
+        def default(self, obj):
+            # pylint: disable=arguments-renamed,protected-access
             return (Namespace._serializable(obj)
                     if isinstance(obj, (list, set, tuple, dict, Namespace))
                     else json.JSONEncoder.default(self, obj))
