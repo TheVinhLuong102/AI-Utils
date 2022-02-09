@@ -325,23 +325,22 @@ class Namespace(ArgParseNamespace):
                           else (None if str(v)[-3:] == 'inf' else v)))
                 for k, v in self.items()}
 
+    @staticmethod
+    def _serializable(x: Any, /):   # pylint: disable=invalid-name
+        return ([Namespace._serializable(i) for i in x]
+                if isinstance(x, (list, set, tuple))
+                else ({k: Namespace._serializable(v)
+                       for k, v in x.items()}
+                      if isinstance(x, (dict, Namespace))
+                      else (str(x)
+                            if isinstance(x, (datetime.datetime, datetime.time))
+                            else (None if str(x)[-3:] == 'inf' else x))))
+
     class _JSONEncoder(json.JSONEncoder):
         def default(self, obj):   # pylint: disable=arguments-renamed
-            def _serializable(x: Any):   # pylint: disable=invalid-name
-                return ([_serializable(i) for i in x]
-                        if isinstance(x, (list, set, tuple))
-                        else ({k: _serializable(v)
-                               for k, v in x.items()}
-                              if isinstance(x, (dict, Namespace))
-                              else (str(x)
-                                    if isinstance(x, (datetime.datetime,
-                                                      datetime.time))
-                                    else (None if str(x)[-3:] == 'inf' else x))))   # noqa: E501
-
-            if isinstance(obj, (list, set, tuple, dict, Namespace)):
-                return _serializable(obj)
-
-            return json.JSONEncoder.default(self, obj)
+            return (Namespace._serializable(obj)
+                    if isinstance(obj, (list, set, tuple, dict, Namespace))
+                    else json.JSONEncoder.default(self, obj))
 
     @classmethod
     def from_json(cls, path: PathType) -> Namespace:
@@ -411,7 +410,7 @@ class Namespace(ArgParseNamespace):
                   newline=None,
                   closefd=True,
                   opener=None) as yaml_file:
-            yaml.safe_dump(data=self.__dict__,
+            yaml.safe_dump(data=self._serializable(self),
                            stream=yaml_file,
                            # Dumper=yaml.dumper.SafeDumper,
                            default_style=None,

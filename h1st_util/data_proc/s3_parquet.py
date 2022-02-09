@@ -1908,7 +1908,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                     f'from "{loadPath}"...')))
                 tic: float = time.time()
 
-            pandasMLPreproc: PandasMLPreprocessor = PandasMLPreprocessor.from_json(path=loadPath)
+            pandasMLPreproc: PandasMLPreprocessor = PandasMLPreprocessor.from_yaml(path=loadPath)
 
         else:
             cols: Set[str] = {col
@@ -2192,7 +2192,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                                f'to Local Path "{savePath}"...')))
                     prep_save_tic: float = time.time()
 
-                pandasMLPreproc.to_json(path=savePath)
+                pandasMLPreproc.to_yaml(path=savePath)
 
                 if verbose:
                     prep_save_toc: float = time.time()
