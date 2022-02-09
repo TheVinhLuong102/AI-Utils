@@ -1313,9 +1313,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if verbose:
                     toc: float = time.time()
-                    self.stdOutLogger.info(
-                        msg=f'No. of Non-NULLs of Column "{col}" = '
-                            f'{result:,}   <{toc - tic:,.1f} s>')
+                    self.stdOutLogger.info(msg=f'No. of Non-NULLs of Column "{col}" = '
+                                               f'{result:,}   <{toc - tic:,.1f} s>')
 
             return self._cache.count[col]
 
@@ -1472,17 +1471,14 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if verbose:
                     toc: float = time.time()
-                    self.stdOutLogger.info(
-                        msg=f'Sample {capitalizedStatName} for '
-                            f'Column "{col}" = '
-                            f'{result:,.3g}   <{toc - tic:,.1f} s>')
+                    self.stdOutLogger.info(msg=f'Sample {capitalizedStatName} for Column "{col}" = '
+                                               f'{result:,.3g}   <{toc - tic:,.1f} s>')
 
                 _cache[col] = result
 
             return _cache[col]
 
-        raise ValueError(f'*** {self}.sampleStat({col}, ...): '
-                         f'COLUMN "{col}" NOT NUMERICAL ***')
+        raise ValueError(f'*** {self}.sampleStat({col}, ...): COLUMN "{col}" NOT NUMERICAL ***')
 
     def outlierRstStat(self, *cols: str, **kwargs: Any) -> Union[float, int, Namespace]:
         # pylint: disable=too-many-branches
@@ -1554,10 +1550,9 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if verbose:
                     toc: float = time.time()
-                    self.stdOutLogger.info(
-                        msg=f'Outlier-Resistant {capitalizedStatName}'
-                            f' for Column "{col}" = '
-                            f'{result:,.3g}   <{toc - tic:,.1f} s>')
+                    self.stdOutLogger.info(msg=f'Outlier-Resistant {capitalizedStatName}'
+                                               f' for Column "{col}" = '
+                                               f'{result:,.3g}   <{toc - tic:,.1f} s>')
 
                 _cache[col] = result
 
@@ -1611,9 +1606,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if verbose:
                     toc: float = time.time()
-                    self.stdOutLogger.info(
-                        msg=f'Outlier-Resistant Min of Column "{col}" = '
-                            f'{result:,.3g}   <{toc - tic:,.1f} s>')
+                    self.stdOutLogger.info(msg=f'Outlier-Resistant Min of Column "{col}" = '
+                                               f'{result:,.3g}   <{toc - tic:,.1f} s>')
 
                 self._cache.outlierRstMin[col] = result
 
@@ -1667,9 +1661,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                 if verbose:
                     toc: float = time.time()
-                    self.stdOutLogger.info(
-                        msg=f'Outlier-Resistant Max of Column "{col}" = '
-                            f'{result:,.3g}   <{toc - tic:,.1f} s>')
+                    self.stdOutLogger.info(msg=f'Outlier-Resistant Max of Column "{col}" = '
+                                               f'{result:,.3g}   <{toc - tic:,.1f} s>')
 
                 self._cache.outlierRstMax[col] = result
 
@@ -2093,6 +2086,8 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                                             else self.sampleStat(numCol, stat='max'))
 
                     if numColMin < numColMax:
+                        numColType: DataType = self.type(numCol)
+
                         if numColNullFillMethod := numNullFillMethod.get(numCol, 'mean'):
                             numColNullFillValue: PyNumType = \
                                 self.outlierRstStat(numCol,
@@ -2130,7 +2125,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                                 origToPreprocColMap[numCol] = {
                                     'logical-type': 'num',
-                                    'physical-type': str(self.type(numCol)),
+                                    'physical-type': str(numColType),
                                     'nulls': numColNulls,
                                     'null-fill-method': numColNullFillMethod,
                                     'null-fill-value': numColNullFillValue,
@@ -2144,7 +2139,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                                 origToPreprocColMap[numCol] = {
                                     'logical-type': 'num',
-                                    'physical-type': str(self.type(numCol)),
+                                    'physical-type': str(numColType),
                                     'nulls': numColNulls,
                                     'null-fill-method': numColNullFillMethod,
                                     'null-fill-value': numColNullFillValue,
@@ -2156,7 +2151,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                                 origToPreprocColMap[numCol] = {
                                     'logical-type': 'num',
-                                    'physical-type': str(self.type(numCol)),
+                                    'physical-type': str(numColType),
                                     'nulls': numColNulls,
                                     'null-fill-method': numColNullFillMethod,
                                     'null-fill-value': numColNullFillValue,
@@ -2174,7 +2169,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                             origToPreprocColMap[numCol] = {
                                 'logical-type': 'num',
-                                'physical-type': str(self.type(numCol)),
+                                'physical-type': str(numColType),
                                 'nulls': numColNulls,
                                 'null-fill-method': numColNullFillMethod,
                                 'null-fill-value': numColNullFillValue,
