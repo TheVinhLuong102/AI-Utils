@@ -226,17 +226,17 @@ class PandasMLPreprocessor:
 
                 series: Series = pandasDF[numCol]
 
-                is_valid: Series = series.notnull()
+                isValid: Series = series.notnull()
 
                 if lowerNull is not None:
-                    is_valid &= (series > lowerNull)
+                    isValid &= (series > lowerNull)
 
                 if upperNull is not None:
-                    is_valid &= (series < upperNull)
+                    isValid &= (series < upperNull)
 
                 pandasDF.loc[:, numPreprocDetails['transform-to']] = (
-                    series.where(cond=is_valid,
-                                 other=(getattr(series.loc[is_valid], nullFillMethod)
+                    series.where(cond=isValid,
+                                 other=(getattr(series.loc[isValid], nullFillMethod)
                                         (axis='index', skipna=True, level=None)
                                         if (nullFillMethod := numPreprocDetails['null-fill-method'])
                                         else numPreprocDetails['null-fill-value']),
@@ -245,7 +245,7 @@ class PandasMLPreprocessor:
                                  level=None,
                                  errors='raise')
 
-                    if is_valid.any(axis='index', skipna=True, level=None)
+                    if isValid.any(axis='index', skipna=True, level=None)
 
                     else numPreprocDetails['null-fill-value'])
 
