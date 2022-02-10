@@ -220,7 +220,8 @@ class PandasMLPreprocessor:
                                    f'NOT BETWEEN -1 AND 1: {catPreprocCol}: '
                                    f'({minMaxScaledIndices.min()}, {minMaxScaledIndices.max()})')
 
-        if self.sortedNumCols:   # NULL-fill numerical columns
+        if self.sortedNumCols:
+            # NULL-fill numerical columns
             for numCol, numPreprocDetails in self.numOrigToPreprocColMap.items():
                 lowerNull, upperNull = numPreprocDetails['nulls']
 
@@ -249,6 +250,7 @@ class PandasMLPreprocessor:
 
                     else numPreprocDetails['null-fill-value'])
 
+            # scale numerical columns
             if self.numScaler:
                 pandasDF.loc[:, self.sortedNumPreprocCols] = \
                     self.numScaler.transform(X=pandasDF[self.sortedNumPreprocCols])
