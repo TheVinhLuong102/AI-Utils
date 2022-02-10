@@ -194,12 +194,12 @@ class PandasMLPreprocessor:
 
                 s: Series = pandasDF[catCol]
 
-                pandasDF.loc[:, catPreprocDetails['transform-to']] = (
+                pandasDF.loc[:, (catPreprocCol := catPreprocDetails['transform-to'])] = (
 
                     (sum(((s == cat) * i) for i, cat in enumerate(sortedCats)) +
                      ((~s.isin(sortedCats)) * nCats))
 
-                    if catPreprocDetails['physical-type'] == _STR_TYPE
+                    if catPreprocDetails['physical-type'] in (bool.__name__, _STR_TYPE)
 
                     else (sum(((s - cat).abs().between(left=0, right=_FLOAT_ABS_TOL) * i)
                               for i, cat in enumerate(sortedCats)) +
@@ -211,15 +211,14 @@ class PandasMLPreprocessor:
                 # github.com/numpy/numpy/issues/5657
                 # github.com/numpy/numpy/issues/9463
 
-            if self.catIdxScaled:
-                pandasDF.loc[:, self.sortedCatPreprocCols] = minMaxScaledIndices = \
-                    2 * pandasDF[self.sortedCatPreprocCols] / nCats - 1
+                if self.catIdxScaled:
+                    pandasDF.loc[:, catPreprocCol] = minMaxScaledIndices = \
+                        2 * pandasDF[catPreprocCol] / nCats - 1
 
-                assert ((minMaxScaledIndices >= -1) & (minMaxScaledIndices <= 1)).all(axis=None), \
-                    ValueError('CERTAIN MIN-MAX SCALED INT INDICES '
-                               'NOT BETWEEN -1 AND 1: '
-                               f'({minMaxScaledIndices.min().min()}, '
-                               f'{minMaxScaledIndices.max().max()}) ***')
+                    assert minMaxScaledIndices.between(left=-1, right=1, inclusive='both').all(), \
+                        ValueError('CERTAIN MIN-MAX SCALED INT INDICES '
+                                   f'NOT BETWEEN -1 AND 1: {catPreprocCol}: '
+                                   f'({minMaxScaledIndices.min()}, {minMaxScaledIndices.max()})')
 
         if self.sortedNumCols:   # NULL-fill numerical columns
             for numCol, numPreprocDetails in self.numOrigToPreprocColMap.items():
