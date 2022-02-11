@@ -18,7 +18,7 @@ from ..namespace import Namespace
 
 
 __all__ = (
-    'AbstractDataHandler', 'AbstractFileDataHandler', 'AbstractS3FileDataHandler',
+    'AbstractDataHandler', 'AbstractFileDataHandler', 'AbstractS3FileDataHandler',   # noqa: E501
     'ColsType', 'ReducedDataSetType',
 )
 
