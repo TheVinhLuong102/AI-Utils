@@ -38,10 +38,8 @@ from ..fs import mkdir
 from ..iter import to_iterable
 from ..namespace import Namespace, DICT_OR_NAMESPACE_TYPES
 
-from ._abstract import (AbstractDataHandler,
-                        AbstractFileDataHandler,
-                        AbstractS3FileDataHandler,
-                        ReducedDataSetType)
+from ._abstract import (AbstractDataHandler, AbstractFileDataHandler, AbstractS3FileDataHandler,
+                        ColsType, ReducedDataSetType)
 from .pandas import PandasMLPreprocessor
 
 
@@ -65,9 +63,6 @@ __all__ = ('S3ParquetDataFeeder',)
 
 # pylint: disable=too-many-lines
 # (this whole module)
-
-
-ColsType = Union[str, Collection[str]]
 
 
 def randomSample(population: Collection[Any], sampleSize: int,

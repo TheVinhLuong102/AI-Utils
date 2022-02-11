@@ -18,13 +18,12 @@ from ..namespace import Namespace
 
 
 __all__ = (
-    'AbstractDataHandler',
-    'AbstractFileDataHandler',
-    'AbstractS3FileDataHandler',
-    'ReducedDataSetType',
+    'AbstractDataHandler', 'AbstractFileDataHandler', 'AbstractS3FileDataHandler',
+    'ColsType', 'ReducedDataSetType',
 )
 
 
+ColsType = Union[str, Collection[str]]
 ReducedDataSetType = Union[Any, Collection, ndarray, DataFrame, Series]
 
 
