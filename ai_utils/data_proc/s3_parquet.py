@@ -82,7 +82,7 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
     _FILE_CACHES: Dict[str, Namespace] = {}
 
     # default arguments dict
-    # (cannot be h1st_util.namespace.Namespace
+    # (cannot be ai_utils.namespace.Namespace
     # because that makes nested dicts into normal dicts)
     _DEFAULT_KWARGS: Dict[str, Optional[Union[str, DefaultDict]]] = dict(
         iCol=None, tCol=None,

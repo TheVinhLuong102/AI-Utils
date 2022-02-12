@@ -1,14 +1,14 @@
 [tool.poetry]
-name = 'H1st-Util'
-version = '0.1.7.3'
+name = 'AI-Utils'
+version = '0.0.0'
 description = 'H1st Utilities'
 authors = ['Aitomatic, Inc. <Engineering@Aitomatic.com>']
 license = 'Apache-2.0'
 readme = 'README.md'
-homepage = 'https://GitHub.com/H1st-AI/H1st-Util'
-repository = 'https://GitHub.com/H1st-AI/H1st-Util'
+homepage = 'https://GitHub.com/Aitomatic/AI-Utils'
+repository = 'https://GitHub.com/Aitomatic/AI-Utils'
 packages = [
-  {include = 'h1st_util'}
+  {include = 'ai_utils'}
 ]
 
 
