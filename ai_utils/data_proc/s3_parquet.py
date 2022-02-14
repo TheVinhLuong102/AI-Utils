@@ -16,9 +16,11 @@ from typing import Any, Optional, Union
 from typing import Collection, Dict, List, Set, Tuple   # Py3.9+: use built-ins
 from urllib.parse import ParseResult, urlparse
 from uuid import uuid4
+from warnings import simplefilter
 
 from numpy import isfinite, ndarray, vstack
 from pandas import DataFrame, Series, concat, isnull, notnull, read_parquet
+from pandas.errors import PerformanceWarning
 from pandas._libs.missing import NAType   # pylint: disable=no-name-in-module
 from tqdm import tqdm
 
@@ -63,6 +65,11 @@ __all__ = ('S3ParquetDataFeeder',)
 
 # pylint: disable=too-many-lines
 # (this whole module)
+
+
+# TODO: revisit Pandas PeformanceWarning
+# github.com/twopirllc/pandas-ta/issues/340#issuecomment-879450854
+simplefilter(action="ignore", category=PerformanceWarning)
 
 
 def randomSample(population: Collection[Any], sampleSize: int,
