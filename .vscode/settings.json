@@ -33,6 +33,7 @@
 
   "python.linting.pylamaEnabled": true,
   "python.linting.pylamaArgs": [
+    "--disable=E501"
   ],
 
   "python.linting.banditEnabled": false,
