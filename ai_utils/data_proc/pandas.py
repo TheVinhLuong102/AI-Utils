@@ -225,16 +225,17 @@ class PandasMLPreprocessor:
             for numCol, numPreprocDetails in self.numOrigToPreprocColMap.items():
                 lowerNull, upperNull = numPreprocDetails['nulls']
 
-                series: Series = pandasDF[numCol]
+                # extract column data series as float type
+                series: Series = pandasDF[numCol].astype(dtype=float, copy=True, errors='raise')
 
+                # check numerical data validity
                 isValid: Series = series.notnull()
-
                 if lowerNull is not None:
                     isValid &= (series > lowerNull)
-
                 if upperNull is not None:
                     isValid &= (series < upperNull)
 
+                # NULL-fill numerical data column
                 pandasDF.loc[:, numPreprocDetails['transform-to']] = (
                     series.where(cond=isValid,
                                  other=(getattr(series.loc[isValid], nullFillMethod)
