@@ -192,18 +192,20 @@ class PandasMLPreprocessor:
                 nCats: int = catPreprocDetails['n-cats']
                 sortedCats: Sequence[PyPossibleFeatureType] = catPreprocDetails['sorted-cats']
 
-                s: Series = pandasDF[catCol]
+                # extract categorical data column
+                series: Series = pandasDF[catCol]
 
+                # transform categorical data column into integer indices
                 pandasDF.loc[:, (catPreprocCol := catPreprocDetails['transform-to'])] = (
 
-                    (sum(((s == cat) * i) for i, cat in enumerate(sortedCats)) +
-                     ((~s.isin(sortedCats)) * nCats))
+                    (sum(((series == cat) * i) for i, cat in enumerate(sortedCats)) +
+                     ((~series.isin(sortedCats)) * nCats))
 
                     if catPreprocDetails['physical-type'] in (bool.__name__, _STR_TYPE)
 
-                    else (sum(((s - cat).abs().between(left=0, right=_FLOAT_ABS_TOL) * i)
+                    else (sum(((series - cat).abs().between(left=0, right=_FLOAT_ABS_TOL) * i)
                               for i, cat in enumerate(sortedCats)) +
-                          ((1 - sum(((s - cat).abs().between(left=0, right=_FLOAT_ABS_TOL) * 1)
+                          ((1 - sum(((series - cat).abs().between(left=0, right=_FLOAT_ABS_TOL) * 1)
                                     for cat in sortedCats)) * nCats)))
 
                 # *** NOTE: NumPy BUG ***
@@ -212,6 +214,7 @@ class PandasMLPreprocessor:
                 # github.com/numpy/numpy/issues/9463
 
                 if self.catIdxScaled:
+                    # MinMax-scale categorical data integer indices
                     pandasDF.loc[:, catPreprocCol] = minMaxScaledIndices = \
                         2 * pandasDF[catPreprocCol] / nCats - 1
 
