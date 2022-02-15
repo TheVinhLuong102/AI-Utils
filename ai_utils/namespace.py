@@ -14,6 +14,7 @@ from typing import Collection, List, Tuple   # Py3.9+: use built-ins
 
 from ruamel import yaml
 
+from .data_types.numpy_pandas import NUMPY_INT_TYPES
 from .fs import PathType, mkdir
 
 
@@ -326,15 +327,23 @@ class Namespace(ArgParseNamespace):
                 for k, v in self.items()}
 
     @staticmethod
-    def _serializable(x: Any, /):   # pylint: disable=invalid-name
-        return ([Namespace._serializable(i) for i in x]
-                if isinstance(x, (list, set, tuple))
-                else ({k: Namespace._serializable(v)
-                       for k, v in x.items()}
-                      if isinstance(x, (dict, Namespace))
-                      else (str(x)
-                            if isinstance(x, (datetime.datetime, datetime.time))   # noqa: E501
-                            else (None if str(x)[-3:] == 'inf' else x))))
+    def _serializable(x: Any, /):
+        if isinstance(x, (list, set, tuple)):
+            return [Namespace._serializable(i) for i in x]
+
+        if isinstance(x, (dict, Namespace)):
+            return {k: Namespace._serializable(v) for k, v in x.items()}
+
+        if isinstance(x, (datetime.datetime, datetime.time)):
+            return str(x)
+
+        if isinstance(x, NUMPY_INT_TYPES):
+            return int(x)
+
+        if str(x)[-3:] == 'inf':
+            return None
+
+        return x
 
     class _JSONEncoder(json.JSONEncoder):
         def default(self, obj):
