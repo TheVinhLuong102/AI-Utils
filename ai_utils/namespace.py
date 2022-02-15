@@ -424,16 +424,16 @@ class Namespace(ArgParseNamespace):
                            stream=yaml_file,
                            # Dumper=yaml.dumper.SafeDumper,
                            default_style=None,
-                           default_flow_style=None,
+                           default_flow_style=False,
                            encoding='utf-8',
                            explicit_start=None,
                            explicit_end=None,
                            version=None,
                            tags=None,
-                           canonical=None,
-                           indent=None,
-                           width=None,
-                           allow_unicode=None,
+                           canonical=False,
+                           indent=2,
+                           width=100,
+                           allow_unicode=True,
                            line_break=None)
 
 
