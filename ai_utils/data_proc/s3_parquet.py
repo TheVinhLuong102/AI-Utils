@@ -185,9 +185,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                         schema: Schema = read_schema(where=fileCache.localPath)
 
-                        fileCache.srcColsExclPartitionKVs = set(schema.names)
+                        fileCache.srcColsExclPartitionKVs = (set(schema.names)
+                                                             - {'__index_level_0__'})
 
-                        fileCache.srcColsInclPartitionKVs.update(schema.names)
+                        fileCache.srcColsInclPartitionKVs.update(fileCache.srcColsExclPartitionKVs)
 
                         for col in (fileCache.srcColsExclPartitionKVs
                                     .difference(fileCache.partitionKVs)):
@@ -225,9 +226,10 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
 
                         schema: Schema = read_schema(where=localPath)
 
-                        srcColsExclPartitionKVs: Set[str] = set(schema.names)
+                        srcColsExclPartitionKVs: Set[str] = (set(schema.names)
+                                                             - {'__index_level_0__'})
 
-                        srcColsInclPartitionKVs.update(schema.names)
+                        srcColsInclPartitionKVs.update(srcColsExclPartitionKVs)
 
                         for col in srcColsExclPartitionKVs.difference(partitionKVs):
                             srcTypesExclPartitionKVs[col] = \
@@ -513,11 +515,11 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
         if fileCache.nRows is None:
             schema: Schema = read_schema(where=fileLocalPath)
 
-            fileCache.srcColsExclPartitionKVs = set(schema.names)
+            fileCache.srcColsExclPartitionKVs = set(schema.names) - {'__index_level_0__'}
 
-            fileCache.srcColsInclPartitionKVs.update(schema.names)
+            fileCache.srcColsInclPartitionKVs.update(fileCache.srcColsExclPartitionKVs)
 
-            self.srcColsInclPartitionKVs.update(schema.names)
+            self.srcColsInclPartitionKVs.update(fileCache.srcColsExclPartitionKVs)
 
             for col in fileCache.srcColsExclPartitionKVs.difference(fileCache.partitionKVs):
                 fileCache.srcTypesExclPartitionKVs[col] = \
