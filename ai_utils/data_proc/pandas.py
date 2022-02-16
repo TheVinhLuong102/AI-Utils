@@ -72,7 +72,7 @@ class PandasFlatteningSubsampler:
                                            reps=(nMissingRows, 1))
                                       if padWithLastRow else
                                       full(shape=(nMissingRows, nCols),
-                                                  fill_value=NA,
+                                           fill_value=NA,
                                            dtype=None,
                                            order='C',
                                            like=None)),
