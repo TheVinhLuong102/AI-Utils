@@ -76,7 +76,7 @@ class PandasFlatteningSubsampler:
                                            dtype=None,
                                            order='C',
                                            like=None)),
-                                           columns=cols)),
+                                columns=cols)),
                 axis='index',
                 join='outer',
                 ignore_index=True,
