@@ -150,15 +150,14 @@ class S3ParquetDataFeeder(AbstractS3FileDataHandler):
                       quiet=True,
                       verbose=False)
 
-                _cache._srcArrowDS = \
-                    dataset(source=path.replace('s3://', ''),
-                            schema=None,
-                            format='parquet',
-                            filesystem=S3FileSystem(region=awsRegion),
-                            partitioning=None,
-                            partition_base_dir=None,
-                            exclude_invalid_files=None,
-                            ignore_prefixes=None)
+                _cache._srcArrowDS = dataset(source=path.replace('s3://', ''),
+                                             schema=None,
+                                             format='parquet',
+                                             filesystem=S3FileSystem(region=awsRegion),
+                                             partitioning=None,
+                                             partition_base_dir=None,
+                                             exclude_invalid_files=None,
+                                             ignore_prefixes=None)
 
                 if verbose:
                     toc: float = time.time()
